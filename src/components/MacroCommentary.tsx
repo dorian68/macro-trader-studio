@@ -46,7 +46,7 @@ export function MacroCommentary() {
     setError(null);
     
     try {
-      const response = await fetch('https://dorian68.app.n8n.cloud/webhook-test/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
