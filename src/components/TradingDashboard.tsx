@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -19,13 +18,7 @@ import {
   DollarSign,
   Clock,
   Save,
-  Share2,
-  ChevronLeft,
-  ChevronRight,
-  Settings,
-  Brain,
-  FileText,
-  Download
+  Share2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "./CandlestickChart";
@@ -147,8 +140,6 @@ export function TradingDashboard() {
   const [timeframe, setTimeframe] = useState("short");
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentIdea, setCurrentIdea] = useState<any>(null);
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
   
   const currentData = mockTechnicalData[selectedAsset as keyof typeof mockTechnicalData] || mockTechnicalData["EUR/USD"];
 
@@ -200,522 +191,415 @@ export function TradingDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="border-b border-border-light bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-              className="lg:hidden"
-            >
-              {leftSidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">AI Trading Copilot</h1>
-              <p className="text-sm text-muted-foreground">Real-time analysis & AI-powered recommendations</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-              <Brain className="h-3 w-3 mr-1" />
-              AI Powered
-            </Badge>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={refreshData}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Refresh
-            </Button>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">Trading Dashboard</h2>
+          <p className="text-muted-foreground mt-1">
+            Real-time technical analysis and AI-powered trade recommendations
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+            <Target className="h-3 w-3 mr-1" />
+            AI Powered
+          </Badge>
+          <Button 
+            variant="outline" 
+            onClick={refreshData}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Refresh
+          </Button>
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Inputs & Context */}
-        <div className={cn(
-          "border-r border-border-light bg-card/50 transition-all duration-300 overflow-y-auto",
-          leftSidebarOpen ? "w-80" : "w-0 overflow-hidden lg:w-16"
-        )}>
-          <div className="p-4 space-y-4">
-            {/* Collapse button for desktop */}
-            <div className="hidden lg:flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+      {/* Asset Selection */}
+      <Card className="gradient-card border-border-light shadow-medium">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Select Asset
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+            {assets.map((asset) => (
+              <button
+                key={asset.symbol}
+                onClick={() => setSelectedAsset(asset.symbol)}
+                className={cn(
+                  "p-3 rounded-lg border transition-smooth text-left",
+                  selectedAsset === asset.symbol
+                    ? "bg-primary/10 border-primary/20 text-primary shadow-glow-primary"
+                    : "bg-card border-border-light hover:bg-accent/50"
+                )}
               >
-                {leftSidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </Button>
+                <div className="font-medium text-sm">{asset.symbol}</div>
+                <div className="text-xs text-muted-foreground">{asset.type}</div>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Live Chart */}
+      <CandlestickChart 
+        asset={selectedAsset} 
+        title={`Live Chart - ${selectedAsset}`}
+        height={400}
+      />
+
+      {/* Technical Analysis */}
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Trend Analysis */}
+        <Card className="gradient-card border-border-light shadow-medium">
+          <CardHeader>
+            <CardTitle className="text-lg">Trend Analysis</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Current Trend</span>
+              <div className="flex items-center gap-2">
+                {getTrendIcon(currentData.trend)}
+                <span className={cn("font-medium", getTrendColor(currentData.trend))}>
+                  {currentData.trend}
+                </span>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Momentum</span>
+                  <span>{currentData.momentum}%</span>
+                </div>
+                <Progress 
+                  value={currentData.momentum} 
+                  className="h-2"
+                />
+              </div>
+              
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Strength</span>
+                  <span>{currentData.strength}%</span>
+                </div>
+                <Progress 
+                  value={currentData.strength} 
+                  className="h-2"
+                />
+              </div>
+              
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Volatility</span>
+                  <span>{currentData.volatility}%</span>
+                </div>
+                <Progress 
+                  value={currentData.volatility} 
+                  className="h-2"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Key Levels */}
+        <Card className="gradient-card border-border-light shadow-medium">
+          <CardHeader>
+            <CardTitle className="text-lg">Key Levels</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium text-danger mb-2">Resistance Levels</h4>
+              <div className="space-y-2">
+                {currentData.keyLevels.resistance.map((level, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-danger/5 border border-danger/20 rounded"
+                  >
+                    <span className="text-sm">R{index + 1}</span>
+                    <span className="font-mono text-sm text-danger">{level}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-sm font-medium text-success mb-2">Support Levels</h4>
+              <div className="space-y-2">
+                {currentData.keyLevels.support.map((level, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-success/5 border border-success/20 rounded"
+                  >
+                    <span className="text-sm">S{index + 1}</span>
+                    <span className="font-mono text-sm text-success">{level}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Technical Signals */}
+        <Card className="gradient-card border-border-light shadow-medium">
+          <CardHeader>
+            <CardTitle className="text-lg">Technical Signals</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {currentData.signals.map((signal, index) => (
+              <div 
+                key={index}
+                className="flex items-center justify-between p-3 bg-accent/30 rounded-lg border border-border-light"
+              >
+                <div>
+                  <div className="font-medium text-sm">{signal.name}</div>
+                  <div className="text-xs text-muted-foreground">{signal.status}</div>
+                </div>
+                <div className="text-right">
+                  <div className={cn(
+                    "font-mono text-sm",
+                    signal.color === "success" ? "text-success" :
+                    signal.color === "danger" ? "text-danger" : "text-warning"
+                  )}>
+                    {typeof signal.value === 'number' ? signal.value.toFixed(4) : signal.value}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Trade Idea Generator */}
+      <Card className="gradient-card border-border-light shadow-medium">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            AI Trade Idea Generator
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Risk Preference
+              </label>
+              <Select value={riskLevel} onValueChange={setRiskLevel}>
+                <SelectTrigger className="bg-background/50 border-border-light">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {riskLevels.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          level.color === "success" ? "bg-success" :
+                          level.color === "warning" ? "bg-warning" : "bg-danger"
+                        )} />
+                        {level.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {leftSidebarOpen && (
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Time Horizon
+              </label>
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger className="bg-background/50 border-border-light">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeframes.map((tf) => (
+                    <SelectItem key={tf.value} value={tf.value}>
+                      {tf.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Button 
+            onClick={generateTradeIdea}
+            disabled={isGenerating}
+            className="w-full"
+            size="lg"
+          >
+            {isGenerating ? (
               <>
-                {/* Asset Selection */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                    Market Selection
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {assets.map((asset) => (
-                      <button
-                        key={asset.symbol}
-                        onClick={() => setSelectedAsset(asset.symbol)}
-                        className={cn(
-                          "p-2 rounded-lg border transition-smooth text-left text-xs",
-                          selectedAsset === asset.symbol
-                            ? "bg-primary/10 border-primary/20 text-primary"
-                            : "bg-background border-border-light hover:bg-accent/50"
-                        )}
-                      >
-                        <div className="font-medium">{asset.symbol}</div>
-                        <div className="text-muted-foreground">{asset.type}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator className="bg-border-light" />
-
-                {/* Trading Preferences */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Settings className="h-4 w-4 text-primary" />
-                    Preferences
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-medium text-foreground mb-1 block">
-                        Risk Level
-                      </label>
-                      <Select value={riskLevel} onValueChange={setRiskLevel}>
-                        <SelectTrigger className="h-8 text-xs bg-background/50 border-border-light">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {riskLevels.map((level) => (
-                            <SelectItem key={level.value} value={level.value}>
-                              <div className="flex items-center gap-2">
-                                <div className={cn(
-                                  "w-2 h-2 rounded-full",
-                                  level.color === "success" ? "bg-success" :
-                                  level.color === "warning" ? "bg-warning" : "bg-danger"
-                                )} />
-                                <span className="text-xs">{level.label}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-foreground mb-1 block">
-                        Time Horizon
-                      </label>
-                      <Select value={timeframe} onValueChange={setTimeframe}>
-                        <SelectTrigger className="h-8 text-xs bg-background/50 border-border-light">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeframes.map((tf) => (
-                            <SelectItem key={tf.value} value={tf.value}>
-                              <span className="text-xs">{tf.label}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator className="bg-border-light" />
-
-                {/* Market Overview */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground">Current Trend</h3>
-                  <div className="bg-accent/30 rounded-lg p-3 border border-border-light">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Trend</span>
-                      <div className="flex items-center gap-1">
-                        {getTrendIcon(currentData.trend)}
-                        <span className={cn("text-xs font-medium", getTrendColor(currentData.trend))}>
-                          {currentData.trend}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-muted-foreground">Strength</span>
-                        <span className="text-xs font-medium">{currentData.strength}%</span>
-                      </div>
-                      <Progress value={currentData.strength} className="h-1" />
-                    </div>
-                  </div>
-                </div>
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                Generating Trade Idea...
+              </>
+            ) : (
+              <>
+                <Target className="h-4 w-4 mr-2" />
+                Generate Trade Idea for {selectedAsset}
               </>
             )}
+          </Button>
+        </CardContent>
+      </Card>
 
-            {!leftSidebarOpen && (
-              <div className="hidden lg:flex flex-col items-center gap-4">
-                <Button
-                  variant={selectedAsset === "EUR/USD" ? "default" : "ghost"}
-                  size="sm"
-                  className="w-12 h-12 p-0"
-                  onClick={() => setSelectedAsset("EUR/USD")}
-                >
-                  EUR
+      {/* Trade Card */}
+      {currentIdea && (
+        <Card className="gradient-card border-border-light shadow-strong">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-3">
+                <div className={cn(
+                  "p-2 rounded-lg",
+                  currentIdea.direction.toLowerCase() === "long" 
+                    ? "bg-success/10 text-success" 
+                    : "bg-danger/10 text-danger"
+                )}>
+                  {getDirectionIcon(currentIdea.direction)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold">{currentIdea.instrument}</span>
+                    <Badge 
+                      variant="secondary"
+                      className={cn(
+                        currentIdea.direction.toLowerCase() === "long"
+                          ? "bg-success/10 text-success border-success/20"
+                          : "bg-danger/10 text-danger border-danger/20"
+                      )}
+                    >
+                      {currentIdea.direction}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {currentIdea.setup}
+                  </p>
+                </div>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm">
+                  <Save className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant={selectedAsset === "BTC" ? "default" : "ghost"}
-                  size="sm"
-                  className="w-12 h-12 p-0"
-                  onClick={() => setSelectedAsset("BTC")}
-                >
-                  BTC
-                </Button>
-                <Button
-                  variant={selectedAsset === "GOLD" ? "default" : "ghost"}
-                  size="sm"
-                  className="w-12 h-12 p-0"
-                  onClick={() => setSelectedAsset("GOLD")}
-                >
-                  GLD
+                <Button variant="ghost" size="sm">
+                  <Share2 className="h-4 w-4" />
                 </Button>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Entry</span>
+                </div>
+                <p className="font-mono text-lg font-bold text-foreground">
+                  {currentIdea.entry}
+                </p>
+              </div>
 
-        {/* Center Area - Chart & Analysis */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-6">
-            {/* Live Chart */}
-            <Card className="gradient-card border-border-light shadow-medium">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Live Chart - {selectedAsset}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CandlestickChart 
-                  asset={selectedAsset} 
-                  height={400}
-                />
-              </CardContent>
-            </Card>
+              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
+                <div className="flex items-center gap-2 mb-1">
+                  <Shield className="h-4 w-4 text-danger" />
+                  <span className="text-xs text-muted-foreground">Stop Loss</span>
+                </div>
+                <p className="font-mono text-lg font-bold text-danger">
+                  {currentIdea.stopLoss}
+                </p>
+              </div>
 
-            {/* Technical Analysis Grid */}
-            <div className="grid md:grid-cols-3 gap-4">
-              {/* Key Levels */}
-              <Card className="gradient-card border-border-light shadow-medium">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Key Levels</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <h4 className="text-xs font-medium text-danger mb-2">Resistance</h4>
-                    <div className="space-y-1">
-                      {currentData.keyLevels.resistance.map((level, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-danger/5 border border-danger/20 rounded text-xs">
-                          <span>R{index + 1}</span>
-                          <span className="font-mono text-danger">{level}</span>
-                        </div>
-                      ))}
-                    </div>
+              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
+                <div className="flex items-center gap-2 mb-1">
+                  <Target className="h-4 w-4 text-success" />
+                  <span className="text-xs text-muted-foreground">Take Profit</span>
+                </div>
+                <p className="font-mono text-lg font-bold text-success">
+                  {currentIdea.takeProfit}
+                </p>
+              </div>
+
+              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
+                <div className="flex items-center gap-2 mb-1">
+                  <BarChart3 className="h-4 w-4 text-warning" />
+                  <span className="text-xs text-muted-foreground">R:R Ratio</span>
+                </div>
+                <p className="font-mono text-lg font-bold text-warning">
+                  {currentIdea.riskReward}
+                </p>
+              </div>
+            </div>
+
+            <Separator className="bg-border-light" />
+
+            {/* Analysis */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-foreground">Trade Analysis</h4>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {currentIdea.timeframe}
+                  </span>
+                  <div className="flex items-center gap-1 ml-2">
+                    <span className="text-sm text-muted-foreground">Confidence:</span>
+                    <Badge variant="outline" className="border-primary/20 text-primary">
+                      {currentIdea.confidence}%
+                    </Badge>
                   </div>
-                  
-                  <div>
-                    <h4 className="text-xs font-medium text-success mb-2">Support</h4>
-                    <div className="space-y-1">
-                      {currentData.keyLevels.support.map((level, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-success/5 border border-success/20 rounded text-xs">
-                          <span>S{index + 1}</span>
-                          <span className="font-mono text-success">{level}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              {/* Technical Signals */}
-              <Card className="gradient-card border-border-light shadow-medium">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Technical Signals</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {currentData.signals.map((signal, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-accent/30 rounded border border-border-light">
-                      <div>
-                        <div className="font-medium text-xs">{signal.name}</div>
-                        <div className="text-xs text-muted-foreground">{signal.status}</div>
-                      </div>
-                      <div className={cn(
-                        "font-mono text-xs",
-                        signal.color === "success" ? "text-success" :
-                        signal.color === "danger" ? "text-danger" : "text-warning"
-                      )}>
-                        {typeof signal.value === 'number' ? signal.value.toFixed(4) : signal.value}
-                      </div>
+              <p className="text-muted-foreground leading-relaxed">
+                {currentIdea.reasoning}
+              </p>
+
+              <div>
+                <h5 className="font-medium text-foreground mb-2">Key Factors</h5>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {currentIdea.keyFactors.map((factor: string, index: number) => (
+                    <div 
+                      key={index}
+                      className="bg-primary/5 border border-primary/20 rounded-lg p-2"
+                    >
+                      <span className="text-xs text-primary font-medium">
+                        {factor}
+                      </span>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
-
-              {/* Market Momentum */}
-              <Card className="gradient-card border-border-light shadow-medium">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Market Momentum</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Momentum</span>
-                      <span>{currentData.momentum}%</span>
-                    </div>
-                    <Progress value={currentData.momentum} className="h-1" />
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Strength</span>
-                      <span>{currentData.strength}%</span>
-                    </div>
-                    <Progress value={currentData.strength} className="h-1" />
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Volatility</span>
-                      <span>{currentData.volatility}%</span>
-                    </div>
-                    <Progress value={currentData.volatility} className="h-1" />
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
-            {/* Trade Result */}
-            {currentIdea && (
-              <Card className="gradient-card border-border-light shadow-strong">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-3">
-                      <div className={cn(
-                        "p-2 rounded-lg",
-                        currentIdea.direction.toLowerCase() === "long" 
-                          ? "bg-success/10 text-success" 
-                          : "bg-danger/10 text-danger"
-                      )}>
-                        {getDirectionIcon(currentIdea.direction)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold">{currentIdea.instrument}</span>
-                          <Badge variant="secondary" className={cn(
-                            currentIdea.direction.toLowerCase() === "long"
-                              ? "bg-success/10 text-success border-success/20"
-                              : "bg-danger/10 text-danger border-danger/20"
-                          )}>
-                            {currentIdea.direction}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{currentIdea.setup}</p>
-                      </div>
-                    </CardTitle>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Confidence:</span>
-                      <Badge variant="outline" className="border-primary/20 text-primary text-xs">
-                        {currentIdea.confidence}%
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Key Metrics */}
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="bg-accent/30 rounded-lg p-3 border border-border-light text-center">
-                      <div className="text-xs text-muted-foreground mb-1">Entry</div>
-                      <div className="font-mono text-sm font-bold">{currentIdea.entry}</div>
-                    </div>
-                    <div className="bg-accent/30 rounded-lg p-3 border border-border-light text-center">
-                      <div className="text-xs text-muted-foreground mb-1">Stop</div>
-                      <div className="font-mono text-sm font-bold text-danger">{currentIdea.stopLoss}</div>
-                    </div>
-                    <div className="bg-accent/30 rounded-lg p-3 border border-border-light text-center">
-                      <div className="text-xs text-muted-foreground mb-1">Target</div>
-                      <div className="font-mono text-sm font-bold text-success">{currentIdea.takeProfit}</div>
-                    </div>
-                    <div className="bg-accent/30 rounded-lg p-3 border border-border-light text-center">
-                      <div className="text-xs text-muted-foreground mb-1">R:R</div>
-                      <div className="font-mono text-sm font-bold text-warning">{currentIdea.riskReward}</div>
-                    </div>
-                  </div>
+            <Separator className="bg-border-light" />
 
-                  <p className="text-sm text-muted-foreground leading-relaxed">{currentIdea.reasoning}</p>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
-                    {currentIdea.keyFactors.map((factor: string, index: number) => (
-                      <div key={index} className="bg-primary/5 border border-primary/20 rounded p-1">
-                        <span className="text-xs text-primary font-medium">{factor}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-
-        {/* Right Panel - AI Controls */}
-        <div className={cn(
-          "border-l border-border-light bg-card/50 transition-all duration-300 overflow-y-auto",
-          rightPanelOpen ? "w-80" : "w-0 overflow-hidden lg:w-16"
-        )}>
-          <div className="p-4 space-y-4">
-            {/* Collapse button */}
-            <div className="flex justify-start">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setRightPanelOpen(!rightPanelOpen)}
-              >
-                {rightPanelOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3">
+              <Button variant="default" className="flex-1 min-w-[120px]">
+                Execute Trade
+              </Button>
+              <Button variant="outline" className="flex-1 min-w-[120px]">
+                Add to Watchlist
+              </Button>
+              <Button variant="premium" className="flex-1 min-w-[120px]">
+                Generate Report
               </Button>
             </div>
-
-            {rightPanelOpen && (
-              <>
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-primary" />
-                    AI Copilot Actions
-                  </h3>
-                  
-                  <div className="space-y-2">
-                    <Button 
-                      onClick={generateTradeIdea}
-                      disabled={isGenerating}
-                      className="w-full justify-start"
-                      size="sm"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Target className="h-4 w-4 mr-2" />
-                          Generate Trade Idea
-                        </>
-                      )}
-                    </Button>
-
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Technical Analysis
-                    </Button>
-
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Macro Outlook
-                    </Button>
-
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      Export Report
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator className="bg-border-light" />
-
-                {currentIdea && (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-foreground">Trade Actions</h3>
-                    <div className="space-y-2">
-                      <Button variant="default" className="w-full justify-start" size="sm">
-                        <DollarSign className="h-4 w-4 mr-2" />
-                        Execute Trade
-                      </Button>
-                      <Button variant="outline" className="w-full justify-start" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Add to Watchlist
-                      </Button>
-                      <Button variant="outline" className="w-full justify-start" size="sm">
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Analysis
-                      </Button>
-                      <Button variant="outline" className="w-full justify-start" size="sm">
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share Idea
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <Separator className="bg-border-light" />
-
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground">Quick Stats</h3>
-                  <div className="bg-accent/30 rounded-lg p-3 border border-border-light">
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Last Update</span>
-                        <span>{currentData.lastUpdate}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Asset</span>
-                        <span className="font-medium">{selectedAsset}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status</span>
-                        <span className="text-success">Live</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {!rightPanelOpen && (
-              <div className="hidden lg:flex flex-col items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-12 h-12 p-0"
-                  onClick={generateTradeIdea}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Target className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button variant="ghost" size="sm" className="w-12 h-12 p-0">
-                  <BarChart3 className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="w-12 h-12 p-0">
-                  <FileText className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
