@@ -69,9 +69,22 @@ export function MacroCommentary() {
       }
       
       const rawData = JSON.parse(text);
+      console.log('Parsed JSON:', rawData);
+      console.log('Array length:', rawData.length);
+      console.log('First item:', rawData[0]);
       
       // Extract data from the webhook response array
       const responseData = rawData[0];
+      
+      if (!responseData) {
+        throw new Error('No data in response array');
+      }
+      
+      if (!responseData.message) {
+        console.log('Response data structure:', responseData);
+        throw new Error('No message property in response data');
+      }
+      
       const content = responseData.message.content.content;
       const sources = responseData.message.citations?.map((url: string) => ({
         title: url.split('/').pop() || url,
