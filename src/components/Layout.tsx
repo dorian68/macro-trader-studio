@@ -24,16 +24,10 @@ const modules = [
     description: "Market analysis & insights"
   },
   {
-    id: "technical",
-    name: "Technical Analysis",
+    id: "trading",
+    name: "Trading Dashboard",
     icon: BarChart3,
-    description: "Technical indicators & trends"
-  },
-  {
-    id: "trade-ideas",
-    name: "Trade Ideas",
-    icon: Target,
-    description: "Generate trade recommendations"
+    description: "Technical analysis & trade ideas"
   },
   {
     id: "reports",

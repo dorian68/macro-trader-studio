@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { DemoWelcome } from "@/components/DemoWelcome";
 import { MacroCommentary } from "@/components/MacroCommentary";
-import { TechnicalAnalysis } from "@/components/TechnicalAnalysis";
-import { TradeIdeas } from "@/components/TradeIdeas";
+import { TradingDashboard } from "@/components/TradingDashboard";
 import { Reports } from "@/components/Reports";
 
 const Index = () => {
@@ -15,10 +14,8 @@ const Index = () => {
         return <DemoWelcome onModuleSelect={setActiveModule} />;
       case "commentary":
         return <MacroCommentary />;
-      case "technical":
-        return <TechnicalAnalysis />;
-      case "trade-ideas":
-        return <TradeIdeas />;
+      case "trading":
+        return <TradingDashboard />;
       case "reports":
         return <Reports />;
       default:

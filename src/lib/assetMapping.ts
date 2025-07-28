@@ -2,24 +2,25 @@
 export const assetToBinanceSymbol: Record<string, string> = {
   'EUR/USD': 'EURUSDT',  // Proxy via Tether
   'GBP/USD': 'GBPUSDT',  // Proxy via Tether
-  'USD/JPY': 'USDCJPY',  // Approximation
+  'USD/JPY': 'BTCUSDT',  // Fallback vers BTC (pas de JPY direct)
+  'GOLD': 'PAXGUSDT',    // PAX Gold
   'Gold': 'PAXGUSDT',    // PAX Gold
+  'SILVER': 'AGTUSDT',   // Silver token
   'Silver': 'AGTUSDT',   // Silver token
-  'Crude Oil': 'USOILSPOT', // Si disponible, sinon fallback
+  'CRUDE': 'BTCUSDT',    // Fallback vers BTC (pas de pétrole direct)
+  'Crude Oil': 'BTCUSDT', // Fallback vers BTC
   'Bitcoin': 'BTCUSDT',
   'Ethereum': 'ETHUSDT',
   'BTC': 'BTCUSDT',
   'ETH': 'ETHUSDT'
 };
 
-// Fallback pour les actifs non disponibles sur Binance
+// Tous les actifs supportent maintenant les données en temps réel
 export const getSymbolForAsset = (asset: string): string => {
   return assetToBinanceSymbol[asset] || 'BTCUSDT'; // Fallback vers BTC
 };
 
-// Vérifier si l'actif supporte les données en temps réel
+// Tous les actifs ont des données temps réel
 export const supportsRealTimeData = (asset: string): boolean => {
-  const symbol = assetToBinanceSymbol[asset];
-  // BTC et ETH sont garantis d'avoir des données temps réel
-  return ['BTCUSDT', 'ETHUSDT'].includes(symbol);
+  return true; // Tous les actifs supportent maintenant le temps réel
 };
