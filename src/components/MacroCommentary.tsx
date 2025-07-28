@@ -11,57 +11,80 @@ import {
   AlertTriangle,
   RefreshCw,
   Copy,
-  Save
+  Save,
+  ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const sampleAssets = [
   "EUR/USD", "GBP/USD", "USD/JPY", "Gold", "Silver", "Crude Oil", "Bitcoin", "Ethereum"
 ];
 
-const mockCommentaries = {
-  "EUR/USD": {
-    title: "EUR/USD Weekly Outlook",
-    introduction: "The EUR/USD pair is showing mixed signals as markets digest recent ECB communications and US economic data releases.",
-    fundamental: {
-      title: "Fundamental Analysis",
-      content: "The European Central Bank's dovish stance continues to weigh on the Euro, while the Federal Reserve maintains its hawkish rhetoric. Key economic indicators from the Eurozone show modest growth, with inflation remaining above target. The divergence in monetary policy between the ECB and Fed creates a compelling narrative for USD strength.",
-      factors: ["ECB dovish policy", "Fed hawkish stance", "Inflation divergence", "Economic growth differential"]
-    },
-    technical: {
-      bias: "Bearish",
-      confidence: 75,
-      keyLevels: {
-        support: "1.0850",
-        resistance: "1.0950"
-      }
-    },
-    gptInsight: "Based on current market dynamics, the EUR/USD is likely to face continued pressure towards the 1.08 handle.",
-    curatedInsight: "Our proprietary macro model suggests institutional positioning favors USD strength, with particular focus on peripheral bond spreads as a key driver."
-  }
-};
+interface WebhookResponse {
+  content: string;
+  sources?: Array<{
+    title: string;
+    url: string;
+  }>;
+}
 
 export function MacroCommentary() {
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [commentary, setCommentary] = useState<any>(null);
-  const [showDetails, setShowDetails] = useState({ gpt: true, curated: true });
+  const [commentary, setCommentary] = useState<WebhookResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
 
     setIsLoading(true);
+    setError(null);
     
-    // Simulate API call
-    setTimeout(() => {
-      const asset = sampleAssets.find(a => 
-        query.toLowerCase().includes(a.toLowerCase().replace("/", ""))
+    try {
+      // Extract instrument from query
+      const instrument = sampleAssets.find(asset => 
+        query.toLowerCase().includes(asset.toLowerCase().replace(/[/\s]/g, ""))
+      ) || query.split(" ").find(word => 
+        word.length > 2 && !["the", "on", "for", "view", "analysis", "macro"].includes(word.toLowerCase())
       ) || "EUR/USD";
+
+      const response = await fetch('https://dorian68.app.n8n.cloud/webhook-test/4572387f-700e-4987-b768-d98b347bd7f1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: "RAG",
+          instrument: instrument
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: WebhookResponse = await response.json();
+      setCommentary(data);
       
-      setCommentary(mockCommentaries[asset as keyof typeof mockCommentaries] || mockCommentaries["EUR/USD"]);
+      toast({
+        title: "Analysis Generated",
+        description: `Successfully generated macro commentary for ${instrument}`,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate commentary';
+      setError(errorMessage);
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleQuickQuery = (asset: string) => {
@@ -138,6 +161,19 @@ export function MacroCommentary() {
         </CardContent>
       </Card>
 
+      {/* Error Display */}
+      {error && (
+        <Card className="border-danger/20 bg-danger/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-danger">
+              <AlertTriangle className="h-4 w-4" />
+              <p className="text-sm font-medium">Error generating commentary</p>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Commentary Display */}
       {commentary && (
         <div className="space-y-4">
@@ -145,154 +181,56 @@ export function MacroCommentary() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                {commentary.title}
+                Macro Commentary
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigator.clipboard.writeText(commentary.content)}
+                >
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm">
-                  <Save className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}>
                   <RefreshCw className="h-4 w-4" />
                   Regenerate
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Introduction */}
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">Executive Summary</h4>
-                <p className="text-muted-foreground leading-relaxed">
-                  {commentary.introduction}
-                </p>
-              </div>
-
-              <Separator className="bg-border-light" />
-
-              {/* Fundamental Analysis */}
-              <div>
-                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
-                  {commentary.fundamental.title}
-                </h4>
-                <p className="text-muted-foreground leading-relaxed mb-4">
-                  {commentary.fundamental.content}
-                </p>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {commentary.fundamental.factors.map((factor: string, index: number) => (
-                    <div 
-                      key={index}
-                      className="bg-accent/30 rounded-lg p-3 border border-border-light"
-                    >
-                      <p className="text-sm text-foreground font-medium">{factor}</p>
-                    </div>
-                  ))}
+              {/* Main Content */}
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-foreground leading-relaxed">
+                  {commentary.content}
                 </div>
               </div>
 
-              <Separator className="bg-border-light" />
-
-              {/* Technical Bias */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold text-foreground mb-3">Directional Bias</h4>
-                  <div className="flex items-center gap-3">
-                    <Badge 
-                      variant="secondary"
-                      className={cn(
-                        "px-3 py-1",
-                        commentary.technical.bias === "Bearish" 
-                          ? "bg-danger/10 text-danger border-danger/20"
-                          : "bg-success/10 text-success border-success/20"
-                      )}
-                    >
-                      {commentary.technical.bias}
-                    </Badge>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Confidence:</span>
-                      <div className="flex items-center gap-1">
-                        <div className="w-20 h-2 bg-accent rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary"
-                            style={{ width: `${commentary.technical.confidence}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{commentary.technical.confidence}%</span>
-                      </div>
+              {/* Sources */}
+              {commentary.sources && commentary.sources.length > 0 && (
+                <>
+                  <Separator className="bg-border-light" />
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4 text-primary" />
+                      Sources
+                    </h4>
+                    <div className="space-y-2">
+                      {commentary.sources.map((source, index) => (
+                        <a
+                          key={index}
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          {source.title}
+                        </a>
+                      ))}
                     </div>
                   </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-foreground mb-3">Key Levels</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-accent/30 rounded-lg p-3 border border-border-light">
-                      <p className="text-xs text-muted-foreground">Support</p>
-                      <p className="text-sm font-mono font-medium text-success">
-                        {commentary.technical.keyLevels.support}
-                      </p>
-                    </div>
-                    <div className="bg-accent/30 rounded-lg p-3 border border-border-light">
-                      <p className="text-xs text-muted-foreground">Resistance</p>
-                      <p className="text-sm font-mono font-medium text-danger">
-                        {commentary.technical.keyLevels.resistance}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <Separator className="bg-border-light" />
-
-              {/* AI Insights */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <h4 className="font-semibold text-foreground">AI Insights Breakdown</h4>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowDetails(prev => ({ ...prev, gpt: !prev.gpt }))}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Toggle GPT
-                    </button>
-                    <button
-                      onClick={() => setShowDetails(prev => ({ ...prev, curated: !prev.curated }))}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Toggle Curated
-                    </button>
-                  </div>
-                </div>
-
-                {showDetails.gpt && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="border-primary/20 text-primary">
-                        GPT Insight
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {commentary.gptInsight}
-                    </p>
-                  </div>
-                )}
-
-                {showDetails.curated && (
-                  <div className="bg-success/5 border border-success/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="border-success/20 text-success">
-                        Curated ABCG Insight
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {commentary.curatedInsight}
-                    </p>
-                  </div>
-                )}
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
