@@ -17,6 +17,7 @@ import {
   Share2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CandlestickChart } from "./CandlestickChart";
 
 const riskLevels = [
   { value: "low", label: "Low Risk (1-2%)", color: "success" },
@@ -129,6 +130,9 @@ export function TradeIdeas() {
           AI Powered
         </Badge>
       </div>
+
+      {/* Live Market View */}
+      <CandlestickChart />
 
       {/* Configuration Panel */}
       <Card className="gradient-card border-border-light shadow-medium">
