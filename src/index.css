@@ -2,41 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Professional Trading Platform Design System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Dark Professional Theme */
+    --background: 222 24% 8%;
+    --background-secondary: 222 20% 10%;
+    --background-tertiary: 222 16% 12%;
+    --foreground: 220 10% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 222 20% 10%;
+    --card-secondary: 222 16% 12%;
+    --card-foreground: 220 10% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 222 20% 10%;
+    --popover-foreground: 220 10% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Trading Theme Colors */
+    --primary: 217 76% 55%;  /* Electric Blue */
+    --primary-dark: 217 76% 45%;
+    --primary-light: 217 76% 65%;
+    --primary-foreground: 220 10% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --success: 142 78% 55%;  /* Emerald Green */
+    --success-dark: 142 78% 45%;
+    --success-light: 142 78% 65%;
+    --success-foreground: 220 10% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --danger: 0 78% 60%;     /* Red */
+    --danger-dark: 0 78% 50%;
+    --danger-light: 0 78% 70%;
+    --danger-foreground: 220 10% 98%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --warning: 45 78% 58%;   /* Orange */
+    --warning-dark: 45 78% 48%;
+    --warning-light: 45 78% 68%;
+    --warning-foreground: 220 10% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --secondary: 222 16% 18%;
+    --secondary-foreground: 220 10% 85%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --muted: 222 16% 15%;
+    --muted-foreground: 220 10% 70%;
 
-    --radius: 0.5rem;
+    --accent: 222 20% 20%;
+    --accent-foreground: 220 10% 90%;
+
+    --destructive: 0 78% 60%;
+    --destructive-foreground: 220 10% 98%;
+
+    --border: 222 16% 18%;
+    --border-light: 222 16% 22%;
+    --input: 222 16% 15%;
+    --ring: 217 76% 55%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-dark)) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(var(--success-dark)) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(var(--danger)) 0%, hsl(var(--danger-dark)) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card-secondary)) 100%);
+    --gradient-bg: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background-secondary)) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.15);
+    --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.2);
+    --shadow-strong: 0 12px 40px rgba(0, 0, 0, 0.25);
+    --shadow-glow-primary: 0 0 30px hsl(var(--primary) / 0.3);
+    --shadow-glow-success: 0 0 30px hsl(var(--success) / 0.3);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s ease-out;
 
     --sidebar-background: 0 0% 98%;
 
@@ -91,6 +131,15 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar overrides for dark theme */
+    --sidebar-background: 222 20% 9%;
+    --sidebar-foreground: 220 10% 90%;
+    --sidebar-primary: 217 76% 55%;
+    --sidebar-primary-foreground: 220 10% 98%;
+    --sidebar-accent: 222 16% 15%;
+    --sidebar-accent-foreground: 220 10% 85%;
+    --sidebar-border: 222 16% 18%;
+    --sidebar-ring: 217 76% 55%;
   }
 }
 
@@ -100,6 +149,58 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--gradient-bg);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-success {
+    background: var(--gradient-success);
+  }
+  
+  .gradient-danger {
+    background: var(--gradient-danger);
+  }
+  
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-medium {
+    box-shadow: var(--shadow-medium);
+  }
+  
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
+  }
+  
+  .shadow-glow-primary {
+    box-shadow: var(--shadow-glow-primary);
+  }
+  
+  .shadow-glow-success {
+    box-shadow: var(--shadow-glow-success);
+  }
+  
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+  
+  .transition-fast {
+    transition: var(--transition-fast);
   }
 }

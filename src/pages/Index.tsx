@@ -1,13 +1,35 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { Layout } from "@/components/Layout";
+import { DemoWelcome } from "@/components/DemoWelcome";
+import { MacroCommentary } from "@/components/MacroCommentary";
+import { TechnicalAnalysis } from "@/components/TechnicalAnalysis";
+import { TradeIdeas } from "@/components/TradeIdeas";
+import { Reports } from "@/components/Reports";
 
 const Index = () => {
+  const [activeModule, setActiveModule] = useState("welcome");
+
+  const renderActiveModule = () => {
+    switch (activeModule) {
+      case "welcome":
+        return <DemoWelcome onModuleSelect={setActiveModule} />;
+      case "commentary":
+        return <MacroCommentary />;
+      case "technical":
+        return <TechnicalAnalysis />;
+      case "trade-ideas":
+        return <TradeIdeas />;
+      case "reports":
+        return <Reports />;
+      default:
+        return <DemoWelcome onModuleSelect={setActiveModule} />;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <Layout activeModule={activeModule} onModuleChange={setActiveModule}>
+      {renderActiveModule()}
+    </Layout>
   );
 };
 
