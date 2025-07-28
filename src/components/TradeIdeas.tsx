@@ -132,7 +132,7 @@ export function TradeIdeas() {
       </div>
 
       {/* Live Market View */}
-      <CandlestickChart />
+      <CandlestickChart asset="Bitcoin" />
 
       {/* Configuration Panel */}
       <Card className="gradient-card border-border-light shadow-medium">

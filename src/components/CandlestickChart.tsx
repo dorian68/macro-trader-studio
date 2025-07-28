@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, Wifi, WifiOff } from 'lucide-react';
+import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 
 interface BinanceKlineData {
   k: {
@@ -19,6 +20,13 @@ interface BinanceKlineData {
   };
 }
 
+interface CandlestickChartProps {
+  asset: string;
+  title?: string;
+  showHeader?: boolean;
+  height?: number;
+}
+
 const timeframes = [
   { value: '1m', label: '1 Minute' },
   { value: '5m', label: '5 Minutes' },
@@ -26,7 +34,12 @@ const timeframes = [
   { value: '1h', label: '1 Hour' },
 ];
 
-export function CandlestickChart() {
+export function CandlestickChart({ 
+  asset, 
+  title, 
+  showHeader = true, 
+  height = 400 
+}: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -35,12 +48,15 @@ export function CandlestickChart() {
   const [timeframe, setTimeframe] = useState('1m');
   const [isConnected, setIsConnected] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
+  
+  const binanceSymbol = getSymbolForAsset(asset);
+  const hasRealTimeData = supportsRealTimeData(asset);
 
   // Fetch historical data
   const fetchHistoricalData = async (interval: string) => {
     try {
       const response = await fetch(
-        `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=100`
+        `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=100`
       );
       const data = await response.json();
       
@@ -82,7 +98,7 @@ export function CandlestickChart() {
         mode: 1,
       },
       width: chartContainerRef.current.clientWidth,
-      height: 400,
+      height: height,
     });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
@@ -116,12 +132,22 @@ export function CandlestickChart() {
 
   // WebSocket connection
   useEffect(() => {
+    // Si pas de données temps réel, on charge seulement les données historiques
+    if (!hasRealTimeData) {
+      fetchHistoricalData(timeframe).then((historicalData) => {
+        if (seriesRef.current && historicalData.length > 0) {
+          seriesRef.current.setData(historicalData);
+        }
+      });
+      return;
+    }
+
     const connectWebSocket = () => {
       if (wsRef.current) {
         wsRef.current.close();
       }
 
-      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${timeframe}`);
+      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${binanceSymbol.toLowerCase()}@kline_${timeframe}`);
       
       ws.onopen = () => {
         setIsConnected(true);
@@ -180,7 +206,7 @@ export function CandlestickChart() {
         wsRef.current.close();
       }
     };
-  }, [timeframe]);
+  }, [timeframe, binanceSymbol, hasRealTimeData]);
 
   const handleTimeframeChange = (newTimeframe: string) => {
     setTimeframe(newTimeframe);
@@ -188,25 +214,26 @@ export function CandlestickChart() {
 
   return (
     <Card className="gradient-card border-border-light shadow-medium">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <BarChart3 className="h-5 w-5" />
-            </div>
-            <div>
-              <span className="text-xl font-bold">Live Market View</span>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className="border-primary/20 text-primary">
-                  BTC/USDT
-                </Badge>
-                <Badge 
-                  variant="outline" 
-                  className={`border-${isConnected ? 'success' : 'danger'}/20 text-${isConnected ? 'success' : 'danger'}`}
-                >
-                  {isConnected ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
-                  {isConnected ? 'Live' : 'Disconnected'}
-                </Badge>
+      {showHeader && (
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+              <div>
+                <span className="text-xl font-bold">{title || `${asset} Chart`}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline" className="border-primary/20 text-primary">
+                    {asset}
+                  </Badge>
+                  <Badge 
+                    variant="outline" 
+                    className={`border-${isConnected && hasRealTimeData ? 'success' : 'warning'}/20 text-${isConnected && hasRealTimeData ? 'success' : 'warning'}`}
+                  >
+                    {isConnected && hasRealTimeData ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+                    {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
+                  </Badge>
               </div>
             </div>
           </CardTitle>
@@ -232,11 +259,17 @@ export function CandlestickChart() {
           </div>
         </div>
       </CardHeader>
+      )}
       <CardContent>
         <div ref={chartContainerRef} className="w-full rounded-lg border border-border-light bg-background/30" />
-        <div className="mt-3 text-xs text-muted-foreground text-center">
-          Real-time data from Binance WebSocket API • Updates every {timeframe === '1m' ? 'minute' : timeframe}
-        </div>
+        {showHeader && (
+          <div className="mt-3 text-xs text-muted-foreground text-center">
+            {hasRealTimeData 
+              ? `Real-time data from Binance WebSocket API • Updates every ${timeframe === '1m' ? 'minute' : timeframe}`
+              : `Historical data • ${asset} chart`
+            }
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CandlestickChart } from "./CandlestickChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -273,6 +274,13 @@ export function TechnicalAnalysis() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Live Chart for Selected Asset */}
+      <CandlestickChart 
+        asset={selectedAsset} 
+        title={`Live Chart - ${selectedAsset}`}
+        height={350}
+      />
 
       {/* Action Panel */}
       <Card className="gradient-card border-border-light shadow-medium">
