@@ -447,6 +447,117 @@ export function TradingDashboard() {
                   </>}
               </Button>
 
+              {/* AI Generated Trade Idea */}
+              {currentIdea && (
+                <div className="space-y-4 pt-4 border-t border-border-light">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-success" />
+                      AI Trade Recommendation
+                    </h4>
+                    <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                      {currentIdea.confidence}% Confidence
+                    </Badge>
+                  </div>
+                  
+                  <div className="bg-card/50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("font-semibold", getDirectionColor(currentIdea.direction))}>
+                          {currentIdea.direction} {currentIdea.instrument}
+                        </span>
+                        {getDirectionIcon(currentIdea.direction)}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {currentIdea.riskReward}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Entry:</span>
+                        <span className="font-medium ml-1">{currentIdea.entry}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Take Profit:</span>
+                        <span className="font-medium ml-1 text-success">{currentIdea.takeProfit}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Stop Loss:</span>
+                        <span className="font-medium ml-1 text-danger">{currentIdea.stopLoss}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Duration:</span>
+                        <span className="font-medium ml-1">{currentIdea.duration}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-primary/5 rounded-md p-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Expected Return:</span>
+                        <span className="font-semibold text-success">+{currentIdea.expectedReturn.toFixed(1)}%</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Estimated P&L:</span>
+                        <span className="font-semibold">${currentIdea.performance.estimatedPnL.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Risk Amount:</span>
+                        <span className="font-medium text-warning">${currentIdea.performance.riskAmount.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowRationale(!showRationale)}
+                      className="w-full text-xs"
+                    >
+                      <Info className="h-3 w-3 mr-1" />
+                      {showRationale ? 'Hide Analysis' : 'Show AI Analysis'}
+                    </Button>
+                    
+                    {showRationale && (
+                      <div className="text-xs space-y-3 bg-muted/20 rounded-md p-3">
+                        <div>
+                          <p className="font-medium mb-1">Strategy Rationale:</p>
+                          <p className="text-muted-foreground leading-relaxed">{currentIdea.reasoning}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-medium mb-1">Technical Trigger:</p>
+                          <p className="text-muted-foreground">{currentIdea.technicalTrigger}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-medium mb-1">Risk Assessment:</p>
+                          <p className="text-muted-foreground">{currentIdea.riskAssessment}</p>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1 pt-2">
+                          {currentIdea.keyFactors.map((factor: string, index: number) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {factor}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2 pt-2">
+                      <Button size="sm" className="flex-1 text-xs">
+                        <Save className="h-3 w-3 mr-1" />
+                        Save Trade
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1 text-xs">
+                        <Share2 className="h-3 w-3 mr-1" />
+                        Share
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Quick Stats */}
               <div className="space-y-3 pt-4 border-t border-border-light">
                 <h4 className="text-sm font-medium text-muted-foreground">Quick Stats</h4>
