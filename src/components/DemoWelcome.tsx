@@ -71,7 +71,7 @@ export function DemoWelcome({ onModuleSelect }: DemoWelcomeProps) {
               </Badge>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground mb-4">
-              TradeAI Pro Demo
+              directionAI Demo
             </h1>
             <p className="text-xl text-primary-foreground/90 mb-8 leading-relaxed">
               Experience the power of AI-driven trading analysis. Test our comprehensive suite 
