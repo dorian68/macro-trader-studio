@@ -120,6 +120,166 @@ const mockTechnicalData = {
     },
     lastUpdate: "2 minutes ago"
   },
+  "GBP/USD": {
+    trend: "Bearish",
+    momentum: 28,
+    strength: 62,
+    volatility: 58,
+    signals: [{
+      name: "RSI",
+      value: 31,
+      status: "oversold",
+      color: "success"
+    }, {
+      name: "MACD",
+      value: -0.0022,
+      status: "bearish",
+      color: "danger"
+    }, {
+      name: "SMA 50",
+      value: 1.2654,
+      status: "below",
+      color: "danger"
+    }, {
+      name: "SMA 200",
+      value: 1.2789,
+      status: "below",
+      color: "danger"
+    }],
+    keyLevels: {
+      resistance: ["1.2650", "1.2700", "1.2780"],
+      support: ["1.2580", "1.2520", "1.2450"]
+    },
+    lastUpdate: "3 minutes ago"
+  },
+  "USD/JPY": {
+    trend: "Bullish",
+    momentum: 72,
+    strength: 81,
+    volatility: 45,
+    signals: [{
+      name: "RSI",
+      value: 68,
+      status: "bullish",
+      color: "success"
+    }, {
+      name: "MACD",
+      value: 0.85,
+      status: "bullish",
+      color: "success"
+    }, {
+      name: "SMA 50",
+      value: 148.25,
+      status: "above",
+      color: "success"
+    }, {
+      name: "SMA 200",
+      value: 146.80,
+      status: "above",
+      color: "success"
+    }],
+    keyLevels: {
+      resistance: ["150.50", "152.00", "154.25"],
+      support: ["148.00", "146.50", "144.80"]
+    },
+    lastUpdate: "1 minute ago"
+  },
+  "GOLD": {
+    trend: "Bullish",
+    momentum: 65,
+    strength: 74,
+    volatility: 38,
+    signals: [{
+      name: "RSI",
+      value: 62,
+      status: "bullish",
+      color: "success"
+    }, {
+      name: "MACD",
+      value: 12.5,
+      status: "bullish",
+      color: "success"
+    }, {
+      name: "SMA 50",
+      value: 2045.20,
+      status: "above",
+      color: "success"
+    }, {
+      name: "SMA 200",
+      value: 2015.80,
+      status: "above",
+      color: "success"
+    }],
+    keyLevels: {
+      resistance: ["2080.00", "2095.00", "2110.00"],
+      support: ["2045.00", "2025.00", "2000.00"]
+    },
+    lastUpdate: "2 minutes ago"
+  },
+  "SILVER": {
+    trend: "Bullish",
+    momentum: 58,
+    strength: 69,
+    volatility: 52,
+    signals: [{
+      name: "RSI",
+      value: 59,
+      status: "neutral",
+      color: "warning"
+    }, {
+      name: "MACD",
+      value: 0.35,
+      status: "bullish",
+      color: "success"
+    }, {
+      name: "SMA 50",
+      value: 25.45,
+      status: "above",
+      color: "success"
+    }, {
+      name: "SMA 200",
+      value: 24.80,
+      status: "above",
+      color: "success"
+    }],
+    keyLevels: {
+      resistance: ["26.50", "27.20", "28.00"],
+      support: ["25.20", "24.60", "23.80"]
+    },
+    lastUpdate: "4 minutes ago"
+  },
+  "CRUDE": {
+    trend: "Neutral",
+    momentum: 45,
+    strength: 56,
+    volatility: 48,
+    signals: [{
+      name: "RSI",
+      value: 48,
+      status: "neutral",
+      color: "warning"
+    }, {
+      name: "MACD",
+      value: -0.25,
+      status: "bearish",
+      color: "danger"
+    }, {
+      name: "SMA 50",
+      value: 78.50,
+      status: "below",
+      color: "danger"
+    }, {
+      name: "SMA 200",
+      value: 82.20,
+      status: "below",
+      color: "danger"
+    }],
+    keyLevels: {
+      resistance: ["82.00", "85.50", "88.00"],
+      support: ["75.00", "72.50", "69.80"]
+    },
+    lastUpdate: "5 minutes ago"
+  },
   "BTC": {
     trend: "Bullish",
     momentum: 78,
@@ -147,10 +307,42 @@ const mockTechnicalData = {
       color: "success"
     }],
     keyLevels: {
-      resistance: ["43500", "45000", "47500"],
-      support: ["41000", "39500", "38000"]
+      resistance: ["45000", "47500", "50000"],
+      support: ["41000", "39500", "37000"]
     },
     lastUpdate: "1 minute ago"
+  },
+  "ETH": {
+    trend: "Bullish",
+    momentum: 73,
+    strength: 79,
+    volatility: 71,
+    signals: [{
+      name: "RSI",
+      value: 64,
+      status: "bullish",
+      color: "success"
+    }, {
+      name: "MACD",
+      value: 85.2,
+      status: "bullish",
+      color: "success"
+    }, {
+      name: "SMA 50",
+      value: 2580,
+      status: "above",
+      color: "success"
+    }, {
+      name: "SMA 200",
+      value: 2420,
+      status: "above",
+      color: "success"
+    }],
+    keyLevels: {
+      resistance: ["2750", "2900", "3100"],
+      support: ["2500", "2350", "2200"]
+    },
+    lastUpdate: "2 minutes ago"
   }
 };
 const mockTradeIdeas = {
@@ -181,10 +373,145 @@ const mockTradeIdeas = {
       riskAmount: 500
     }
   },
+  "GBP/USD": {
+    instrument: "GBP/USD",
+    direction: "Short",
+    setup: "Brexit uncertainty driving continued weakness",
+    entry: "1.2590",
+    stopLoss: "1.2650",
+    takeProfit: "1.2480",
+    riskReward: "1:1.8",
+    confidence: 74,
+    timeframe: "Medium-term",
+    duration: "5-8 days",
+    expectedReturn: 8.7,
+    confidenceInterval: { min: 4.2, max: 12.1 },
+    successProbability: 69,
+    reasoning: "🔎 Strategy Rationale:\nBrexit uncertainty combined with BoE dovish stance creates persistent GBP weakness. Technical breakdown confirmed with volume selling. The AI estimates 69% probability of 8.7% downside within 5-8 trading days.",
+    macroFactors: "Brexit trade negotiations stalling, BoE dovish pivot, UK inflation concerns creating Sterling weakness vs USD strength.",
+    technicalTrigger: "Break below 1.2600 support level with RSI oversold bounce failure. Volume confirmation on selling pressure.",
+    riskAssessment: "Main risk: Surprise Brexit breakthrough or BoE hawkish pivot. Correlation with EUR/USD moderate.",
+    alternativesTrade: "EUR/GBP long considered but cross-currency volatility too high. GBP/JPY short rejected due to BoJ intervention risk.",
+    keyFactors: ["Brexit uncertainty", "BoE dovish stance", "Technical breakdown", "USD strength"],
+    performance: {
+      estimatedPnL: 870,
+      roi: 8.7,
+      duration: "5-8 days",
+      riskAmount: 600
+    }
+  },
+  "USD/JPY": {
+    instrument: "USD/JPY",
+    direction: "Long",
+    setup: "BoJ intervention fears vs Fed hawkishness",
+    entry: "149.20",
+    stopLoss: "147.80",
+    takeProfit: "152.50",
+    riskReward: "1:2.4",
+    confidence: 82,
+    timeframe: "Short-term",
+    duration: "2-4 days",
+    expectedReturn: 10.3,
+    confidenceInterval: { min: 6.8, max: 14.2 },
+    successProbability: 78,
+    reasoning: "🔎 Strategy Rationale:\nFed-BoJ policy divergence at extreme levels with USD strength momentum intact. Despite intervention risks, technical momentum favors continued upside. The AI estimates 78% probability of 10.3% upside within 2-4 trading days.",
+    macroFactors: "Fed maintaining hawkish stance vs BoJ ultra-dovish policy. US-Japan yield differentials supporting USD/JPY strength despite intervention threats.",
+    technicalTrigger: "Breakout above 149 resistance with momentum confirmation. Volume supporting upside move despite intervention concerns.",
+    riskAssessment: "Main risk: Surprise BoJ intervention above 150 level. Geopolitical tensions could trigger safe-haven JPY demand.",
+    alternativesTrade: "USD/CHF long considered but SNB intervention risk higher. EUR/JPY long rejected due to EUR weakness.",
+    keyFactors: ["Fed-BoJ divergence", "Yield differentials", "Technical momentum", "Intervention resistance"],
+    performance: {
+      estimatedPnL: 1030,
+      roi: 10.3,
+      duration: "2-4 days",
+      riskAmount: 700
+    }
+  },
+  "GOLD": {
+    instrument: "Gold",
+    direction: "Long",
+    setup: "Safe-haven demand amid global uncertainty",
+    entry: "$2,065",
+    stopLoss: "$2,040",
+    takeProfit: "$2,110",
+    riskReward: "1:1.8",
+    confidence: 79,
+    timeframe: "Medium-term",
+    duration: "7-10 days",
+    expectedReturn: 7.8,
+    confidenceInterval: { min: 4.5, max: 11.2 },
+    successProbability: 75,
+    reasoning: "🔎 Strategy Rationale:\nGeopolitical tensions and inflation concerns supporting gold's safe-haven appeal. Technical breakout above key resistance with institutional buying. The AI estimates 75% probability of 7.8% upside within 7-10 trading days.",
+    macroFactors: "Global uncertainty driving safe-haven demand. Central bank gold purchases accelerating. Dollar weakness expectations supporting precious metals.",
+    technicalTrigger: "Breakout above $2060 resistance with volume confirmation. RSI momentum supporting continued upside move.",
+    riskAssessment: "Main risk: Strong USD rally or aggressive Fed tightening. Risk-on sentiment could reduce safe-haven demand.",
+    alternativesTrade: "Silver long considered but higher volatility. Platinum rejected due to industrial demand concerns.",
+    keyFactors: ["Safe-haven demand", "Central bank buying", "Technical breakout", "Inflation hedge"],
+    performance: {
+      estimatedPnL: 780,
+      roi: 7.8,
+      duration: "7-10 days",
+      riskAmount: 250
+    }
+  },
+  "SILVER": {
+    instrument: "Silver",
+    direction: "Long",
+    setup: "Industrial demand recovery with precious metals momentum",
+    entry: "$25.80",
+    stopLoss: "$25.20",
+    takeProfit: "$27.40",
+    riskReward: "1:2.7",
+    confidence: 76,
+    timeframe: "Medium-term",
+    duration: "8-12 days",
+    expectedReturn: 12.4,
+    confidenceInterval: { min: 7.8, max: 16.9 },
+    successProbability: 71,
+    reasoning: "🔎 Strategy Rationale:\nSilver benefiting from dual demand - industrial recovery and precious metals safe-haven flow. Technical momentum accelerating with gold strength. The AI estimates 71% probability of 12.4% upside within 8-12 trading days.",
+    macroFactors: "Industrial demand recovery supporting silver. Green energy transition increasing industrial silver consumption. Precious metals complex strength.",
+    technicalTrigger: "Breakout above $25.50 resistance with volume expansion. RSI momentum supporting continued rally.",
+    riskAssessment: "Main risk: Industrial demand slowdown or strong USD rally. Higher volatility than gold increases risk.",
+    alternativesTrade: "Gold long considered but silver offers better risk-reward. Copper rejected due to China demand concerns.",
+    keyFactors: ["Industrial demand", "Green energy transition", "Precious metals strength", "Technical momentum"],
+    performance: {
+      estimatedPnL: 1240,
+      roi: 12.4,
+      duration: "8-12 days",
+      riskAmount: 600
+    }
+  },
+  "CRUDE": {
+    instrument: "Crude Oil",
+    direction: "Short",
+    setup: "Supply concerns easing with demand uncertainty",
+    entry: "$78.50",
+    stopLoss: "$82.00",
+    takeProfit: "$72.80",
+    riskReward: "1:1.6",
+    confidence: 68,
+    timeframe: "Short-term",
+    duration: "4-7 days",
+    expectedReturn: 7.3,
+    confidenceInterval: { min: 3.1, max: 11.8 },
+    successProbability: 64,
+    reasoning: "🔎 Strategy Rationale:\nOPEC+ production increases and China demand concerns weighing on crude. Technical breakdown below key support confirms bearish momentum. The AI estimates 64% probability of 7.3% downside within 4-7 trading days.",
+    macroFactors: "OPEC+ increasing production quotas. China economic slowdown reducing demand outlook. SPR releases adding supply pressure.",
+    technicalTrigger: "Break below $78 support with volume confirmation. RSI breakdown supporting continued selling pressure.",
+    riskAssessment: "Main risk: Geopolitical supply disruption or surprise OPEC+ cuts. Winter demand could provide support.",
+    alternativesTrade: "Natural gas short considered but higher volatility. Heating oil rejected due to seasonal demand factors.",
+    keyFactors: ["OPEC+ production", "China demand concerns", "Technical breakdown", "Supply increase"],
+    performance: {
+      estimatedPnL: 730,
+      roi: 7.3,
+      duration: "4-7 days",
+      riskAmount: 450
+    }
+  },
   "BTC": {
     instrument: "Bitcoin",
     direction: "Long", 
-    setup: "Breakout above resistance with volume confirmation",
+    setup: "Institutional adoption driving renewed momentum",
     entry: "$42,500",
     stopLoss: "$40,000",
     takeProfit: "$48,500",
@@ -200,12 +527,39 @@ const mockTradeIdeas = {
     technicalTrigger: "Volume breakout above $42K resistance with RSI momentum divergence. Order flow showing institutional accumulation patterns.",
     riskAssessment: "Main risk: Macro sentiment reversal or regulatory headwinds. Correlation with tech stocks moderate but manageable.",
     alternativesTrade: "ETH long considered but BTC shows stronger momentum. SOL rejected due to higher beta and regulatory uncertainty.",
-    keyFactors: ["Volume breakout", "Institutional flows", "ETF demand", "Risk-on sentiment"],
+    keyFactors: ["Institutional adoption", "ETF inflows", "Technical breakout", "Risk-on sentiment"],
     performance: {
       estimatedPnL: 1410,
       roi: 14.1,
       duration: "7-12 days",
       riskAmount: 1000
+    }
+  },
+  "ETH": {
+    instrument: "Ethereum",
+    direction: "Long",
+    setup: "DeFi revival and institutional interest",
+    entry: "$2,650",
+    stopLoss: "$2,500",
+    takeProfit: "$2,950",
+    riskReward: "1:2.0",
+    confidence: 81,
+    timeframe: "Medium-term",
+    duration: "6-10 days",
+    expectedReturn: 11.3,
+    confidenceInterval: { min: 6.9, max: 15.8 },
+    successProbability: 77,
+    reasoning: "🔎 Strategy Rationale:\nEthereum ecosystem growth with DeFi revival and staking yields attracting institutional interest. Technical momentum following Bitcoin strength with ETH-specific catalysts. The AI estimates 77% probability of 11.3% upside within 6-10 trading days.",
+    macroFactors: "DeFi total value locked increasing. Ethereum staking yields attracting institutional capital. Layer 2 scaling solutions gaining adoption.",
+    technicalTrigger: "Breakout above $2600 resistance with volume confirmation. ETH/BTC ratio showing relative strength.",
+    riskAssessment: "Main risk: Crypto regulatory concerns or broader risk-off sentiment. Higher volatility than BTC increases position risk.",
+    alternativesTrade: "BTC long considered but ETH offers better technical setup. SOL rejected due to regulatory uncertainty.",
+    keyFactors: ["DeFi revival", "Staking yields", "Technical breakout", "Institutional interest"],
+    performance: {
+      estimatedPnL: 1130,
+      roi: 11.3,
+      duration: "6-10 days",
+      riskAmount: 800
     }
   }
 };
@@ -238,7 +592,7 @@ export function TradingDashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentIdea, setCurrentIdea] = useState<any>(null);
   const [showRationale, setShowRationale] = useState(false);
-  const currentData = mockTechnicalData[selectedAsset as keyof typeof mockTechnicalData] || mockTechnicalData["EUR/USD"];
+  const currentData = mockTechnicalData[selectedAsset as keyof typeof mockTechnicalData];
   const refreshData = () => {
     setIsLoading(true);
     setTimeout(() => setIsLoading(false), 1000);
@@ -246,7 +600,7 @@ export function TradingDashboard() {
   const generateTradeIdea = () => {
     setIsGenerating(true);
     setTimeout(() => {
-      const baseIdea = mockTradeIdeas[selectedAsset as keyof typeof mockTradeIdeas] || mockTradeIdeas["EUR/USD"];
+      const baseIdea = mockTradeIdeas[selectedAsset as keyof typeof mockTradeIdeas];
       const sizeMultiplier = tradeSizes.find(s => s.value === tradeSize)?.multiplier || 1;
       const finalAmount = tradeSize === "custom" ? customAmount : 10000 * sizeMultiplier;
       
