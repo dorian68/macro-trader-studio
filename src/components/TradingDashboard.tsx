@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, Eye, AlertCircle, Target, Shield, DollarSign, Clock, Save, Share2, Brain, PieChart, Calculator, CheckCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "./CandlestickChart";
+
 const assets = [{
   symbol: "EUR/USD",
   name: "Euro / US Dollar",
@@ -43,6 +44,7 @@ const assets = [{
   name: "Ethereum",
   type: "Crypto"
 }];
+
 const riskLevels = [{
   value: "low",
   label: "Low Risk (1-2%)",
@@ -56,6 +58,7 @@ const riskLevels = [{
   label: "High Risk (3-5%)",
   color: "danger"
 }];
+
 const timeframes = [{
   value: "intraday",
   label: "Intraday (1-4 hours)"
@@ -87,6 +90,7 @@ const tradeSizes = [{
   label: "Custom Amount",
   multiplier: 1
 }];
+
 const mockTechnicalData = {
   "EUR/USD": {
     trend: "Bearish",
@@ -345,6 +349,7 @@ const mockTechnicalData = {
     lastUpdate: "2 minutes ago"
   }
 };
+
 const mockTradeIdeas = {
   "EUR/USD": {
     instrument: "EUR/USD",
@@ -563,12 +568,14 @@ const mockTradeIdeas = {
     }
   }
 };
+
 interface TechnicalIndicator {
   name: string;
   value: number | string;
   status: string;
   color: "success" | "danger" | "warning";
 }
+
 interface AssetTechnical {
   trend: string;
   momentum: number;
@@ -581,6 +588,16 @@ interface AssetTechnical {
   };
   lastUpdate: string;
 }
+
+interface TradeLevels {
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;
+  riskReward: number;
+  taSummary: string;
+  direction: "buy" | "sell";
+}
+
 export function TradingDashboard() {
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [isLoading, setIsLoading] = useState(false);
@@ -592,14 +609,17 @@ export function TradingDashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentIdea, setCurrentIdea] = useState<any>(null);
   const [showRationale, setShowRationale] = useState(false);
-  const [tradeLevels, setTradeLevels] = useState<any>(null);
+  const [tradeLevels, setTradeLevels] = useState<TradeLevels | null>(null);
   const [showLevels, setShowLevels] = useState(false);
   const [isGeneratingLevels, setIsGeneratingLevels] = useState(false);
+
   const currentData = mockTechnicalData[selectedAsset as keyof typeof mockTechnicalData];
+
   const refreshData = () => {
     setIsLoading(true);
     setTimeout(() => setIsLoading(false), 1000);
   };
+
   const generateTradeIdea = () => {
     setIsGenerating(true);
     setTimeout(() => {
@@ -630,32 +650,6 @@ export function TradingDashboard() {
       setShowRationale(false);
     }, 2500);
   };
-  const getTrendIcon = (trend: string) => {
-    switch (trend.toLowerCase()) {
-      case "bullish":
-        return <TrendingUp className="h-4 w-4 text-success" />;
-      case "bearish":
-        return <TrendingDown className="h-4 w-4 text-danger" />;
-      default:
-        return <Minus className="h-4 w-4 text-warning" />;
-    }
-  };
-  const getTrendColor = (trend: string) => {
-    switch (trend.toLowerCase()) {
-      case "bullish":
-        return "text-success";
-      case "bearish":
-        return "text-danger";
-      default:
-        return "text-warning";
-    }
-  };
-  const getDirectionColor = (direction: string) => {
-    return direction.toLowerCase() === "long" ? "text-success" : "text-danger";
-  };
-  const getDirectionIcon = (direction: string) => {
-    return direction.toLowerCase() === "long" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />;
-  };
 
   const generateTechnicalLevels = () => {
     setIsGeneratingLevels(true);
@@ -663,7 +657,7 @@ export function TradingDashboard() {
     // Simulate API call delay
     setTimeout(() => {
       const currentPrice = parseFloat(mockTechnicalData[selectedAsset]?.keyLevels.resistance[0] || "100");
-      const direction = mockTechnicalData[selectedAsset]?.trend === "bullish" ? "buy" : "sell";
+      const direction = mockTechnicalData[selectedAsset]?.trend === "Bullish" ? "buy" : "sell";
       
       let entry, stopLoss, takeProfit;
       
@@ -688,7 +682,7 @@ export function TradingDashboard() {
         "Bearish flag pattern breakdown below support"
       ];
       
-      const levels = {
+      const levels: TradeLevels = {
         entry: parseFloat(entry.toFixed(4)),
         stopLoss: parseFloat(stopLoss.toFixed(4)),
         takeProfit: parseFloat(takeProfit.toFixed(4)),
@@ -715,658 +709,513 @@ export function TradingDashboard() {
     
     setTradeLevels(updatedLevels);
   };
-  return <div className="space-y-6">
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend.toLowerCase()) {
+      case "bullish":
+        return <TrendingUp className="h-4 w-4 text-success" />;
+      case "bearish":
+        return <TrendingDown className="h-4 w-4 text-danger" />;
+      default:
+        return <Minus className="h-4 w-4 text-warning" />;
+    }
+  };
+
+  const getTrendColor = (trend: string) => {
+    switch (trend.toLowerCase()) {
+      case "bullish":
+        return "text-success";
+      case "bearish":
+        return "text-danger";
+      default:
+        return "text-warning";
+    }
+  };
+
+  const getDirectionColor = (direction: string) => {
+    return direction.toLowerCase() === "long" ? "text-success" : "text-danger";
+  };
+
+  const getDirectionIcon = (direction: string) => {
+    return direction.toLowerCase() === "long" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />;
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-border-light pb-6">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Trading Dashboard</h2>
-          <p className="text-muted-foreground mt-1">
-            Real-time technical analysis and AI-powered trade recommendations
+          <h1 className="text-4xl font-bold text-foreground tracking-tight">Trading Dashboard</h1>
+          <p className="text-muted-foreground mt-2 text-lg">
+            AI-powered technical analysis and trade generation
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-            <Target className="h-3 w-3 mr-1" />
-            AI Powered
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-3 py-1">
+            <Brain className="h-4 w-4 mr-2" />
+            AI Copilot Active
           </Badge>
-          <Button variant="outline" onClick={refreshData} disabled={isLoading}>
-            {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Refresh
+          <Button variant="outline" onClick={refreshData} disabled={isLoading} className="px-4">
+            {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Refresh Data
           </Button>
         </div>
       </div>
 
-      {/* Asset Selection */}
-      <Card className="gradient-card border-border-light shadow-medium">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      {/* Asset Selector - Compact horizontal layout */}
+      <div className="bg-card/30 backdrop-blur-sm rounded-xl border border-border-light p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Select Asset
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-            {assets.map(asset => <button key={asset.symbol} onClick={() => setSelectedAsset(asset.symbol)} className={cn("p-3 rounded-lg border transition-smooth text-left", selectedAsset === asset.symbol ? "bg-primary/10 border-primary/20 text-primary shadow-glow-primary" : "bg-card border-border-light hover:bg-accent/50")}>
-                <div className="font-medium text-sm">{asset.symbol}</div>
-                <div className="text-xs text-muted-foreground">{asset.type}</div>
-              </button>)}
-          </div>
-        </CardContent>
-      </Card>
+            Market Selection
+          </h3>
+          <Badge variant="outline" className="text-sm">
+            {assets.find(a => a.symbol === selectedAsset)?.type}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {assets.map(asset => (
+            <button 
+              key={asset.symbol} 
+              onClick={() => setSelectedAsset(asset.symbol)}
+              className={cn(
+                "px-4 py-2 rounded-lg border transition-all duration-200 text-sm font-medium",
+                selectedAsset === asset.symbol 
+                  ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
+                  : "bg-background/50 border-border-light hover:bg-accent/50 hover:border-primary/30"
+              )}
+            >
+              {asset.symbol}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {/* Chart and Trade Generator Section */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Live Chart */}
-        <div className="lg:col-span-2">
-          <CandlestickChart 
-            asset={selectedAsset} 
-            title={`Live Chart - ${selectedAsset}`} 
-            height={400}
-            tradeLevels={showLevels ? tradeLevels : null}
-            onLevelUpdate={handleLevelUpdate}
-          />
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        
+        {/* Chart Section - Takes more space */}
+        <div className="xl:col-span-3 space-y-6">
+          {/* Live Chart */}
+          <Card className="border-border-light shadow-lg">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <PieChart className="h-5 w-5 text-primary" />
+                  {selectedAsset} Live Chart
+                </CardTitle>
+                {tradeLevels && (
+                  <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                    <Target className="h-3 w-3 mr-1" />
+                    Levels Active
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <CandlestickChart 
+                asset={selectedAsset} 
+                title={`${selectedAsset} Technical Analysis`} 
+                height={500}
+                tradeLevels={showLevels ? tradeLevels : null}
+                onLevelUpdate={handleLevelUpdate}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Technical Levels Generation */}
+          {currentIdea && (
+            <Card className="border-border-light shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  Technical Level Generation
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={generateTechnicalLevels} 
+                  disabled={isGeneratingLevels}
+                  className="w-full lg:w-auto"
+                  size="lg"
+                >
+                  {isGeneratingLevels ? (
+                    <>
+                      <Brain className="h-4 w-4 animate-spin mr-2" />
+                      Calculating Levels...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="h-4 w-4 mr-2" />
+                      Generate Technical Levels
+                    </>
+                  )}
+                </Button>
+                
+                {tradeLevels && (
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-card/50 rounded-lg p-4 border border-border-light">
+                      <div className="text-sm text-muted-foreground mb-1">Entry Level</div>
+                      <div className="text-lg font-bold text-primary">{tradeLevels.entry}</div>
+                    </div>
+                    <div className="bg-card/50 rounded-lg p-4 border border-border-light">
+                      <div className="text-sm text-muted-foreground mb-1">Stop Loss</div>
+                      <div className="text-lg font-bold text-danger">{tradeLevels.stopLoss}</div>
+                    </div>
+                    <div className="bg-card/50 rounded-lg p-4 border border-border-light">
+                      <div className="text-sm text-muted-foreground mb-1">Take Profit</div>
+                      <div className="text-lg font-bold text-success">{tradeLevels.takeProfit}</div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Technical Analysis Bottom Section */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Trend Analysis */}
+            <Card className="border-border-light shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">Trend Analysis</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Current Trend</span>
+                  <div className="flex items-center gap-2">
+                    {getTrendIcon(currentData.trend)}
+                    <span className={cn("font-medium", getTrendColor(currentData.trend))}>
+                      {currentData.trend}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Momentum</span>
+                      <span>{currentData.momentum}%</span>
+                    </div>
+                    <Progress value={currentData.momentum} className="h-2" />
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Strength</span>
+                      <span>{currentData.strength}%</span>
+                    </div>
+                    <Progress value={currentData.strength} className="h-2" />
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Volatility</span>
+                      <span>{currentData.volatility}%</span>
+                    </div>
+                    <Progress value={currentData.volatility} className="h-2" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Key Levels */}
+            <Card className="border-border-light shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">Key Levels</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-danger mb-2">Resistance Levels</h4>
+                  <div className="space-y-2">
+                    {currentData.keyLevels.resistance.map((level, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-danger/5 border border-danger/20 rounded">
+                        <span className="text-sm">R{index + 1}</span>
+                        <span className="font-mono text-sm text-danger">{level}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-success mb-2">Support Levels</h4>
+                  <div className="space-y-2">
+                    {currentData.keyLevels.support.map((level, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-success/5 border border-success/20 rounded">
+                        <span className="text-sm">S{index + 1}</span>
+                        <span className="font-mono text-sm text-success">{level}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Technical Signals */}
+            <Card className="border-border-light shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">Technical Signals</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {currentData.signals.map((signal, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-accent/30 rounded-lg border border-border-light">
+                    <div>
+                      <div className="font-medium text-sm">{signal.name}</div>
+                      <div className="text-xs text-muted-foreground">{signal.status}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className={cn("font-mono text-sm", signal.color === "success" ? "text-success" : signal.color === "danger" ? "text-danger" : "text-warning")}>
+                        {typeof signal.value === 'number' ? signal.value.toFixed(4) : signal.value}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* AI Trade Idea Generator */}
-        <div className="lg:col-span-1">
-          <Card className="gradient-card border-border-light shadow-medium h-fit sticky top-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                AI Trade Generator
+        {/* Sidebar - Controls and Results */}
+        <div className="xl:col-span-1 space-y-6">
+          
+          {/* AI Trade Generator - Compact */}
+          <Card className="border-border-light shadow-lg sticky top-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Brain className="h-5 w-5 text-primary" />
+                AI Trade Setup
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Risk Appetite
-                  </label>
-                  <Select value={riskLevel} onValueChange={setRiskLevel}>
-                    <SelectTrigger className="bg-background/50 border-border-light">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {riskLevels.map(level => <SelectItem key={level.value} value={level.value}>
-                          <div className="flex items-center gap-2">
-                            <div className={cn("w-2 h-2 rounded-full", level.color === "success" ? "bg-success" : level.color === "warning" ? "bg-warning" : "bg-danger")} />
-                            {level.label}
-                          </div>
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+              
+              {/* Risk Level */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Risk Level</label>
+                <Select value={riskLevel} onValueChange={setRiskLevel}>
+                  <SelectTrigger className="bg-background/50 border-border-light">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {riskLevels.map(level => (
+                      <SelectItem key={level.value} value={level.value}>
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "w-2 h-2 rounded-full", 
+                            level.color === "success" ? "bg-success" : 
+                            level.color === "warning" ? "bg-warning" : "bg-danger"
+                          )} />
+                          {level.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Trade Size
-                  </label>
-                  <Select value={tradeSize} onValueChange={setTradeSize}>
-                    <SelectTrigger className="bg-background/50 border-border-light">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tradeSizes.map(size => <SelectItem key={size.value} value={size.value}>
-                          {size.label}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Trade Size */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Position Size</label>
+                <Select value={tradeSize} onValueChange={setTradeSize}>
+                  <SelectTrigger className="bg-background/50 border-border-light">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tradeSizes.map(size => (
+                      <SelectItem key={size.value} value={size.value}>
+                        {size.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {tradeSize === "custom" && (
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-2 block">
-                      Custom Amount ($)
-                    </label>
-                    <Input
-                      type="number"
-                      value={customAmount}
-                      onChange={(e) => setCustomAmount(Number(e.target.value))}
-                      className="bg-background/50 border-border-light"
-                      placeholder="Enter amount"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Time Horizon
-                  </label>
-                  <Select value={timeframe} onValueChange={setTimeframe}>
-                    <SelectTrigger className="bg-background/50 border-border-light">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeframes.map(tf => <SelectItem key={tf.value} value={tf.value}>
-                          {tf.label}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Min Confidence: {confidenceThreshold[0]}%
-                  </label>
-                  <Slider
-                    value={confidenceThreshold}
-                    onValueChange={setConfidenceThreshold}
-                    max={95}
-                    min={50}
-                    step={5}
-                    className="py-2"
+              {tradeSize === "custom" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Amount ($)</label>
+                  <Input
+                    type="number"
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(Number(e.target.value))}
+                    className="bg-background/50 border-border-light"
+                    placeholder="Enter amount"
                   />
                 </div>
+              )}
+
+              {/* Time Horizon */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Time Horizon</label>
+                <Select value={timeframe} onValueChange={setTimeframe}>
+                  <SelectTrigger className="bg-background/50 border-border-light">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeframes.map(tf => (
+                      <SelectItem key={tf.value} value={tf.value}>
+                        {tf.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <Button onClick={generateTradeIdea} disabled={isGenerating} className="w-full" size="lg">
-                {isGenerating ? <>
+              {/* Confidence Threshold */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Min Confidence: {confidenceThreshold[0]}%
+                </label>
+                <Slider
+                  value={confidenceThreshold}
+                  onValueChange={setConfidenceThreshold}
+                  max={95}
+                  min={50}
+                  step={5}
+                  className="py-2"
+                />
+              </div>
+
+              {/* Generate Button */}
+              <Button 
+                onClick={generateTradeIdea} 
+                disabled={isGenerating} 
+                className="w-full" 
+                size="lg"
+              >
+                {isGenerating ? (
+                  <>
                     <Brain className="h-4 w-4 animate-spin mr-2" />
-                    AI Analyzing...
-                  </> : <>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
                     <Brain className="h-4 w-4 mr-2" />
-                    Generate Trade Setup
-                  </>}
+                    Generate Trade
+                  </>
+                )}
               </Button>
-
-              {/* AI Generated Trade Idea */}
-              {currentIdea && (
-                <div className="space-y-4 pt-4 border-t border-border-light">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-success" />
-                      AI Trade Recommendation
-                    </h4>
-                    <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-                      {currentIdea.confidence}% Confidence
-                    </Badge>
-                  </div>
-                  
-                  <div className="bg-card/50 rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("font-semibold", getDirectionColor(currentIdea.direction))}>
-                          {currentIdea.direction} {currentIdea.instrument}
-                        </span>
-                        {getDirectionIcon(currentIdea.direction)}
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {currentIdea.riskReward}
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <span className="text-muted-foreground">Entry:</span>
-                        <span className="font-medium ml-1">{currentIdea.entry}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Take Profit:</span>
-                        <span className="font-medium ml-1 text-success">{currentIdea.takeProfit}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Stop Loss:</span>
-                        <span className="font-medium ml-1 text-danger">{currentIdea.stopLoss}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Duration:</span>
-                        <span className="font-medium ml-1">{currentIdea.duration}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-primary/5 rounded-md p-3 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Expected Return:</span>
-                        <span className="font-semibold text-success">+{currentIdea.expectedReturn.toFixed(1)}%</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Estimated P&L:</span>
-                        <span className="font-semibold">${currentIdea.performance.estimatedPnL.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Risk Amount:</span>
-                        <span className="font-medium text-warning">${currentIdea.performance.riskAmount.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setShowRationale(!showRationale)}
-                      className="w-full text-xs"
-                    >
-                      <Info className="h-3 w-3 mr-1" />
-                      {showRationale ? 'Hide Analysis' : 'Show AI Analysis'}
-                    </Button>
-                    
-                    {showRationale && (
-                      <div className="text-xs space-y-3 bg-muted/20 rounded-md p-3">
-                        <div>
-                          <p className="font-medium mb-1">Strategy Rationale:</p>
-                          <p className="text-muted-foreground leading-relaxed">{currentIdea.reasoning}</p>
-                        </div>
-                        
-                        <div>
-                          <p className="font-medium mb-1">Technical Trigger:</p>
-                          <p className="text-muted-foreground">{currentIdea.technicalTrigger}</p>
-                        </div>
-                        
-                        <div>
-                          <p className="font-medium mb-1">Risk Assessment:</p>
-                          <p className="text-muted-foreground">{currentIdea.riskAssessment}</p>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-1 pt-2">
-                          {currentIdea.keyFactors.map((factor: string, index: number) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {factor}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-2 pt-2">
-                      <Button size="sm" className="flex-1 text-xs">
-                        <Save className="h-3 w-3 mr-1" />
-                        Save Trade
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1 text-xs">
-                        <Share2 className="h-3 w-3 mr-1" />
-                        Share
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Technical Levels Generation */}
-              {currentIdea && (
-                <div className="space-y-3 pt-4 border-t border-border-light">
-                  <Button 
-                    onClick={generateTechnicalLevels}
-                    disabled={isGeneratingLevels}
-                    variant="outline"
-                    className="w-full"
-                    size="sm"
-                  >
-                    {isGeneratingLevels ? (
-                      <>
-                        <BarChart3 className="h-4 w-4 animate-spin mr-2" />
-                        Generating Levels...
-                      </>
-                    ) : (
-                      <>
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        Generate Technical Levels
-                      </>
-                    )}
-                  </Button>
-
-                  {tradeLevels && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-success" />
-                        <span className="text-sm font-medium">Technical Analysis Complete</span>
-                      </div>
-                      
-                      <div className="text-xs text-muted-foreground leading-relaxed">
-                        {tradeLevels.taSummary}
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex justify-between">
-                          <span>Risk/Reward:</span>
-                          <span className="font-bold text-warning">{tradeLevels.riskReward}:1</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Direction:</span>
-                          <span className={`font-bold ${tradeLevels.direction === 'buy' ? 'text-success' : 'text-danger'}`}>
-                            {tradeLevels.direction.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Quick Stats */}
-              <div className="space-y-3 pt-4 border-t border-border-light">
-                <h4 className="text-sm font-medium text-muted-foreground">Quick Stats</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Trend</span>
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(currentData.trend)}
-                      <span className={cn("font-medium", getTrendColor(currentData.trend))}>
-                        {currentData.trend}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Momentum</span>
-                    <span className="font-medium">{currentData.momentum}%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Volatility</span>
-                    <span className="font-medium">{currentData.volatility}%</span>
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
 
-      {/* Technical Analysis */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Trend Analysis */}
-        <Card className="gradient-card border-border-light shadow-medium">
-          <CardHeader>
-            <CardTitle className="text-lg">Trend Analysis</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Current Trend</span>
-              <div className="flex items-center gap-2">
-                {getTrendIcon(currentData.trend)}
-                <span className={cn("font-medium", getTrendColor(currentData.trend))}>
-                  {currentData.trend}
-                </span>
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Momentum</span>
-                  <span>{currentData.momentum}%</span>
+          {/* Trade Result - Clean Display */}
+          {currentIdea && (
+            <Card className="border-border-light shadow-lg">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <CheckCircle className="h-5 w-5 text-success" />
+                    AI Recommendation
+                  </CardTitle>
+                  <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                    {currentIdea.confidence}%
+                  </Badge>
                 </div>
-                <Progress value={currentData.momentum} className="h-2" />
-              </div>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Strength</span>
-                  <span>{currentData.strength}%</span>
-                </div>
-                <Progress value={currentData.strength} className="h-2" />
-              </div>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Volatility</span>
-                  <span>{currentData.volatility}%</span>
-                </div>
-                <Progress value={currentData.volatility} className="h-2" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Key Levels */}
-        <Card className="gradient-card border-border-light shadow-medium">
-          <CardHeader>
-            <CardTitle className="text-lg">Key Levels</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h4 className="text-sm font-medium text-danger mb-2">Resistance Levels</h4>
-              <div className="space-y-2">
-                {currentData.keyLevels.resistance.map((level, index) => <div key={index} className="flex items-center justify-between p-2 bg-danger/5 border border-danger/20 rounded">
-                    <span className="text-sm">R{index + 1}</span>
-                    <span className="font-mono text-sm text-danger">{level}</span>
-                  </div>)}
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="text-sm font-medium text-success mb-2">Support Levels</h4>
-              <div className="space-y-2">
-                {currentData.keyLevels.support.map((level, index) => <div key={index} className="flex items-center justify-between p-2 bg-success/5 border border-success/20 rounded">
-                    <span className="text-sm">S{index + 1}</span>
-                    <span className="font-mono text-sm text-success">{level}</span>
-                  </div>)}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Technical Signals */}
-        <Card className="gradient-card border-border-light shadow-medium">
-          <CardHeader>
-            <CardTitle className="text-lg">Technical Signals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {currentData.signals.map((signal, index) => <div key={index} className="flex items-center justify-between p-3 bg-accent/30 rounded-lg border border-border-light">
-                <div>
-                  <div className="font-medium text-sm">{signal.name}</div>
-                  <div className="text-xs text-muted-foreground">{signal.status}</div>
-                </div>
-                <div className="text-right">
-                  <div className={cn("font-mono text-sm", signal.color === "success" ? "text-success" : signal.color === "danger" ? "text-danger" : "text-warning")}>
-                    {typeof signal.value === 'number' ? signal.value.toFixed(4) : signal.value}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                
+                {/* Direction & Symbol */}
+                <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border-light">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("font-bold text-lg", getDirectionColor(currentIdea.direction))}>
+                      {currentIdea.direction}
+                    </span>
+                    <span className="text-muted-foreground">{currentIdea.instrument}</span>
                   </div>
-                </div>
-              </div>)}
-          </CardContent>
-        </Card>
-      </div>
-
-
-      {/* Enhanced Professional Trade Card */}
-      {currentIdea && <Card className="gradient-card border-border-light shadow-strong">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-3">
-                <div className={cn("p-3 rounded-lg", currentIdea.direction.toLowerCase() === "long" ? "bg-success/10 text-success" : "bg-danger/10 text-danger")}>
                   {getDirectionIcon(currentIdea.direction)}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold">{currentIdea.instrument}</span>
-                    <Badge variant="secondary" className={cn(currentIdea.direction.toLowerCase() === "long" ? "bg-success/10 text-success border-success/20" : "bg-danger/10 text-danger border-danger/20")}>
-                      {currentIdea.direction}
+
+                {/* Key Levels */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Entry:</span>
+                    <span className="font-medium">{currentIdea.entry}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Stop Loss:</span>
+                    <span className="font-medium text-danger">{currentIdea.stopLoss}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Take Profit:</span>
+                    <span className="font-medium text-success">{currentIdea.takeProfit}</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t border-border-light pt-2">
+                    <span className="text-muted-foreground">R:R Ratio:</span>
+                    <Badge variant="outline" className="text-xs font-bold">
+                      {currentIdea.riskReward}
                     </Badge>
-                    <Badge variant="outline" className="border-primary/20 text-primary">
-                      {currentIdea.confidence}% confidence
-                    </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {currentIdea.setup}
-                  </p>
                 </div>
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  <Save className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {/* Trade Setup Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="h-4 w-4 text-primary" />
-                  <span className="text-xs text-muted-foreground">Entry</span>
-                </div>
-                <p className="font-mono text-lg font-bold text-foreground">
-                  {currentIdea.entry}
-                </p>
-              </div>
 
-              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
-                <div className="flex items-center gap-2 mb-1">
-                  <Shield className="h-4 w-4 text-danger" />
-                  <span className="text-xs text-muted-foreground">Stop Loss</span>
+                {/* Performance Metrics */}
+                <div className="space-y-2 p-3 bg-success/5 rounded-lg border border-success/20">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Expected Return:</span>
+                    <span className="font-bold text-success">
+                      +{currentIdea.performance?.estimatedPnL ? `$${currentIdea.performance.estimatedPnL.toLocaleString()}` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">ROI:</span>
+                    <span className="font-medium text-success">
+                      {currentIdea.expectedReturn?.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Duration:</span>
+                    <span className="font-medium">{currentIdea.duration}</span>
+                  </div>
                 </div>
-                <p className="font-mono text-lg font-bold text-danger">
-                  {currentIdea.stopLoss}
-                </p>
-              </div>
 
-              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
-                <div className="flex items-center gap-2 mb-1">
-                  <Target className="h-4 w-4 text-success" />
-                  <span className="text-xs text-muted-foreground">Take Profit</span>
+                {/* Quick Actions */}
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => setShowRationale(!showRationale)}
+                  >
+                    <Info className="h-3 w-3 mr-1" />
+                    Details
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Save className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Share2 className="h-3 w-3 mr-1" />
+                    Share
+                  </Button>
                 </div>
-                <p className="font-mono text-lg font-bold text-success">
-                  {currentIdea.takeProfit}
-                </p>
-              </div>
 
-              <div className="bg-accent/30 rounded-lg p-4 border border-border-light">
-                <div className="flex items-center gap-2 mb-1">
-                  <BarChart3 className="h-4 w-4 text-warning" />
-                  <span className="text-xs text-muted-foreground">R:R Ratio</span>
-                </div>
-                <p className="font-mono text-lg font-bold text-warning">
-                  {currentIdea.riskReward}
-                </p>
-              </div>
-            </div>
-
-            {/* Performance Estimation */}
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Calculator className="h-4 w-4 text-primary" />
-                <h4 className="font-semibold text-foreground">Performance Forecast</h4>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Projected Return</p>
-                  <p className="text-lg font-bold text-success">+{currentIdea.performance.roi.toFixed(1)}%</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Est. P&L</p>
-                  <p className="text-lg font-bold text-foreground">${currentIdea.performance.estimatedPnL.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Duration</p>
-                  <p className="text-sm font-medium text-foreground">{currentIdea.duration}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Risk Amount</p>
-                  <p className="text-sm font-medium text-danger">${currentIdea.performance.riskAmount.toLocaleString()}</p>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-border-light">
-                <p className="text-xs text-muted-foreground">
-                  95% CI: +{currentIdea.confidenceInterval.min}% to +{currentIdea.confidenceInterval.max}% • 
-                  Success Probability: {currentIdea.successProbability}% • 
-                  Position Size: ${currentIdea.performance.tradeAmount.toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            <Separator className="bg-border-light" />
-
-            {/* AI Strategy Rationale */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-primary" />
-                  AI Strategy Analysis
-                </h4>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {currentIdea.timeframe} • {currentIdea.duration}
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-accent/20 rounded-lg p-4 border border-border-light">
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {currentIdea.reasoning}
-                </p>
-              </div>
-
-              <Button 
-                variant="outline" 
-                onClick={() => setShowRationale(!showRationale)}
-                className="w-full"
-              >
-                <Info className="h-4 w-4 mr-2" />
-                {showRationale ? "Hide" : "Show"} Detailed Rationale
-              </Button>
-
-              {showRationale && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="bg-accent/20 rounded-lg p-4 border border-border-light">
-                      <h5 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                        <PieChart className="h-4 w-4 text-primary" />
-                        Macro Context
-                      </h5>
-                      <p className="text-sm text-muted-foreground">{currentIdea.macroFactors}</p>
-                    </div>
-                    <div className="bg-accent/20 rounded-lg p-4 border border-border-light">
-                      <h5 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-primary" />
-                        Technical Trigger
-                      </h5>
-                      <p className="text-sm text-muted-foreground">{currentIdea.technicalTrigger}</p>
+                {/* Detailed Rationale - Expandable */}
+                {showRationale && (
+                  <div className="mt-4 p-4 bg-card/30 rounded-lg border border-border-light space-y-3">
+                    <h5 className="font-semibold text-sm text-foreground">Trade Rationale</h5>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {currentIdea.reasoning}
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-medium text-xs text-foreground">Macro Factors:</span>
+                        <p className="text-xs text-muted-foreground mt-1">{currentIdea.macroFactors}</p>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-xs text-foreground">Technical Trigger:</span>
+                        <p className="text-xs text-muted-foreground mt-1">{currentIdea.technicalTrigger}</p>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium text-xs text-foreground">Risk Assessment:</span>
+                        <p className="text-xs text-muted-foreground mt-1">{currentIdea.riskAssessment}</p>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="bg-accent/20 rounded-lg p-4 border border-border-light">
-                    <h5 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-warning" />
-                      Risk Assessment
-                    </h5>
-                    <p className="text-sm text-muted-foreground">{currentIdea.riskAssessment}</p>
-                  </div>
-
-                  <div className="bg-accent/20 rounded-lg p-4 border border-border-light">
-                    <h5 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                      Alternative Analysis
-                    </h5>
-                    <p className="text-sm text-muted-foreground">{currentIdea.alternativesTrade}</p>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <h5 className="font-medium text-foreground mb-2">Key Catalysts</h5>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {currentIdea.keyFactors.map((factor: string, index: number) => (
-                    <div key={index} className="bg-primary/5 border border-primary/20 rounded-lg p-2">
-                      <span className="text-xs text-primary font-medium">
-                        {factor}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <Separator className="bg-border-light" />
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3">
-              <Button className="flex-1">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Execute Trade
-              </Button>
-              <Button variant="outline">
-                <Save className="h-4 w-4 mr-2" />
-                Save to Watchlist
-              </Button>
-              <Button variant="outline" onClick={generateTradeIdea}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Generate New
-              </Button>
-            </div>
-          </CardContent>
-        </Card>}
-    </div>;
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
