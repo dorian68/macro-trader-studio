@@ -20,11 +20,22 @@ interface BinanceKlineData {
   };
 }
 
+interface TradeLevels {
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;
+  riskReward: number;
+  taSummary: string;
+  direction: "buy" | "sell";
+}
+
 interface CandlestickChartProps {
   asset: string;
   title?: string;
   showHeader?: boolean;
   height?: number;
+  tradeLevels?: TradeLevels | null;
+  onLevelUpdate?: (type: 'entry' | 'stopLoss' | 'takeProfit', value: number) => void;
 }
 
 const timeframes = [
@@ -38,12 +49,15 @@ export function CandlestickChart({
   asset, 
   title, 
   showHeader = true, 
-  height = 400 
+  height = 400,
+  tradeLevels,
+  onLevelUpdate
 }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const levelLinesRef = useRef<any[]>([]);
   
   const [timeframe, setTimeframe] = useState('1m');
   const [isConnected, setIsConnected] = useState(false);
@@ -208,6 +222,17 @@ export function CandlestickChart({
     };
   }, [timeframe, binanceSymbol, hasRealTimeData]);
 
+  // Add/Update trade levels on chart
+  useEffect(() => {
+    if (!seriesRef.current || !tradeLevels) {
+      return;
+    }
+
+    // For now, we'll display the levels in an overlay since price lines are complex
+    // This approach will show level information without direct chart integration
+    console.log('Trade levels updated:', tradeLevels);
+  }, [tradeLevels]);
+
   const handleTimeframeChange = (newTimeframe: string) => {
     setTimeframe(newTimeframe);
   };
@@ -261,7 +286,38 @@ export function CandlestickChart({
       </CardHeader>
       )}
       <CardContent>
-        <div ref={chartContainerRef} className="w-full rounded-lg border border-border-light bg-background/30" />
+        <div className="relative">
+          <div ref={chartContainerRef} className="w-full rounded-lg border border-border-light bg-background/30" />
+          
+          {/* Trade Levels Overlay */}
+          {tradeLevels && (
+            <div className="absolute top-4 right-4 bg-background/95 backdrop-blur-sm border border-border-light rounded-lg p-3 space-y-2 shadow-medium">
+              <div className="text-xs font-medium text-foreground mb-2">Trade Levels</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <span className="text-muted-foreground">Entry:</span>
+                  <span className="font-mono font-medium">{tradeLevels.entry}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  <span className="text-muted-foreground">Stop:</span>
+                  <span className="font-mono font-medium">{tradeLevels.stopLoss}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-muted-foreground">Target:</span>
+                  <span className="font-mono font-medium">{tradeLevels.takeProfit}</span>
+                </div>
+                <div className="pt-1 border-t border-border-light">
+                  <span className="text-muted-foreground">R:R:</span>
+                  <span className="font-medium ml-1 text-warning">{tradeLevels.riskReward}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
         {showHeader && (
           <div className="mt-3 text-xs text-muted-foreground text-center">
             {hasRealTimeData 

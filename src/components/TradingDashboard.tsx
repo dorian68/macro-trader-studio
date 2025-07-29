@@ -592,6 +592,9 @@ export function TradingDashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentIdea, setCurrentIdea] = useState<any>(null);
   const [showRationale, setShowRationale] = useState(false);
+  const [tradeLevels, setTradeLevels] = useState<any>(null);
+  const [showLevels, setShowLevels] = useState(false);
+  const [isGeneratingLevels, setIsGeneratingLevels] = useState(false);
   const currentData = mockTechnicalData[selectedAsset as keyof typeof mockTechnicalData];
   const refreshData = () => {
     setIsLoading(true);
@@ -653,6 +656,65 @@ export function TradingDashboard() {
   const getDirectionIcon = (direction: string) => {
     return direction.toLowerCase() === "long" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />;
   };
+
+  const generateTechnicalLevels = () => {
+    setIsGeneratingLevels(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      const currentPrice = parseFloat(mockTechnicalData[selectedAsset]?.keyLevels.resistance[0] || "100");
+      const direction = mockTechnicalData[selectedAsset]?.trend === "bullish" ? "buy" : "sell";
+      
+      let entry, stopLoss, takeProfit;
+      
+      if (direction === "buy") {
+        entry = currentPrice * 0.995; // Enter slightly below current
+        stopLoss = entry * 0.98; // 2% stop loss
+        takeProfit = entry * 1.06; // 6% take profit (3:1 R:R)
+      } else {
+        entry = currentPrice * 1.005; // Enter slightly above current
+        stopLoss = entry * 1.02; // 2% stop loss
+        takeProfit = entry * 0.94; // 6% take profit (3:1 R:R)
+      }
+      
+      const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
+      
+      const taSummaries = [
+        "Bullish breakout above key resistance with strong volume confirmation",
+        "Bearish reversal at resistance with RSI divergence",
+        "Support retest with hammer candlestick pattern",
+        "Trend continuation after pullback to 20 EMA",
+        "Double bottom formation with bullish divergence",
+        "Bearish flag pattern breakdown below support"
+      ];
+      
+      const levels = {
+        entry: parseFloat(entry.toFixed(4)),
+        stopLoss: parseFloat(stopLoss.toFixed(4)),
+        takeProfit: parseFloat(takeProfit.toFixed(4)),
+        riskReward: parseFloat(riskReward.toFixed(2)),
+        taSummary: taSummaries[Math.floor(Math.random() * taSummaries.length)],
+        direction
+      };
+      
+      setTradeLevels(levels);
+      setShowLevels(true);
+      setIsGeneratingLevels(false);
+    }, 1500);
+  };
+
+  const handleLevelUpdate = (type: 'entry' | 'stopLoss' | 'takeProfit', value: number) => {
+    if (!tradeLevels) return;
+    
+    const updatedLevels = { ...tradeLevels, [type]: value };
+    
+    // Recalculate risk/reward
+    const riskReward = Math.abs(updatedLevels.takeProfit - updatedLevels.entry) / 
+                      Math.abs(updatedLevels.entry - updatedLevels.stopLoss);
+    updatedLevels.riskReward = parseFloat(riskReward.toFixed(2));
+    
+    setTradeLevels(updatedLevels);
+  };
   return <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -696,7 +758,13 @@ export function TradingDashboard() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Live Chart */}
         <div className="lg:col-span-2">
-          <CandlestickChart asset={selectedAsset} title={`Live Chart - ${selectedAsset}`} height={400} />
+          <CandlestickChart 
+            asset={selectedAsset} 
+            title={`Live Chart - ${selectedAsset}`} 
+            height={400}
+            tradeLevels={showLevels ? tradeLevels : null}
+            onLevelUpdate={handleLevelUpdate}
+          />
         </div>
 
         {/* AI Trade Idea Generator */}
@@ -909,6 +977,57 @@ export function TradingDashboard() {
                       </Button>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Technical Levels Generation */}
+              {currentIdea && (
+                <div className="space-y-3 pt-4 border-t border-border-light">
+                  <Button 
+                    onClick={generateTechnicalLevels}
+                    disabled={isGeneratingLevels}
+                    variant="outline"
+                    className="w-full"
+                    size="sm"
+                  >
+                    {isGeneratingLevels ? (
+                      <>
+                        <BarChart3 className="h-4 w-4 animate-spin mr-2" />
+                        Generating Levels...
+                      </>
+                    ) : (
+                      <>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Generate Technical Levels
+                      </>
+                    )}
+                  </Button>
+
+                  {tradeLevels && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-success" />
+                        <span className="text-sm font-medium">Technical Analysis Complete</span>
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        {tradeLevels.taSummary}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span>Risk/Reward:</span>
+                          <span className="font-bold text-warning">{tradeLevels.riskReward}:1</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Direction:</span>
+                          <span className={`font-bold ${tradeLevels.direction === 'buy' ? 'text-success' : 'text-danger'}`}>
+                            {tradeLevels.direction.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
