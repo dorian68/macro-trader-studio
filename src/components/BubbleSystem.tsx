@@ -76,13 +76,19 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
 
                 {/* Bubble Button */}
                 <Button
-                  onClick={() => handleBubbleClick(bubble.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Button clicked!", bubble.id);
+                    handleBubbleClick(bubble.id as "macro" | "reports" | "tradesetup");
+                  }}
                   className={cn(
-                    "h-14 w-14 rounded-full shadow-xl transition-all duration-300 group-hover:scale-110",
+                    "h-14 w-14 rounded-full shadow-xl transition-all duration-300 group-hover:scale-110 cursor-pointer",
                     bubble.color,
                     bubble.glow,
                     "hover:shadow-2xl"
                   )}
+                  type="button"
                 >
                   <IconComponent className="h-6 w-6 text-white" />
                 </Button>
