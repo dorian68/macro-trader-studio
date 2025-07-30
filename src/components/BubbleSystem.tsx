@@ -14,6 +14,9 @@ interface BubbleSystemProps {
 
 export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: BubbleSystemProps) {
   const [activeBubble, setActiveBubble] = useState<"macro" | "reports" | "tradesetup" | null>(null);
+  
+  // Debug logs
+  console.log("BubbleSystem rendering with:", { instrument, timeframe, activeBubble });
 
   const bubbles = [
     {
@@ -43,6 +46,7 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
   ] as const;
 
   const handleBubbleClick = (bubbleId: "macro" | "reports" | "tradesetup") => {
+    console.log("Bubble clicked:", bubbleId);
     setActiveBubble(bubbleId);
   };
 
@@ -54,7 +58,7 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
     <>
       {/* Floating Access Bubbles */}
       {!activeBubble && (
-        <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3">
           {bubbles.map((bubble) => {
             const IconComponent = bubble.icon;
             
