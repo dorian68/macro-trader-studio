@@ -186,13 +186,6 @@ export function TradingDashboard() {
           </CardContent>
         </Card>
       )}
-
-      {/* Conversational Bubble System */}
-      <BubbleSystem 
-        instrument={selectedAsset} 
-        timeframe={timeframe} 
-        onTradeSetupClick={generateTradeIdea}
-      />
     </div>
   );
 }
