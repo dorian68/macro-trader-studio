@@ -137,38 +137,32 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
       )}
       
       {activeBubble === "tradesetup" && (
-        <div className="fixed inset-0 z-[10000] bg-black/20 backdrop-blur-sm">
-          <div className="fixed right-0 top-0 bottom-0 w-1/3 min-w-[400px] max-w-[600px] bg-card/95 backdrop-blur-xl border-l border-border/50 shadow-2xl overflow-hidden">
-            <TradeSetupBubble
-              instrument={instrument}
-              timeframe={timeframe}
-              onClose={handleCloseBubble}
-            />
-          </div>
+        <div className="fixed top-4 right-4 z-[10000] max-w-md w-full">
+          <TradeSetupBubble
+            instrument={instrument}
+            timeframe={timeframe}
+            onClose={handleCloseBubble}
+          />
         </div>
       )}
       
       {activeBubble === "macro" && (
-        <div className="fixed inset-0 z-[10000] bg-black/20 backdrop-blur-sm">
-          <div className="fixed right-0 top-0 bottom-0 w-1/3 min-w-[400px] max-w-[600px] bg-card/95 backdrop-blur-xl border-l border-border/50 shadow-2xl overflow-hidden">
-            <MacroCommentaryBubble
-              instrument={instrument}
-              timeframe={timeframe}
-              onClose={handleCloseBubble}
-            />
-          </div>
+        <div className="fixed top-4 right-4 z-[10000] max-w-md w-full">
+          <MacroCommentaryBubble
+            instrument={instrument}
+            timeframe={timeframe}
+            onClose={handleCloseBubble}
+          />
         </div>
       )}
       
       {activeBubble === "reports" && (
-        <div className="fixed inset-0 z-[10000] bg-black/20 backdrop-blur-sm">
-          <div className="fixed right-0 top-0 bottom-0 w-1/3 min-w-[400px] max-w-[600px] bg-card/95 backdrop-blur-xl border-l border-border/50 shadow-2xl overflow-hidden">
-            <ReportsBubble
-              instrument={instrument}
-              timeframe={timeframe}
-              onClose={handleCloseBubble}
-            />
-          </div>
+        <div className="fixed top-4 right-4 z-[10000] max-w-md w-full">
+          <ReportsBubble
+            instrument={instrument}
+            timeframe={timeframe}
+            onClose={handleCloseBubble}
+          />
         </div>
       )}
     </>
