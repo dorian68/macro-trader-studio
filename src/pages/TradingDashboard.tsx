@@ -208,19 +208,6 @@ export default function TradingDashboard() {
               </button>
             ))}
           </div>
-
-          {/* Timeframe */}
-          <Select value={timeframe} onValueChange={setTimeframe}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1h">1H</SelectItem>
-              <SelectItem value="4h">4H</SelectItem>
-              <SelectItem value="1d">1D</SelectItem>
-              <SelectItem value="1w">1W</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Graphique principal */}

@@ -76,30 +76,29 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
                   </div>
                 </div>
 
-                {/* BUBBLE STYLE BUTTON */}
+                {/* PERFECT CIRCLE BUBBLE */}
                 <button
                   onClick={() => {
                     console.log("🔥 BUBBLE CLICKED:", bubble.id);
                     handleBubbleClick(bubble.id as "macro" | "reports" | "tradesetup");
                   }}
                   className={cn(
-                    "h-14 w-14 rounded-full shadow-lg transition-all duration-300 group-hover:scale-110 cursor-pointer border-0",
+                    "h-16 w-16 rounded-full shadow-lg transition-all duration-300 group-hover:scale-110 cursor-pointer border-0",
                     "flex items-center justify-center relative overflow-hidden",
-                    "before:absolute before:inset-0 before:rounded-full before:bg-gradient-to-br before:opacity-90",
                     bubble.color,
                     bubble.glow,
                     "hover:shadow-xl transform hover:-translate-y-1"
                   )}
                   style={{
-                    background: `linear-gradient(135deg, ${bubble.color.includes('primary') ? 'hsl(var(--primary))' : bubble.color.includes('blue') ? '#3b82f6' : '#10b981'}, ${bubble.color.includes('primary') ? 'hsl(var(--primary-glow))' : bubble.color.includes('blue') ? '#60a5fa' : '#34d399'})`
+                    background: `radial-gradient(circle at 30% 30%, ${bubble.color.includes('primary') ? 'hsl(var(--primary-glow))' : bubble.color.includes('blue') ? '#60a5fa' : '#34d399'}, ${bubble.color.includes('primary') ? 'hsl(var(--primary))' : bubble.color.includes('blue') ? '#3b82f6' : '#10b981'})`
                   }}
                   type="button"
                 >
                   <IconComponent className="h-6 w-6 text-white drop-shadow-sm relative z-10" />
                   
-                  {/* Bubble shine effect */}
-                  <div className="absolute top-2 left-2 w-3 h-3 bg-white/30 rounded-full blur-sm" />
-                  <div className="absolute top-1 left-1 w-2 h-2 bg-white/50 rounded-full" />
+                  {/* Perfect circle bubble shine */}
+                  <div className="absolute top-3 left-3 w-3 h-3 bg-white/40 rounded-full blur-sm" />
+                  <div className="absolute top-2 left-2 w-2 h-2 bg-white/60 rounded-full" />
                 </button>
 
                 {/* Enhanced Pulse animation */}
