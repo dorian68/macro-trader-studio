@@ -12,6 +12,7 @@ import {
   Send,
   Brain,
   FileText,
+  Zap,
   Pin,
   Download,
   Copy,
@@ -36,7 +37,7 @@ interface Message {
 }
 
 interface ConversationalBubbleProps {
-  mode: "macro" | "reports";
+  mode: "macro" | "reports" | "tradesetup";
   instrument: string;
   timeframe?: string;
   onClose: () => void;
@@ -76,12 +77,14 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
 
     // Simulate AI response
     setTimeout(() => {
-      const aiMessage: Message = {
+        const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
         content: mode === "macro" 
           ? "Based on current market conditions for " + instrument + ", here's my analysis:"
-          : "I'll help you generate a comprehensive report for " + instrument + ". Let me structure this for you:",
+          : mode === "reports"
+          ? "I'll help you generate a comprehensive report for " + instrument + ". Let me structure this for you:"
+          : "I'll generate an AI trade setup for " + instrument + ". Here's my analysis:",
         timestamp: new Date(),
         sections: mode === "macro" ? [
           {
@@ -99,7 +102,7 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
             content: `Support: 1.0850, 1.0780 | Resistance: 1.1200, 1.1350. Watch for breakout signals above/below these levels for directional momentum.`,
             type: "levels"
           }
-        ] : [
+        ] : mode === "reports" ? [
           {
             title: "Report Structure",
             content: "I'll create a comprehensive trading report including market overview, technical analysis, and trade recommendations.",
@@ -108,6 +111,22 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
           {
             title: "Key Sections",
             content: "• Market Overview\n• Technical Analysis\n• Trade Ideas\n• Risk Assessment\n• Economic Calendar Impact",
+            type: "insight"
+          }
+        ] : [
+          {
+            title: "Trade Analysis",
+            content: `Current ${instrument} setup shows strong potential for a directional move. Technical indicators align with fundamental drivers.`,
+            type: "analysis"
+          },
+          {
+            title: "Entry Strategy",
+            content: "Recommended entry at current levels with defined risk parameters. Entry: 1.0950 | Stop: 1.0890 | Target: 1.1080",
+            type: "levels"
+          },
+          {
+            title: "Risk Assessment",
+            content: "Risk/Reward ratio of 2.1:1 with 85% confidence based on current market structure and momentum indicators.",
             type: "insight"
           }
         ]
@@ -155,7 +174,9 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
           onClick={() => setIsMinimized(false)}
           className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
         >
-          {mode === "macro" ? <Brain className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+          {mode === "macro" ? <Brain className="h-6 w-6" /> : 
+           mode === "reports" ? <FileText className="h-6 w-6" /> :
+           <Zap className="h-6 w-6" />}
         </Button>
       </div>
     );
@@ -168,9 +189,13 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {mode === "macro" ? <Brain className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
+              {mode === "macro" ? <Brain className="h-5 w-5 text-primary" /> : 
+               mode === "reports" ? <FileText className="h-5 w-5 text-primary" /> :
+               <Zap className="h-5 w-5 text-primary" />}
               <CardTitle className="text-lg">
-                {mode === "macro" ? "Macro Assistant" : "Report Generator"}
+                {mode === "macro" ? "Macro Assistant" : 
+                 mode === "reports" ? "Report Generator" : 
+                 "Trade Setup AI"}
               </CardTitle>
             </div>
             <div className="flex items-center gap-1">
@@ -211,12 +236,16 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
               {messages.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <div className="mb-3">
-                    {mode === "macro" ? <Brain className="h-8 w-8 mx-auto text-primary/30" /> : <FileText className="h-8 w-8 mx-auto text-primary/30" />}
+                    {mode === "macro" ? <Brain className="h-8 w-8 mx-auto text-primary/30" /> : 
+                     mode === "reports" ? <FileText className="h-8 w-8 mx-auto text-primary/30" /> :
+                     <Zap className="h-8 w-8 mx-auto text-primary/30" />}
                   </div>
                   <p className="text-sm">
                     {mode === "macro" 
                       ? "Ask me about market analysis, economic insights, or trading opportunities"
-                      : "I can help you generate professional trading reports and summaries"
+                      : mode === "reports"
+                      ? "I can help you generate professional trading reports and summaries"
+                      : "Ask me to generate trade setups, analyze entries, or calculate risk levels"
                     }
                   </p>
                 </div>
@@ -351,7 +380,9 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={mode === "macro" 
                   ? "Ask about market conditions, analysis..."
-                  : "Request report sections, analysis..."
+                  : mode === "reports"
+                  ? "Request report sections, analysis..."
+                  : "Generate trade setup, calculate levels..."
                 }
                 className="flex-1"
                 disabled={isLoading}

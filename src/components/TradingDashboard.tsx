@@ -136,96 +136,19 @@ export function TradingDashboard() {
       </div>
 
       {/* Main Layout - Chart Focused */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* AI Trade Setup - Prominent */}
-        <div className="lg:order-2">
-          <Card className="border-primary shadow-lg">
-            <CardHeader className="bg-primary/5">
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Zap className="h-6 w-6 text-primary" />
-                AI Trade Setup
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">Generate intelligent trade ideas</p>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-6">
-              <Button 
-                onClick={generateTradeIdea} 
-                disabled={isGenerating}
-                className="w-full h-12 text-base"
-                size="lg"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Generating Trade Idea...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-2 h-5 w-5" />
-                    Generate Trade Idea
-                  </>
-                )}
-              </Button>
-              
-              {tradeIdea && (
-                <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-lg">{tradeIdea.instrument}</span>
-                    <Badge 
-                      variant={tradeIdea.direction === "buy" ? "default" : "destructive"}
-                      className="text-sm px-3 py-1"
-                    >
-                      {tradeIdea.direction.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {tradeIdea.reasoning}
-                  </p>
-                  <div className="flex items-center justify-between text-sm font-medium">
-                    <span className="text-green-600">Confidence: {tradeIdea.confidence}%</span>
-                    <span className="text-blue-600">R:R: {tradeIdea.risk_reward}</span>
-                  </div>
-                </div>
-              )}
-              
-              {tradeIdea && (
-                <Button 
-                  onClick={generateTechnicalLevels}
-                  disabled={isGeneratingLevels}
-                  variant="outline"
-                  className="w-full h-11"
-                >
-                  {isGeneratingLevels ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating Levels...
-                    </>
-                  ) : (
-                    <>
-                      <Target className="mr-2 h-4 w-4" />
-                      Generate Technical Levels
-                    </>
-                  )}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Live Chart - Main Focus */}
-        <div className="lg:col-span-2 lg:order-1">
-          <Card className="h-[700px]">
-            <CardHeader>
-              <CardTitle className="text-xl">Live Chart - {selectedAsset}</CardTitle>
-            </CardHeader>
-            <CardContent className="h-full p-0">
-              <CandlestickChart 
-                asset={selectedAsset} 
-                tradeLevels={showLevels ? tradeLevels : undefined}
-              />
-            </CardContent>
-          </Card>
-        </div>
+      <div className="w-full">
+        {/* Live Chart - Full Width */}
+        <Card className="h-[700px]">
+          <CardHeader>
+            <CardTitle className="text-xl">Live Chart - {selectedAsset}</CardTitle>
+          </CardHeader>
+          <CardContent className="h-full p-0">
+            <CandlestickChart 
+              asset={selectedAsset} 
+              tradeLevels={showLevels ? tradeLevels : undefined}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Technical Analysis Section */}
@@ -265,7 +188,11 @@ export function TradingDashboard() {
       )}
 
       {/* Conversational Bubble System */}
-      <BubbleSystem instrument={selectedAsset} timeframe={timeframe} />
+      <BubbleSystem 
+        instrument={selectedAsset} 
+        timeframe={timeframe} 
+        onTradeSetupClick={generateTradeIdea}
+      />
     </div>
   );
 }

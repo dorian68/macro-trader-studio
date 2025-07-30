@@ -1,18 +1,27 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Brain, FileText, MessageCircle, Sparkles } from "lucide-react";
+import { Brain, FileText, MessageCircle, Sparkles, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConversationalBubble } from "./ConversationalBubble";
 
 interface BubbleSystemProps {
   instrument: string;
   timeframe?: string;
+  onTradeSetupClick?: () => void;
 }
 
-export function BubbleSystem({ instrument, timeframe }: BubbleSystemProps) {
-  const [activeBubble, setActiveBubble] = useState<"macro" | "reports" | null>(null);
+export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: BubbleSystemProps) {
+  const [activeBubble, setActiveBubble] = useState<"macro" | "reports" | "tradesetup" | null>(null);
 
   const bubbles = [
+    {
+      id: "tradesetup",
+      icon: Zap,
+      label: "AI Trade Setup",
+      description: "Generate trade ideas & levels",
+      color: "bg-primary hover:bg-primary/90",
+      glow: "hover:shadow-primary/25"
+    },
     {
       id: "macro",
       icon: Brain,
@@ -31,7 +40,11 @@ export function BubbleSystem({ instrument, timeframe }: BubbleSystemProps) {
     }
   ] as const;
 
-  const handleBubbleClick = (bubbleId: "macro" | "reports") => {
+  const handleBubbleClick = (bubbleId: "macro" | "reports" | "tradesetup") => {
+    if (bubbleId === "tradesetup" && onTradeSetupClick) {
+      onTradeSetupClick();
+      return;
+    }
     setActiveBubble(bubbleId);
   };
 
