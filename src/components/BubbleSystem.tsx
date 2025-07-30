@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Brain, FileText, MessageCircle, Sparkles, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TradeSetupBubble } from "./TradeSetupBubble";
-import { MacroCommentaryBubble } from "./MacroCommentaryBubble";
+import { MacroCommentaryBubble } from "./MacroCommentaryBubble"; 
 import { ReportsBubble } from "./ReportsBubble";
 
 interface BubbleSystemProps {
