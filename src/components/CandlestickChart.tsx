@@ -93,35 +93,104 @@ export function CandlestickChart({
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
+        background: { type: ColorType.Solid, color: 'hsl(var(--background))' },
         textColor: 'hsl(var(--foreground))',
+        fontSize: 12,
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
       },
       grid: {
-        vertLines: { color: 'hsl(var(--border))' },
-        horzLines: { color: 'hsl(var(--border))' },
+        vertLines: { 
+          color: 'hsl(var(--border))',
+          style: 1,
+          visible: true,
+        },
+        horzLines: { 
+          color: 'hsl(var(--border))',
+          style: 1,
+          visible: true,
+        },
       },
       rightPriceScale: {
         borderColor: 'hsl(var(--border))',
+        textColor: 'hsl(var(--foreground))',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+        borderVisible: true,
+        visible: true,
+        autoScale: true,
+        alignLabels: true,
+        mode: 0,
+        entireTextOnly: false,
       },
       timeScale: {
         borderColor: 'hsl(var(--border))',
         timeVisible: true,
         secondsVisible: false,
+        borderVisible: true,
+        visible: true,
+        rightOffset: 12,
+        barSpacing: 6,
+        minBarSpacing: 0.5,
+        fixLeftEdge: false,
+        fixRightEdge: false,
+        lockVisibleTimeRangeOnResize: true,
       },
       crosshair: {
         mode: 1,
+        vertLine: {
+          color: 'hsl(var(--muted-foreground))',
+          width: 1,
+          style: 3,
+          visible: true,
+          labelVisible: true,
+          labelBackgroundColor: 'hsl(var(--background))',
+        },
+        horzLine: {
+          color: 'hsl(var(--muted-foreground))',
+          width: 1,
+          style: 3,
+          visible: true,
+          labelVisible: true,
+          labelBackgroundColor: 'hsl(var(--background))',
+        },
       },
       width: chartContainerRef.current.clientWidth,
       height: height,
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+      },
     });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#00C851',        // Vert classique pour hausse
-      downColor: '#FF4444',      // Rouge classique pour baisse
-      borderUpColor: '#00C851',   // Bordure verte
-      borderDownColor: '#FF4444', // Bordure rouge
-      wickUpColor: '#00C851',     // Mèche verte
-      wickDownColor: '#FF4444',   // Mèche rouge
+      upColor: 'hsl(142 76% 36%)',        // Vert sémantique
+      downColor: 'hsl(0 84% 60%)',        // Rouge sémantique
+      borderUpColor: 'hsl(142 76% 36%)',   
+      borderDownColor: 'hsl(0 84% 60%)', 
+      wickUpColor: 'hsl(142 76% 36%)',     
+      wickDownColor: 'hsl(0 84% 60%)',
+      priceFormat: {
+        type: 'price',
+        precision: 2,
+        minMove: 0.01,
+      },
+      title: asset,
+      visible: true,
+      priceLineVisible: true,
+      lastValueVisible: true,
+      priceLineSource: 0,
+      priceLineWidth: 1,
+      priceLineColor: 'hsl(var(--primary))',
+      priceLineStyle: 2,
     });
 
     chartRef.current = chart;
@@ -287,31 +356,51 @@ export function CandlestickChart({
       )}
       <CardContent>
         <div className="relative">
-          <div ref={chartContainerRef} className="w-full rounded-lg border border-border-light bg-background/30" />
+          <div 
+            ref={chartContainerRef} 
+            className="w-full rounded-lg border border-border overflow-hidden bg-card"
+            style={{ height: `${height}px` }}
+          />
           
-          {/* Trade Levels Overlay */}
+          {/* Trade Levels Overlay - Repositionné et amélioré */}
           {tradeLevels && (
-            <div className="absolute top-4 right-4 bg-background/95 backdrop-blur-sm border border-border-light rounded-lg p-3 space-y-2 shadow-medium">
-              <div className="text-xs font-medium text-foreground mb-2">Trade Levels</div>
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span className="text-muted-foreground">Entry:</span>
-                  <span className="font-mono font-medium">{tradeLevels.entry}</span>
+            <div className="absolute top-3 left-3 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg min-w-[180px]">
+              <div className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
+                Trade Levels
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary"></div>
+                    <span className="text-muted-foreground font-medium">Entry</span>
+                  </div>
+                  <span className="font-mono font-semibold text-foreground">
+                    ${tradeLevels.entry.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                  <span className="text-muted-foreground">Stop:</span>
-                  <span className="font-mono font-medium">{tradeLevels.stopLoss}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-destructive"></div>
+                    <span className="text-muted-foreground font-medium">Stop</span>
+                  </div>
+                  <span className="font-mono font-semibold text-foreground">
+                    ${tradeLevels.stopLoss.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  <span className="text-muted-foreground">Target:</span>
-                  <span className="font-mono font-medium">{tradeLevels.takeProfit}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-muted-foreground font-medium">Target</span>
+                  </div>
+                  <span className="font-mono font-semibold text-foreground">
+                    ${tradeLevels.takeProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                <div className="pt-1 border-t border-border-light">
-                  <span className="text-muted-foreground">R:R:</span>
-                  <span className="font-medium ml-1 text-warning">{tradeLevels.riskReward}</span>
+                <div className="pt-2 border-t border-border flex items-center justify-between">
+                  <span className="text-muted-foreground font-medium">R:R</span>
+                  <span className="font-semibold text-primary">
+                    1:{tradeLevels.riskReward.toFixed(1)}
+                  </span>
                 </div>
               </div>
             </div>
