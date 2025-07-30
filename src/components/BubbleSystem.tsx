@@ -61,10 +61,6 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
       {/* Floating Access Bubbles - Always visible */}
       {!activeBubble && (
         <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3">
-          {/* Debug info */}
-          <div className="text-xs bg-red-500 text-white p-2 rounded font-mono">
-            Active: {activeBubble || "none"}
-          </div>
           {bubbles.map((bubble) => {
             const IconComponent = bubble.icon;
             
@@ -80,24 +76,30 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
                   </div>
                 </div>
 
-                {/* SIMPLIFIED CLICKABLE BUTTON */}
+                {/* BUBBLE STYLE BUTTON */}
                 <button
                   onClick={() => {
                     console.log("🔥 BUBBLE CLICKED:", bubble.id);
                     handleBubbleClick(bubble.id as "macro" | "reports" | "tradesetup");
                   }}
                   className={cn(
-                    "h-16 w-16 rounded-full shadow-2xl transition-all duration-300 group-hover:scale-110 cursor-pointer border-2 border-white/20 flex items-center justify-center",
+                    "h-14 w-14 rounded-full shadow-lg transition-all duration-300 group-hover:scale-110 cursor-pointer border-0",
+                    "flex items-center justify-center relative overflow-hidden",
+                    "before:absolute before:inset-0 before:rounded-full before:bg-gradient-to-br before:opacity-90",
                     bubble.color,
                     bubble.glow,
-                    "hover:shadow-3xl hover:border-white/40 relative overflow-hidden"
+                    "hover:shadow-xl transform hover:-translate-y-1"
                   )}
+                  style={{
+                    background: `linear-gradient(135deg, ${bubble.color.includes('primary') ? 'hsl(var(--primary))' : bubble.color.includes('blue') ? '#3b82f6' : '#10b981'}, ${bubble.color.includes('primary') ? 'hsl(var(--primary-glow))' : bubble.color.includes('blue') ? '#60a5fa' : '#34d399'})`
+                  }}
                   type="button"
                 >
-                  <IconComponent className="h-7 w-7 text-white drop-shadow-lg" />
+                  <IconComponent className="h-6 w-6 text-white drop-shadow-sm relative z-10" />
                   
-                  {/* Shimmer effect */}
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                  {/* Bubble shine effect */}
+                  <div className="absolute top-2 left-2 w-3 h-3 bg-white/30 rounded-full blur-sm" />
+                  <div className="absolute top-1 left-1 w-2 h-2 bg-white/50 rounded-full" />
                 </button>
 
                 {/* Enhanced Pulse animation */}
@@ -128,13 +130,7 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
         </div>
       )}
 
-      {/* Active Specialized Bubbles - 1/3 Page Width Drawers */}
-      {/* Debug overlay */}
-      {activeBubble && (
-        <div className="fixed top-4 right-4 z-[10001] bg-green-500 text-white p-2 rounded text-xs">
-          Showing: {activeBubble}
-        </div>
-      )}
+      {/* Active Specialized Bubbles */}
       
       {activeBubble === "tradesetup" && (
         <div className="fixed top-4 right-4 z-[10000] max-w-md w-full">

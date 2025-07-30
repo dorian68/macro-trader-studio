@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate } from "react-router-dom";
 import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "@/components/CandlestickChart";
@@ -42,6 +43,7 @@ interface PriceData {
 }
 
 export default function TradingDashboard() {
+  const navigate = useNavigate();
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("4h");
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -248,7 +250,10 @@ export default function TradingDashboard() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="gradient-card border-border/50 hover:shadow-glow-primary transition-smooth cursor-pointer group">
+          <Card 
+            onClick={() => navigate('/ai-setup')}
+            className="gradient-card border-border/50 hover:shadow-glow-primary transition-smooth cursor-pointer group"
+          >
             <CardContent className="p-6 text-center">
               <div className="gradient-primary p-3 rounded-xl w-fit mx-auto mb-3 group-hover:scale-110 transition-smooth">
                 <Zap className="h-6 w-6 text-primary-foreground" />
@@ -258,7 +263,10 @@ export default function TradingDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="gradient-card border-border/50 hover:shadow-glow-success transition-smooth cursor-pointer group">
+          <Card 
+            onClick={() => navigate('/macro-analysis')}
+            className="gradient-card border-border/50 hover:shadow-glow-success transition-smooth cursor-pointer group"
+          >
             <CardContent className="p-6 text-center">
               <div className="gradient-success p-3 rounded-xl w-fit mx-auto mb-3 group-hover:scale-110 transition-smooth">
                 <Activity className="h-6 w-6 text-success-foreground" />
@@ -268,7 +276,10 @@ export default function TradingDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="gradient-card border-border/50 hover:shadow-medium transition-smooth cursor-pointer group">
+          <Card 
+            onClick={() => navigate('/reports')}
+            className="gradient-card border-border/50 hover:shadow-medium transition-smooth cursor-pointer group"
+          >
             <CardContent className="p-6 text-center">
               <div className="bg-warning/20 border border-warning/30 p-3 rounded-xl w-fit mx-auto mb-3 group-hover:scale-110 transition-smooth">
                 <ArrowRight className="h-6 w-6 text-warning" />

@@ -34,8 +34,8 @@ export function Layout({ children, activeModule, onModuleChange }: LayoutProps) 
                 <TrendingUp className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">directionAI</h1>
-                <p className="text-xs text-muted-foreground">AI Trading Assistant</p>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">TradeMind</h1>
+                <p className="text-xs text-muted-foreground">AI Trading Intelligence</p>
               </div>
             </button>
 

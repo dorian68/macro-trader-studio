@@ -4,6 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import TradingDashboard from "./pages/TradingDashboard";
+import AISetup from "./pages/AISetup";
+import MacroAnalysis from "./pages/MacroAnalysis";
+import Reports from "./pages/Reports";
 import ProductPresentation from "./pages/ProductPresentation";
 import NotFound from "./pages/NotFound";
 
@@ -17,8 +20,10 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<TradingDashboard />} />
+          <Route path="/ai-setup" element={<AISetup />} />
+          <Route path="/macro-analysis" element={<MacroAnalysis />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/product" element={<ProductPresentation />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

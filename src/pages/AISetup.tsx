@@ -1,0 +1,273 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Zap, Target, TrendingUp, Settings, RotateCcw, Save } from "lucide-react";
+import { Layout } from "@/components/Layout";
+import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
+interface TradeSetup {
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;
+  positionSize: number;
+  riskReward: number;
+  confidence: number;
+  reasoning: string;
+}
+
+export default function AISetup() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [step, setStep] = useState<"parameters" | "generated">("parameters");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [tradeSetup, setTradeSetup] = useState<TradeSetup | null>(null);
+  
+  const [parameters, setParameters] = useState({
+    instrument: "EUR/USD",
+    timeframe: "4h",
+    riskLevel: "medium",
+    positionSize: "2",
+    strategy: "breakout",
+    customNotes: ""
+  });
+
+  const generateTradeSetup = async () => {
+    setIsGenerating(true);
+    
+    // Simulate AI generation
+    setTimeout(() => {
+      const direction = Math.random() > 0.5 ? "buy" : "sell";
+      const basePrice = 1.0900;
+      
+      let entry, stopLoss, takeProfit;
+      if (direction === "buy") {
+        entry = basePrice * 0.998;
+        stopLoss = entry * 0.985;
+        takeProfit = entry * 1.045;
+      } else {
+        entry = basePrice * 1.002;
+        stopLoss = entry * 1.015;
+        takeProfit = entry * 0.955;
+      }
+      
+      const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
+      
+      setTradeSetup({
+        entry: parseFloat(entry.toFixed(4)),
+        stopLoss: parseFloat(stopLoss.toFixed(4)),
+        takeProfit: parseFloat(takeProfit.toFixed(4)),
+        positionSize: parseFloat(parameters.positionSize),
+        riskReward: parseFloat(riskReward.toFixed(2)),
+        confidence: Math.floor(Math.random() * 25) + 70,
+        reasoning: `AI analysis suggests a ${direction} opportunity based on ${parameters.strategy} strategy for ${parameters.instrument}. Technical indicators show strong momentum with favorable risk-reward ratio.`
+      });
+      
+      setStep("generated");
+      setIsGenerating(false);
+    }, 2000);
+  };
+
+  const saveSetup = () => {
+    toast({
+      title: "Setup sauvegardé",
+      description: "Votre configuration de trade a été enregistrée avec succès.",
+    });
+  };
+
+  return (
+    <Layout activeModule="ai-setup" onModuleChange={() => {}}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => navigate('/')}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Trade Setup IA</h1>
+            <p className="text-muted-foreground">Configuration et génération de trades automatisés</p>
+          </div>
+        </div>
+
+        {step === "parameters" && (
+          <Card className="gradient-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Paramètres de Trading
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="instrument">Instrument</Label>
+                  <Select value={parameters.instrument} onValueChange={(value) => setParameters({...parameters, instrument: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EUR/USD">EUR/USD</SelectItem>
+                      <SelectItem value="GBP/USD">GBP/USD</SelectItem>
+                      <SelectItem value="USD/JPY">USD/JPY</SelectItem>
+                      <SelectItem value="BTC">Bitcoin</SelectItem>
+                      <SelectItem value="ETH">Ethereum</SelectItem>
+                      <SelectItem value="GOLD">Gold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timeframe">Timeframe</Label>
+                  <Select value={parameters.timeframe} onValueChange={(value) => setParameters({...parameters, timeframe: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1h">1 Heure</SelectItem>
+                      <SelectItem value="4h">4 Heures</SelectItem>
+                      <SelectItem value="1d">1 Jour</SelectItem>
+                      <SelectItem value="1w">1 Semaine</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="riskLevel">Niveau de Risque</Label>
+                  <Select value={parameters.riskLevel} onValueChange={(value) => setParameters({...parameters, riskLevel: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Conservateur</SelectItem>
+                      <SelectItem value="medium">Modéré</SelectItem>
+                      <SelectItem value="high">Agressif</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="positionSize">Taille Position (%)</Label>
+                  <Input 
+                    id="positionSize"
+                    type="number"
+                    value={parameters.positionSize}
+                    onChange={(e) => setParameters({...parameters, positionSize: e.target.value})}
+                    placeholder="2"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="strategy">Stratégie</Label>
+                  <Select value={parameters.strategy} onValueChange={(value) => setParameters({...parameters, strategy: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="breakout">Breakout</SelectItem>
+                      <SelectItem value="reversal">Reversal</SelectItem>
+                      <SelectItem value="trend">Trend Following</SelectItem>
+                      <SelectItem value="scalping">Scalping</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customNotes">Notes Personnalisées</Label>
+                <Textarea 
+                  id="customNotes"
+                  value={parameters.customNotes}
+                  onChange={(e) => setParameters({...parameters, customNotes: e.target.value})}
+                  placeholder="Ajoutez des instructions spécifiques pour l'IA..."
+                  rows={3}
+                />
+              </div>
+
+              <Button 
+                onClick={generateTradeSetup} 
+                disabled={isGenerating}
+                className="w-full"
+                size="lg"
+              >
+                {isGenerating ? (
+                  <>
+                    <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
+                    Génération en cours...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Générer Trade Setup
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === "generated" && tradeSetup && (
+          <div className="space-y-6">
+            <Card className="border-green-200 bg-green-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-800">
+                  <Target className="h-5 w-5" />
+                  Trade Setup Généré
+                  <Badge variant="outline" className="ml-auto">
+                    Confiance: {tradeSetup.confidence}%
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                  <div className="text-center">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Entry</Label>
+                    <p className="text-2xl font-bold text-blue-600 mt-1">{tradeSetup.entry}</p>
+                  </div>
+                  <div className="text-center">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Stop Loss</Label>
+                    <p className="text-2xl font-bold text-red-600 mt-1">{tradeSetup.stopLoss}</p>
+                  </div>
+                  <div className="text-center">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Take Profit</Label>
+                    <p className="text-2xl font-bold text-green-600 mt-1">{tradeSetup.takeProfit}</p>
+                  </div>
+                  <div className="text-center">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Risk/Reward</Label>
+                    <p className="text-2xl font-bold text-orange-600 mt-1">{tradeSetup.riskReward}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-white/70 rounded-lg border mb-6">
+                  <h4 className="font-semibold text-green-800 mb-2">Analyse IA</h4>
+                  <p className="text-sm leading-relaxed">{tradeSetup.reasoning}</p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button onClick={() => setStep("parameters")} variant="outline">
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Régénérer
+                  </Button>
+                  <Button onClick={saveSetup} className="flex-1">
+                    <Save className="mr-2 h-4 w-4" />
+                    Sauvegarder Setup
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+}
