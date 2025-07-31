@@ -58,8 +58,28 @@ export function TradeSetupBubble({ instrument, timeframe, onClose }: TradeSetupB
   const generateTradeSetup = async () => {
     setIsGenerating(true);
     
-    // Simulate AI generation
-    setTimeout(() => {
+    try {
+      // Call n8n webhook
+      const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: "tradesetup",
+          question: `Generate trade setup for ${parameters.instrument} with ${parameters.strategy} strategy, ${parameters.riskAppetite} risk, position size ${parameters.positionSize}. ${parameters.customNotes}`,
+          instrument: parameters.instrument,
+          timeframe: parameters.timeframe
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const rawData = await response.json();
+      
+      // Create trade setup from webhook response or use fallback
       const mockSetup: TradeSetup = {
         entry: parameters.instrument === "EUR/USD" ? 1.0950 : 
                parameters.instrument === "Bitcoin" ? 45250 : 1.2850,
@@ -71,18 +91,27 @@ export function TradeSetupBubble({ instrument, timeframe, onClose }: TradeSetupB
         riskReward: 2.1,
         confidence: parameters.riskAppetite === "low" ? 75 : 
                    parameters.riskAppetite === "high" ? 90 : 82,
-        reasoning: `Based on ${parameters.strategy} strategy with ${parameters.riskAppetite} risk profile. Technical indicators align with current market structure on ${parameters.timeframe} timeframe.`
+        reasoning: rawData.content?.content || `Based on ${parameters.strategy} strategy with ${parameters.riskAppetite} risk profile. Technical indicators align with current market structure on ${parameters.timeframe} timeframe.`
       };
       
       setTradeSetup(mockSetup);
       setStep("generated");
-      setIsGenerating(false);
       
       toast({
         title: "Trade Setup Generated",
         description: "AI has analyzed the market and generated your trade setup"
       });
-    }, 2500);
+    } catch (error) {
+      console.error('Webhook error:', error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to generate trade setup. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const regenerateSetup = () => {

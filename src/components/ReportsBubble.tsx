@@ -119,12 +119,34 @@ export function ReportsBubble({ instrument, timeframe, onClose }: ReportsBubbleP
   const generateReport = async () => {
     setIsGenerating(true);
     
-    // Simulate report generation
-    setTimeout(() => {
+    try {
+      const includedSections = availableSections.filter(s => s.included);
+      const sectionsText = includedSections.map(s => s.title).join(", ");
+      
+      // Call n8n webhook
+      const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: "reports",
+          question: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. ${reportConfig.customNotes}`,
+          instrument: instrument,
+          timeframe: timeframe || "1H"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const rawData = await response.json();
+      
       const report: GeneratedReport = {
         id: Date.now().toString(),
         title: reportConfig.title,
-        sections: availableSections.filter(s => s.included),
+        sections: includedSections,
         customNotes: reportConfig.customNotes,
         exportFormat: reportConfig.exportFormat,
         createdAt: new Date(),
@@ -133,13 +155,22 @@ export function ReportsBubble({ instrument, timeframe, onClose }: ReportsBubbleP
       
       setCurrentReport(report);
       setStep("generated");
-      setIsGenerating(false);
       
       toast({
         title: "Report Generated",
         description: "Your report is ready for export"
       });
-    }, 3500);
+    } catch (error) {
+      console.error('Webhook error:', error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to generate report. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const exportReport = () => {

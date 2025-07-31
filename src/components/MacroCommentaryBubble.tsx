@@ -74,15 +74,34 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
     
     setIsGenerating(true);
     
-    // Simulate AI analysis generation
-    setTimeout(() => {
+    try {
+      // Call n8n webhook
+      const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: "macro",
+          question: queryParams.query,
+          instrument: instrument,
+          timeframe: timeframe || "1H"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const rawData = await response.json();
+      
       const mockAnalysis: MacroAnalysis = {
         query: queryParams.query,
         timestamp: new Date(),
         sections: [
           {
             title: "Market Overview",
-            content: `Current macro analysis for ${instrument} reveals a complex environment with mixed signals. Central banks maintain a cautious stance amid persistent inflationary pressures. Recent economic indicators suggest moderate growth slowdown in major developed economies.`,
+            content: rawData.content?.content || `Current macro analysis for ${instrument} reveals a complex environment with mixed signals. Central banks maintain a cautious stance amid persistent inflationary pressures. Recent economic indicators suggest moderate growth slowdown in major developed economies.`,
             type: "overview",
             expanded: true
           },
@@ -115,13 +134,22 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
       
       setAnalyses(prev => [mockAnalysis, ...prev]);
       setQueryParams(prev => ({ ...prev, query: "" }));
-      setIsGenerating(false);
       
       toast({
         title: "Analysis Generated",
         description: "New macro analysis available"
       });
-    }, 3000);
+    } catch (error) {
+      console.error('Webhook error:', error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to generate analysis. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const toggleSection = (analysisIndex: number, sectionIndex: number) => {
