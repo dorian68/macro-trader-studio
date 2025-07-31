@@ -10,9 +10,10 @@ interface BubbleSystemProps {
   instrument: string;
   timeframe?: string;
   onTradeSetupClick?: () => void;
+  onTradeLevelsUpdate?: (levels: any) => void;
 }
 
-export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: BubbleSystemProps) {
+export function BubbleSystem({ instrument, timeframe, onTradeSetupClick, onTradeLevelsUpdate }: BubbleSystemProps) {
   const [activeBubble, setActiveBubble] = useState<"macro" | "reports" | "tradesetup" | null>(null);
   
   // Debug logs
@@ -114,6 +115,7 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick }: Bubbl
             instrument={instrument}
             timeframe={timeframe}
             onClose={handleCloseBubble}
+            onTradeLevelsUpdate={onTradeLevelsUpdate}
           />
         </div>
       )}

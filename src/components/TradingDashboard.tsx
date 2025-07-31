@@ -20,21 +20,13 @@ interface TradeIdea {
   risk_reward: number;
 }
 
-interface TradeLevels {
-  entry: number;
-  stopLoss: number;
-  takeProfit: number;
-  riskReward: number;
-  taSummary: string;
-  direction: "buy" | "sell";
-}
 
 export function TradingDashboard() {
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("4h");
   const [isGenerating, setIsGenerating] = useState(false);
   const [tradeIdea, setTradeIdea] = useState<TradeIdea | null>(null);
-  const [tradeLevels, setTradeLevels] = useState<TradeLevels | null>(null);
+  const [tradeLevels, setTradeLevels] = useState<any>(null);
   const [showLevels, setShowLevels] = useState(false);
   const [isGeneratingLevels, setIsGeneratingLevels] = useState(false);
 
@@ -83,7 +75,7 @@ export function TradingDashboard() {
       
       const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
       
-      const levels: TradeLevels = {
+      const levels = {
         entry: parseFloat(entry.toFixed(4)),
         stopLoss: parseFloat(stopLoss.toFixed(4)),
         takeProfit: parseFloat(takeProfit.toFixed(4)),

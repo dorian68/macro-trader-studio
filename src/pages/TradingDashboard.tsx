@@ -50,6 +50,18 @@ export default function TradingDashboard() {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTradeLevels, setActiveTradeLevels] = useState<{
+    entry: number;
+    stopLoss: number;
+    takeProfit: number;
+    riskReward: number;
+    direction: "BUY" | "SELL";
+    technicalAnalysis?: {
+      summary: string;
+      indicators: string[];
+      confirmation: boolean;
+    };
+  } | null>(null);
 
   // WebSocket for real-time prices
   useEffect(() => {
@@ -233,7 +245,15 @@ export default function TradingDashboard() {
             <div className="h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px]">
               <CandlestickChart 
                 asset={selectedAsset} 
-                tradeLevels={undefined}
+                tradeLevels={activeTradeLevels}
+                onLevelUpdate={(type, value) => {
+                  if (activeTradeLevels) {
+                    setActiveTradeLevels({
+                      ...activeTradeLevels,
+                      [type === 'stopLoss' ? 'stopLoss' : type]: value
+                    });
+                  }
+                }}
               />
             </div>
           </CardContent>
@@ -287,6 +307,9 @@ export default function TradingDashboard() {
         instrument={selectedAsset} 
         timeframe={timeframe} 
         onTradeSetupClick={() => {}}
+        onTradeLevelsUpdate={(levels) => {
+          setActiveTradeLevels(levels);
+        }}
       />
     </Layout>
   );

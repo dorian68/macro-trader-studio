@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, Wifi, WifiOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 
 interface BinanceKlineData {
@@ -25,8 +26,12 @@ interface TradeLevels {
   stopLoss: number;
   takeProfit: number;
   riskReward: number;
-  taSummary: string;
-  direction: "buy" | "sell";
+  direction: "BUY" | "SELL";
+  technicalAnalysis?: {
+    summary: string;
+    indicators: string[];
+    confirmation: boolean;
+  };
 }
 
 interface CandlestickChartProps {
@@ -371,45 +376,76 @@ export function CandlestickChart({
             style={{ height: `${height}px` }}
           />
           
-          {/* Trade Levels Overlay - Repositionné et amélioré */}
+          {/* Enhanced Trade Levels Overlay */}
           {tradeLevels && (
-            <div className="absolute top-3 left-3 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg min-w-[180px]">
-              <div className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
-                Trade Levels
+            <div className="absolute top-3 left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-xl p-4 shadow-xl min-w-[240px] max-w-[300px]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn(
+                  "w-3 h-3 rounded-full animate-pulse",
+                  tradeLevels.direction === "BUY" ? "bg-success" : "bg-destructive"
+                )}></div>
+                <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                  {tradeLevels.direction} Setup
+                </span>
               </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary"></div>
-                    <span className="text-muted-foreground font-medium">Entry</span>
+              
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="text-[10px] text-muted-foreground mb-1">ENTRY</div>
+                    <div className="font-mono font-bold text-primary text-[11px]">
+                      ${tradeLevels.entry.toFixed(4)}
+                    </div>
                   </div>
-                  <span className="font-mono font-semibold text-foreground">
-                    ${tradeLevels.entry.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-destructive"></div>
-                    <span className="text-muted-foreground font-medium">Stop</span>
+                  
+                  <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <div className="text-[10px] text-muted-foreground mb-1">STOP</div>
+                    <div className="font-mono font-bold text-destructive text-[11px]">
+                      ${tradeLevels.stopLoss.toFixed(4)}
+                    </div>
                   </div>
-                  <span className="font-mono font-semibold text-foreground">
-                    ${tradeLevels.stopLoss.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-muted-foreground font-medium">Target</span>
+                  
+                  <div className="p-2 rounded-lg bg-success/10 border border-success/20">
+                    <div className="text-[10px] text-muted-foreground mb-1">TARGET</div>
+                    <div className="font-mono font-bold text-success text-[11px]">
+                      ${tradeLevels.takeProfit.toFixed(4)}
+                    </div>
                   </div>
-                  <span className="font-mono font-semibold text-foreground">
-                    ${tradeLevels.takeProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
                 </div>
-                <div className="pt-2 border-t border-border flex items-center justify-between">
-                  <span className="text-muted-foreground font-medium">R:R</span>
-                  <span className="font-semibold text-primary">
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                  <span className="text-muted-foreground font-medium">Risk/Reward</span>
+                  <span className="font-bold text-primary">
                     1:{tradeLevels.riskReward.toFixed(1)}
                   </span>
+                </div>
+
+                {tradeLevels.technicalAnalysis && (
+                  <div className="pt-2 border-t border-border/30">
+                    <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">
+                      Technical Confirmation
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-foreground">
+                      {tradeLevels.technicalAnalysis.summary.substring(0, 80)}...
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {tradeLevels.technicalAnalysis.indicators.slice(0, 2).map((indicator, index) => (
+                        <span 
+                          key={index} 
+                          className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-medium"
+                        >
+                          {indicator}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-border/30">
+                  <div className="text-[10px] text-muted-foreground mb-1">
+                    Risk: ${Math.abs(tradeLevels.entry - tradeLevels.stopLoss).toFixed(2)} • 
+                    Reward: ${Math.abs(tradeLevels.takeProfit - tradeLevels.entry).toFixed(2)}
+                  </div>
                 </div>
               </div>
             </div>
