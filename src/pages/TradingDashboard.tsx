@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { BubbleSystem } from "@/components/BubbleSystem";
 import { Layout } from "@/components/Layout";
+import { AIQueryInterface } from "@/components/AIQueryInterface";
 import { getSymbolForAsset } from "@/lib/assetMapping";
 
 // Popular assets with their categories
@@ -155,6 +156,9 @@ export default function TradingDashboard() {
             </Card>
           )}
         </div>
+
+        {/* AI Query Interface */}
+        <AIQueryInterface instrument={selectedAsset} timeframe={timeframe} />
 
         {/* Asset selection mobile-first */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 md:p-4 bg-card/30 backdrop-blur-sm border border-border/30 rounded-xl">
