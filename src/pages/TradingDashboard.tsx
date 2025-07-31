@@ -4,12 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight, Search } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { BubbleSystem } from "@/components/BubbleSystem";
 import { Layout } from "@/components/Layout";
-import { AIQueryInterface } from "@/components/AIQueryInterface";
+import { HybridSearchBar } from "@/components/HybridSearchBar";
 import { getSymbolForAsset } from "@/lib/assetMapping";
 
 // Popular assets with their categories
@@ -49,7 +49,6 @@ export default function TradingDashboard() {
   const [timeframe, setTimeframe] = useState("4h");
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeTradeLevels, setActiveTradeLevels] = useState<{
     entry: number;
     stopLoss: number;
@@ -105,11 +104,6 @@ export default function TradingDashboard() {
       }
     };
   }, [selectedAsset]);
-
-  const filteredAssets = allAssets.filter(asset =>
-    asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const currentAsset = allAssets.find(asset => asset.symbol === selectedAsset);
 
@@ -169,61 +163,32 @@ export default function TradingDashboard() {
           )}
         </div>
 
-        {/* AI Query Interface */}
-        <AIQueryInterface instrument={selectedAsset} timeframe={timeframe} />
+        {/* Hybrid Search + AI Interface */}
+        <HybridSearchBar
+          assets={allAssets}
+          selectedAsset={selectedAsset}
+          onAssetSelect={setSelectedAsset}
+          instrument={selectedAsset}
+          timeframe={timeframe}
+        />
 
-        {/* Asset selection mobile-first */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 md:p-4 bg-card/30 backdrop-blur-sm border border-border/30 rounded-xl">
-          {/* Responsive search */}
-          <div className="relative flex-1 w-full sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-input/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth text-sm"
-            />
-            
-            {/* Discrete suggestions */}
-            {searchTerm && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto">
-                {filteredAssets.slice(0, 6).map((asset) => (
-                  <button
-                    key={asset.symbol}
-                    onClick={() => {
-                      setSelectedAsset(asset.symbol);
-                      setSearchTerm("");
-                    }}
-                    className="w-full px-3 py-2 text-left hover:bg-primary/10 transition-smooth flex items-center gap-2 first:rounded-t-lg last:rounded-b-lg"
-                  >
-                    <span className="text-sm">{asset.icon}</span>
-                    <span className="text-sm font-medium text-foreground">{asset.symbol}</span>
-                    <span className="text-xs text-muted-foreground truncate">{asset.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Popular assets - responsive grid */}
-          <div className="flex gap-2 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0">
-            {allAssets.slice(0, 5).map((asset) => (
-              <button
-                key={asset.symbol}
-                onClick={() => setSelectedAsset(asset.symbol)}
-                className={cn(
-                  "px-3 py-2 rounded-lg text-sm font-medium transition-smooth flex items-center gap-1 whitespace-nowrap shrink-0",
-                  selectedAsset === asset.symbol
-                    ? "bg-primary text-primary-foreground shadow-glow-primary"
-                    : "bg-card/50 hover:bg-primary/10 text-foreground"
-                )}
-              >
-                <span className="text-xs">{asset.icon}</span>
-                {asset.symbol}
-              </button>
-            ))}
-          </div>
+        {/* Popular assets - responsive grid */}
+        <div className="flex gap-2 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0 px-2">
+          {allAssets.slice(0, 5).map((asset) => (
+            <button
+              key={asset.symbol}
+              onClick={() => setSelectedAsset(asset.symbol)}
+              className={cn(
+                "px-3 py-2 rounded-lg text-sm font-medium transition-smooth flex items-center gap-1 whitespace-nowrap shrink-0",
+                selectedAsset === asset.symbol
+                  ? "bg-primary text-primary-foreground shadow-glow-primary"
+                  : "bg-card/50 hover:bg-primary/10 text-foreground"
+              )}
+            >
+              <span className="text-xs">{asset.icon}</span>
+              {asset.symbol}
+            </button>
+          ))}
         </div>
 
         {/* Main responsive chart */}
