@@ -62,48 +62,77 @@ export default function TradingDashboard() {
     };
   } | null>(null);
 
-  // WebSocket for real-time prices
+  // WebSocket for real-time prices - Fixed synchronization
   useEffect(() => {
     const symbol = getSymbolForAsset(selectedAsset);
     let ws: WebSocket;
+    let isMounted = true;
 
     const connectWebSocket = () => {
+      // Clean up previous connection
+      if (ws) {
+        ws.close();
+      }
+
       ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
       
       ws.onopen = () => {
-        setIsConnected(true);
-        console.log(`Connected to ${symbol} price feed`);
+        if (isMounted) {
+          setIsConnected(true);
+          console.log(`Connected to ${selectedAsset} (${symbol}) price feed`);
+        }
       };
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        setPriceData({
-          symbol: selectedAsset,
-          price: parseFloat(data.c),
-          change24h: parseFloat(data.P),
-          volume: parseFloat(data.v)
-        });
+        if (!isMounted) return;
+        
+        try {
+          const data = JSON.parse(event.data);
+          // Verify the symbol matches current selection
+          if (data.s === symbol) {
+            setPriceData({
+              symbol: selectedAsset,
+              price: parseFloat(data.c),
+              change24h: parseFloat(data.P),
+              volume: parseFloat(data.v)
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing price data:', error);
+        }
       };
 
       ws.onclose = () => {
-        setIsConnected(false);
-        // Reconnect after 3 seconds
-        setTimeout(connectWebSocket, 3000);
+        if (isMounted) {
+          setIsConnected(false);
+          console.log(`Disconnected from ${selectedAsset} price feed`);
+          // Only reconnect if still mounted and same asset
+          setTimeout(() => {
+            if (isMounted && symbol === getSymbolForAsset(selectedAsset)) {
+              connectWebSocket();
+            }
+          }, 3000);
+        }
       };
 
       ws.onerror = () => {
-        setIsConnected(false);
+        if (isMounted) {
+          setIsConnected(false);
+        }
       };
     };
 
+    // Reset price data when asset changes
+    setPriceData(null);
     connectWebSocket();
 
     return () => {
+      isMounted = false;
       if (ws) {
         ws.close();
       }
     };
-  }, [selectedAsset]);
+  }, [selectedAsset]); // Only depend on selectedAsset
 
   const currentAsset = allAssets.find(asset => asset.symbol === selectedAsset);
 
@@ -127,8 +156,8 @@ export default function TradingDashboard() {
             </div>
           </div>
 
-          {/* Price widget - Mobile responsive */}
-          {priceData && (
+          {/* Price widget - Mobile responsive avec vérification */}
+          {priceData && priceData.symbol === selectedAsset && (
             <Card className="gradient-card border-primary/20 shadow-glow-primary w-full">
               <CardContent className="p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -144,7 +173,7 @@ export default function TradingDashboard() {
                   {/* Price and change */}
                   <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl sm:text-2xl font-bold text-foreground">
+                      <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
                         ${priceData.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
                       </span>
                       <div className={cn(
