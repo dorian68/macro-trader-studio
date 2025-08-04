@@ -199,22 +199,51 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       const rawData = JSON.parse(text);
       console.log('Parsed JSON:', rawData);
       
-      // The response is directly an object, not an array
-      if (!rawData.content || !rawData.content.content) {
-        console.log('Response data structure:', rawData);
-        throw new Error('Invalid response structure - missing content');
-      }
+      let data: WebhookResponse;
       
-      const content = rawData.content.content;
-      const sources = rawData.citations?.map((url: string) => ({
-        title: url.split('/').pop() || url,
-        url: url
-      }));
+      if (activeMode === "article_analysis") {
+        // Handle new Article Analysis response format
+        if (Array.isArray(rawData) && rawData.length > 0 && rawData[0].message?.content) {
+          const analysisContent = JSON.parse(rawData[0].message.content);
+          console.log('Article analysis content:', analysisContent);
+          
+          // Transform the analysis data to our WebhookResponse format
+          data = {
+            content: analysisContent.summary?.join('\n\n') || 'Analysis completed',
+            summary: analysisContent.summary?.join('\n\n'),
+            region: Array.isArray(analysisContent.region) ? analysisContent.region.join(', ') : analysisContent.region,
+            products: analysisContent.products || [],
+            categories: analysisContent.categories || [],
+            impacts: analysisContent.impacts || [],
+            sentiment: analysisContent.sentiment,
+            themes: analysisContent.themes || [],
+            sources: [{
+              title: analysisContent.source || 'Article Analysis',
+              url: inputText.startsWith('http') ? inputText : '#',
+              date: analysisContent.analysis_timestamp
+            }]
+          };
+        } else {
+          throw new Error('Invalid Article Analysis response structure');
+        }
+      } else {
+        // Keep existing logic for other modes
+        if (!rawData.content || !rawData.content.content) {
+          console.log('Response data structure:', rawData);
+          throw new Error('Invalid response structure - missing content');
+        }
+        
+        const content = rawData.content.content;
+        const sources = rawData.citations?.map((url: string) => ({
+          title: url.split('/').pop() || url,
+          url: url
+        }));
 
-      const data: WebhookResponse = {
-        content,
-        sources
-      };
+        data = {
+          content,
+          sources
+        };
+      }
       
       setCommentary(data);
       
