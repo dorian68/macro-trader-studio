@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Send, 
   Sparkles, 
@@ -12,7 +15,12 @@ import {
   RefreshCw,
   Copy,
   Save,
-  ExternalLink
+  ExternalLink,
+  Maximize,
+  Minimize,
+  FileText,
+  BarChart3,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +28,30 @@ import { useToast } from "@/hooks/use-toast";
 const sampleAssets = [
   "EUR/USD", "GBP/USD", "USD/JPY", "Gold", "Silver", "Crude Oil", "Bitcoin", "Ethereum"
 ];
+
+const regions = ["All", "Europe", "Americas", "Asia", "Middle East", "Africa"];
+const products = ["All", "Equities", "Bonds", "Futures", "Commodities", "Forex", "Crypto"];
+const categories = ["All", "Economics", "Politics", "Technology", "Central Banks", "Geopolitics"];
+
+// Impact mapping for cause → effect relationships
+const impactMapping = {
+  "Central Banks": {
+    "interest_rate_hike": ["currency_strength", "bond_yields_up", "equity_pressure"],
+    "interest_rate_cut": ["currency_weakness", "bond_yields_down", "equity_boost"],
+    "qe_announcement": ["currency_weakness", "equity_boost", "bond_rally"]
+  },
+  "Economics": {
+    "inflation_rise": ["currency_strength", "bond_yields_up", "commodity_boost"],
+    "gdp_growth": ["currency_strength", "equity_boost", "commodity_demand"],
+    "recession_risk": ["currency_weakness", "bond_rally", "equity_selloff"]
+  },
+  "Geopolitics": {
+    "conflict_escalation": ["safe_haven_bid", "commodity_spike", "risk_off"],
+    "trade_tensions": ["currency_volatility", "equity_sector_rotation", "commodity_impact"]
+  }
+};
+
+type AnalysisMode = "custom_analysis" | "article_analysis" | "market_temperature";
 
 interface WebhookResponse {
   content: string;
@@ -36,25 +68,51 @@ export function MacroCommentary() {
   const [isLoading, setIsLoading] = useState(false);
   const [commentary, setCommentary] = useState<WebhookResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [activeMode, setActiveMode] = useState<AnalysisMode>("custom_analysis");
+  const [articleText, setArticleText] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState("All");
+  const [selectedProduct, setSelectedProduct] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    const inputText = activeMode === "article_analysis" ? articleText.trim() : query.trim();
+    if (!inputText) return;
 
     setIsLoading(true);
     setError(null);
     
     try {
+      // Build enriched JSON payload while preserving existing structure
+      const basePayload = {
+        type: "RAG",
+        question: inputText
+      };
+
+      // Add new fields for enhanced functionality
+      const enrichedPayload = {
+        ...basePayload,
+        mode: activeMode,
+        filters: {
+          region: selectedRegion,
+          product: selectedProduct,
+          category: selectedCategory
+        },
+        analysis: {
+          query: inputText,
+          timestamp: new Date().toISOString(),
+          impact_mapping: activeMode !== "custom_analysis" ? impactMapping : undefined
+        }
+      };
+
       const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          type: "RAG",
-          question: query.trim()
-        })
+        body: JSON.stringify(enrichedPayload)
       });
 
       if (!response.ok) {
@@ -112,17 +170,50 @@ export function MacroCommentary() {
     setQuery(`Give me a macro view on ${asset} this week`);
   };
 
+  const generateMarketTemperature = () => {
+    const scope = selectedRegion !== "All" ? selectedRegion : "Global";
+    const productScope = selectedProduct !== "All" ? selectedProduct : "All Markets";
+    const categoryScope = selectedCategory !== "All" ? selectedCategory : "All Categories";
+    
+    setQuery(`Generate a market temperature briefing for ${scope} ${productScope} focusing on ${categoryScope}. Include sentiment gauge and session outlook.`);
+  };
+
+  const getImpactPredictions = (text: string, category: string) => {
+    const categoryMappings = impactMapping[category as keyof typeof impactMapping];
+    if (!categoryMappings) return [];
+    
+    // Simple keyword matching for demo - in production this would be more sophisticated
+    const impacts = [];
+    if (text.toLowerCase().includes("rate") || text.toLowerCase().includes("fed")) {
+      impacts.push(...(categoryMappings["interest_rate_hike"] || []));
+    }
+    if (text.toLowerCase().includes("inflation")) {
+      impacts.push(...(categoryMappings["inflation_rise"] || []));
+    }
+    return [...new Set(impacts)]; // Remove duplicates
+  };
+
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6 transition-all duration-300", 
+      isFullscreen ? "fixed inset-0 z-50 bg-background p-6 overflow-auto" : "")}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Macro Commentary Generator</h2>
           <p className="text-muted-foreground mt-1">
-            Generate comprehensive market analysis and macro insights
+            Advanced market analysis with multiple modes
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="flex items-center gap-2"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            {isFullscreen ? "2/3 View" : "Fullscreen"}
+          </Button>
           <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
             <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
             Live Data
@@ -130,55 +221,177 @@ export function MacroCommentary() {
         </div>
       </div>
 
-      {/* Query Interface */}
+      {/* Enhanced Analysis Interface */}
       <Card className="gradient-card border-border-light shadow-medium">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            AI Query Interface
+            Advanced Analysis Interface
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form onSubmit={handleSubmit} className="flex gap-3">
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g., Give me a macro view on EUR/USD this week"
-              className="flex-1 bg-background/50 border-border-light"
-            />
-            <Button 
-              type="submit" 
-              disabled={isLoading || !query.trim()}
-              className="min-w-[120px]"
-            >
-              {isLoading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Generate
-                </>
-              )}
-            </Button>
-          </form>
+          <Tabs value={activeMode} onValueChange={(value) => setActiveMode(value as AnalysisMode)}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="custom_analysis" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Custom Analysis
+              </TabsTrigger>
+              <TabsTrigger value="article_analysis" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Article Analysis
+              </TabsTrigger>
+              <TabsTrigger value="market_temperature" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Market Temperature
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Quick Queries */}
-          <div>
-            <p className="text-sm text-muted-foreground mb-2">Quick queries:</p>
-            <div className="flex flex-wrap gap-2">
-              {sampleAssets.map((asset) => (
-                <Button
-                  key={asset}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickQuery(asset)}
-                  className="text-xs"
+            <TabsContent value="custom_analysis" className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="e.g., EUR/USD macro analysis for this week, Global risk sentiment analysis"
+                  className="bg-background/50 border-border-light"
+                />
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || !query.trim()}
+                  className="w-full"
                 >
-                  {asset}
+                  {isLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Generate Analysis
                 </Button>
-              ))}
-            </div>
-          </div>
+              </form>
+              
+              {/* Quick Queries */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Quick queries:</p>
+                <div className="flex flex-wrap gap-2">
+                  {sampleAssets.map((asset) => (
+                    <Button
+                      key={asset}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickQuery(asset)}
+                      className="text-xs"
+                    >
+                      {asset}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="article_analysis" className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Region" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map((region) => (
+                      <SelectItem key={region} value={region}>{region}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product} value={product}>{product}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Textarea
+                  value={articleText}
+                  onChange={(e) => setArticleText(e.target.value)}
+                  placeholder="Paste article URL or full text here..."
+                  className="min-h-[120px] bg-background/50 border-border-light"
+                />
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || !articleText.trim()}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <FileText className="h-4 w-4 mr-2" />
+                  )}
+                  Analyze Article
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="market_temperature" className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Region" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map((region) => (
+                      <SelectItem key={region} value={region}>{region}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product} value={product}>{product}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button 
+                onClick={() => {
+                  generateMarketTemperature();
+                  handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+                }}
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                )}
+                Generate Market Briefing
+              </Button>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
