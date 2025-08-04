@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { 
   Send, 
   Sparkles, 
@@ -22,7 +24,12 @@ import {
   FileText,
   BarChart3,
   MessageSquare,
-  Brain
+  Brain,
+  Target,
+  Plus,
+  Trash2,
+  Calendar,
+  PieChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +73,24 @@ interface Definition {
   definition: string;
 }
 
+interface PortfolioAsset {
+  symbol: string;
+  weight: number;
+  quantity?: number;
+}
+
+interface PortfolioAnalysisResult {
+  portfolio_pnl: Array<{ date: string; pnl: number; baseline: number }>;
+  asset_contributions: Array<{
+    symbol: string;
+    impact_percent: number;
+    worst_case: number;
+    best_case: number;
+  }>;
+  sentiment_score: number;
+  overall_summary: string;
+}
+
 interface WebhookResponse {
   content: string;
   sources?: Array<{
@@ -104,6 +129,20 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [inputValidationMessage, setInputValidationMessage] = useState("");
   const [detectedInputType, setDetectedInputType] = useState<"url" | "text" | "question" | null>(null);
+  
+  // Portfolio Analysis states
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [portfolio, setPortfolio] = useState<PortfolioAsset[]>([
+    { symbol: "AAPL", weight: 0.25 },
+    { symbol: "TSLA", weight: 0.15 },
+    { symbol: "MSFT", weight: 0.20 },
+    { symbol: "GOOGL", weight: 0.40 }
+  ]);
+  const [startDate, setStartDate] = useState("2024-01-01");
+  const [endDate, setEndDate] = useState("2024-12-31");
+  const [isPortfolioAnalysisLoading, setIsPortfolioAnalysisLoading] = useState(false);
+  const [portfolioAnalysisResult, setPortfolioAnalysisResult] = useState<PortfolioAnalysisResult | null>(null);
+  
   const { toast } = useToast();
 
   // Input validation and detection for Article Analysis mode
@@ -315,6 +354,97 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       impacts.push(...(categoryMappings["inflation_rise"] || []));
     }
     return [...new Set(impacts)]; // Remove duplicates
+  };
+
+  // Portfolio management functions
+  const addPortfolioAsset = () => {
+    setPortfolio([...portfolio, { symbol: "", weight: 0 }]);
+  };
+
+  const removePortfolioAsset = (index: number) => {
+    setPortfolio(portfolio.filter((_, i) => i !== index));
+  };
+
+  const updatePortfolioAsset = (index: number, field: keyof PortfolioAsset, value: string | number) => {
+    const updated = [...portfolio];
+    updated[index] = { ...updated[index], [field]: value };
+    setPortfolio(updated);
+  };
+
+  const normalizePortfolioWeights = () => {
+    const totalWeight = portfolio.reduce((sum, asset) => sum + asset.weight, 0);
+    if (totalWeight > 0) {
+      const normalized = portfolio.map(asset => ({
+        ...asset,
+        weight: Number((asset.weight / totalWeight).toFixed(4))
+      }));
+      setPortfolio(normalized);
+    }
+  };
+
+  const runPortfolioAnalysis = async () => {
+    if (!commentary) return;
+    
+    // Validate portfolio
+    const validAssets = portfolio.filter(asset => asset.symbol.trim() && asset.weight > 0);
+    if (validAssets.length === 0) {
+      toast({
+        title: "Invalid Portfolio",
+        description: "Please add at least one asset with a valid symbol and weight.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPortfolioAnalysisLoading(true);
+    
+    try {
+      const payload = {
+        type: "portfolio_scenario_analysis",
+        scenario: {
+          source: "macro_commentary",
+          description: commentary.content.substring(0, 200) + "..."
+        },
+        portfolio: validAssets.map(asset => ({
+          symbol: asset.symbol.toUpperCase(),
+          weight: asset.weight
+        })),
+        backtest_range: {
+          start: startDate,
+          end: endDate
+        },
+        user_id: "12345"
+      };
+
+      const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setPortfolioAnalysisResult(result);
+      
+      toast({
+        title: "Portfolio Analysis Complete",
+        description: "Successfully analyzed portfolio impact for the scenario.",
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze portfolio';
+      toast({
+        title: "Analysis Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsPortfolioAnalysisLoading(false);
+    }
   };
 
   // Component to render text with tooltips for defined terms
@@ -683,6 +813,201 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
                   {activeMode === "article_analysis" ? "Article Analysis" : "Macro Commentary"}
                 </CardTitle>
                 <div className="flex items-center gap-2">
+                  <Dialog open={isPortfolioModalOpen} onOpenChange={setIsPortfolioModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="default" size="sm" className="bg-primary text-primary-foreground">
+                        <Target className="h-4 w-4 mr-2" />
+                        Apply on Portfolio
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <PieChart className="h-5 w-5" />
+                          Portfolio Scenario Analysis
+                        </DialogTitle>
+                      </DialogHeader>
+                      
+                      <div className="space-y-6">
+                        {/* Portfolio Composition */}
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-semibold">Portfolio Composition</h3>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={normalizePortfolioWeights}>
+                                Normalize Weights
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={addPortfolioAsset}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Asset
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            {portfolio.map((asset, index) => (
+                              <div key={index} className="grid grid-cols-12 gap-3 items-center p-3 bg-secondary/20 rounded-lg">
+                                <div className="col-span-5">
+                                  <Label className="text-xs text-muted-foreground">Symbol</Label>
+                                  <Input
+                                    value={asset.symbol}
+                                    onChange={(e) => updatePortfolioAsset(index, "symbol", e.target.value.toUpperCase())}
+                                    placeholder="e.g., AAPL"
+                                    className="text-sm"
+                                  />
+                                </div>
+                                <div className="col-span-3">
+                                  <Label className="text-xs text-muted-foreground">Weight</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="1"
+                                    value={asset.weight}
+                                    onChange={(e) => updatePortfolioAsset(index, "weight", parseFloat(e.target.value) || 0)}
+                                    className="text-sm"
+                                  />
+                                </div>
+                                <div className="col-span-3">
+                                  <Label className="text-xs text-muted-foreground">Quantity (Optional)</Label>
+                                  <Input
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    value={asset.quantity || ""}
+                                    onChange={(e) => updatePortfolioAsset(index, "quantity", parseInt(e.target.value) || undefined)}
+                                    placeholder="Shares"
+                                    className="text-sm"
+                                  />
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => removePortfolioAsset(index)}
+                                    className="text-destructive hover:text-destructive/80"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="mt-3 text-sm text-muted-foreground">
+                            Total Weight: {portfolio.reduce((sum, asset) => sum + asset.weight, 0).toFixed(4)}
+                          </div>
+                        </div>
+
+                        {/* Date Range Selection */}
+                        <div>
+                          <h3 className="text-sm font-semibold mb-4">Backtest Date Range</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Start Date</Label>
+                              <Input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">End Date</Label>
+                              <Input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Scenario Preview */}
+                        <div>
+                          <h3 className="text-sm font-semibold mb-2">Scenario</h3>
+                          <div className="p-3 bg-secondary/20 rounded-lg text-sm text-muted-foreground">
+                            {commentary.content.substring(0, 300)}...
+                          </div>
+                        </div>
+
+                        {/* Analysis Results */}
+                        {portfolioAnalysisResult && (
+                          <div className="space-y-4">
+                            <h3 className="text-sm font-semibold">Analysis Results</h3>
+                            
+                            {/* Overall Summary */}
+                            <Card>
+                              <CardContent className="pt-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-sm font-medium">Overall Portfolio Impact</span>
+                                  <Badge 
+                                    variant={portfolioAnalysisResult.sentiment_score > 0.6 ? "default" : 
+                                            portfolioAnalysisResult.sentiment_score < 0.4 ? "destructive" : "secondary"}
+                                  >
+                                    {(portfolioAnalysisResult.sentiment_score * 100).toFixed(0)}% Sentiment
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {portfolioAnalysisResult.overall_summary}
+                                </p>
+                              </CardContent>
+                            </Card>
+
+                            {/* Asset Contributions */}
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="text-sm">Asset-Level Impact</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  {portfolioAnalysisResult.asset_contributions.map((asset, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-secondary/10 rounded">
+                                      <span className="font-mono text-sm">{asset.symbol}</span>
+                                      <div className="flex items-center gap-3 text-sm">
+                                        <span className={cn(
+                                          "font-semibold",
+                                          asset.impact_percent > 0 ? "text-success" : "text-destructive"
+                                        )}>
+                                          {asset.impact_percent > 0 ? "+" : ""}{asset.impact_percent.toFixed(1)}%
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          Range: {asset.worst_case.toFixed(1)}% to {asset.best_case.toFixed(1)}%
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-3">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setIsPortfolioModalOpen(false)}
+                          >
+                            Close
+                          </Button>
+                          <Button 
+                            onClick={runPortfolioAnalysis}
+                            disabled={isPortfolioAnalysisLoading}
+                            className="bg-primary text-primary-foreground"
+                          >
+                            {isPortfolioAnalysisLoading ? (
+                              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                            )}
+                            Run Analysis
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <Button 
                     variant="ghost" 
                     size="sm"
