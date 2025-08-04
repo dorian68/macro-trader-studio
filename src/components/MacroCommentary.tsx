@@ -95,46 +95,94 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
   const [selectedRegion, setSelectedRegion] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [inputValidationMessage, setInputValidationMessage] = useState("");
+  const [detectedInputType, setDetectedInputType] = useState<"url" | "text" | "question" | null>(null);
   const { toast } = useToast();
+
+  // Input validation and detection for Article Analysis mode
+  const detectInputType = (input: string): "url" | "text" | "question" | null => {
+    if (!input.trim()) return null;
+    
+    // URL detection
+    if (input.match(/^https?:\/\/[^\s]+/)) {
+      return "url";
+    }
+    
+    // Article text detection (more than 100 characters, contains paragraphs)
+    if (input.length > 100 && (input.includes('\n') || input.split(' ').length > 50)) {
+      return "text";
+    }
+    
+    // Assume it's a question if it's shorter
+    return "question";
+  };
+
+  const validateArticleInput = (input: string): boolean => {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      setInputValidationMessage("Please provide an article link, article text, or a market question.");
+      setDetectedInputType(null);
+      return false;
+    }
+    
+    const type = detectInputType(trimmed);
+    setDetectedInputType(type);
+    setInputValidationMessage("");
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const inputText = activeMode === "article_analysis" ? articleText.trim() : query.trim();
-    if (!inputText) return;
+    
+    // Special validation for Article Analysis mode
+    if (activeMode === "article_analysis") {
+      if (!validateArticleInput(inputText)) {
+        return;
+      }
+    } else if (!inputText) {
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     
     try {
-      // Build enriched JSON payload while preserving existing structure
-      const basePayload = {
-        type: activeMode === "article_analysis" ? "article_analysis" : "RAG",
-        question: inputText
-      };
-
-      // Add new fields for enhanced functionality
-      const enrichedPayload = {
-        ...basePayload,
-        mode: activeMode,
-        filters: {
-          region: selectedRegion,
-          product: selectedProduct,
-          category: selectedCategory
-        },
-        analysis: {
+      let payload;
+      
+      if (activeMode === "article_analysis") {
+        // Send EXACTLY the specified JSON structure for Article Analysis
+        payload = {
+          type: "article_analysis",
           query: inputText,
-          timestamp: new Date().toISOString(),
-          impact_mapping: activeMode !== "custom_analysis" ? impactMapping : undefined
-        },
-        user_id: "default_user" // Add user_id as requested
-      };
+          user_id: "12345" // Using fixed user_id as specified
+        };
+      } else {
+        // Keep existing structure for other modes
+        payload = {
+          type: "RAG",
+          question: inputText,
+          mode: activeMode,
+          filters: {
+            region: selectedRegion,
+            product: selectedProduct,
+            category: selectedCategory
+          },
+          analysis: {
+            query: inputText,
+            timestamp: new Date().toISOString(),
+            impact_mapping: activeMode !== "custom_analysis" ? impactMapping : undefined
+          },
+          user_id: "default_user"
+        };
+      }
 
       const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(enrichedPayload)
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -337,48 +385,49 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
             </TabsContent>
 
             <TabsContent value="article_analysis" className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Region" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem key={region} value={region}>{region}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((product) => (
-                      <SelectItem key={product} value={product}>{product}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Textarea
                   value={articleText}
-                  onChange={(e) => setArticleText(e.target.value)}
-                  placeholder="Paste article URL or full text here..."
+                  onChange={(e) => {
+                    setArticleText(e.target.value);
+                    if (e.target.value.trim()) {
+                      validateArticleInput(e.target.value);
+                    } else {
+                      setInputValidationMessage("");
+                      setDetectedInputType(null);
+                    }
+                  }}
+                  placeholder="Paste article URL, article text, or type a market question..."
                   className="min-h-[120px] bg-background/50 border-border-light"
                 />
+                
+                {/* Input Detection Display */}
+                {detectedInputType && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      {detectedInputType === "url" && <ExternalLink className="h-3 w-3" />}
+                      {detectedInputType === "text" && <FileText className="h-3 w-3" />}
+                      {detectedInputType === "question" && <MessageSquare className="h-3 w-3" />}
+                      <span>
+                        Detected: {detectedInputType === "url" ? "Article URL" : 
+                                  detectedInputType === "text" ? "Article Text" : 
+                                  "Market Question"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Validation Message */}
+                {inputValidationMessage && (
+                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>{inputValidationMessage}</span>
+                  </div>
+                )}
+                
                 <Button 
                   type="submit" 
-                  disabled={isLoading || !articleText.trim()}
+                  disabled={isLoading || !articleText.trim() || !!inputValidationMessage}
                   className="w-full"
                 >
                   {isLoading ? (
