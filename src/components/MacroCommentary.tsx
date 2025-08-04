@@ -25,6 +25,12 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
+interface MacroCommentaryProps {
+  instrument?: string;
+  timeframe?: string;
+  onClose?: () => void;
+}
+
 const sampleAssets = [
   "EUR/USD", "GBP/USD", "USD/JPY", "Gold", "Silver", "Crude Oil", "Bitcoin", "Ethereum"
 ];
@@ -63,7 +69,7 @@ interface WebhookResponse {
   }>;
 }
 
-export function MacroCommentary() {
+export function MacroCommentary({ instrument, timeframe, onClose }: MacroCommentaryProps = {}) {
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [commentary, setCommentary] = useState<WebhookResponse | null>(null);
@@ -214,6 +220,16 @@ export function MacroCommentary() {
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
             {isFullscreen ? "2/3 View" : "Fullscreen"}
           </Button>
+          {onClose && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="flex items-center gap-2"
+            >
+              ✕ Close
+            </Button>
+          )}
           <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
             <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
             Live Data

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Brain, FileText, MessageCircle, Sparkles, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TradeSetupBubble } from "./TradeSetupBubble";
-import { MacroCommentaryBubble } from "./MacroCommentaryBubble"; 
+import { MacroCommentary } from "./MacroCommentary"; 
 import { ReportsBubble } from "./ReportsBubble";
 
 interface BubbleSystemProps {
@@ -121,8 +121,8 @@ export function BubbleSystem({ instrument, timeframe, onTradeSetupClick, onTrade
       )}
       
       {activeBubble === "macro" && (
-        <div className="fixed inset-x-4 top-4 sm:inset-x-auto sm:right-4 z-[10000] sm:w-auto sm:max-w-md">
-          <MacroCommentaryBubble
+        <div className="fixed inset-4 z-[10000]">
+          <MacroCommentary
             instrument={instrument}
             timeframe={timeframe}
             onClose={handleCloseBubble}
