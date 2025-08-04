@@ -350,7 +350,6 @@ export function CandlestickChart({
               <div className="text-2xl font-mono font-bold text-foreground">
                 ${parseFloat(currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
-              <div className="text-xs text-muted-foreground">Current Price</div>
             </div>
             <Select value={timeframe} onValueChange={handleTimeframeChange}>
               <SelectTrigger className="w-32 bg-background/50 border-border-light">
@@ -455,7 +454,7 @@ export function CandlestickChart({
         {showHeader && (
           <div className="mt-3 text-xs text-muted-foreground text-center">
             {hasRealTimeData 
-              ? `Real-time data from Binance WebSocket API • Updates every ${timeframe === '1m' ? 'minute' : timeframe}`
+              ? `Real-time data from Binance WebSocket API`
               : `Historical data • ${asset} chart`
             }
           </div>
