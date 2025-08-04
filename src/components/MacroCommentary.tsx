@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MacroCommentaryProps {
   instrument?: string;
@@ -144,6 +145,7 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
   const [portfolioAnalysisResult, setPortfolioAnalysisResult] = useState<PortfolioAnalysisResult | null>(null);
   
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Input validation and detection for Article Analysis mode
   const detectInputType = (input: string): "url" | "text" | "question" | null => {
@@ -554,9 +556,12 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
 
   return (
     <div className={cn(
-      "bg-card/95 backdrop-blur-xl rounded-xl border border-border/50 shadow-2xl transition-all duration-300 flex flex-col h-full max-h-[calc(100vh-8rem)]",
-      isFullscreen && "fixed inset-4 z-[10001] max-h-[calc(100vh-2rem)]",
-      isTwoThirdsWidth && !isFullscreen && "w-2/3"
+      "bg-card/95 backdrop-blur-xl rounded-xl border border-border/50 shadow-2xl transition-all duration-300 flex flex-col",
+      // Mobile: Full screen minus safe areas
+      isMobile ? "fixed inset-2 z-[10001] h-[calc(100vh-1rem)]" : "h-full max-h-[calc(100vh-8rem)]",
+      // Desktop sizing
+      !isMobile && isFullscreen && "fixed inset-4 z-[10001] max-h-[calc(100vh-2rem)]",
+      !isMobile && isTwoThirdsWidth && !isFullscreen && "w-2/3"
     )}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border/20 flex-shrink-0">
@@ -570,24 +575,29 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsTwoThirdsWidth(!isTwoThirdsWidth)}
-            className="h-6 w-6 p-0 hover:bg-primary/10"
-            title={isTwoThirdsWidth ? "Expand to full width" : "Resize to 2/3 width"}
-          >
-            {isTwoThirdsWidth ? <Maximize className="h-3 w-3" /> : <Minimize className="h-3 w-3" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="h-6 w-6 p-0 hover:bg-primary/10"
-            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          >
-            {isFullscreen ? <Minimize className="h-3 w-3" /> : <Maximize className="h-3 w-3" />}
-          </Button>
+          {/* Hide desktop-only controls on mobile */}
+          {!isMobile && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsTwoThirdsWidth(!isTwoThirdsWidth)}
+                className="h-6 w-6 p-0 hover:bg-primary/10"
+                title={isTwoThirdsWidth ? "Expand to full width" : "Resize to 2/3 width"}
+              >
+                {isTwoThirdsWidth ? <Maximize className="h-3 w-3" /> : <Minimize className="h-3 w-3" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="h-6 w-6 p-0 hover:bg-primary/10"
+                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              >
+                {isFullscreen ? <Minimize className="h-3 w-3" /> : <Maximize className="h-3 w-3" />}
+              </Button>
+            </>
+          )}
           {onClose && (
             <Button
               variant="ghost"
@@ -730,7 +740,10 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
             </TabsContent>
 
             <TabsContent value="market_temperature" className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className={cn(
+                "grid gap-4",
+                isMobile ? "grid-cols-1" : "grid-cols-3"
+              )}>
                 <Select value={selectedRegion} onValueChange={setSelectedRegion}>
                   <SelectTrigger>
                     <SelectValue placeholder="Region" />
@@ -799,12 +812,12 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       {commentary && (
         <div className={cn(
           "space-y-4",
-          activeMode === "article_analysis" && "grid grid-cols-1 lg:grid-cols-3 gap-4"
+          activeMode === "article_analysis" && !isMobile && "grid grid-cols-1 lg:grid-cols-3 gap-4"
         )}>
           {/* Main Content Area */}
           <div className={cn(
             "space-y-4",
-            activeMode === "article_analysis" && "lg:col-span-2"
+            activeMode === "article_analysis" && !isMobile && "lg:col-span-2"
           )}>
             <Card className="gradient-card border-border-light shadow-medium">
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1172,8 +1185,8 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
           </Card>
         </div>
 
-        {/* Article Analysis Sidebar */}
-        {activeMode === "article_analysis" && (
+        {/* Article Analysis Sidebar - Only on desktop */}
+        {activeMode === "article_analysis" && !isMobile && (
           <div className="lg:col-span-1 space-y-4">
             <Card className="gradient-card border-border-light shadow-medium sticky top-4">
               <CardHeader>
