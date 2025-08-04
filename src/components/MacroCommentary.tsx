@@ -20,7 +20,8 @@ import {
   Minimize,
   FileText,
   BarChart3,
-  MessageSquare
+  MessageSquare,
+  Brain
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -200,44 +201,39 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
   };
 
   return (
-    <div className={cn("space-y-6 transition-all duration-300", 
-      isFullscreen ? "fixed inset-0 z-50 bg-background p-6 overflow-auto" : "")}>
+    <div className="bg-card/95 backdrop-blur-xl rounded-xl border border-border/50 shadow-2xl transition-all duration-300 flex flex-col h-full max-h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Macro Commentary Generator</h2>
-          <p className="text-muted-foreground mt-1">
-            Advanced market analysis with multiple modes
-          </p>
+      <div className="flex items-center justify-between p-4 border-b border-border/20 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+            <Brain className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Macro Analysis</h3>
+            <p className="text-xs text-muted-foreground">AI market insights</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="flex items-center gap-2"
-          >
-            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-            {isFullscreen ? "2/3 View" : "Fullscreen"}
-          </Button>
           {onClose && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={onClose}
-              className="flex items-center gap-2"
+              className="h-6 w-6 p-0 hover:bg-destructive/10"
             >
-              ✕ Close
+              ✕
             </Button>
           )}
-          <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-            <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
-            Live Data
+          <Badge variant="secondary" className="bg-success/10 text-success border-success/20 text-xs">
+            <div className="w-1.5 h-1.5 bg-success rounded-full mr-1"></div>
+            Live
           </Badge>
         </div>
       </div>
 
-      {/* Enhanced Analysis Interface */}
+      {/* Content Area - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Enhanced Analysis Interface */}
       <Card className="gradient-card border-border-light shadow-medium">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -583,6 +579,7 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
           </Card>
         </div>
       )}
+      </div>
     </div>
   );
 }
