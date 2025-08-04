@@ -203,9 +203,20 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       
       if (activeMode === "article_analysis") {
         // Handle new Article Analysis response format
+        let analysisContent;
+        
         if (Array.isArray(rawData) && rawData.length > 0 && rawData[0].message?.content) {
-          const analysisContent = JSON.parse(rawData[0].message.content);
-          console.log('Article analysis content:', analysisContent);
+          // Format: [{ message: { content: "..." } }]
+          analysisContent = JSON.parse(rawData[0].message.content);
+        } else if (rawData.content && typeof rawData.content === 'string') {
+          // Format: { content: "..." }
+          analysisContent = JSON.parse(rawData.content);
+        } else {
+          console.log('Unexpected Article Analysis response structure:', rawData);
+          throw new Error('Invalid Article Analysis response structure');
+        }
+        
+        console.log('Article analysis content:', analysisContent);
           
           // Transform the analysis data to our WebhookResponse format
           data = {
@@ -223,9 +234,6 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
               date: analysisContent.analysis_timestamp
             }]
           };
-        } else {
-          throw new Error('Invalid Article Analysis response structure');
-        }
       } else {
         // Keep existing logic for other modes
         if (!rawData.content || !rawData.content.content) {
