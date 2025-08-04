@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Send, 
   Sparkles, 
@@ -60,6 +61,11 @@ const impactMapping = {
 
 type AnalysisMode = "custom_analysis" | "article_analysis" | "market_temperature";
 
+interface Definition {
+  term: string;
+  definition: string;
+}
+
 interface WebhookResponse {
   content: string;
   sources?: Array<{
@@ -81,6 +87,7 @@ interface WebhookResponse {
     score: number;
   };
   themes?: string[];
+  definitions?: Definition[];
 }
 
 export function MacroCommentary({ instrument, timeframe, onClose }: MacroCommentaryProps = {}) {
@@ -233,10 +240,11 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
             })) || [],
             sentiment: analysisContent.sentiment ? {
               ...analysisContent.sentiment,
-              // Convert 0-1 score to percentage for display  
-              score: analysisContent.sentiment.score ? analysisContent.sentiment.score : analysisContent.sentiment.score
+              // Keep 0-1 score as is since it's already handled in display
+              score: analysisContent.sentiment.score
             } : analysisContent.sentiment,
             themes: analysisContent.themes || [],
+            definitions: analysisContent.definitions || [],
             sources: [{
               title: analysisContent.source || 'Article Analysis',
               url: inputText.startsWith('http') ? inputText : '#',
@@ -307,6 +315,111 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       impacts.push(...(categoryMappings["inflation_rise"] || []));
     }
     return [...new Set(impacts)]; // Remove duplicates
+  };
+
+  // Component to render text with tooltips for defined terms
+  const TextWithDefinitions = ({ text, definitions }: { text: string; definitions?: Definition[] }) => {
+    if (!definitions || definitions.length === 0) {
+      return <span>{text}</span>;
+    }
+
+    // Find terms in the text and create an array of text segments with their types
+    const segments: { text: string; isDefinedTerm: boolean; definition?: string }[] = [];
+    let remainingText = text;
+    
+    // Sort definitions by term length (longest first) to avoid substring issues
+    const sortedDefinitions = [...definitions].sort((a, b) => b.term.length - a.term.length);
+    
+    // Track which positions are already processed to avoid overlapping matches
+    const processedPositions: boolean[] = new Array(text.length).fill(false);
+    
+    for (const def of sortedDefinitions) {
+      const regex = new RegExp(`\\b${def.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      let match;
+      
+      while ((match = regex.exec(text)) !== null) {
+        const start = match.index;
+        const end = start + match[0].length;
+        
+        // Check if this position is already processed
+        const alreadyProcessed = processedPositions.slice(start, end).some(Boolean);
+        if (alreadyProcessed) continue;
+        
+        // Mark these positions as processed
+        for (let i = start; i < end; i++) {
+          processedPositions[i] = true;
+        }
+        
+        segments.push({
+          text: match[0],
+          isDefinedTerm: true,
+          definition: def.definition,
+          index: start
+        } as any);
+      }
+    }
+    
+    if (segments.length === 0) {
+      return <span>{text}</span>;
+    }
+    
+    // Sort segments by position and fill in non-defined text
+    const sortedSegments = segments.sort((a: any, b: any) => a.index - b.index);
+    const finalSegments: { text: string; isDefinedTerm: boolean; definition?: string }[] = [];
+    
+    let currentIndex = 0;
+    for (const segment of sortedSegments) {
+      const segmentStart = (segment as any).index;
+      
+      // Add text before this segment if exists
+      if (currentIndex < segmentStart) {
+        finalSegments.push({
+          text: text.slice(currentIndex, segmentStart),
+          isDefinedTerm: false
+        });
+      }
+      
+      finalSegments.push(segment);
+      currentIndex = segmentStart + segment.text.length;
+    }
+    
+    // Add remaining text
+    if (currentIndex < text.length) {
+      finalSegments.push({
+        text: text.slice(currentIndex),
+        isDefinedTerm: false
+      });
+    }
+    
+    return (
+      <TooltipProvider delayDuration={300}>
+        <span>
+          {finalSegments.map((segment, index) => {
+            if (segment.isDefinedTerm && segment.definition) {
+              return (
+                <Tooltip key={index}>
+                  <TooltipTrigger asChild>
+                    <span className="border-b border-dotted border-primary/60 cursor-help hover:border-primary transition-colors">
+                      {segment.text}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent 
+                    side="top" 
+                    className="max-w-xs p-3 text-sm leading-relaxed bg-popover border shadow-lg"
+                  >
+                    <div className="space-y-1">
+                      <div className="font-semibold text-primary">{segment.text}</div>
+                      <div className="text-popover-foreground">{segment.definition}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return <span key={index}>{segment.text}</span>;
+          })}
+        </span>
+      </TooltipProvider>
+    );
   };
 
   return (
@@ -613,7 +726,10 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
                           if (line.startsWith('**') && line.endsWith('**')) {
                             return (
                               <p key={lineIndex} className="font-semibold text-foreground text-base leading-relaxed">
-                                {line.replace(/\*\*/g, '')}
+                                <TextWithDefinitions 
+                                  text={line.replace(/\*\*/g, '')} 
+                                  definitions={commentary.definitions}
+                                />
                               </p>
                             );
                           }
@@ -625,8 +741,14 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
                               <div key={lineIndex} className="flex gap-3 text-sm leading-relaxed">
                                 <span className="text-primary mt-1">•</span>
                                 <div>
-                                  <span className="font-semibold text-foreground">{boldText}</span>
-                                  {remainingText && <span className="text-muted-foreground">: {remainingText}</span>}
+                                  <span className="font-semibold text-foreground">
+                                    <TextWithDefinitions text={boldText} definitions={commentary.definitions} />
+                                  </span>
+                                  {remainingText && (
+                                    <span className="text-muted-foreground">
+                                      : <TextWithDefinitions text={remainingText} definitions={commentary.definitions} />
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -673,7 +795,10 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
                           
                           return (
                             <p key={lineIndex} className="text-sm text-muted-foreground leading-relaxed">
-                              {line.replace(/\[(\d+)\]/g, (match, num) => `[${num}]`)}
+                              <TextWithDefinitions 
+                                text={line.replace(/\[(\d+)\]/g, (match, num) => `[${num}]`)} 
+                                definitions={commentary.definitions}
+                              />
                             </p>
                           );
                         })}
@@ -683,7 +808,10 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
                   
                   return (
                     <p key={index} className="text-sm text-muted-foreground leading-relaxed">
-                      {section.replace(/\[(\d+)\]/g, (match, num) => `[${num}]`)}
+                      <TextWithDefinitions 
+                        text={section.replace(/\[(\d+)\]/g, (match, num) => `[${num}]`)} 
+                        definitions={commentary.definitions}
+                      />
                     </p>
                   );
                  })}
