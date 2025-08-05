@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Layout } from "@/components/Layout";
+import { CandlestickChart } from "@/components/CandlestickChart";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -67,6 +68,8 @@ export default function AssetDetail() {
   const { toast } = useToast();
   const [asset, setAsset] = useState<AssetProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [historicalPrices, setHistoricalPrices] = useState<any[]>([]);
+  const [loadingPrices, setLoadingPrices] = useState(false);
 
   useEffect(() => {
     const fetchAssetProfile = async () => {
@@ -96,6 +99,9 @@ export default function AssetDetail() {
         }
 
         setAsset(data as unknown as AssetProfile);
+        
+        // Charger les données historiques de prix
+        fetchHistoricalPrices(symbol);
       } catch (error) {
         console.error('Erreur lors du chargement de l\'actif:', error);
         toast({
@@ -106,6 +112,29 @@ export default function AssetDetail() {
         navigate('/');
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchHistoricalPrices = async (assetSymbol: string) => {
+      try {
+        setLoadingPrices(true);
+        const { data, error } = await supabase
+          .from('prices' as any)
+          .select('*')
+          .eq('symbol', assetSymbol)
+          .order('date', { ascending: true })
+          .limit(100);
+
+        if (error) {
+          console.warn('Pas de données historiques disponibles:', error);
+          return;
+        }
+
+        setHistoricalPrices(data || []);
+      } catch (error) {
+        console.warn('Erreur lors du chargement des données historiques:', error);
+      } finally {
+        setLoadingPrices(false);
       }
     };
 
@@ -209,6 +238,30 @@ export default function AssetDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Colonne principale */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Chart historique */}
+            <Card className="gradient-card border-border/50 shadow-medium">
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="text-lg sm:text-xl text-foreground">
+                  Historique des prix - {asset.symbol}
+                  {loadingPrices && (
+                    <Badge variant="outline" className="ml-2">
+                      Chargement...
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[400px] md:h-[500px]">
+                  <CandlestickChart 
+                    asset={asset.symbol} 
+                    historicalData={historicalPrices}
+                    showHeader={false}
+                    tradeLevels={null}
+                    onLevelUpdate={() => {}}
+                  />
+                </div>
+              </CardContent>
+            </Card>
             {/* Profil détaillé */}
             <Card className="gradient-card">
               <CardHeader>

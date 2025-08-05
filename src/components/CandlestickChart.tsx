@@ -41,6 +41,7 @@ interface CandlestickChartProps {
   height?: number;
   tradeLevels?: TradeLevels | null;
   onLevelUpdate?: (type: 'entry' | 'stopLoss' | 'takeProfit', value: number) => void;
+  historicalData?: any[];
 }
 
 const timeframes = [

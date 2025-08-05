@@ -198,6 +198,31 @@ export default function TradingDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* Asset Summary Banner intégrée - Couche 2 */}
+                {selectedAssetProfile && (
+                  <div className="mt-4 pt-4 border-t border-border/30">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                          {selectedAssetProfile.symbol?.slice(0, 2)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-foreground text-sm">{selectedAssetProfile.short_name || selectedAssetProfile.name}</h4>
+                          <p className="text-xs text-muted-foreground">{selectedAssetProfile.sector} • {selectedAssetProfile.exchange}</p>
+                        </div>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
+                        className="shrink-0"
+                      >
+                        Voir détails
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -216,14 +241,6 @@ export default function TradingDashboard() {
           timeframe={timeframe}
         />
 
-        {/* Asset Summary Banner - Couche 2 */}
-        {selectedAssetProfile && (
-          <AssetSummaryBanner
-            asset={selectedAssetProfile}
-            onViewComplete={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
-            className="w-full"
-          />
-        )}
 
         {/* Popular assets - Mobile-first horizontal scroll */}
         <div className="w-full -mx-3 sm:mx-0">
