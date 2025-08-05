@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_recommendations: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          is_applied: boolean | null
+          portfolio_id: string
+          reasoning: string | null
+          recommendation_type: string
+          symbol: string
+          target_price: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          is_applied?: boolean | null
+          portfolio_id: string
+          reasoning?: string | null
+          recommendation_type: string
+          symbol: string
+          target_price?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          is_applied?: boolean | null
+          portfolio_id?: string
+          reasoning?: string | null
+          recommendation_type?: string
+          symbol?: string
+          target_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_recommendations_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asset_profiles: {
         Row: {
           address: string | null
@@ -208,6 +252,80 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      portfolios: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          total_value: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          total_value?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          total_value?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      positions: {
+        Row: {
+          average_price: number
+          created_at: string
+          current_price: number | null
+          id: string
+          market_value: number | null
+          portfolio_id: string
+          quantity: number
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          average_price?: number
+          created_at?: string
+          current_price?: number | null
+          id?: string
+          market_value?: number | null
+          portfolio_id: string
+          quantity?: number
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          average_price?: number
+          created_at?: string
+          current_price?: number | null
+          id?: string
+          market_value?: number | null
+          portfolio_id?: string
+          quantity?: number
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prices: {
         Row: {

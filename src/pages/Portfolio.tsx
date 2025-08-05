@@ -8,6 +8,7 @@ interface Portfolio {
   id: string;
   name: string;
   description: string;
+  total_value: number;
   created_at: string;
 }
 
