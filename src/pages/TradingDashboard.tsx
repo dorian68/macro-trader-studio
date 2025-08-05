@@ -161,57 +161,29 @@ export default function TradingDashboard() {
             </div>
           </div>
 
-          {/* Price widget - Mobile responsive avec vérification */}
-          {priceData && priceData.symbol === selectedAsset && (
+          {/* Price widget - Affiche uniquement l'actif sélectionné */}
+          {(selectedAssetProfile || (priceData && priceData.symbol === selectedAsset)) && (
             <Card className="gradient-card border-primary/20 shadow-glow-primary w-full">
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  {/* Asset info */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-2xl shrink-0">{currentAsset?.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
-                      <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Price and change */}
-                  <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
-                        ${priceData.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
-                      </span>
-                      <div className={cn(
-                        "w-2 h-2 rounded-full animate-pulse shrink-0",
-                        isConnected ? "bg-success" : "bg-danger"
-                      )} />
-                    </div>
-                    <div className={cn(
-                      "flex items-center gap-1 text-sm font-medium",
-                      priceData.change24h >= 0 ? "text-success" : "text-danger"
-                    )}>
-                      {priceData.change24h >= 0 ? 
-                        <TrendingUp className="h-3 w-3" /> : 
-                        <TrendingDown className="h-3 w-3" />
-                      }
-                      {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
-                    </div>
-                  </div>
-                </div>
-
-                {/* Asset Summary Banner intégrée - Couche 2 */}
-                {selectedAssetProfile && (
-                  <div className="mt-4 pt-4 border-t border-border/30">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                          {selectedAssetProfile.symbol?.slice(0, 2)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-semibold text-foreground text-sm">{selectedAssetProfile.short_name || selectedAssetProfile.name}</h4>
-                          <p className="text-xs text-muted-foreground">{selectedAssetProfile.sector} • {selectedAssetProfile.exchange}</p>
-                        </div>
+                {selectedAssetProfile ? (
+                  // Affichage de l'actif sélectionné dans la recherche (priorité)
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                        {selectedAssetProfile.symbol?.slice(0, 2)}
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-foreground text-lg">{selectedAssetProfile.symbol}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {selectedAssetProfile.short_name || selectedAssetProfile.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedAssetProfile.sector} • {selectedAssetProfile.exchange}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
                       <Button 
                         size="sm" 
                         variant="outline"
@@ -220,6 +192,49 @@ export default function TradingDashboard() {
                       >
                         Voir détails
                       </Button>
+                      <Button 
+                        size="sm" 
+                        variant="secondary"
+                        onClick={() => setSelectedAssetProfile(null)}
+                        className="shrink-0"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Affichage par défaut avec données temps réel
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-2xl shrink-0">{currentAsset?.icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
+                        <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
+                          ${priceData?.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
+                        </span>
+                        <div className={cn(
+                          "w-2 h-2 rounded-full animate-pulse shrink-0",
+                          isConnected ? "bg-success" : "bg-danger"
+                        )} />
+                      </div>
+                      {priceData && (
+                        <div className={cn(
+                          "flex items-center gap-1 text-sm font-medium",
+                          priceData.change24h >= 0 ? "text-success" : "text-danger"
+                        )}>
+                          {priceData.change24h >= 0 ? 
+                            <TrendingUp className="h-3 w-3" /> : 
+                            <TrendingDown className="h-3 w-3" />
+                          }
+                          {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -227,8 +242,11 @@ export default function TradingDashboard() {
             </Card>
           )}
 
-          {/* Asset Information Card */}
-          <AssetInfoCard symbol={selectedAsset} className="w-full" />
+          {/* Asset Information Card - Affiche l'actif sélectionné ou par défaut */}
+          <AssetInfoCard 
+            symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset} 
+            className="w-full" 
+          />
         </div>
 
         {/* Hybrid Search + AI Interface */}
@@ -268,7 +286,7 @@ export default function TradingDashboard() {
           <CardHeader className="border-b border-border/50 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-lg sm:text-xl text-foreground">
-                Chart - {selectedAsset}
+                Chart - {selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
                 <span className="text-sm font-normal text-muted-foreground ml-2">({timeframe})</span>
               </CardTitle>
               <Badge variant="outline" className={cn(
