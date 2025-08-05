@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import ApplyToPortfolioButton from "./ApplyToPortfolioButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -399,6 +400,13 @@ export function ReportsBubble({ instrument, timeframe, onClose }: ReportsBubbleP
                   <Download className="h-4 w-4 mr-2" />
                   Export {currentReport.exportFormat.toUpperCase()}
                 </Button>
+              </div>
+              <div className="flex justify-end mt-3">
+                <ApplyToPortfolioButton 
+                  analysisContent={currentReport.title}
+                  analysisType="report"
+                  className="text-xs"
+                />
               </div>
             </div>
           )}

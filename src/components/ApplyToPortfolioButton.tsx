@@ -6,19 +6,19 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { TrendingUp, Info } from 'lucide-react';
 
-interface ApplyToPortfolioButtonTempProps {
+interface ApplyToPortfolioButtonProps {
   analysisContent: string;
   analysisType: 'macro' | 'asset' | 'report';
   assetSymbol?: string;
   className?: string;
 }
 
-export default function ApplyToPortfolioButtonTemp({ 
+export default function ApplyToPortfolioButton({ 
   analysisContent, 
   analysisType, 
   assetSymbol,
   className 
-}: ApplyToPortfolioButtonTempProps) {
+}: ApplyToPortfolioButtonProps) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -26,8 +26,8 @@ export default function ApplyToPortfolioButtonTemp({
   const handleClick = () => {
     if (!user) {
       toast({
-        title: "Connexion requise",
-        description: "Veuillez vous connecter pour accéder aux recommandations personnalisées",
+        title: "Login Required",
+        description: "Please log in to access personalized recommendations",
         variant: "destructive"
       });
       return;
@@ -36,7 +36,7 @@ export default function ApplyToPortfolioButtonTemp({
     setOpen(true);
     toast({
       title: "Information",
-      description: "Veuillez d'abord exécuter la migration de la base de données pour activer les recommandations personnalisées."
+      description: "Please run the database migration first to enable personalized recommendations."
     });
   };
 
@@ -52,37 +52,37 @@ export default function ApplyToPortfolioButtonTemp({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Info className="h-5 w-5" />
-              Recommandations Personnalisées
+              Personalized Recommendations
             </DialogTitle>
             <DialogDescription>
-              Fonctionnalité en attente de migration de base de données
+              Feature pending database migration
             </DialogDescription>
           </DialogHeader>
 
           <Card>
             <CardHeader>
-              <CardTitle>Migration requise</CardTitle>
+              <CardTitle>Migration Required</CardTitle>
               <CardDescription>
-                Les recommandations IA personnalisées seront disponibles après l'exécution de la migration de base de données.
+                AI-powered personalized recommendations will be available after running the database migration.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Fonctionnalités à venir :</h4>
+                <h4 className="font-medium mb-2">Upcoming features:</h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>• Recommandations macro-économiques personnalisées</li>
-                  <li>• Actions ciblées sur vos positions</li>
-                  <li>• Ajustements contextuels selon le marché</li>
-                  <li>• Analyse de risque et allocation optimale</li>
+                  <li>• Personalized macro-economic recommendations</li>
+                  <li>• Targeted actions for your positions</li>
+                  <li>• Contextual adjustments based on market conditions</li>
+                  <li>• Risk analysis and optimal allocation</li>
                 </ul>
               </div>
               
               <div className="text-sm text-muted-foreground">
-                <strong>Analyse actuelle :</strong> {analysisType}
+                <strong>Current analysis:</strong> {analysisType}
                 {assetSymbol && (
                   <>
                     <br />
-                    <strong>Actif :</strong> {assetSymbol}
+                    <strong>Asset:</strong> {assetSymbol}
                   </>
                 )}
               </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import ApplyToPortfolioButton from "./ApplyToPortfolioButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -619,6 +620,14 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
                   <Save className="h-4 w-4 mr-2" />
                   Execute Trade
                 </Button>
+              </div>
+              <div className="flex justify-end mt-3">
+                <ApplyToPortfolioButton 
+                  analysisContent={`Setup: ${parameters.strategy} for ${parameters.instrument}`}
+                  analysisType="asset"
+                  assetSymbol={parameters.instrument}
+                  className="text-xs"
+                />
               </div>
             </div>
           )}

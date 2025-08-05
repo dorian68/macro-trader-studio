@@ -55,14 +55,14 @@ export default function Auth() {
 
     if (error) {
       toast({
-        title: "Erreur d'inscription",
+        title: "Registration Error",
         description: error.message,
         variant: "destructive"
       });
     } else {
       toast({
-        title: "Inscription réussie",
-        description: "Vérifiez votre email pour confirmer votre compte."
+        title: "Registration Successful",
+        description: "Check your email to confirm your account."
       });
     }
 
@@ -80,7 +80,7 @@ export default function Auth() {
 
     if (error) {
       toast({
-        title: "Erreur de connexion",
+        title: "Login Error",
         description: error.message,
         variant: "destructive"
       });
@@ -95,14 +95,14 @@ export default function Auth() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Trading Dashboard</CardTitle>
           <CardDescription>
-            Connectez-vous pour accéder à vos portefeuilles
+            Connect to access your portfolios
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Connexion</TabsTrigger>
-              <TabsTrigger value="signup">Inscription</TabsTrigger>
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">
@@ -118,7 +118,7 @@ export default function Auth() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Mot de passe</Label>
+                  <Label htmlFor="signin-password">Password</Label>
                   <Input
                     id="signin-password"
                     type="password"
@@ -129,7 +129,7 @@ export default function Auth() {
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Se connecter
+                  Sign In
                 </Button>
               </form>
             </TabsContent>
@@ -147,7 +147,7 @@ export default function Auth() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Mot de passe</Label>
+                  <Label htmlFor="signup-password">Password</Label>
                   <Input
                     id="signup-password"
                     type="password"
@@ -159,7 +159,7 @@ export default function Auth() {
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  S'inscrire
+                  Sign Up
                 </Button>
               </form>
             </TabsContent>

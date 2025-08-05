@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import ApplyToPortfolioButton from "./ApplyToPortfolioButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -396,6 +397,13 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
                               {source.title}
                             </Button>
                           ))}
+                        </div>
+                        <div className="flex justify-end mt-3">
+                          <ApplyToPortfolioButton 
+                            analysisContent={analysis.sections.map(s => s.content).join('\n')}
+                            analysisType="macro"
+                            className="text-xs"
+                          />
                         </div>
                       </div>
                     </CardContent>
