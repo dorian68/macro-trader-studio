@@ -7,6 +7,7 @@ import TradingDashboard from "./pages/TradingDashboard";
 import AISetup from "./pages/AISetup";
 import MacroAnalysis from "./pages/MacroAnalysis";
 import Reports from "./pages/Reports";
+import AssetDetail from "./pages/AssetDetail";
 import ProductPresentation from "./pages/ProductPresentation";
 import NotFound from "./pages/NotFound";
 
@@ -20,6 +21,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<TradingDashboard />} />
+          <Route path="/asset/:symbol" element={<AssetDetail />} />
           <Route path="/ai-setup" element={<AISetup />} />
           <Route path="/macro-analysis" element={<MacroAnalysis />} />
           <Route path="/reports" element={<Reports />} />

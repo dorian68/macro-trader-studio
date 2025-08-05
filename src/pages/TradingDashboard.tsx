@@ -10,6 +10,8 @@ import { CandlestickChart } from "@/components/CandlestickChart";
 import { BubbleSystem } from "@/components/BubbleSystem";
 import { Layout } from "@/components/Layout";
 import { HybridSearchBar } from "@/components/HybridSearchBar";
+import { AssetSearchBar } from "@/components/AssetSearchBar";
+import { AssetSummaryBanner } from "@/components/AssetSummaryBanner";
 import { getSymbolForAsset } from "@/lib/assetMapping";
 import AssetInfoCard from "@/components/AssetInfoCard";
 
@@ -62,6 +64,9 @@ export default function TradingDashboard() {
       confirmation: boolean;
     };
   } | null>(null);
+  
+  // Selected asset from search bar
+  const [selectedAssetProfile, setSelectedAssetProfile] = useState<any>(null);
 
   // WebSocket for real-time prices - Fixed synchronization
   useEffect(() => {
@@ -201,6 +206,25 @@ export default function TradingDashboard() {
           {/* Asset Information Card */}
           <AssetInfoCard symbol={selectedAsset} className="w-full" />
         </div>
+
+        {/* Asset Search Bar - Couche 1 */}
+        <div className="w-full">
+          <AssetSearchBar 
+            onAssetSelect={setSelectedAssetProfile}
+            selectedAsset={selectedAssetProfile}
+            placeholder="Rechercher un actif financier..."
+            className="w-full"
+          />
+        </div>
+
+        {/* Asset Summary Banner - Couche 2 */}
+        {selectedAssetProfile && (
+          <AssetSummaryBanner
+            asset={selectedAssetProfile}
+            onViewComplete={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
+            className="w-full"
+          />
+        )}
 
         {/* Hybrid Search + AI Interface */}
         <HybridSearchBar
