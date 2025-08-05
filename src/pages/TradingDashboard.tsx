@@ -11,6 +11,7 @@ import { BubbleSystem } from "@/components/BubbleSystem";
 import { Layout } from "@/components/Layout";
 import { HybridSearchBar } from "@/components/HybridSearchBar";
 import { getSymbolForAsset } from "@/lib/assetMapping";
+import AssetInfoCard from "@/components/AssetInfoCard";
 
 // Popular assets with their categories
 const assetCategories = {
@@ -196,6 +197,9 @@ export default function TradingDashboard() {
               </CardContent>
             </Card>
           )}
+
+          {/* Asset Information Card */}
+          <AssetInfoCard symbol={selectedAsset} className="w-full" />
         </div>
 
         {/* Hybrid Search + AI Interface */}

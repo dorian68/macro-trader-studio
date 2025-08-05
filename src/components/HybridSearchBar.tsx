@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import AssetInfoCard from "@/components/AssetInfoCard";
 
 interface Asset {
   symbol: string;
@@ -43,6 +44,7 @@ export function HybridSearchBar({
   const [showAIResults, setShowAIResults] = useState(false);
   const [replyInputs, setReplyInputs] = useState<{[key: string]: string}>({});
   const [replyLoading, setReplyLoading] = useState<{[key: string]: boolean}>({});
+  const [selectedAssetForPreview, setSelectedAssetForPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -285,17 +287,26 @@ export function HybridSearchBar({
                   <Search className="h-3 w-3" />
                   Instruments
                 </div>
-                {filteredAssets.slice(0, 6).map((asset) => (
-                  <button
-                    key={asset.symbol}
-                    onClick={() => handleAssetSelect(asset)}
-                    className="w-full px-3 py-2 text-left hover:bg-primary/10 transition-smooth flex items-center gap-2 rounded-md"
-                  >
-                    <span className="text-sm">{asset.icon}</span>
-                    <span className="text-sm font-medium text-foreground">{asset.symbol}</span>
-                    <span className="text-xs text-muted-foreground truncate">{asset.name}</span>
-                  </button>
-                ))}
+                <div className="space-y-2">
+                  {filteredAssets.slice(0, 3).map((asset) => (
+                    <div key={asset.symbol} className="space-y-2">
+                      <button
+                        onClick={() => handleAssetSelect(asset)}
+                        onMouseEnter={() => setSelectedAssetForPreview(asset.symbol)}
+                        className="w-full px-3 py-2 text-left hover:bg-primary/10 transition-smooth flex items-center gap-2 rounded-md border border-border/20"
+                      >
+                        <span className="text-sm">{asset.icon}</span>
+                        <span className="text-sm font-medium text-foreground">{asset.symbol}</span>
+                        <span className="text-xs text-muted-foreground truncate">{asset.name}</span>
+                      </button>
+                      {selectedAssetForPreview === asset.symbol && (
+                        <div className="ml-2 mr-2">
+                          <AssetInfoCard symbol={asset.symbol} className="text-xs scale-95" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
