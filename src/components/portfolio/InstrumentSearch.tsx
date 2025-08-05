@@ -73,7 +73,7 @@ export default function InstrumentSearch({ onSelect }: InstrumentSearchProps) {
       </div>
 
       {showResults && (
-        <Card className="absolute top-full left-0 right-0 z-50 mt-1 max-h-80 overflow-y-auto">
+        <Card className="absolute top-full left-0 right-0 z-[9999] mt-1 max-h-80 overflow-y-auto bg-background border shadow-lg">
           <CardContent className="p-0">
             {loading ? (
               <div className="p-4 text-center text-muted-foreground">
