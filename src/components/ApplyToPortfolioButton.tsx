@@ -226,7 +226,7 @@ export default function ApplyToPortfolioButton({
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl bg-background border shadow-lg z-[9999]">
+        <DialogContent className="max-w-2xl z-[1001] bg-background border-2 shadow-2xl">
           <DialogHeader>
             <DialogTitle>Analyze with Portfolio</DialogTitle>
             <DialogDescription>
@@ -265,7 +265,7 @@ export default function ApplyToPortfolioButton({
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a portfolio" />
                       </SelectTrigger>
-                      <SelectContent className="z-[9999] bg-background border shadow-lg">
+                      <SelectContent className="z-[1003] bg-background border shadow-lg">
                         {portfolios.map((portfolio) => (
                           <SelectItem key={portfolio.id} value={portfolio.id}>
                             <div className="flex flex-col">

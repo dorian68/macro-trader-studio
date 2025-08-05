@@ -120,7 +120,7 @@ export default function AddPositionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-background border shadow-lg z-[9999]">
+      <DialogContent className="sm:max-w-md z-[1001] bg-background border-2 shadow-2xl">
         <DialogHeader>
           <DialogTitle>Add Position</DialogTitle>
           <DialogDescription>
