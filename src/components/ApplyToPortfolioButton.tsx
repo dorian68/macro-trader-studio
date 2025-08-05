@@ -5,7 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TrendingUp, Plus } from 'lucide-react';
 
 interface Portfolio {
   id: string;
@@ -13,6 +15,15 @@ interface Portfolio {
   description: string;
   total_value: number;
   created_at: string;
+}
+
+interface Position {
+  id: string;
+  symbol: string;
+  quantity: number;
+  average_price: number;
+  current_price: number;
+  market_value: number;
 }
 
 interface ApplyToPortfolioButtonProps {
@@ -29,9 +40,14 @@ export default function ApplyToPortfolioButton({
   className 
 }: ApplyToPortfolioButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newPortfolioName, setNewPortfolioName] = useState('');
+  const [newPortfolioDescription, setNewPortfolioDescription] = useState('');
+  const [portfolioPositions, setPortfolioPositions] = useState<Position[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -60,6 +76,69 @@ export default function ApplyToPortfolioButton({
     }
   };
 
+  const fetchPortfolioPositions = async (portfolioId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('positions')
+        .select('*')
+        .eq('portfolio_id', portfolioId);
+
+      if (error) throw error;
+      setPortfolioPositions(data || []);
+    } catch (error) {
+      console.error('Error fetching portfolio positions:', error);
+      setPortfolioPositions([]);
+    }
+  };
+
+  const createPortfolio = async () => {
+    if (!newPortfolioName.trim()) {
+      toast({
+        title: "Nom requis",
+        description: "Veuillez entrer un nom pour le portefeuille",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('portfolios')
+        .insert([
+          {
+            name: newPortfolioName,
+            description: newPortfolioDescription,
+            user_id: user?.id,
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPortfolios([data, ...portfolios]);
+      setSelectedPortfolio(data.id);
+      setShowCreateForm(false);
+      setNewPortfolioName('');
+      setNewPortfolioDescription('');
+      
+      toast({
+        title: "Succès",
+        description: "Portefeuille créé avec succès",
+      });
+    } catch (error) {
+      console.error('Error creating portfolio:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le portefeuille",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleClick = () => {
     if (!user) {
       toast({
@@ -73,59 +152,69 @@ export default function ApplyToPortfolioButton({
     setDialogOpen(true);
   };
 
-  const handleApply = async () => {
+  const handlePortfolioSelect = (portfolioId: string) => {
+    setSelectedPortfolio(portfolioId);
+    fetchPortfolioPositions(portfolioId);
+  };
+
+  const runAnalysis = async () => {
     if (!selectedPortfolio) {
       toast({
         title: "Sélectionner un portefeuille",
-        description: "Veuillez sélectionner un portefeuille pour ajouter cette recommandation",
+        description: "Veuillez sélectionner un portefeuille pour l'analyse",
         variant: "destructive",
       });
       return;
     }
 
-    setLoading(true);
+    setAnalysisLoading(true);
     try {
-      // Determine recommendation type based on analysis content
-      let recommendationType = 'HOLD';
-      const analysisLower = analysisContent.toLowerCase();
+      const selectedPortfolioData = portfolios.find(p => p.id === selectedPortfolio);
       
-      if (analysisLower.includes('buy') || analysisLower.includes('achat') || analysisLower.includes('acheter')) {
-        recommendationType = 'BUY';
-      } else if (analysisLower.includes('sell') || analysisLower.includes('vente') || analysisLower.includes('vendre')) {
-        recommendationType = 'SELL';
-      }
+      const analysisData = {
+        type: "run_analysis",
+        analysis: {
+          content: analysisContent,
+          type: analysisType,
+          asset_symbol: assetSymbol,
+          timestamp: new Date().toISOString()
+        },
+        portfolio: {
+          id: selectedPortfolio,
+          name: selectedPortfolioData?.name,
+          description: selectedPortfolioData?.description,
+          total_value: selectedPortfolioData?.total_value,
+          positions: portfolioPositions
+        }
+      };
 
-      const { error } = await supabase
-        .from('ai_recommendations')
-        .insert([
-          {
-            portfolio_id: selectedPortfolio,
-            symbol: assetSymbol || 'GENERAL',
-            recommendation_type: recommendationType,
-            confidence_score: 0.8,
-            reasoning: `Analyse ${analysisType}: ${analysisContent.substring(0, 500)}${analysisContent.length > 500 ? '...' : ''}`,
-            is_applied: false,
-          }
-        ]);
+      const response = await fetch('https://hook.eu2.make.com/abcdef123456', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(analysisData),
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to run analysis');
 
       toast({
         title: "Succès",
-        description: `Recommandation ajoutée à votre portefeuille`,
+        description: "Analyse lancée avec succès",
       });
       
       setDialogOpen(false);
       setSelectedPortfolio('');
+      setPortfolioPositions([]);
     } catch (error) {
-      console.error('Error adding recommendation:', error);
+      console.error('Error running analysis:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter la recommandation au portefeuille",
+        description: "Impossible de lancer l'analyse",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setAnalysisLoading(false);
     }
   };
 
@@ -137,51 +226,119 @@ export default function ApplyToPortfolioButton({
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Ajouter au Portefeuille</DialogTitle>
+            <DialogTitle>Analyser avec le Portefeuille</DialogTitle>
             <DialogDescription>
-              Ajouter cette analyse {analysisType} à l'un de vos portefeuilles
-              {assetSymbol && ` pour ${assetSymbol}`}
+              Sélectionnez un portefeuille pour analyser cette {analysisType}
+              {assetSymbol && ` sur ${assetSymbol}`}
             </DialogDescription>
           </DialogHeader>
           
-          {portfolios.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground mb-4">
-                Vous n'avez encore aucun portefeuille. Créez-en un d'abord pour ajouter des recommandations.
-              </p>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Aller aux Portefeuilles
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Sélectionner un Portefeuille</label>
-                <Select value={selectedPortfolio} onValueChange={setSelectedPortfolio}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un portefeuille" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {portfolios.map((portfolio) => (
-                      <SelectItem key={portfolio.id} value={portfolio.id}>
-                        {portfolio.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="space-y-4">
+            {portfolios.length === 0 && !showCreateForm ? (
+              <div className="text-center py-4">
+                <p className="text-muted-foreground mb-4">
+                  Vous n'avez encore aucun portefeuille. Créez-en un pour commencer l'analyse.
+                </p>
+                <Button onClick={() => setShowCreateForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer un Portefeuille
+                </Button>
               </div>
-            </div>
-          )}
+            ) : (
+              <>
+                {!showCreateForm && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Sélectionner un Portefeuille</Label>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowCreateForm(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nouveau
+                      </Button>
+                    </div>
+                    <Select value={selectedPortfolio} onValueChange={handlePortfolioSelect}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choisir un portefeuille" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {portfolios.map((portfolio) => (
+                          <SelectItem key={portfolio.id} value={portfolio.id}>
+                            <div className="flex flex-col">
+                              <span>{portfolio.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                Valeur: {portfolio.total_value?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) || '0 €'}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {showCreateForm && (
+                  <div className="space-y-4 border rounded-lg p-4">
+                    <h4 className="font-medium">Créer un Nouveau Portefeuille</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="portfolio-name">Nom du Portefeuille</Label>
+                        <Input
+                          id="portfolio-name"
+                          value={newPortfolioName}
+                          onChange={(e) => setNewPortfolioName(e.target.value)}
+                          placeholder="Ex: Mon Portefeuille Principal"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="portfolio-description">Description (optionnel)</Label>
+                        <Input
+                          id="portfolio-description"
+                          value={newPortfolioDescription}
+                          onChange={(e) => setNewPortfolioDescription(e.target.value)}
+                          placeholder="Ex: Portefeuille de croissance long terme"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={createPortfolio} disabled={loading}>
+                          {loading ? "Création..." : "Créer"}
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+                          Annuler
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedPortfolio && portfolioPositions.length > 0 && (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Composition du Portefeuille</h4>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {portfolioPositions.map((position) => (
+                        <div key={position.id} className="flex justify-between text-sm">
+                          <span>{position.symbol}</span>
+                          <span>{position.quantity} @ {position.average_price.toFixed(2)}€</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Annuler
             </Button>
-            {portfolios.length > 0 && (
-              <Button onClick={handleApply} disabled={loading || !selectedPortfolio}>
-                {loading ? "Ajout..." : "Ajouter Recommandation"}
+            {selectedPortfolio && (
+              <Button onClick={runAnalysis} disabled={analysisLoading}>
+                {analysisLoading ? "Analyse en cours..." : "Lancer l'Analyse"}
               </Button>
             )}
           </DialogFooter>
