@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import ApplyToPortfolioButton from "./ApplyToPortfolioButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +78,16 @@ export function ReportsBubble({ instrument, timeframe, onClose }: ReportsBubbleP
     customNotes: "",
     exportFormat: "pdf"
   });
+
+  // Update report title when asset is selected
+  useEffect(() => {
+    if (selectedAsset) {
+      setReportConfig(prev => ({
+        ...prev,
+        title: `${selectedAsset.symbol} Report - ${new Date().toLocaleDateString()}`
+      }));
+    }
+  }, [selectedAsset]);
 
   const [availableSections, setAvailableSections] = useState<ReportSection[]>([
     { id: "overview", title: "Market Overview", description: "General analysis and context", included: true, order: 1 },

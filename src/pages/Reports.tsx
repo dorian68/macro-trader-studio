@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,16 @@ export default function Reports() {
     customNotes: "",
     exportFormat: "pdf"
   });
+
+  // Update report title when asset is selected
+  useEffect(() => {
+    if (selectedAsset) {
+      setReportConfig(prev => ({
+        ...prev,
+        title: `${selectedAsset.symbol} Report - ${new Date().toLocaleDateString()}`
+      }));
+    }
+  }, [selectedAsset]);
 
   const [availableSections, setAvailableSections] = useState<ReportSection[]>([
     {
