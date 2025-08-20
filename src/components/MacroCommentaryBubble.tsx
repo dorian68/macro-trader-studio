@@ -333,29 +333,31 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* TradingView Widget */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Technical Analysis - {selectedAsset.display}
-            </h4>
-            <div className="bg-muted/30 rounded-lg p-4 min-h-[200px] flex items-center justify-center">
-              {tradingViewError ? (
-                <Alert className="max-w-sm mx-auto">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    Embedding blocked – open in TradingView instead.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="text-center text-muted-foreground text-xs">
-                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p>TradingView Widget would load here</p>
-                  <p className="mt-1 opacity-60">Use "Open in TradingView" button above</p>
-                </div>
-              )}
+          {/* TradingView Widget - Only show when analyses exist */}
+          {analyses.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Technical Analysis - {selectedAsset.display}
+              </h4>
+              <div className="bg-muted/30 rounded-lg p-4 min-h-[200px] flex items-center justify-center">
+                {tradingViewError ? (
+                  <Alert className="max-w-sm mx-auto">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      Embedding blocked – open in TradingView instead.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="text-center text-muted-foreground text-xs">
+                    <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p>TradingView Widget would load here</p>
+                    <p className="mt-1 opacity-60">Use "Open in TradingView" button above</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Query Interface */}
           <div className="space-y-3">
