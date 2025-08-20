@@ -4,21 +4,36 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Brain, Globe, TrendingUp, Calendar, Copy, ExternalLink } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  ArrowLeft, 
+  Brain, 
+  Globe, 
+  TrendingUp, 
+  Calendar, 
+  Copy, 
+  ExternalLink,
+  Loader2,
+  BarChart3,
+  Activity,
+  AlertTriangle,
+  ChevronDown
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { safePostRequest } from "@/lib/safe-request";
 
 interface AnalysisSection {
   title: string;
   content: string;
-  type: "overview" | "technical" | "fundamental" | "sentiment";
+  type: "overview" | "technical" | "fundamental" | "outlook";
   expanded: boolean;
 }
 
 interface MacroAnalysis {
-  id: string;
   query: string;
   timestamp: Date;
   sections: AnalysisSection[];
@@ -29,105 +44,211 @@ interface MacroAnalysis {
   }>;
 }
 
+interface TradingLevels {
+  supports: string[];
+  resistances: string[];
+  indicators: { [key: string]: string };
+  invalidation?: string;
+}
+
+interface AssetInfo {
+  symbol: string;
+  display: string;
+  market: "FX" | "CRYPTO";
+  tradingViewSymbol: string;
+}
+
 export default function MacroAnalysis() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [selectedAsset, setSelectedAsset] = useState<AssetInfo>({
+    symbol: "EURUSD",
+    display: "EUR/USD",
+    market: "FX",
+    tradingViewSymbol: "EURUSD"
+  });
+  const [tradingViewError, setTradingViewError] = useState(false);
   
+  // Available assets (same as MacroCommentaryBubble)
+  const assets: AssetInfo[] = [
+    { symbol: "EURUSD", display: "EUR/USD", market: "FX", tradingViewSymbol: "EURUSD" },
+    { symbol: "GBPUSD", display: "GBP/USD", market: "FX", tradingViewSymbol: "GBPUSD" },
+    { symbol: "XAUUSD", display: "XAU/USD", market: "FX", tradingViewSymbol: "XAUUSD" },
+    { symbol: "BTCUSD", display: "BTC/USD", market: "CRYPTO", tradingViewSymbol: "BTCUSD" }
+  ];
+  
+  // Harmonized parameters with MacroCommentaryBubble
   const [queryParams, setQueryParams] = useState({
     query: "",
-    assetType: "forex",
-    depth: "detailed",
-    period: "current"
+    assetType: "currency",
+    analysisDepth: "detailed",
+    period: "weekly"
   });
 
+  // Parse trading levels from text (same as MacroCommentaryBubble)
+  const parseLevels = (text: string): TradingLevels => {
+    const levels: TradingLevels = {
+      supports: [],
+      resistances: [],
+      indicators: {}
+    };
+
+    // Extract supports (S1, S2, Support, etc.)
+    const supportRegex = /(?:S\d+[:\s=]+|Support[s]?[:\s=]+)([0-9.,]+)/gi;
+    let match;
+    while ((match = supportRegex.exec(text)) !== null) {
+      levels.supports.push(match[1]);
+    }
+
+    // Extract resistances (R1, R2, Resistance, etc.)
+    const resistanceRegex = /(?:R\d+[:\s=]+|Resistance[s]?[:\s=]+)([0-9.,]+)/gi;
+    while ((match = resistanceRegex.exec(text)) !== null) {
+      levels.resistances.push(match[1]);
+    }
+
+    // Extract indicators (RSI, ATR, ADX, etc.)
+    const indicatorRegex = /(?:RSI|ATR|ADX|MACD|Stochastic)(?:\(\d+\))?[:\s=]+([0-9.,]+)/gi;
+    while ((match = indicatorRegex.exec(text)) !== null) {
+      const indicator = match[0].split(/[:\s=]/)[0].trim();
+      levels.indicators[indicator] = match[1];
+    }
+
+    // Extract invalidation
+    const invalidationRegex = /Invalidation[:\s]+(.*?)(?:\n|$)/i;
+    const invalidationMatch = text.match(invalidationRegex);
+    if (invalidationMatch) {
+      levels.invalidation = invalidationMatch[1].trim();
+    }
+
+    return levels;
+  };
+
+  // TradingView URL generator (same as MacroCommentaryBubble)
+  const getTradingViewUrl = (asset: AssetInfo) => {
+    const exchange = asset.market === "FX" ? "FX" : "BINANCE";
+    return `https://www.tradingview.com/symbols/${asset.tradingViewSymbol}/technicals/?exchange=${exchange}`;
+  };
+
+  // Use same n8n webhook as MacroCommentaryBubble
   const generateAnalysis = async () => {
     if (!queryParams.query.trim()) return;
     
     setIsGenerating(true);
     
-    // Simulate AI analysis generation
-    setTimeout(() => {
-      const newAnalysis: MacroAnalysis = {
-        id: Date.now().toString(),
+    try {
+      // Call n8n webhook (same as MacroCommentaryBubble)
+      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        type: "macro",
+        question: queryParams.query,
+        instrument: selectedAsset.symbol,
+        timeframe: "1H"
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const rawData = await response.json();
+      
+      const mockAnalysis: MacroAnalysis = {
         query: queryParams.query,
         timestamp: new Date(),
         sections: [
           {
             title: "Market Overview",
-            content: `Current macro analysis reveals important trends in the context of "${queryParams.query}". Economic indicators show convergence toward a new stabilization phase with emerging opportunities in ${queryParams.assetType} assets.`,
+            content: typeof rawData.content?.content === 'string' ? rawData.content.content
+                   : typeof rawData.content === 'string' ? rawData.content
+                   : typeof rawData.content === 'object' ? JSON.stringify(rawData.content, null, 2)
+                   : `Current macro analysis for ${selectedAsset.display} reveals a complex environment with mixed signals. Central banks maintain a cautious stance amid persistent inflationary pressures. Recent economic indicators suggest moderate growth slowdown in major developed economies.`,
             type: "overview",
             expanded: true
           },
           {
             title: "Technical Analysis",
-            content: "Support and resistance levels indicate ongoing consolidation. Moving averages are converging toward a critical decision point that could determine medium-term direction.",
+            content: `On the technical front, ${selectedAsset.display} is trading within a consolidation zone with well-defined support and resistance levels. Momentum indicators show short-term bearish divergence, while the underlying trend remains intact. RSI is in neutral territory, allowing for movement in both directions.`,
             type: "technical",
             expanded: false
           },
           {
             title: "Fundamental Factors",
-            content: "Recent macroeconomic data suggests an environment favorable for defensive investments. Inflation remains contained while monetary policy maintains an accommodative tone.",
+            content: `Key fundamental factors include:\n• Monetary policy: Expectation of maintaining current rates\n• Inflation: Stabilization around central targets\n• Growth: Moderate but controlled slowdown\n• Geopolitics: Persistent tensions creating volatility\n• Market sentiment: Investor caution`,
             type: "fundamental",
             expanded: false
           },
           {
-            title: "Market Sentiment",
-            content: "Overall investor sentiment shows cautious optimism. Institutional capital flows remain positive despite increased volatility in certain segments.",
-            type: "sentiment",
+            title: "Outlook and Recommendations",
+            content: `For the upcoming period, we anticipate moderate volatility with opportunities on directional moves. Recommendations:\n• Monitor central bank announcements\n• Watch employment and inflation data\n• Track market sentiment indicators\n• Opportunities on technical retracements`,
+            type: "outlook",
             expanded: false
           }
         ],
         sources: [
-          { title: "Federal Reserve Economic Data", url: "https://fred.stlouisfed.org", type: "data" },
-          { title: "Bank for International Settlements", url: "https://bis.org", type: "research" },
-          { title: "Financial Times Markets", url: "https://ft.com", type: "news" }
+          { title: "Fed Meeting Minutes", url: "#", type: "research" },
+          { title: "ECB Economic Bulletin", url: "#", type: "research" },
+          { title: "US Employment Data", url: "#", type: "data" },
+          { title: "Reuters Market Analysis", url: "#", type: "news" }
         ]
       };
       
-      setAnalyses(prev => [newAnalysis, ...prev]);
-      setQueryParams({ ...queryParams, query: "" });
-      setIsGenerating(false);
+      setAnalyses(prev => [mockAnalysis, ...prev]);
+      setQueryParams(prev => ({ ...prev, query: "" }));
       
       toast({
         title: "Analysis Generated",
-        description: "Your macro analysis has been successfully generated.",
+        description: "New macro analysis available"
       });
-    }, 3000);
+    } catch (error) {
+      console.error('Webhook error:', error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to generate analysis. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const toggleSection = (analysisId: string, sectionTitle: string) => {
-    const key = `${analysisId}-${sectionTitle}`;
+  const toggleSection = (analysisIndex: number, sectionIndex: number) => {
+    const sectionId = `${analysisIndex}-${sectionIndex}`;
     setExpandedSections(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
       } else {
-        newSet.add(key);
+        newSet.add(sectionId);
       }
       return newSet;
     });
   };
 
   const copyAnalysis = (analysis: MacroAnalysis) => {
-    const text = analysis.sections.map(section => 
-      `${section.title}\n${section.content}\n`
-    ).join('\n');
-    
-    navigator.clipboard.writeText(text);
+    const content = `Macro Analysis - ${analysis.query}\n\n${analysis.sections.map(s => `${s.title}:\n${s.content}`).join('\n\n')}`;
+    navigator.clipboard.writeText(content);
     toast({
       title: "Copied",
-      description: "The analysis has been copied to clipboard.",
+      description: "Analysis copied to clipboard"
     });
   };
 
+  // Extended quick queries for full page experience
   const quickQueries = [
+    "EUR/USD macro analysis for this week",
+    "NFP data impact on USD",  
+    "Bitcoin macro conditions outlook",
+    "Global risk sentiment analysis",
     "Impact of inflation on major currencies",
-    "Analysis of ECB vs Fed monetary policies",
+    "Analysis of ECB vs Fed monetary policies", 
+    "Gold price drivers and outlook",
     "Crypto trends vs traditional markets",
-    "Opportunities in commodities"
+    "Opportunities in commodities",
+    "Central bank policy divergence effects",
+    "Dollar strength analysis",
+    "European economic outlook"
   ];
 
   return (
@@ -149,6 +270,77 @@ export default function MacroAnalysis() {
           </div>
         </div>
 
+        {/* Asset Selection and TradingView */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="gradient-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Market Focus
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Selected Asset</label>
+                <Select 
+                  value={selectedAsset.symbol} 
+                  onValueChange={(value) => {
+                    const asset = assets.find(a => a.symbol === value);
+                    if (asset) setSelectedAsset(asset);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assets.map((asset) => (
+                      <SelectItem key={asset.symbol} value={asset.symbol}>
+                        {asset.display}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={() => window.open(getTradingViewUrl(selectedAsset), '_blank')}
+                className="w-full"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Open {selectedAsset.display} in TradingView
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="gradient-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Technical Analysis - {selectedAsset.display}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-muted/30 rounded-lg p-6 min-h-[200px] flex items-center justify-center">
+                {tradingViewError ? (
+                  <Alert className="max-w-sm mx-auto">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Embedding blocked – open in TradingView instead.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="text-center text-muted-foreground">
+                    <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">TradingView Widget would load here</p>
+                    <p className="text-xs mt-1 opacity-60">Use "Open in TradingView" button</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Query Interface */}
         <Card className="gradient-card">
           <CardHeader>
@@ -157,75 +349,83 @@ export default function MacroAnalysis() {
               Analysis Generator
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <Textarea
                 value={queryParams.query}
-                onChange={(e) => setQueryParams({ ...queryParams, query: e.target.value })}
+                onChange={(e) => setQueryParams(prev => ({ ...prev, query: e.target.value }))}
                 placeholder="Ask your macro question or describe the context to analyze..."
-                rows={3}
+                rows={4}
+                className="text-base"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Asset Type</label>
-                <Select value={queryParams.assetType} onValueChange={(value) => setQueryParams({ ...queryParams, assetType: value })}>
+                <Select value={queryParams.assetType} onValueChange={(value) => 
+                  setQueryParams(prev => ({ ...prev, assetType: value }))
+                }>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="forex">Currencies (Forex)</SelectItem>
-                    <SelectItem value="crypto">Cryptocurrencies</SelectItem>
-                    <SelectItem value="commodities">Commodities</SelectItem>
-                    <SelectItem value="equities">Stocks</SelectItem>
-                    <SelectItem value="bonds">Bonds</SelectItem>
+                    <SelectItem value="currency">Currency</SelectItem>
+                    <SelectItem value="commodity">Commodity</SelectItem>
+                    <SelectItem value="crypto">Crypto</SelectItem>
+                    <SelectItem value="equity">Equity</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Analysis Depth</label>
-                <Select value={queryParams.depth} onValueChange={(value) => setQueryParams({ ...queryParams, depth: value })}>
+                <Select value={queryParams.analysisDepth} onValueChange={(value) => 
+                  setQueryParams(prev => ({ ...prev, analysisDepth: value }))
+                }>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="quick">Quick</SelectItem>
+                    <SelectItem value="summary">Summary</SelectItem>
                     <SelectItem value="detailed">Detailed</SelectItem>
-                    <SelectItem value="comprehensive">Comprehensive</SelectItem>
+                    <SelectItem value="expert">Expert</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Period</label>
-                <Select value={queryParams.period} onValueChange={(value) => setQueryParams({ ...queryParams, period: value })}>
+                <Select value={queryParams.period} onValueChange={(value) => 
+                  setQueryParams(prev => ({ ...prev, period: value }))
+                }>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="current">Current</SelectItem>
-                    <SelectItem value="week">This Week</SelectItem>
-                    <SelectItem value="month">This Month</SelectItem>
-                    <SelectItem value="quarter">This Quarter</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {quickQueries.map((query, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setQueryParams({ ...queryParams, query })}
-                  className="text-xs"
-                >
-                  {query}
-                </Button>
-              ))}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Quick Analysis Ideas</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {quickQueries.map((query, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQueryParams(prev => ({ ...prev, query }))}
+                    className="text-xs h-auto py-2 px-3 text-left justify-start whitespace-normal"
+                  >
+                    {query}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             <Button 
@@ -236,8 +436,8 @@ export default function MacroAnalysis() {
             >
               {isGenerating ? (
                 <>
-                  <Brain className="mr-2 h-4 w-4 animate-pulse" />
-                  Analysis in progress...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Analysis...
                 </>
               ) : (
                 <>
@@ -250,93 +450,176 @@ export default function MacroAnalysis() {
         </Card>
 
         {/* Analyses Results */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {analyses.length === 0 ? (
             <Card className="gradient-card">
-              <CardContent className="p-8 text-center">
-                <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No analysis available</h3>
-                <p className="text-muted-foreground">Ask a question to start generating macro analyses.</p>
+              <CardContent className="p-12 text-center">
+                <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
+                <h3 className="text-xl font-semibold text-foreground mb-3">No analysis available yet</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Ask a macro question or select from our quick analysis ideas to get started. 
+                  Your AI-powered analysis will appear here with actionable insights.
+                </p>
               </CardContent>
             </Card>
           ) : (
-            analyses.map((analysis) => (
-              <Card key={analysis.id} className="gradient-card">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{analysis.query}</CardTitle>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {analysis.timestamp.toLocaleDateString()} at {analysis.timestamp.toLocaleTimeString()}
-                        </span>
+            analyses.map((analysis, analysisIndex) => {
+              const parsedLevels = parseLevels(analysis.sections.map(s => s.content).join('\n'));
+              const hasLevels = parsedLevels.supports.length > 0 || parsedLevels.resistances.length > 0 || Object.keys(parsedLevels.indicators).length > 0;
+              
+              return (
+                <Card key={analysisIndex} className="gradient-card">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl">{analysis.query}</CardTitle>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            {analysis.timestamp.toLocaleDateString()} at {analysis.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyAnalysis(analysis)}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </Button>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyAnalysis(analysis)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {analysis.sections.map((section, sectionIndex) => {
-                    const sectionKey = `${analysis.id}-${section.title}`;
-                    const isExpanded = expandedSections.has(sectionKey) || section.expanded;
-                    
-                    return (
-                      <div key={sectionIndex} className="border border-border/50 rounded-lg overflow-hidden">
-                        <button
-                          onClick={() => toggleSection(analysis.id, section.title)}
-                          className="w-full p-4 text-left hover:bg-muted/50 transition-colors flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="capitalize">
-                              {section.type}
-                            </Badge>
-                            <h4 className="font-medium">{section.title}</h4>
-                          </div>
-                          <TrendingUp className={cn(
-                            "h-4 w-4 transition-transform",
-                            isExpanded ? "rotate-90" : ""
-                          )} />
-                        </button>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Actionable Levels & Signals (if detected) */}
+                    {hasLevels && (
+                      <div className="space-y-4">
+                        <h4 className="text-lg font-semibold flex items-center gap-2">
+                          <Activity className="h-5 w-5" />
+                          Actionable Levels & Signals
+                        </h4>
                         
-                        {isExpanded && (
-                          <div className="p-4 pt-0 border-t border-border/30">
-                            <p className="text-sm leading-relaxed text-muted-foreground">
-                              {section.content}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {/* Supports/Resistances */}
+                          {(parsedLevels.supports.length > 0 || parsedLevels.resistances.length > 0) && (
+                            <Card className="border-blue-500/20">
+                              <CardHeader className="pb-2">
+                                <h5 className="text-sm font-medium">Support & Resistance</h5>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                {parsedLevels.supports.length > 0 && (
+                                  <div>
+                                    <Badge variant="outline" className="text-xs mb-1">Supports</Badge>
+                                    {parsedLevels.supports.map((level, idx) => (
+                                      <div key={idx} className="text-sm text-green-600 font-mono">{level}</div>
+                                    ))}
+                                  </div>
+                                )}
+                                {parsedLevels.resistances.length > 0 && (
+                                  <div>
+                                    <Badge variant="outline" className="text-xs mb-1">Resistances</Badge>
+                                    {parsedLevels.resistances.map((level, idx) => (
+                                      <div key={idx} className="text-sm text-red-600 font-mono">{level}</div>
+                                    ))}
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
 
-                  {/* Sources */}
-                  <div className="pt-4 border-t border-border/30">
-                    <h5 className="font-medium mb-3 text-sm">Sources</h5>
-                    <div className="flex flex-wrap gap-2">
-                      {analysis.sources.map((source, sourceIndex) => (
-                        <a
-                          key={sourceIndex}
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-muted/50 rounded-md hover:bg-muted transition-colors"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          {source.title}
-                        </a>
-                      ))}
+                          {/* Indicators */}
+                          {Object.keys(parsedLevels.indicators).length > 0 && (
+                            <Card className="border-blue-500/20">
+                              <CardHeader className="pb-2">
+                                <h5 className="text-sm font-medium">Indicators Overview</h5>
+                              </CardHeader>
+                              <CardContent className="space-y-1">
+                                {Object.entries(parsedLevels.indicators).map(([indicator, value]) => (
+                                  <div key={indicator} className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">{indicator}:</span>
+                                    <span className="font-mono">{value}</span>
+                                  </div>
+                                ))}
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Invalidation */}
+                          {parsedLevels.invalidation && (
+                            <Card className="border-orange-500/20">
+                              <CardHeader className="pb-2">
+                                <h5 className="text-sm font-medium">Invalidation</h5>
+                              </CardHeader>
+                              <CardContent>
+                                <Badge variant="outline" className="text-xs text-orange-600">
+                                  {parsedLevels.invalidation}
+                                </Badge>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Analysis Sections */}
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-semibold">Analysis Breakdown</h4>
+                      {analysis.sections.map((section, sectionIndex) => {
+                        const sectionId = `${analysisIndex}-${sectionIndex}`;
+                        const isExpanded = expandedSections.has(sectionId) || section.expanded;
+                        
+                        return (
+                          <div key={sectionIndex} className="border border-border/50 rounded-lg overflow-hidden">
+                            <button
+                              onClick={() => toggleSection(analysisIndex, sectionIndex)}
+                              className="w-full p-4 text-left hover:bg-muted/50 transition-colors flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline" className="capitalize">
+                                  {section.type}
+                                </Badge>
+                                <h5 className="font-medium">{section.title}</h5>
+                              </div>
+                              <ChevronDown className={cn(
+                                "h-4 w-4 transition-transform",
+                                isExpanded ? "rotate-180" : ""
+                              )} />
+                            </button>
+                            
+                            {isExpanded && (
+                              <div className="p-4 pt-0 border-t border-border/30">
+                                <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                                  {section.content}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+
+                    {/* Sources */}
+                    <div className="pt-4 border-t border-border/30">
+                      <h5 className="font-medium mb-3">Sources & References</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {analysis.sources.map((source, sourceIndex) => (
+                          <a
+                            key={sourceIndex}
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm px-3 py-2 bg-muted/50 rounded-md hover:bg-muted transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            {source.title}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       </div>
