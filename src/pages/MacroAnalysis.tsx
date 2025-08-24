@@ -145,7 +145,7 @@ export default function MacroAnalysis() {
         question: queryParams.query,
         instrument: selectedAsset.symbol,
         timeframe: "1H",
-        mode: "custom-analysis",
+        mode: "custom_analysis",
         // Additional fields from Macro Analysis form
         assetType: queryParams.assetType,
         analysisDepth: queryParams.analysisDepth,
