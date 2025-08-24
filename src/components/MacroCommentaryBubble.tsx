@@ -154,10 +154,21 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
     setIsGenerating(true);
     
     try {
-      // Call n8n webhook
+      // Call n8n webhook with RAG format
       const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
-        type: "macro",
+        type: "RAG",
         question: queryParams.query,
+        mode: "custom_analysis",
+        filters: {
+          region: "All",
+          product: "All",
+          category: "All"
+        },
+        analysis: {
+          query: queryParams.query,
+          timestamp: new Date().toISOString()
+        },
+        user_id: "default_user",
         instrument: instrument,
         timeframe: timeframe || "1H"
       });
