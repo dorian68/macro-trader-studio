@@ -154,24 +154,39 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
     setIsGenerating(true);
     
     try {
-      // Call n8n webhook with RAG format
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
-        type: "RAG",
-        question: queryParams.query,
-        mode: "custom_analysis",
-        filters: {
-          region: "All",
-          product: "All",
-          category: "All"
+      // Create a promise with timeout to wait longer for n8n response
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: n8n webhook response took too long')), 60000) // 60 seconds
+      );
+
+      const fetchPromise = fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        analysis: {
-          query: queryParams.query,
-          timestamp: new Date().toISOString()
-        },
-        user_id: "default_user",
-        instrument: instrument,
-        timeframe: timeframe || "1H"
+        body: JSON.stringify({
+          type: "RAG",
+          question: queryParams.query,
+          mode: "custom_analysis",
+          filters: {
+            region: "All",
+            product: "All",
+            category: "All"
+          },
+          analysis: {
+            query: queryParams.query,
+            timestamp: new Date().toISOString()
+          },
+          user_id: "default_user",
+          instrument: instrument,
+          timeframe: timeframe || "1H",
+          assetType: "currency",
+          analysisDepth: "detailed",
+          period: "weekly"
+        })
       });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -194,62 +209,40 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         }
       }
       
-      // Fallback content if parsing fails
       if (!analysisContent) {
-        analysisContent = `Current macro analysis for ${instrument} reveals a complex environment with mixed signals. Central banks maintain a cautious stance amid persistent inflationary pressures. Recent economic indicators suggest moderate growth slowdown in major developed economies.`;
+        throw new Error('Aucun contenu d\'analyse reçu de n8n');
       }
       
-      const mockAnalysis: MacroAnalysis = {
+      const realAnalysis: MacroAnalysis = {
         query: queryParams.query,
         timestamp: new Date(),
         sections: [
           {
-            title: "Market Overview",
+            title: "Analyse Complète",
             content: analysisContent,
             type: "overview",
             expanded: true
-          },
-          {
-            title: "Technical Analysis",
-            content: `On the technical front, ${instrument} is trading within a consolidation zone with well-defined support and resistance levels. Momentum indicators show short-term bearish divergence, while the underlying trend remains intact. RSI is in neutral territory, allowing for movement in both directions.`,
-            type: "technical",
-            expanded: false
-          },
-          {
-            title: "Fundamental Factors",
-            content: `Key fundamental factors include:\n• Monetary policy: Expectation of maintaining current rates\n• Inflation: Stabilization around central targets\n• Growth: Moderate but controlled slowdown\n• Geopolitics: Persistent tensions creating volatility\n• Market sentiment: Investor caution`,
-            type: "fundamental",
-            expanded: false
-          },
-          {
-            title: "Outlook and Recommendations",
-            content: `For the upcoming period, we anticipate moderate volatility with opportunities on directional moves. Recommendations:\n• Monitor central bank announcements\n• Watch employment and inflation data\n• Track market sentiment indicators\n• Opportunities on technical retracements`,
-            type: "outlook",
-            expanded: false
           }
         ],
         sources: [
-          { title: "Fed Meeting Minutes", url: "#", type: "research" },
-          { title: "ECB Economic Bulletin", url: "#", type: "research" },
-          { title: "US Employment Data", url: "#", type: "data" },
-          { title: "Reuters Market Analysis", url: "#", type: "news" }
+          { title: "n8n RAG Analysis", url: "#", type: "research" }
         ]
       };
       
-      setAnalyses(prev => [mockAnalysis, ...prev]);
+      setAnalyses(prev => [realAnalysis, ...prev]);
       setQueryParams(prev => ({ ...prev, query: "" }));
       
       toast({
         title: "Analysis Generated",
-        description: "New macro analysis available"
+        description: "Nouvelle analyse macro disponible"
       });
     } catch (error) {
       console.error('Webhook error:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       toast({
-        title: "Erreur connexion n8n",
-        description: `${errorMessage}. Vérifiez que votre webhook n8n est accessible et activé.`,
+        title: "Erreur webhook n8n",
+        description: `${errorMessage}`,
         variant: "destructive"
       });
     } finally {
