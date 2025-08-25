@@ -94,7 +94,8 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
     query: "",
     assetType: "currency",
     analysisDepth: "detailed",
-    period: "weekly"
+    period: "weekly",
+    adresse: ""
   });
 
   const quickQueries = [
@@ -177,7 +178,8 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         timeframe: timeframe || "1H",
         assetType: "currency",
         analysisDepth: "detailed",
-        period: "weekly"
+        period: "weekly",
+        adresse: queryParams.adresse
       };
 
       const fetchPromise = safePostRequest(
@@ -382,6 +384,17 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
 
           {/* Query Interface */}
           <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="adresse">Adresse (dev temporaire)</Label>
+              <Input
+                id="adresse"
+                value={queryParams.adresse}
+                onChange={(e) => setQueryParams(prev => ({ ...prev, adresse: e.target.value }))}
+                placeholder="Adresse temporaire pour le développement"
+                className="text-xs"
+              />
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="query">Analysis Request</Label>
               <Textarea

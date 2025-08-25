@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -85,7 +86,8 @@ export default function MacroAnalysis() {
     query: "",
     assetType: "currency",
     analysisDepth: "detailed",
-    period: "weekly"
+    period: "weekly",
+    adresse: ""
   });
 
   // Parse trading levels from text (same as MacroCommentaryBubble)
@@ -159,7 +161,8 @@ export default function MacroAnalysis() {
         timeframe: "1H",
         assetType: queryParams.assetType,
         analysisDepth: queryParams.analysisDepth,
-        period: queryParams.period
+        period: queryParams.period,
+        adresse: queryParams.adresse
       });
 
       if (!response.ok) {
@@ -375,54 +378,66 @@ export default function MacroAnalysis() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Asset Type</label>
-                <Select value={queryParams.assetType} onValueChange={(value) => 
-                  setQueryParams(prev => ({ ...prev, assetType: value }))
-                }>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="currency">Currency</SelectItem>
-                    <SelectItem value="commodity">Commodity</SelectItem>
-                    <SelectItem value="crypto">Crypto</SelectItem>
-                    <SelectItem value="equity">Equity</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Adresse (dev temporaire)</label>
+                <Input
+                  value={queryParams.adresse}
+                  onChange={(e) => setQueryParams(prev => ({ ...prev, adresse: e.target.value }))}
+                  placeholder="Adresse temporaire pour le développement"
+                  className="text-sm"
+                />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Analysis Depth</label>
-                <Select value={queryParams.analysisDepth} onValueChange={(value) => 
-                  setQueryParams(prev => ({ ...prev, analysisDepth: value }))
-                }>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="summary">Summary</SelectItem>
-                    <SelectItem value="detailed">Detailed</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Asset Type</label>
+                  <Select value={queryParams.assetType} onValueChange={(value) => 
+                    setQueryParams(prev => ({ ...prev, assetType: value }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="currency">Currency</SelectItem>
+                      <SelectItem value="commodity">Commodity</SelectItem>
+                      <SelectItem value="crypto">Crypto</SelectItem>
+                      <SelectItem value="equity">Equity</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Period</label>
-                <Select value={queryParams.period} onValueChange={(value) => 
-                  setQueryParams(prev => ({ ...prev, period: value }))
-                }>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Analysis Depth</label>
+                  <Select value={queryParams.analysisDepth} onValueChange={(value) => 
+                    setQueryParams(prev => ({ ...prev, analysisDepth: value }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="summary">Summary</SelectItem>
+                      <SelectItem value="detailed">Detailed</SelectItem>
+                      <SelectItem value="expert">Expert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Period</label>
+                  <Select value={queryParams.period} onValueChange={(value) => 
+                    setQueryParams(prev => ({ ...prev, period: value }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
