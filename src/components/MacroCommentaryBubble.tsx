@@ -385,13 +385,14 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
           {/* Query Interface */}
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="adresse">Adresse (dev temporaire)</Label>
+              <Label htmlFor="address">Address (temporary for development)</Label>
               <Input
-                id="adresse"
+                id="address"
                 value={queryParams.adresse}
                 onChange={(e) => setQueryParams(prev => ({ ...prev, adresse: e.target.value }))}
-                placeholder="Adresse temporaire pour le développement"
+                placeholder="Enter temporary address for development"
                 className="text-xs"
+                required
               />
             </div>
             
@@ -465,7 +466,7 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
 
             <Button 
               onClick={generateAnalysis} 
-              disabled={isGenerating || !queryParams.query.trim()}
+              disabled={isGenerating || !queryParams.query.trim() || !queryParams.adresse.trim()}
               className="w-full"
             >
               {isGenerating ? (

@@ -380,12 +380,13 @@ export default function MacroAnalysis() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Adresse (dev temporaire)</label>
+                <label className="text-sm font-medium">Address (temporary for development)</label>
                 <Input
                   value={queryParams.adresse}
                   onChange={(e) => setQueryParams(prev => ({ ...prev, adresse: e.target.value }))}
-                  placeholder="Adresse temporaire pour le développement"
+                  placeholder="Enter temporary address for development"
                   className="text-sm"
+                  required
                 />
               </div>
 
@@ -460,7 +461,7 @@ export default function MacroAnalysis() {
 
             <Button 
               onClick={generateAnalysis} 
-              disabled={isGenerating || !queryParams.query.trim()}
+              disabled={isGenerating || !queryParams.query.trim() || !queryParams.adresse.trim()}
               className="w-full"
               size="lg"
             >
