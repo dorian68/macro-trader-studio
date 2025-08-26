@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,6 +65,8 @@ export default function MacroAnalysis() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<AssetInfo>({
     symbol: "EURUSD",
     display: "EUR/USD",
@@ -134,75 +136,127 @@ export default function MacroAnalysis() {
     return `https://www.tradingview.com/symbols/${asset.tradingViewSymbol}/technicals/?exchange=${exchange}`;
   };
 
-  // Use same n8n webhook as MacroCommentaryBubble
+  // Polling for job status
+  useEffect(() => {
+    if (!jobId || !isGenerating) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await safePostRequest('/api/strategist', {
+          mode: "status",
+          job_id: jobId
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setJobStatus(data.status);
+
+        if (data.status === "done") {
+          const realAnalysis: MacroAnalysis = {
+            query: queryParams.query,
+            timestamp: new Date(),
+            sections: [
+              {
+                title: "Strategist Report",
+                content: data.content || "",
+                type: "overview",
+                expanded: true
+              }
+            ],
+            sources: data.citations || []
+          };
+          
+          setAnalyses(prev => [realAnalysis, ...prev]);
+          setQueryParams(prev => ({ ...prev, query: "" }));
+          setIsGenerating(false);
+          setJobId(null);
+          setJobStatus(null);
+          localStorage.removeItem('strategist_job_id');
+          
+          toast({
+            title: "Analysis Generated",
+            description: "New macro analysis available"
+          });
+        } else if (data.status === "error") {
+          setIsGenerating(false);
+          setJobId(null);
+          setJobStatus(null);
+          localStorage.removeItem('strategist_job_id');
+          
+          toast({
+            title: "Error",
+            description: data.message || "Strategist job failed. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Status check error:', error);
+        setIsGenerating(false);
+        setJobId(null);
+        setJobStatus(null);
+        localStorage.removeItem('strategist_job_id');
+        
+        toast({
+          title: "Error",
+          description: "Unable to reach strategist service. Please retry.",
+          variant: "destructive"
+        });
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [jobId, isGenerating, queryParams.query, toast]);
+
+  // Load job from localStorage on mount
+  useEffect(() => {
+    const savedJobId = localStorage.getItem('strategist_job_id');
+    if (savedJobId) {
+      setJobId(savedJobId);
+      setIsGenerating(true);
+      setJobStatus("queued");
+    }
+  }, []);
+
+  // Start strategist job
   const generateAnalysis = async () => {
     if (!queryParams.query.trim()) return;
     
     setIsGenerating(true);
+    setJobStatus("queued");
     
     try {
-      // Call n8n webhook following the exact RAG format from MacroCommentaryBubble
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
-        type: "RAG",
-        question: queryParams.query,
-        mode: "custom_analysis",
-        filters: {
-          region: "All",
-          product: "All",
-          category: "All"
-        },
-        analysis: {
-          query: queryParams.query,
-          timestamp: new Date().toISOString()
-        },
-        user_id: "default_user",
-        // Additional fields from Macro Analysis form
-        instrument: selectedAsset.symbol,
-        timeframe: "1H",
-        assetType: queryParams.assetType,
-        analysisDepth: queryParams.analysisDepth,
-        period: queryParams.period,
-        adresse: queryParams.adresse
+      const response = await safePostRequest('/api/strategist', {
+        mode: "start",
+        instrument: selectedAsset.symbol
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const rawData = await response.json();
+      const data = await response.json();
       
-      // Display the actual JSON response from n8n
-      const realAnalysis: MacroAnalysis = {
-        query: queryParams.query,
-        timestamp: new Date(),
-        sections: [
-          {
-            title: "n8n Response",
-            content: JSON.stringify(rawData, null, 2),
-            type: "overview",
-            expanded: true
-          }
-        ],
-        sources: []
-      };
+      if (data.job_id) {
+        setJobId(data.job_id);
+        setJobStatus(data.status);
+        localStorage.setItem('strategist_job_id', data.job_id);
+      } else {
+        throw new Error('No job_id received from strategist service');
+      }
       
-      setAnalyses(prev => [realAnalysis, ...prev]);
-      setQueryParams(prev => ({ ...prev, query: "" }));
-      
-      toast({
-        title: "Analysis Generated",
-        description: "New macro analysis available"
-      });
     } catch (error) {
-      console.error('Webhook error:', error);
+      console.error('Strategist start error:', error);
+      setIsGenerating(false);
+      setJobStatus(null);
       
       toast({
         title: "Error",
-        description: "Failed to generate analysis. Please try again.",
+        description: "Unable to reach strategist service. Please retry.",
         variant: "destructive"
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -443,7 +497,9 @@ export default function MacroAnalysis() {
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Analysis...
+                  {jobStatus === "queued" && "Job queued..."}
+                  {jobStatus === "running" && "Generating Analysis..."}
+                  {!jobStatus && "Starting job..."}
                 </>
               ) : (
                 <>

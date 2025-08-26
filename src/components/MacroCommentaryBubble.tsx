@@ -73,6 +73,8 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<AssetInfo>({
     symbol: "EURUSD",
     display: "EUR/USD",
@@ -150,105 +152,127 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
     return `https://www.tradingview.com/symbols/${asset.tradingViewSymbol}/technicals/?exchange=${exchange}`;
   };
 
+  // Polling for job status
+  useEffect(() => {
+    if (!jobId || !isGenerating) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await safePostRequest('/api/strategist', {
+          mode: "status",
+          job_id: jobId
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setJobStatus(data.status);
+
+        if (data.status === "done") {
+          const realAnalysis: MacroAnalysis = {
+            query: queryParams.query,
+            timestamp: new Date(),
+            sections: [
+              {
+                title: "Strategist Report",
+                content: data.content || "",
+                type: "overview",
+                expanded: true
+              }
+            ],
+            sources: data.citations || []
+          };
+          
+          setAnalyses(prev => [realAnalysis, ...prev]);
+          setQueryParams(prev => ({ ...prev, query: "" }));
+          setIsGenerating(false);
+          setJobId(null);
+          setJobStatus(null);
+          localStorage.removeItem('strategist_job_id');
+          
+          toast({
+            title: "Analysis Generated",
+            description: "Nouvelle analyse macro disponible"
+          });
+        } else if (data.status === "error") {
+          setIsGenerating(false);
+          setJobId(null);
+          setJobStatus(null);
+          localStorage.removeItem('strategist_job_id');
+          
+          toast({
+            title: "Error",
+            description: data.message || "Strategist job failed. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Status check error:', error);
+        setIsGenerating(false);
+        setJobId(null);
+        setJobStatus(null);
+        localStorage.removeItem('strategist_job_id');
+        
+        toast({
+          title: "Error",
+          description: "Unable to reach strategist service. Please retry.",
+          variant: "destructive"
+        });
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [jobId, isGenerating, queryParams.query, toast]);
+
+  // Load job from localStorage on mount
+  useEffect(() => {
+    const savedJobId = localStorage.getItem('strategist_job_id');
+    if (savedJobId) {
+      setJobId(savedJobId);
+      setIsGenerating(true);
+      setJobStatus("queued");
+    }
+  }, []);
+
+  // Start strategist job
   const generateAnalysis = async () => {
     if (!queryParams.query.trim()) return;
     
     setIsGenerating(true);
+    setJobStatus("queued");
     
     try {
-      // Create a promise with timeout to wait longer for n8n response
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout: n8n webhook response took too long')), 240000) // 4 minutes
-      );
-
-      const requestPayload = {
-        type: "RAG",
-        question: queryParams.query,
-        mode: "custom_analysis",
-        filters: {
-          region: "All",
-          product: "All",
-          category: "All"
-        },
-        analysis: {
-          query: queryParams.query,
-          timestamp: new Date().toISOString()
-        },
-        user_id: "default_user",
-        instrument: instrument,
-        timeframe: timeframe || "1H",
-        assetType: "currency",
-        analysisDepth: "detailed",
-        period: "weekly",
-        adresse: queryParams.adresse
-      };
-
-      const fetchPromise = safePostRequest(
-        'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-        requestPayload
-      );
-
-      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+      const response = await safePostRequest('/api/strategist', {
+        mode: "start",
+        instrument: instrument
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const rawData = await response.json();
-      console.log('Raw n8n response:', rawData);
+      const data = await response.json();
       
-      // Parse n8n response structure: array with message.content.content
-      let analysisContent = '';
-      
-      if (Array.isArray(rawData) && rawData.length > 0) {
-        const firstResult = rawData[0];
-        if (firstResult.message?.content?.content) {
-          analysisContent = firstResult.message.content.content;
-        } else if (firstResult.message?.content?.base_report) {
-          analysisContent = firstResult.message.content.base_report;
-        } else if (typeof firstResult.message?.content === 'string') {
-          analysisContent = firstResult.message.content;
-        }
+      if (data.job_id) {
+        setJobId(data.job_id);
+        setJobStatus(data.status);
+        localStorage.setItem('strategist_job_id', data.job_id);
+      } else {
+        throw new Error('No job_id received from strategist service');
       }
       
-      if (!analysisContent) {
-        throw new Error('Aucun contenu d\'analyse reçu de n8n');
-      }
-      
-      const realAnalysis: MacroAnalysis = {
-        query: queryParams.query,
-        timestamp: new Date(),
-        sections: [
-          {
-            title: "Analyse Complète",
-            content: analysisContent,
-            type: "overview",
-            expanded: true
-          }
-        ],
-        sources: [
-          { title: "n8n RAG Analysis", url: "#", type: "research" }
-        ]
-      };
-      
-      setAnalyses(prev => [realAnalysis, ...prev]);
-      setQueryParams(prev => ({ ...prev, query: "" }));
-      
-      toast({
-        title: "Analysis Generated",
-        description: "Nouvelle analyse macro disponible"
-      });
     } catch (error) {
-      console.error('Webhook error:', error);
+      console.error('Strategist start error:', error);
+      setIsGenerating(false);
+      setJobStatus(null);
       
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       toast({
-        title: "Erreur webhook n8n",
-        description: `${errorMessage}`,
+        title: "Error",
+        description: "Unable to reach strategist service. Please retry.",
         variant: "destructive"
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -456,7 +480,9 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
               {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
+                  {jobStatus === "queued" && "Job queued..."}
+                  {jobStatus === "running" && "Generating..."}
+                  {!jobStatus && "Starting job..."}
                 </>
               ) : (
                 <>
