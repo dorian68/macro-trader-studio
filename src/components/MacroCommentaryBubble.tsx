@@ -158,7 +158,7 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await safePostRequest('/api/strategist', {
+        const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
           mode: "status",
           job_id: jobId
         });
@@ -244,7 +244,7 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
     setJobStatus("queued");
     
     try {
-      const response = await safePostRequest('/api/strategist', {
+      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         mode: "start",
         instrument: instrument
       });
