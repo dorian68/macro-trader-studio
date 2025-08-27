@@ -323,14 +323,17 @@ export default function MacroAnalysis() {
         timestamp: new Date().toISOString()
       });
       
-      if (startData.job_id) {
+      // Handle nested response structure
+      const responseBody = startData.body || startData;
+      
+      if (responseBody.job_id) {
         // Job started successfully
-        setJobId(startData.job_id);
-        localStorage.setItem("strategist_job_id", startData.job_id);
-        setJobStatus(startData.status || "queued");
+        setJobId(responseBody.job_id);
+        localStorage.setItem("strategist_job_id", responseBody.job_id);
+        setJobStatus(responseBody.status || "queued");
         
         // Start polling for status
-        startPolling(startData.job_id);
+        startPolling(responseBody.job_id);
         
         setQueryParams(prev => ({ ...prev, query: "" }));
         
