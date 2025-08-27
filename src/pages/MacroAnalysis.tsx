@@ -264,28 +264,34 @@ export default function MacroAnalysis() {
 
   const startPolling = (currentJobId: string) => {
     const startTime = Date.now();
-    const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 minutes
+    const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 minutes - garde-fou pour ne pas surcharger n8n
     let pollCount = 0;
+    let currentTimeoutId: NodeJS.Timeout | null = null;
     
     const poll = () => {
-      // Check timeout (5 minutes max)
+      // Check timeout (5 minutes max) - ARRÊT DÉFINITIF après 5 minutes
       if (Date.now() - startTime > TIMEOUT_DURATION) {
         setJobStatus("error");
         setIsGenerating(false);
         localStorage.removeItem("strategist_job_id");
         setJobId(null);
         
+        if (currentTimeoutId) {
+          clearTimeout(currentTimeoutId);
+          currentTimeoutId = null;
+        }
+        
         toast({
           title: "Analysis Timeout",
           description: "Analysis exceeded 5 minutes. Please try again.",
           variant: "destructive"
         });
-        return;
+        return; // ARRÊT DÉFINITIF - aucun autre appel ne sera fait
       }
 
       checkJobStatus(currentJobId);
       
-      // Schedule next poll with progressive timing
+      // Schedule next poll with progressive timing SEULEMENT si dans les 5 minutes
       pollCount++;
       let nextDelay;
       if (pollCount === 1) {
@@ -296,13 +302,25 @@ export default function MacroAnalysis() {
         nextDelay = 15000; // All subsequent polls: 15 seconds
       }
       
-      if (Date.now() - startTime < TIMEOUT_DURATION) {
-        setTimeout(poll, nextDelay);
+      // Double vérification avant de programmer le prochain appel
+      if (Date.now() - startTime + nextDelay < TIMEOUT_DURATION) {
+        currentTimeoutId = setTimeout(poll, nextDelay);
+      } else {
+        // On approche des 5 minutes, arrêt préventif
+        setJobStatus("error");
+        setIsGenerating(false);
+        localStorage.removeItem("strategist_job_id");
+        setJobId(null);
+        toast({
+          title: "Analysis Timeout",
+          description: "Analysis timed out to prevent overloading n8n.",
+          variant: "destructive"
+        });
       }
     };
 
     // Start first poll after 1 minute
-    setTimeout(poll, 60000);
+    currentTimeoutId = setTimeout(poll, 60000);
   };
 
   // 3-step async workflow: START → LAUNCH → POLLING
