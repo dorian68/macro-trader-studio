@@ -217,25 +217,28 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         timestamp: new Date().toISOString()
       });
       
-      if (statusData.status === "done") {
-        // Job completed - parse response like before
+      // Handle nested response structure
+      const responseBody = statusData.body || statusData;
+      
+      if (responseBody.status === "done") {
+        // Job completed - parse response from content field
         let analysisContent = '';
         
-        if (statusData.content) {
-          analysisContent = statusData.content;
-        } else if (Array.isArray(statusData) && statusData.length > 0) {
-          const firstResult = statusData[0];
-          if (firstResult.message?.content?.content) {
-            analysisContent = firstResult.message.content.content;
-          } else if (firstResult.message?.content?.base_report) {
-            analysisContent = firstResult.message.content.base_report;
-          } else if (typeof firstResult.message?.content === 'string') {
-            analysisContent = firstResult.message.content;
+        if (responseBody.content) {
+          // If content is an object, parse it appropriately
+          if (typeof responseBody.content === 'object') {
+            if (responseBody.content.content) {
+              analysisContent = responseBody.content.content;
+            } else if (responseBody.content.base_report) {
+              analysisContent = responseBody.content.base_report;
+            } else {
+              analysisContent = JSON.stringify(responseBody.content, null, 2);
+            }
+          } else {
+            analysisContent = responseBody.content;
           }
-        }
-        
-        if (!analysisContent) {
-          analysisContent = JSON.stringify(statusData, null, 2);
+        } else {
+          analysisContent = JSON.stringify(responseBody, null, 2);
         }
         
         const realAnalysis: MacroAnalysis = {
@@ -269,7 +272,7 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
           title: "Analysis Completed",
           description: "Nouvelle analyse macro disponible"
         });
-      } else if (statusData.status === "error") {
+      } else if (responseBody.status === "error") {
         setJobStatus("error");
         setIsGenerating(false);
         localStorage.removeItem("strategist_job_id");
@@ -282,12 +285,12 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         
         toast({
           title: "Analysis Error",
-          description: statusData.message || "Analysis failed",
+          description: responseBody.message || "Analysis failed",
           variant: "destructive"
         });
       } else {
         // Still queued or running
-        setJobStatus(statusData.status);
+        setJobStatus(responseBody.status);
       }
     } catch (error) {
       console.error('Status check error:', error);

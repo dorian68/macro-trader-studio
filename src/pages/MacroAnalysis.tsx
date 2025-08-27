@@ -201,15 +201,18 @@ export default function MacroAnalysis() {
         timestamp: new Date().toISOString()
       });
       
-      if (statusData.status === "done") {
-        // Job completed - display results
+      // Handle nested response structure
+      const responseBody = statusData.body || statusData;
+      
+      if (responseBody.status === "done") {
+        // Job completed - display results from content field
         const realAnalysis: MacroAnalysis = {
           query: queryParams.query,
           timestamp: new Date(),
           sections: [
             {
               title: "Analysis Results",
-              content: statusData.content || JSON.stringify(statusData, null, 2),
+              content: responseBody.content ? JSON.stringify(responseBody.content, null, 2) : JSON.stringify(responseBody, null, 2),
               type: "overview",
               expanded: true
             }
@@ -232,7 +235,7 @@ export default function MacroAnalysis() {
           title: "Analysis Completed",
           description: "Your macro analysis is ready"
         });
-      } else if (statusData.status === "error") {
+      } else if (responseBody.status === "error") {
         setJobStatus("error");
         setIsGenerating(false);
         localStorage.removeItem("strategist_job_id");
@@ -245,12 +248,12 @@ export default function MacroAnalysis() {
         
         toast({
           title: "Analysis Error",
-          description: statusData.message || "Analysis failed",
+          description: responseBody.message || "Analysis failed",
           variant: "destructive"
         });
       } else {
         // Still queued or running
-        setJobStatus(statusData.status);
+        setJobStatus(responseBody.status);
       }
     } catch (error) {
       console.error('Status check error:', error);
