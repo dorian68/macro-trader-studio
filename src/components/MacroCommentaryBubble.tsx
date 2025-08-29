@@ -208,7 +208,25 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const responseText = await response.text();
+      // Get response data with proper cloning
+      let responseText = '';
+      let responseJson = null;
+      
+      // First, try to clone the response and read as JSON to get structured data
+      try {
+        const clonedResponse = response.clone();
+        responseJson = await clonedResponse.json();
+        console.log('📊 [MacroCommentary] JSON response:', responseJson);
+        responseText = JSON.stringify(responseJson);
+      } catch (jsonError) {
+        console.log('📊 [MacroCommentary] Not JSON, trying text...');
+        try {
+          responseText = await response.text();
+          console.log('📊 [MacroCommentary] Text response:', responseText);
+        } catch (textError) {
+          console.error('📊 [MacroCommentary] Failed to read response:', textError);
+        }
+      }
       
       console.log('💬 [MacroCommentaryBubble] Raw response text:', responseText);
       console.log('💬 [MacroCommentaryBubble] Response starts with [?', responseText.trim().startsWith('['));

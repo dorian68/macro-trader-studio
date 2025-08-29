@@ -192,9 +192,26 @@ export default function MacroAnalysis() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const responseText = await response.text();
+      // Get response data
+      let responseText = '';
+      let responseJson = null;
       
-      console.log('📊 [MacroAnalysis] Raw response text:', responseText);
+      // First, try to clone the response and read as JSON to get structured data
+      try {
+        const clonedResponse = response.clone();
+        responseJson = await clonedResponse.json();
+        console.log('📊 [MacroAnalysis] JSON response:', responseJson);
+        responseText = JSON.stringify(responseJson);
+      } catch (jsonError) {
+        console.log('📊 [MacroAnalysis] Not JSON, trying text...');
+        try {
+          responseText = await response.text();
+          console.log('📊 [MacroAnalysis] Text response:', responseText);
+        } catch (textError) {
+          console.error('📊 [MacroAnalysis] Failed to read response:', textError);
+        }
+      }
+      
       console.log('📊 [MacroAnalysis] Response starts with [?', responseText.trim().startsWith('['));
       console.log('📊 [MacroAnalysis] Contains status done?', responseText.includes('"status": "done"'));
       
