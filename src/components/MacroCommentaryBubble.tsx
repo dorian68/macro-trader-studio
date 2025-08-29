@@ -607,11 +607,67 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         timestamp: new Date().toISOString()
       });
 
-      // Send launch request but don't wait for long response
-      safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', launchPayload)
-        .catch(error => console.log('Launch request fired, polling will track status:', error));
+      // Send launch request and wait for response - might contain immediate result
+      try {
+        const launchResponse = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', launchPayload);
+        
+        if (launchResponse.ok) {
+          const launchResponseText = await launchResponse.text();
+          console.log('📊 [MacroCommentary] LAUNCH response text:', launchResponseText);
+          
+          if (launchResponseText.trim()) {
+            const launchResponseJson = JSON.parse(launchResponseText);
+            console.log('📊 [MacroCommentary] LAUNCH response JSON:', launchResponseJson);
+            
+            // Check if this is the final result with status done
+            if (launchResponseJson.status === 'done' || (Array.isArray(launchResponseJson) && launchResponseJson[0]?.message?.status === 'done')) {
+              console.log('📊 [MacroCommentary] Found immediate result in launch response!');
+              
+              let analysisContent = '';
+              
+              if (Array.isArray(launchResponseJson) && launchResponseJson[0]?.message?.message?.content?.content) {
+                analysisContent = launchResponseJson[0].message.message.content.content;
+              } else if (launchResponseJson.message?.content?.content) {
+                analysisContent = launchResponseJson.message.content.content;
+              } else if (launchResponseJson.content?.content) {
+                analysisContent = launchResponseJson.content.content;
+              } else {
+                analysisContent = JSON.stringify(launchResponseJson, null, 2);
+              }
+              
+              const realAnalysis: MacroAnalysis = {
+                query: queryParams.query,
+                timestamp: new Date(),
+                sections: [
+                  {
+                    title: "Analysis Results",
+                    content: analysisContent,
+                    type: "overview",
+                    expanded: true
+                  }
+                ],
+                sources: []
+              };
+              
+              setAnalyses(prev => [realAnalysis, ...prev]);
+              setJobStatus("done");
+              setIsGenerating(false);
+              localStorage.removeItem("strategist_job_id");
+              setJobId(null);
+              
+              toast({
+                title: "Analysis Completed",
+                description: "Your macro analysis is ready"
+              });
+              return; // Don't start polling if we already have the result
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Launch request error, will start polling:', error);
+      }
 
-      // STEP 3: Start polling immediately
+      // STEP 3: Start polling only if we didn't get immediate result
       startPolling(responseBody.job_id);
       
       setQueryParams(prev => ({ ...prev, query: "" }));
