@@ -221,11 +221,14 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
       const responseBody = statusData.body || statusData;
       
       if (responseBody.status === "done") {
-        // Job completed - parse response from content field
+        // Job completed - extract content according to patch specification
         let analysisContent = '';
         
-        if (responseBody.content) {
-          // If content is an object, parse it appropriately
+        // SYSTEM PATCH: Extract response[0].message.content.content if available
+        if (Array.isArray(statusData) && statusData.length > 0 && statusData[0].message?.content?.content) {
+          analysisContent = statusData[0].message.content.content;
+        } else if (responseBody.content) {
+          // Fallback to existing logic
           if (typeof responseBody.content === 'object') {
             if (responseBody.content.content) {
               analysisContent = responseBody.content.content;

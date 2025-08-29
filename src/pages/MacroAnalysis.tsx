@@ -205,14 +205,34 @@ export default function MacroAnalysis() {
       const responseBody = statusData.body || statusData;
       
       if (responseBody.status === "done") {
-        // Job completed - display results from content field
+        // Job completed - extract content according to patch specification
+        let analysisContent = '';
+        
+        // SYSTEM PATCH: Extract response[0].message.content.content if available
+        if (Array.isArray(statusData) && statusData.length > 0 && statusData[0].message?.content?.content) {
+          analysisContent = statusData[0].message.content.content;
+        } else if (responseBody.content) {
+          // Fallback to existing logic
+          if (typeof responseBody.content === 'object') {
+            if (responseBody.content.content) {
+              analysisContent = responseBody.content.content;
+            } else {
+              analysisContent = JSON.stringify(responseBody.content, null, 2);
+            }
+          } else {
+            analysisContent = responseBody.content;
+          }
+        } else {
+          analysisContent = JSON.stringify(responseBody, null, 2);
+        }
+        
         const realAnalysis: MacroAnalysis = {
           query: queryParams.query,
           timestamp: new Date(),
           sections: [
             {
               title: "Analysis Results",
-              content: responseBody.content ? JSON.stringify(responseBody.content, null, 2) : JSON.stringify(responseBody, null, 2),
+              content: analysisContent,
               type: "overview",
               expanded: true
             }
