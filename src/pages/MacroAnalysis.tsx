@@ -196,8 +196,7 @@ export default function MacroAnalysis() {
       let responseJson = null;
       
       try {
-        const clonedResponse = response.clone();
-        responseJson = await clonedResponse.json();
+        responseJson = await response.json();
         console.log('📊 [MacroAnalysis] JSON response:', responseJson);
       } catch (jsonError) {
         console.log('📊 [MacroAnalysis] Not JSON, trying text...');
