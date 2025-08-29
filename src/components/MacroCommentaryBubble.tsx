@@ -212,24 +212,24 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
       let responseJson = null;
       
       try {
-        const clonedResponse = response.clone();
-        responseJson = await clonedResponse.json();
-        console.log('📊 [MacroCommentary] JSON response:', responseJson);
+        responseJson = await response.json();
+        console.log('💬 [MacroCommentaryBubble] JSON response:', responseJson);
       } catch (jsonError) {
-        console.log('📊 [MacroCommentary] Not JSON, trying text...');
+        console.log('💬 [MacroCommentaryBubble] Not JSON, trying text...');
         try {
           const responseText = await response.text();
-          console.log('📊 [MacroCommentary] Text response:', responseText);
+          console.log('💬 [MacroCommentaryBubble] Text response:', responseText);
           // Try to parse text as JSON
           if (responseText.trim()) {
             try {
               responseJson = JSON.parse(responseText);
+              console.log('💬 [MacroCommentaryBubble] Successfully parsed text as JSON:', responseJson);
             } catch (parseError) {
-              console.log('📊 [MacroCommentary] Failed to parse text as JSON');
+              console.log('💬 [MacroCommentaryBubble] Failed to parse text as JSON:', parseError);
             }
           }
         } catch (textError) {
-          console.error('📊 [MacroCommentary] Failed to read response:', textError);
+          console.error('💬 [MacroCommentaryBubble] Failed to read response:', textError);
         }
       }
       
