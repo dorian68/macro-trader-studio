@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { safePostRequest } from "@/lib/safe-request";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 
 interface AnalysisSection {
   title: string;
@@ -762,22 +763,7 @@ export default function MacroAnalysis() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/30 rounded-lg p-6 min-h-[200px] flex items-center justify-center">
-                {tradingViewError ? (
-                  <Alert className="max-w-sm mx-auto">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      Embedding blocked – open in TradingView instead.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="text-center text-muted-foreground">
-                    <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">TradingView Widget would load here</p>
-                    <p className="text-xs mt-1 opacity-60">Use "Open in TradingView" button</p>
-                  </div>
-                )}
-              </div>
+              <TechnicalDashboard selectedAsset={selectedAsset} />
             </CardContent>
           </Card>
         </div>
