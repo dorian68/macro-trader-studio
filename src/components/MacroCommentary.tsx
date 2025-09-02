@@ -610,10 +610,10 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
         </div>
          <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => window.open('/macro-analysis', '_blank')}
-            className="h-6 w-6 p-0 hover:bg-primary/10"
+            className="h-6 w-6 p-0 border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500"
             title="Open Full Page"
           >
             <ExternalLink className="h-3 w-3" />

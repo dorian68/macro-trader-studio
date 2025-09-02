@@ -291,10 +291,10 @@ export function ReportsBubble({ instrument, timeframe, onClose }: ReportsBubbleP
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => window.open('/reports', '_blank')}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0 touch-friendly"
+                className="h-7 w-7 sm:h-8 sm:w-8 p-0 touch-friendly border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-500"
                 title="Open Full Page"
               >
                 <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />

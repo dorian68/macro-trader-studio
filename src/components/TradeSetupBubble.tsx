@@ -279,10 +279,10 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
             </div>
             <div className="flex items-center gap-1">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => window.open('/ai-setup', '_blank')}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 border-primary/50 bg-primary/10 hover:bg-primary/20 text-primary"
                 title="Open Full Page"
               >
                 <ExternalLink className="h-4 w-4" />
