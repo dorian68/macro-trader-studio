@@ -43,9 +43,11 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
                 <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
               </div>
               <div className="hidden xs:block min-w-0">
-                <h1 className="text-base sm:text-lg font-bold text-primary truncate">
-                  AlphaLens
-                </h1>
+                <img 
+                  src="/lovable-uploads/1239e88a-26f6-4932-a1fc-da467e9c14c7.png" 
+                  alt="AlphaLens" 
+                  className="h-5 sm:h-6 w-auto"
+                />
                 <p className="text-xs text-muted-foreground hidden sm:block">AI Trading Intelligence</p>
               </div>
             </button>
