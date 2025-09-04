@@ -599,25 +599,31 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
       if (responseJson) {
         let analysisContent = '';
         
-        // Check if we got the final n8n response immediately
+        // Use same logic as MacroAnalysis that works
+        // Check if we got the final n8n response with status done
+        // N8N returns an array with one object containing the message
         if (Array.isArray(responseJson) && responseJson.length > 0) {
           const messageObj = responseJson[0].message;
           
-          if (messageObj && messageObj.message && messageObj.message.content) {
-            // Extract content from the structured response
-            if (messageObj.message.content.content) {
+          if (messageObj && messageObj.status === 'done') {
+            console.log('💬 [MacroCommentaryBubble] Found status done, processing result');
+            
+            // Extract the content from the nested message structure
+            if (messageObj.message && messageObj.message.content && messageObj.message.content.content) {
               analysisContent = messageObj.message.content.content;
-            } else if (messageObj.message.content.base_report) {
+            } else if (messageObj.message && messageObj.message.content && messageObj.message.content.base_report) {
               analysisContent = messageObj.message.content.base_report;
-            } else {
+            } else if (messageObj.message && messageObj.message.content) {
               analysisContent = JSON.stringify(messageObj.message.content, null, 2);
+            } else {
+              analysisContent = JSON.stringify(messageObj, null, 2);
             }
-          } else if (messageObj && messageObj.content) {
-            analysisContent = typeof messageObj.content === 'string' ? messageObj.content : JSON.stringify(messageObj.content, null, 2);
           } else {
+            // Fallback for other structures
             analysisContent = JSON.stringify(responseJson[0], null, 2);
           }
         } else if (responseJson.content) {
+          // Handle direct content structure
           if (typeof responseJson.content === 'object') {
             if (responseJson.content.content) {
               analysisContent = responseJson.content.content;
@@ -628,36 +634,42 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
             analysisContent = responseJson.content;
           }
         } else {
+          // Last fallback - stringify the entire response
           analysisContent = JSON.stringify(responseJson, null, 2);
         }
 
-        const realAnalysis: MacroAnalysis = {
-          query: queryParams.query,
-          timestamp: new Date(),
-          sections: [
-            {
-              title: "Analysis Results",
-              content: analysisContent,
-              type: "overview",
-              expanded: true
-            }
-          ],
-          sources: []
-        };
+        // Always create analysis if we have any content
+        if (analysisContent) {
+          const realAnalysis: MacroAnalysis = {
+            query: queryParams.query,
+            timestamp: new Date(),
+            sections: [
+              {
+                title: "Analysis Results",
+                content: analysisContent,
+                type: "overview",
+                expanded: true
+              }
+            ],
+            sources: []
+          };
 
-        setAnalyses(prev => [realAnalysis, ...prev]);
-        setJobStatus("done");
-        setIsGenerating(false);
-        
-        setQueryParams(prev => ({ ...prev, query: "" }));
-        
-        toast({
-          title: "Analysis Completed",
-          description: "Your macro analysis is ready"
-        });
-      } else {
-        throw new Error("No valid response received");
+          setAnalyses(prev => [realAnalysis, ...prev]);
+          setJobStatus("done");
+          setIsGenerating(false);
+          
+          setQueryParams(prev => ({ ...prev, query: "" }));
+          
+          toast({
+            title: "Analysis Completed",
+            description: "Your macro analysis is ready"
+          });
+          return; // Important: return here to avoid throwing error
+        }
       }
+      
+      // Only throw error if we really have no content at all
+      throw new Error("Invalid response structure - missing content");
 
     } catch (error) {
       console.error('Analysis generation error:', error);
