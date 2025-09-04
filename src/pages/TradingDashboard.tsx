@@ -378,7 +378,8 @@ export default function TradingDashboard() {
 
       </div>
 
-      {/* Floating bubble system */}
+      {/* Floating bubble system - Temporarily hidden */}
+      {/* 
       <BubbleSystem 
         instrument={selectedAsset} 
         timeframe={timeframe} 
@@ -387,6 +388,7 @@ export default function TradingDashboard() {
           setActiveTradeLevels(levels);
         }}
       />
+      */}
     </Layout>
   );
 }
