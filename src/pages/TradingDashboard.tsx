@@ -316,6 +316,66 @@ export default function TradingDashboard() {
           </CardContent>
         </Card>
 
+        {/* Navigation Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth" 
+            onClick={() => navigate('/ai-setup')}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
+                <Zap className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">AI Trade Setup</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Generate intelligent trade setups with AI-powered analysis
+              </p>
+              <Button size="sm" className="w-full">
+                Get Started
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth" 
+            onClick={() => navigate('/macro-analysis')}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
+                <Activity className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Macro Commentary</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                In-depth macroeconomic analysis and market insights
+              </p>
+              <Button size="sm" className="w-full">
+                Explore
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth" 
+            onClick={() => navigate('/reports')}
+          >
+            <CardContent className="p-6 text-center">
+              <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
+                <Activity className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Reports</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Generate comprehensive market reports and analysis
+              </p>
+              <Button size="sm" className="w-full">
+                Create Report
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
       </div>
 
       {/* Floating bubble system */}

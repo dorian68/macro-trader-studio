@@ -279,16 +279,6 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
             </div>
             <div className="flex items-center gap-1">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.location.href = '/ai-setup'}
-                className="h-8 min-w-fit px-2 border-primary/50 bg-primary/10 hover:bg-primary/20 text-primary text-xs"
-                title="Access full-featured trade setup page with advanced indicators and deeper analysis"
-              >
-                <ExternalLink className="h-3 w-3 mr-1" />
-                <span>Full page</span>
-              </Button>
-              <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsMinimized(true)}

@@ -291,16 +291,6 @@ export function ReportsBubble({ instrument, timeframe, onClose }: ReportsBubbleP
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.location.href = '/reports'}
-                className="h-7 min-w-fit px-2 touch-friendly border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-500 text-xs"
-                title="Access comprehensive performance reports with detailed analytics and historical data"
-              >
-                <ExternalLink className="h-3 w-3 mr-1" />
-                <span>Full page</span>
-              </Button>
-              <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsMinimized(true)}
