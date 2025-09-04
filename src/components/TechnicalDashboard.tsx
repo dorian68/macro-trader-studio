@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -10,11 +9,10 @@ import {
   BarChart3,
   ExternalLink,
   RefreshCw,
-  Signal,
-  AlertTriangle
+  Signal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TechnicalSignal {
   name: string;
@@ -27,17 +25,6 @@ interface TechnicalIndicator {
   name: string;
   value: number;
   signal: "BUY" | "SELL" | "NEUTRAL";
-  timestamp?: string;
-}
-
-interface TwelveDataResponse {
-  values?: Array<{
-    datetime: string;
-    rsi?: string;
-    atr?: string;
-    adx?: string;
-  }>;
-  status?: string;
 }
 
 interface AssetInfo {
@@ -56,130 +43,154 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
   const [indicators, setIndicators] = useState<TechnicalIndicator[]>([]);
   const [signals, setSignals] = useState<TechnicalSignal[]>([]);
   const [summary, setSummary] = useState<"BUY" | "SELL" | "NEUTRAL">("NEUTRAL");
-  const [error, setError] = useState<string | null>(null);
-  const [selectedSymbol, setSelectedSymbol] = useState(selectedAsset.symbol);
-  const [selectedInterval, setSelectedInterval] = useState("30min");
 
-  // Available symbols for Twelve Data
-  const availableSymbols = [
-    { value: "EUR/USD", label: "EUR/USD" },
-    { value: "GBP/USD", label: "GBP/USD" },
-    { value: "USD/JPY", label: "USD/JPY" },
-    { value: "AUD/USD", label: "AUD/USD" },
-    { value: "USD/CAD", label: "USD/CAD" },
-    { value: "USD/CHF", label: "USD/CHF" },
-    { value: "BTC/USD", label: "BTC/USD" },
-    { value: "ETH/USD", label: "ETH/USD" },
-  ];
-
-  // Available intervals
-  const availableIntervals = [
-    { value: "15min", label: "15 Minutes" },
-    { value: "30min", label: "30 Minutes" },
-    { value: "1h", label: "1 Hour" },
-    { value: "4h", label: "4 Hours" },
-    { value: "1day", label: "Daily" },
-  ];
-
-  // Twelve Data API configuration
-  const TWELVE_DATA_API_KEY = "e40fcead02054731aef55d2dfe01cf47";
-  const TWELVE_DATA_BASE_URL = "https://api.twelvedata.com";
-
-  const fetchIndicatorData = async (indicator: string, symbol: string, interval: string): Promise<TwelveDataResponse> => {
-    const url = `${TWELVE_DATA_BASE_URL}/${indicator}?symbol=${symbol}&interval=${interval}&apikey=${TWELVE_DATA_API_KEY}&format=JSON`;
+  const calculateSimpleRSI = (prices: number[]): number => {
+    if (prices.length < 14) return 50;
     
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${indicator}: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error(`Error fetching ${indicator}:`, error);
-      throw error;
+    let gains = 0;
+    let losses = 0;
+    
+    for (let i = 1; i < Math.min(15, prices.length); i++) {
+      const change = prices[i - 1] - prices[i];
+      if (change > 0) gains += change;
+      else losses += Math.abs(change);
     }
+    
+    const avgGain = gains / 14;
+    const avgLoss = losses / 14;
+    
+    if (avgLoss === 0) return 100;
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
   };
 
-  const fetchTechnicalData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const calculateSimpleATR = (pricesData: any[]): number => {
+    if (pricesData.length < 2) return 0.001;
     
-    try {
-      console.log(`Fetching technical data from Twelve Data for ${selectedSymbol} (${selectedInterval})...`);
+    let totalTR = 0;
+    for (let i = 1; i < Math.min(15, pricesData.length); i++) {
+      const high = pricesData[i].high;
+      const low = pricesData[i].low;
+      const prevClose = pricesData[i - 1].close;
       
-      // Fetch multiple indicators in parallel from Twelve Data API
-      const [rsiData, atrData, adxData] = await Promise.all([
-        fetchIndicatorData("rsi", selectedSymbol, selectedInterval),
-        fetchIndicatorData("atr", selectedSymbol, selectedInterval), 
-        fetchIndicatorData("adx", selectedSymbol, selectedInterval)
+      const tr = Math.max(
+        high - low,
+        Math.abs(high - prevClose),
+        Math.abs(low - prevClose)
+      );
+      totalTR += tr;
+    }
+    
+    return totalTR / Math.min(14, pricesData.length - 1);
+  };
+
+  const fetchTechnicalData = async () => {
+    setIsLoading(true);
+    try {
+      // First try to get real-time technical analysis from TradingView API or use Supabase data
+      const symbolMapping: Record<string, string> = {
+        "EUR/USD": "EURUSD=X",
+        "GBP/USD": "GBPUSD=X", 
+        "USD/JPY": "USDJPY=X", 
+        "AUDUSD=X": "AUDUSD=X",
+        "NZDUSD=X": "NZDUSD=X",
+        "USDCAD=X": "USDCAD=X",
+        "USDCHF=X": "USDCHF=X",
+        "EURGBP=X": "EURGBP=X",
+        "EURJPY=X": "EURJPY=X",
+        "GBPJPY=X": "GBPJPY=X",
+        "BTC-USD": "BTCUSD=X",
+        "ETH-USD": "ETHUSD=X",
+        "ADA-USD": "ADAUSD=X",
+        "DOGE-USD": "DOGEUSD=X",
+        "SOL-USD": "SOLUSD=X"
+      };
+      const dbSymbol = symbolMapping[selectedAsset.symbol] || "EURUSD=X";
+      
+      console.log(`Fetching technical data for ${selectedAsset.symbol} (mapped to ${dbSymbol})...`);
+      
+      // Try to fetch both price and indicator data from Supabase using direct API calls
+      const SUPABASE_URL = "https://jqrlegdulnnrpiixiecf.supabase.co";
+      const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4";
+      
+      const [pricesResponse, indicatorsResponse] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/prices_tv?select=*&symbol=eq.${dbSymbol}&order=ts.desc&limit=50`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${SUPABASE_URL}/rest/v1/indicators_tv?select=*&symbol=eq.${dbSymbol}&order=ts.desc&limit=1`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        })
       ]);
 
-      // Process the responses
-      const indicators: TechnicalIndicator[] = [];
-      let latestRsi = 0, latestAtr = 0, latestAdx = 0;
-
-      // Process RSI
-      if (rsiData.values && rsiData.values.length > 0) {
-        const rsiValue = parseFloat(rsiData.values[0].rsi || "0");
-        latestRsi = rsiValue;
-        indicators.push({
-          name: "RSI(14)",
-          value: rsiValue,
-          signal: getSignalFromRSI(rsiValue),
-          timestamp: rsiData.values[0].datetime
-        });
+      if (!pricesResponse.ok) {
+        console.error('Prices fetch error:', pricesResponse.status);
+        generateMockData();
+        return;
       }
 
-      // Process ATR
-      if (atrData.values && atrData.values.length > 0) {
-        const atrValue = parseFloat(atrData.values[0].atr || "0");
-        latestAtr = atrValue;
-        indicators.push({
-          name: "ATR(14)",
-          value: atrValue,
-          signal: "NEUTRAL",
-          timestamp: atrData.values[0].datetime
-        });
+      if (!indicatorsResponse.ok) {
+        console.error('Indicators fetch error:', indicatorsResponse.status);
       }
 
-      // Process ADX
-      if (adxData.values && adxData.values.length > 0) {
-        const adxValue = parseFloat(adxData.values[0].adx || "0");
-        latestAdx = adxValue;
-        indicators.push({
-          name: "ADX(14)",
-          value: adxValue,
-          signal: getSignalFromADX(adxValue),
-          timestamp: adxData.values[0].datetime
-        });
-      }
+      const pricesData = await pricesResponse.json();
+      const indicatorsData = indicatorsResponse.ok ? await indicatorsResponse.json() : [];
 
-      if (indicators.length === 0) {
-        throw new Error("No data available from Twelve Data API");
+      if (pricesData && pricesData.length > 0) {
+        console.log(`Found ${pricesData.length} price points and ${indicatorsData?.length || 0} indicator points for ${dbSymbol}`);
+        processRealData(pricesData, indicatorsData?.[0] || null);
+      } else {
+        console.log(`No real data available for ${dbSymbol}, using mock data`);
+        generateMockData();
       }
-
-      setIndicators(indicators);
-      generateSignalsFromIndicators(indicators, latestRsi, latestAdx);
-      
-      console.log(`Successfully fetched ${indicators.length} indicators from Twelve Data`);
-      
     } catch (error) {
       console.error('Error fetching technical data:', error);
-      setError("Data unavailable - Please try again later");
       generateMockData();
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSymbol, selectedInterval]);
+  };
 
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchTechnicalData();
-    }, 5 * 60 * 1000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [fetchTechnicalData]);
+  const processRealData = (pricesData: any[], indicatorsData?: any) => {
+    // Calculate indicators from real price data
+    const prices = pricesData.map((p: any) => parseFloat(p.close));
+    
+    // Use pre-calculated indicators from Supabase if available, otherwise calculate
+    let rsi, atr, adx;
+    
+    if (indicatorsData) {
+      rsi = indicatorsData.rsi || calculateSimpleRSI(prices);
+      atr = indicatorsData.atr || calculateSimpleATR(pricesData);
+      adx = indicatorsData.adx || 0;
+      console.log(`Using real-time indicators: RSI=${rsi}, ATR=${atr}, ADX=${adx}`);
+    } else {
+      rsi = calculateSimpleRSI(prices);
+      atr = calculateSimpleATR(pricesData);
+      adx = 0;
+      console.log(`Using calculated indicators: RSI=${rsi}, ATR=${atr}`);
+    }
+    
+    const currentPrice = prices[0];
+    const oldPrice = prices[prices.length - 1];
+    const priceChange = ((currentPrice - oldPrice) / oldPrice) * 100;
+    
+    const realIndicators: TechnicalIndicator[] = [
+      { name: "RSI(14)", value: rsi, signal: getSignalFromRSI(rsi) },
+      { name: "ATR(14)", value: atr, signal: "NEUTRAL" },
+      { name: "ADX(14)", value: adx, signal: getSignalFromADX(adx) },
+      { name: "Price Change %", value: priceChange, signal: priceChange > 0 ? "BUY" : "SELL" }
+    ];
+    
+    setIndicators(realIndicators);
+    generateSignalsFromIndicators(realIndicators, rsi, adx);
+  };
 
   const getSignalFromRSI = (rsi: number): "BUY" | "SELL" | "NEUTRAL" => {
     if (rsi < 30) return "BUY";
@@ -193,18 +204,21 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
   };
 
   const generateSignalsFromIndicators = (indicators: TechnicalIndicator[], rsi: number, adx: number) => {
+    // More sophisticated signal generation using real indicators
     const rsiSignal = getSignalFromRSI(rsi);
     const adxSignal = getSignalFromADX(adx);
     
-    // Simple trend signal based on RSI momentum
-    const trendSignal = rsi > 55 ? "BUY" : rsi < 45 ? "SELL" : "NEUTRAL";
+    // Moving averages signal (simplified - could be enhanced with real MA data)
+    const priceChangeIndicator = indicators.find(i => i.name === "Price Change %");
+    const maSignal = priceChangeIndicator && priceChangeIndicator.value > 0.5 ? "BUY" : 
+                    priceChangeIndicator && priceChangeIndicator.value < -0.5 ? "SELL" : "NEUTRAL";
     
     const newSignals: TechnicalSignal[] = [
       {
-        name: "Momentum",
-        value: trendSignal === "BUY" ? "Bullish" : trendSignal === "SELL" ? "Bearish" : "Neutral",
-        signal: trendSignal,
-        strength: (rsi > 60 || rsi < 40) ? "STRONG" : "WEAK"
+        name: "Moving Averages",
+        value: maSignal === "BUY" ? "Bullish" : maSignal === "SELL" ? "Bearish" : "Neutral",
+        signal: maSignal,
+        strength: Math.abs(priceChangeIndicator?.value || 0) > 1 ? "STRONG" : "WEAK"
       },
       {
         name: "Oscillators", 
@@ -220,19 +234,26 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
       }
     ];
 
-    // Calculate overall summary
+    // Calculate overall summary based on all signals
     const buyCount = newSignals.filter(s => s.signal === "BUY").length;
     const sellCount = newSignals.filter(s => s.signal === "SELL").length;
+    const neutralCount = newSignals.filter(s => s.signal === "NEUTRAL").length;
     
     let overallSignal: "BUY" | "SELL" | "NEUTRAL";
     let overallValue: string;
     
-    if (buyCount > sellCount) {
+    if (buyCount > sellCount + neutralCount) {
       overallSignal = "BUY";
-      overallValue = buyCount >= 2 ? "Strong Buy" : "Buy";
+      overallValue = "Strong Buy";
+    } else if (buyCount > sellCount) {
+      overallSignal = "BUY"; 
+      overallValue = "Buy";
+    } else if (sellCount > buyCount + neutralCount) {
+      overallSignal = "SELL";
+      overallValue = "Strong Sell";
     } else if (sellCount > buyCount) {
       overallSignal = "SELL";
-      overallValue = sellCount >= 2 ? "Strong Sell" : "Sell";
+      overallValue = "Sell";
     } else {
       overallSignal = "NEUTRAL";
       overallValue = "Neutral";
@@ -242,7 +263,7 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
       name: "Summary",
       value: overallValue,
       signal: overallSignal,
-      strength: (buyCount >= 2 || sellCount >= 2) ? "STRONG" : "WEAK"
+      strength: (buyCount === 3 || sellCount === 3) ? "STRONG" : "WEAK"
     });
 
     setSignals(newSignals);
@@ -257,23 +278,18 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
     ];
 
     const mockSignals: TechnicalSignal[] = [
-      { name: "Momentum", value: "Neutral", signal: "NEUTRAL", strength: "WEAK" },
-      { name: "Oscillators", value: "Neutral", signal: "NEUTRAL", strength: "WEAK" },
-      { name: "Trend Strength", value: "Strong Trend", signal: "BUY", strength: "WEAK" },
-      { name: "Summary", value: "Neutral", signal: "NEUTRAL", strength: "WEAK" }
+      { name: "Moving Averages", value: "Bullish", signal: "BUY", strength: "WEAK" },
+      { name: "Technical Indicators", value: "Neutral", signal: "NEUTRAL", strength: "WEAK" },
+      { name: "Summary", value: "Buy", signal: "BUY", strength: "WEAK" }
     ];
 
     setIndicators(mockIndicators);
     setSignals(mockSignals);
-    setSummary("NEUTRAL");
+    setSummary("BUY");
   };
 
   useEffect(() => {
     fetchTechnicalData();
-  }, [fetchTechnicalData]);
-
-  useEffect(() => {
-    setSelectedSymbol(selectedAsset.symbol);
   }, [selectedAsset.symbol]);
 
   const getSignalColor = (signal: string) => {
@@ -299,60 +315,19 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div>
-          <label className="text-sm font-medium mb-2 block">Asset Symbol</label>
-          <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableSymbols.map((symbol) => (
-                <SelectItem key={symbol.value} value={symbol.value}>
-                  {symbol.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium mb-2 block">Interval</label>
-          <Select value={selectedInterval} onValueChange={setSelectedInterval}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableIntervals.map((interval) => (
-                <SelectItem key={interval.value} value={interval.value}>
-                  {interval.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-end">
-          <Button
-            variant="outline"
-            onClick={fetchTechnicalData}
-            disabled={isLoading}
-            className="w-full"
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-            Refresh Data
-          </Button>
-        </div>
+      {/* Header with Refresh */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Technical Analysis</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchTechnicalData}
+          disabled={isLoading}
+        >
+          <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+          Refresh
+        </Button>
       </div>
-
-      {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       {/* Summary Card */}
       <Card className={cn("border-2", getSignalColor(summary))}>
@@ -362,7 +337,7 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
               {getSignalIcon(summary)}
               <div>
                 <p className="font-semibold">Overall Signal</p>
-                <p className="text-sm opacity-80">{selectedSymbol}</p>
+                <p className="text-sm opacity-80">{selectedAsset.display}</p>
               </div>
             </div>
             <Badge variant="outline" className={getSignalColor(summary)}>
@@ -383,14 +358,7 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
         <CardContent className="space-y-3">
           {indicators.map((indicator, index) => (
             <div key={index} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">{indicator.name}</span>
-                {indicator.timestamp && (
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(indicator.timestamp).toLocaleTimeString()}
-                  </span>
-                )}
-              </div>
+              <span className="font-medium text-sm">{indicator.name}</span>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-mono">{indicator.value.toFixed(indicator.name.includes("ATR") ? 4 : 1)}</span>
                 <Badge variant="outline" className={getSignalColor(indicator.signal)}>
@@ -434,11 +402,6 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
         <ExternalLink className="h-4 w-4 mr-2" />
         View Full Analysis on TradingView
       </Button>
-      
-      {/* Data Source Info */}
-      <div className="text-center text-xs text-muted-foreground">
-        Data powered by Twelve Data API • Auto-refreshes every 5 minutes
-      </div>
     </div>
   );
 }

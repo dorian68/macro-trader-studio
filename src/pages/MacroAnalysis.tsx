@@ -196,13 +196,7 @@ export default function MacroAnalysis() {
         timestamp: new Date().toISOString()
       });
 
-      const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
+      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload);
 
       if (!response.ok) {
         throw new Error(`Analysis request failed! status: ${response.status}`);
