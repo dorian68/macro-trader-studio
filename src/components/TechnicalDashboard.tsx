@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -12,7 +13,6 @@ import {
   Signal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 
 interface TechnicalSignal {
   name: string;
@@ -43,6 +43,27 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
   const [indicators, setIndicators] = useState<TechnicalIndicator[]>([]);
   const [signals, setSignals] = useState<TechnicalSignal[]>([]);
   const [summary, setSummary] = useState<"BUY" | "SELL" | "NEUTRAL">("NEUTRAL");
+  const [selectedSymbol, setSelectedSymbol] = useState(selectedAsset.symbol);
+  const [selectedInterval, setSelectedInterval] = useState("1h");
+  const [error, setError] = useState<string | null>(null);
+
+  const API_KEY = "e40fcead02054731aef55d2dfe01cf47";
+  const BASE_URL = "https://api.twelvedata.com";
+
+  const assetOptions = [
+    { value: "EUR/USD", label: "EUR/USD" },
+    { value: "GBP/USD", label: "GBP/USD" },
+    { value: "USD/JPY", label: "USD/JPY" },
+    { value: "BTC/USD", label: "BTC/USD" },
+    { value: "ETH/USD", label: "ETH/USD" }
+  ];
+
+  const intervalOptions = [
+    { value: "15min", label: "15 min" },
+    { value: "30min", label: "30 min" },
+    { value: "1h", label: "1 hour" },
+    { value: "1day", label: "1 day" }
+  ];
 
   const calculateSimpleRSI = (prices: number[]): number => {
     if (prices.length < 14) return 50;
@@ -86,72 +107,47 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
 
   const fetchTechnicalData = async () => {
     setIsLoading(true);
+    setError(null);
+    
     try {
-      // First try to get real-time technical analysis from TradingView API or use Supabase data
-      const symbolMapping: Record<string, string> = {
-        "EUR/USD": "EURUSD=X",
-        "GBP/USD": "GBPUSD=X", 
-        "USD/JPY": "USDJPY=X", 
-        "AUDUSD=X": "AUDUSD=X",
-        "NZDUSD=X": "NZDUSD=X",
-        "USDCAD=X": "USDCAD=X",
-        "USDCHF=X": "USDCHF=X",
-        "EURGBP=X": "EURGBP=X",
-        "EURJPY=X": "EURJPY=X",
-        "GBPJPY=X": "GBPJPY=X",
-        "BTC-USD": "BTCUSD=X",
-        "ETH-USD": "ETHUSD=X",
-        "ADA-USD": "ADAUSD=X",
-        "DOGE-USD": "DOGEUSD=X",
-        "SOL-USD": "SOLUSD=X"
-      };
-      const dbSymbol = symbolMapping[selectedAsset.symbol] || "EURUSD=X";
+      console.log(`Fetching technical data for ${selectedSymbol} with interval ${selectedInterval}...`);
       
-      console.log(`Fetching technical data for ${selectedAsset.symbol} (mapped to ${dbSymbol})...`);
-      
-      // Try to fetch both price and indicator data from Supabase using direct API calls
-      const SUPABASE_URL = "https://jqrlegdulnnrpiixiecf.supabase.co";
-      const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4";
-      
-      const [pricesResponse, indicatorsResponse] = await Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/prices_tv?select=*&symbol=eq.${dbSymbol}&order=ts.desc&limit=50`, {
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${SUPABASE_URL}/rest/v1/indicators_tv?select=*&symbol=eq.${dbSymbol}&order=ts.desc&limit=1`, {
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        })
+      // Fetch multiple indicators from Twelve Data API
+      const [rsiResponse, atrResponse, adxResponse] = await Promise.all([
+        fetch(`${BASE_URL}/rsi?symbol=${selectedSymbol}&interval=${selectedInterval}&apikey=${API_KEY}&format=JSON`),
+        fetch(`${BASE_URL}/atr?symbol=${selectedSymbol}&interval=${selectedInterval}&apikey=${API_KEY}&format=JSON`),
+        fetch(`${BASE_URL}/adx?symbol=${selectedSymbol}&interval=${selectedInterval}&apikey=${API_KEY}&format=JSON`)
       ]);
 
-      if (!pricesResponse.ok) {
-        console.error('Prices fetch error:', pricesResponse.status);
-        generateMockData();
-        return;
+      // Check if all requests were successful
+      if (!rsiResponse.ok || !atrResponse.ok || !adxResponse.ok) {
+        throw new Error('Failed to fetch technical indicators');
       }
 
-      if (!indicatorsResponse.ok) {
-        console.error('Indicators fetch error:', indicatorsResponse.status);
-      }
+      const [rsiData, atrData, adxData] = await Promise.all([
+        rsiResponse.json(),
+        atrResponse.json(),
+        adxResponse.json()
+      ]);
 
-      const pricesData = await pricesResponse.json();
-      const indicatorsData = indicatorsResponse.ok ? await indicatorsResponse.json() : [];
+      // Extract latest values
+      const latestRsi = parseFloat(rsiData.values?.[0]?.rsi || "50");
+      const latestAtr = parseFloat(atrData.values?.[0]?.atr || "0.001");
+      const latestAdx = parseFloat(adxData.values?.[0]?.adx || "0");
 
-      if (pricesData && pricesData.length > 0) {
-        console.log(`Found ${pricesData.length} price points and ${indicatorsData?.length || 0} indicator points for ${dbSymbol}`);
-        processRealData(pricesData, indicatorsData?.[0] || null);
-      } else {
-        console.log(`No real data available for ${dbSymbol}, using mock data`);
-        generateMockData();
-      }
+      const technicalIndicators: TechnicalIndicator[] = [
+        { name: "RSI(14)", value: latestRsi, signal: getSignalFromRSI(latestRsi) },
+        { name: "ATR(14)", value: latestAtr, signal: "NEUTRAL" },
+        { name: "ADX(14)", value: latestAdx, signal: getSignalFromADX(latestAdx) }
+      ];
+
+      setIndicators(technicalIndicators);
+      generateSignalsFromIndicators(technicalIndicators, latestRsi, latestAdx);
+
     } catch (error) {
       console.error('Error fetching technical data:', error);
+      setError("Data unavailable");
+      // Fallback to mock data
       generateMockData();
     } finally {
       setIsLoading(false);
@@ -290,7 +286,14 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
 
   useEffect(() => {
     fetchTechnicalData();
-  }, [selectedAsset.symbol]);
+    
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(() => {
+      fetchTechnicalData();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedSymbol, selectedInterval]);
 
   const getSignalColor = (signal: string) => {
     switch (signal) {
@@ -315,7 +318,7 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header with Refresh */}
+      {/* Header with Controls */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Technical Analysis</h3>
         <Button
@@ -328,6 +331,49 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
           Refresh
         </Button>
       </div>
+
+      {/* Controls */}
+      <div className="flex gap-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Asset</label>
+          <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {assetOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Interval</label>
+          <Select value={selectedInterval} onValueChange={setSelectedInterval}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {intervalOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <p className="text-red-600 text-sm">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Card */}
       <Card className={cn("border-2", getSignalColor(summary))}>
