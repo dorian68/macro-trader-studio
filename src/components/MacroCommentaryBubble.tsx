@@ -603,8 +603,15 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         if (Array.isArray(responseJson) && responseJson.length > 0) {
           const messageObj = responseJson[0].message;
           
-          if (messageObj && messageObj.message && messageObj.message.content && messageObj.message.content.content) {
-            analysisContent = messageObj.message.content.content;
+          if (messageObj && messageObj.message && messageObj.message.content) {
+            // Extract content from the structured response
+            if (messageObj.message.content.content) {
+              analysisContent = messageObj.message.content.content;
+            } else if (messageObj.message.content.base_report) {
+              analysisContent = messageObj.message.content.base_report;
+            } else {
+              analysisContent = JSON.stringify(messageObj.message.content, null, 2);
+            }
           } else if (messageObj && messageObj.content) {
             analysisContent = typeof messageObj.content === 'string' ? messageObj.content : JSON.stringify(messageObj.content, null, 2);
           } else {
