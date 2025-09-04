@@ -175,7 +175,7 @@ export function TradingViewWidget({
 
         <div className="mt-4 text-sm text-muted-foreground">
           <div className="flex justify-between">
-            <span>TradingView integration with Supabase fallback support</span>
+            
             <Button variant="outline" size="sm" onClick={fetchData} className="h-7">
               Refresh
             </Button>
