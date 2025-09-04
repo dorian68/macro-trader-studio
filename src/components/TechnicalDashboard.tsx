@@ -87,61 +87,96 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
   const fetchTechnicalData = async () => {
     setIsLoading(true);
     try {
-      // Map asset symbols to database format - only EURUSD=X is available in prices_tv
+      // First try to get real-time technical analysis from TradingView API or use Supabase data
       const symbolMapping: Record<string, string> = {
         "EUR/USD": "EURUSD=X",
-        "GBP/USD": "EURUSD=X", // Fallback to available data
-        "USD/JPY": "EURUSD=X", // Fallback to available data
-        "GOLD": "EURUSD=X",    // Fallback to available data
-        "Gold": "EURUSD=X",    // Fallback to available data
-        "XAUUSD": "EURUSD=X",  // Fallback to available data
-        "Bitcoin": "EURUSD=X", // Fallback to available data
-        "Ethereum": "EURUSD=X" // Fallback to available data
+        "GBP/USD": "GBPUSD=X", 
+        "USD/JPY": "USDJPY=X", 
+        "AUDUSD=X": "AUDUSD=X",
+        "NZDUSD=X": "NZDUSD=X",
+        "USDCAD=X": "USDCAD=X",
+        "USDCHF=X": "USDCHF=X",
+        "EURGBP=X": "EURGBP=X",
+        "EURJPY=X": "EURJPY=X",
+        "GBPJPY=X": "GBPJPY=X",
+        "BTC-USD": "BTCUSD=X",
+        "ETH-USD": "ETHUSD=X",
+        "ADA-USD": "ADAUSD=X",
+        "DOGE-USD": "DOGEUSD=X",
+        "SOL-USD": "SOLUSD=X"
       };
       const dbSymbol = symbolMapping[selectedAsset.symbol] || "EURUSD=X";
       
-      console.log(`Fetching real data for ${dbSymbol}...`);
+      console.log(`Fetching technical data for ${selectedAsset.symbol} (mapped to ${dbSymbol})...`);
       
-      // Query real price data from prices_tv table using direct SQL
+      // Try to fetch both price and indicator data from Supabase using direct API calls
       const SUPABASE_URL = "https://jqrlegdulnnrpiixiecf.supabase.co";
       const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4";
       
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/prices_tv?select=*&symbol=eq.${dbSymbol}&order=ts.desc&limit=20`, {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        console.error('Fetch error:', response.status);
+      const [pricesResponse, indicatorsResponse] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/prices_tv?select=*&symbol=eq.${dbSymbol}&order=ts.desc&limit=50`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${SUPABASE_URL}/rest/v1/indicators_tv?select=*&symbol=eq.${dbSymbol}&order=ts.desc&limit=1`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      ]);
+
+      if (!pricesResponse.ok) {
+        console.error('Prices fetch error:', pricesResponse.status);
         generateMockData();
         return;
       }
-      
-      const pricesData = await response.json();
+
+      if (!indicatorsResponse.ok) {
+        console.error('Indicators fetch error:', indicatorsResponse.status);
+      }
+
+      const pricesData = await pricesResponse.json();
+      const indicatorsData = indicatorsResponse.ok ? await indicatorsResponse.json() : [];
 
       if (pricesData && pricesData.length > 0) {
-        console.log(`Found ${pricesData.length} real data points for ${dbSymbol}`);
-        processRealData(pricesData);
+        console.log(`Found ${pricesData.length} price points and ${indicatorsData?.length || 0} indicator points for ${dbSymbol}`);
+        processRealData(pricesData, indicatorsData?.[0] || null);
       } else {
         console.log(`No real data available for ${dbSymbol}, using mock data`);
         generateMockData();
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching technical data:', error);
       generateMockData();
     } finally {
       setIsLoading(false);
     }
   };
 
-  const processRealData = (pricesData: any[]) => {
+  const processRealData = (pricesData: any[], indicatorsData?: any) => {
     // Calculate indicators from real price data
     const prices = pricesData.map((p: any) => parseFloat(p.close));
-    const rsi = calculateSimpleRSI(prices);
-    const atr = calculateSimpleATR(pricesData);
+    
+    // Use pre-calculated indicators from Supabase if available, otherwise calculate
+    let rsi, atr, adx;
+    
+    if (indicatorsData) {
+      rsi = indicatorsData.rsi || calculateSimpleRSI(prices);
+      atr = indicatorsData.atr || calculateSimpleATR(pricesData);
+      adx = indicatorsData.adx || 0;
+      console.log(`Using real-time indicators: RSI=${rsi}, ATR=${atr}, ADX=${adx}`);
+    } else {
+      rsi = calculateSimpleRSI(prices);
+      atr = calculateSimpleATR(pricesData);
+      adx = 0;
+      console.log(`Using calculated indicators: RSI=${rsi}, ATR=${atr}`);
+    }
+    
     const currentPrice = prices[0];
     const oldPrice = prices[prices.length - 1];
     const priceChange = ((currentPrice - oldPrice) / oldPrice) * 100;
@@ -149,11 +184,12 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
     const realIndicators: TechnicalIndicator[] = [
       { name: "RSI(14)", value: rsi, signal: getSignalFromRSI(rsi) },
       { name: "ATR(14)", value: atr, signal: "NEUTRAL" },
+      { name: "ADX(14)", value: adx, signal: getSignalFromADX(adx) },
       { name: "Price Change %", value: priceChange, signal: priceChange > 0 ? "BUY" : "SELL" }
     ];
     
     setIndicators(realIndicators);
-    generateSignalsFromIndicators(realIndicators);
+    generateSignalsFromIndicators(realIndicators, rsi, adx);
   };
 
   const getSignalFromRSI = (rsi: number): "BUY" | "SELL" | "NEUTRAL" => {
@@ -167,38 +203,71 @@ export function TechnicalDashboard({ selectedAsset }: TechnicalDashboardProps) {
     return "NEUTRAL";
   };
 
-  const generateSignalsFromIndicators = (indicators: TechnicalIndicator[]) => {
+  const generateSignalsFromIndicators = (indicators: TechnicalIndicator[], rsi: number, adx: number) => {
+    // More sophisticated signal generation using real indicators
+    const rsiSignal = getSignalFromRSI(rsi);
+    const adxSignal = getSignalFromADX(adx);
+    
+    // Moving averages signal (simplified - could be enhanced with real MA data)
+    const priceChangeIndicator = indicators.find(i => i.name === "Price Change %");
+    const maSignal = priceChangeIndicator && priceChangeIndicator.value > 0.5 ? "BUY" : 
+                    priceChangeIndicator && priceChangeIndicator.value < -0.5 ? "SELL" : "NEUTRAL";
+    
     const newSignals: TechnicalSignal[] = [
       {
         name: "Moving Averages",
-        value: "Bullish",
-        signal: "BUY",
-        strength: "WEAK"
+        value: maSignal === "BUY" ? "Bullish" : maSignal === "SELL" ? "Bearish" : "Neutral",
+        signal: maSignal,
+        strength: Math.abs(priceChangeIndicator?.value || 0) > 1 ? "STRONG" : "WEAK"
       },
       {
-        name: "Technical Indicators", 
-        value: indicators[0]?.signal === "BUY" ? "Bullish" : 
-               indicators[0]?.signal === "SELL" ? "Bearish" : "Neutral",
-        signal: indicators[0]?.signal || "NEUTRAL",
-        strength: "WEAK"
+        name: "Oscillators", 
+        value: rsiSignal === "BUY" ? "Oversold" : rsiSignal === "SELL" ? "Overbought" : "Neutral",
+        signal: rsiSignal,
+        strength: (rsi < 20 || rsi > 80) ? "STRONG" : "WEAK"
       },
       {
-        name: "Summary",
-        value: "Buy",
-        signal: "BUY", 
-        strength: "WEAK"
+        name: "Trend Strength",
+        value: adx > 25 ? "Strong Trend" : adx > 15 ? "Weak Trend" : "No Trend",
+        signal: adxSignal,
+        strength: adx > 40 ? "STRONG" : "WEAK"
       }
     ];
 
-    setSignals(newSignals);
-    
-    // Calculate overall summary
+    // Calculate overall summary based on all signals
     const buyCount = newSignals.filter(s => s.signal === "BUY").length;
     const sellCount = newSignals.filter(s => s.signal === "SELL").length;
+    const neutralCount = newSignals.filter(s => s.signal === "NEUTRAL").length;
     
-    if (buyCount > sellCount) setSummary("BUY");
-    else if (sellCount > buyCount) setSummary("SELL");
-    else setSummary("NEUTRAL");
+    let overallSignal: "BUY" | "SELL" | "NEUTRAL";
+    let overallValue: string;
+    
+    if (buyCount > sellCount + neutralCount) {
+      overallSignal = "BUY";
+      overallValue = "Strong Buy";
+    } else if (buyCount > sellCount) {
+      overallSignal = "BUY"; 
+      overallValue = "Buy";
+    } else if (sellCount > buyCount + neutralCount) {
+      overallSignal = "SELL";
+      overallValue = "Strong Sell";
+    } else if (sellCount > buyCount) {
+      overallSignal = "SELL";
+      overallValue = "Sell";
+    } else {
+      overallSignal = "NEUTRAL";
+      overallValue = "Neutral";
+    }
+
+    newSignals.push({
+      name: "Summary",
+      value: overallValue,
+      signal: overallSignal,
+      strength: (buyCount === 3 || sellCount === 3) ? "STRONG" : "WEAK"
+    });
+
+    setSignals(newSignals);
+    setSummary(overallSignal);
   };
 
   const generateMockData = () => {

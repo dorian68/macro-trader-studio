@@ -728,94 +728,7 @@ export default function MacroAnalysis() {
           </div>
         </div>
 
-        {/* Optimized 2-Column Layout for UX */}
-        <div className="space-y-6">
-          {/* Row 1: Market Focus and Technical Analysis side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Column 1: Market Focus */}
-            <Card className="gradient-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Market Focus
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Selected Asset</label>
-                  <Select 
-                    value={selectedAsset.symbol} 
-                    onValueChange={(value) => {
-                      const asset = assets.find(a => a.symbol === value);
-                      if (asset) setSelectedAsset(asset);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <div className="p-2 font-semibold text-xs text-muted-foreground border-b">FX PAIRS</div>
-                      {assets.filter(a => a.market === "FX").map((asset) => (
-                        <SelectItem key={asset.symbol} value={asset.symbol}>
-                          {asset.display}
-                        </SelectItem>
-                      ))}
-                      <div className="p-2 font-semibold text-xs text-muted-foreground border-b border-t">CRYPTO</div>
-                      {assets.filter(a => a.market === "CRYPTO").map((asset) => (
-                        <SelectItem key={asset.symbol} value={asset.symbol}>
-                          {asset.display}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(getTradingViewUrl(selectedAsset), '_blank')}
-                  className="w-full"
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Open {selectedAsset.display} in TradingView
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Column 2: Technical Analysis */}
-            <Card className="gradient-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Technical Analysis - {selectedAsset.display}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TechnicalDashboard selectedAsset={selectedAsset} />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Row 2: Market Chart - Full Width */}
-          <Card className="gradient-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Market Chart - {selectedAsset.display}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-2">
-              <TradingViewWidget 
-                selectedSymbol={selectedAsset.symbol}
-                onSymbolChange={(symbol) => {
-                  const asset = assets.find(a => a.symbol === symbol);
-                  if (asset) setSelectedAsset(asset);
-                }}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Query Interface */}
+        {/* Analysis Generator - Moved to top like a search bar */}
         <Card className="gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -937,6 +850,93 @@ export default function MacroAnalysis() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Optimized 2-Column Layout for UX */}
+        <div className="space-y-6">
+          {/* Row 1: Market Focus and Technical Analysis side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Column 1: Market Focus */}
+            <Card className="gradient-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Market Focus
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Selected Asset</label>
+                  <Select 
+                    value={selectedAsset.symbol} 
+                    onValueChange={(value) => {
+                      const asset = assets.find(a => a.symbol === value);
+                      if (asset) setSelectedAsset(asset);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <div className="p-2 font-semibold text-xs text-muted-foreground border-b">FX PAIRS</div>
+                      {assets.filter(a => a.market === "FX").map((asset) => (
+                        <SelectItem key={asset.symbol} value={asset.symbol}>
+                          {asset.display}
+                        </SelectItem>
+                      ))}
+                      <div className="p-2 font-semibold text-xs text-muted-foreground border-b border-t">CRYPTO</div>
+                      {assets.filter(a => a.market === "CRYPTO").map((asset) => (
+                        <SelectItem key={asset.symbol} value={asset.symbol}>
+                          {asset.display}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(getTradingViewUrl(selectedAsset), '_blank')}
+                  className="w-full"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Open {selectedAsset.display} in TradingView
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Column 2: Technical Analysis */}
+            <Card className="gradient-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Technical Analysis - {selectedAsset.display}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TechnicalDashboard selectedAsset={selectedAsset} />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Row 2: Market Chart - Full Width */}
+          <Card className="gradient-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Market Chart - {selectedAsset.display}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2">
+              <TradingViewWidget 
+                selectedSymbol={selectedAsset.symbol}
+                onSymbolChange={(symbol) => {
+                  const asset = assets.find(a => a.symbol === symbol);
+                  if (asset) setSelectedAsset(asset);
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Analyses Results */}
         <div className="space-y-6">
