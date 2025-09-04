@@ -178,7 +178,7 @@ export function HybridSearchBar({
         id: conversationId,
         query: searchTerm,
         timestamp: new Date(),
-        response: data.choices?.[0]?.message?.content || "No response received",
+        response: data[0]?.choices?.[0]?.message?.content || "No response received",
         conversationId: conversationId
       };
 
@@ -253,7 +253,7 @@ export function HybridSearchBar({
         id: Date.now().toString(),
         query: replyText,
         timestamp: new Date(),
-        response: data.choices?.[0]?.message?.content || "No response received",
+        response: data[0]?.choices?.[0]?.message?.content || "No response received",
         conversationId: conversationId
       };
 
