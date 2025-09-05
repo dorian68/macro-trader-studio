@@ -187,12 +187,12 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
         </div>
       </main>
 
-      {/* Global Floating Bubble System - Mobile adapted */}
-      <BubbleSystem 
+      {/* Global Floating Bubble System - Mobile adapted - HIDDEN */}
+      {/* <BubbleSystem 
         instrument={selectedAsset} 
         timeframe={timeframe} 
         onTradeSetupClick={() => onModuleChange?.("trading")}
-      />
+      /> */}
     </div>
   );
 }
