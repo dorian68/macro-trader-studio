@@ -160,8 +160,7 @@ export function HybridSearchBar({
     
     try {
       const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
-        type: "ChatGPT",
-        mode: "question",
+        type: "RAG",
         question: searchTerm,
         instrument: instrument,
         timeframe: timeframe
@@ -171,28 +170,17 @@ export function HybridSearchBar({
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      console.log('Raw response status:', response.status);
-      console.log('Raw response headers:', response.headers);
-      
-      const responseText = await response.text();
-      console.log('Raw response text:', responseText);
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log('Parsed data:', data);
-      } catch (parseError) {
-        console.error('JSON Parse Error:', parseError);
-        console.error('Response text that failed to parse:', responseText);
-        throw new Error(`Failed to parse JSON response: ${parseError.message}`);
-      }
+      const data = await response.json();
       
       const conversationId = Date.now().toString();
       const newResponse: AIResponse = {
         id: conversationId,
         query: searchTerm,
         timestamp: new Date(),
-        response: data[0]?.choices?.[0]?.message?.content || "No response received",
+        response: typeof data.content?.content === 'string' ? data.content.content 
+                : typeof data.content === 'string' ? data.content 
+                : typeof data.content === 'object' ? JSON.stringify(data.content, null, 2)
+                : "No response received",
         conversationId: conversationId
       };
 
@@ -251,7 +239,6 @@ export function HybridSearchBar({
 
       const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         type: "RAG",
-        mode: "question",
         question: contextualQuestion,
         instrument: instrument,
         timeframe: timeframe
@@ -261,25 +248,16 @@ export function HybridSearchBar({
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      console.log('Reply raw response status:', response.status);
-      const responseText = await response.text();
-      console.log('Reply raw response text:', responseText);
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log('Reply parsed data:', data);
-      } catch (parseError) {
-        console.error('Reply JSON Parse Error:', parseError);
-        console.error('Reply response text that failed to parse:', responseText);
-        throw new Error(`Failed to parse reply JSON response: ${parseError.message}`);
-      }
+      const data = await response.json();
       
       const newResponse: AIResponse = {
         id: Date.now().toString(),
         query: replyText,
         timestamp: new Date(),
-        response: data[0]?.choices?.[0]?.message?.content || "No response received",
+        response: typeof data.content?.content === 'string' ? data.content.content 
+                : typeof data.content === 'string' ? data.content 
+                : typeof data.content === 'object' ? JSON.stringify(data.content, null, 2)
+                : "No response received",
         conversationId: conversationId
       };
 

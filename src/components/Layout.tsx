@@ -53,28 +53,8 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
               </div>
             </button>
 
-            {/* Desktop Navigation + Auth + Status */}
+            {/* Mobile Navigation + Auth + Status */}
             <div className="flex items-center gap-2">
-              {/* Desktop Navigation */}
-              <nav className="hidden md:flex items-center gap-1 mr-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/')}
-                  className="h-8 px-3"
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/about')}
-                  className="h-8 px-3"
-                >
-                  About
-                </Button>
-              </nav>
-              
               {/* Auth Section */}
               {user ? (
                 <div className="flex items-center gap-2">
@@ -207,14 +187,12 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
         </div>
       </main>
 
-      {/* Global Floating Bubble System - Temporarily hidden */}
-      {/* 
+      {/* Global Floating Bubble System - Mobile adapted */}
       <BubbleSystem 
         instrument={selectedAsset} 
         timeframe={timeframe} 
         onTradeSetupClick={() => onModuleChange?.("trading")}
       />
-      */}
     </div>
   );
 }

@@ -590,9 +590,7 @@ export default function MacroAnalysis() {
 
       // Send launch request and wait for response - might contain immediate result
       try {
-        console.log('📊 [MacroAnalysis] About to send LAUNCH request...');
         const launchResponse = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', launchPayload);
-        console.log('📊 [MacroAnalysis] LAUNCH response received:', launchResponse.status, launchResponse.ok);
         
         if (launchResponse.ok) {
           const launchResponseText = await launchResponse.text();
