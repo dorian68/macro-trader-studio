@@ -121,7 +121,7 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      navigate('/');
+                      navigate('/dashboard');
                       setIsMobileMenuOpen(false);
                     }}
                     className="justify-start text-sm"

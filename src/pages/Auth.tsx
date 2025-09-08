@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import alphalensLogo from '@/assets/alphalens-logo.png';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [brokerName, setBrokerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
@@ -23,7 +25,7 @@ export default function Auth() {
       (event, session) => {
         setSession(session);
         if (session?.user) {
-          navigate('/');
+          navigate('/dashboard');
         }
       }
     );
@@ -32,7 +34,7 @@ export default function Auth() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        navigate('/');
+        navigate('/dashboard');
       }
     });
 
@@ -41,15 +43,47 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate broker name
+    if (!brokerName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Broker name is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (brokerName.length < 2 || brokerName.length > 80) {
+      toast({
+        title: "Validation Error", 
+        description: "Broker name must be between 2 and 80 characters.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!/^[a-zA-Z0-9\s\-&]+$/.test(brokerName)) {
+      toast({
+        title: "Validation Error",
+        description: "Broker name can only contain letters, numbers, spaces, hyphens, and ampersands.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/dashboard`;
     
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl
+        emailRedirectTo: redirectUrl,
+        data: {
+          broker_name: brokerName.trim()
+        }
       }
     });
 
@@ -62,7 +96,7 @@ export default function Auth() {
     } else {
       toast({
         title: "Registration Successful",
-        description: "Check your email to confirm your account."
+        description: "Check your email to confirm your account. Welcome to Alphalens!"
       });
     }
 
@@ -93,9 +127,16 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Trading Dashboard</CardTitle>
+          <div className="flex justify-center mb-4">
+            <img 
+              src={alphalensLogo} 
+              alt="Alphalens" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <CardTitle className="text-2xl font-bold">Welcome to Alphalens</CardTitle>
           <CardDescription>
-            Connect to access your portfolios
+            Connect to access your trading dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -155,6 +196,19 @@ export default function Auth() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-broker">Broker Name *</Label>
+                  <Input
+                    id="signup-broker"
+                    type="text"
+                    value={brokerName}
+                    onChange={(e) => setBrokerName(e.target.value)}
+                    placeholder="Enter your broker name"
+                    required
+                    minLength={2}
+                    maxLength={80}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>

@@ -74,7 +74,7 @@ export default function AssetDetail() {
   useEffect(() => {
     const fetchAssetProfile = async () => {
       if (!symbol) {
-        navigate('/');
+        navigate('/dashboard');
         return;
       }
 
@@ -94,7 +94,7 @@ export default function AssetDetail() {
             description: `No information found for ${symbol}`,
             variant: "destructive"
           });
-          navigate('/');
+          navigate('/dashboard');
           return;
         }
 
@@ -109,7 +109,7 @@ export default function AssetDetail() {
           description: "Unable to load asset information",
           variant: "destructive"
         });
-        navigate('/');
+        navigate('/dashboard');
       } finally {
         setLoading(false);
       }
@@ -210,7 +210,7 @@ export default function AssetDetail() {
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             className="shrink-0"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
