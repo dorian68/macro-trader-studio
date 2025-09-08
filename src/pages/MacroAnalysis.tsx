@@ -19,7 +19,8 @@ import {
   BarChart3,
   Activity,
   AlertTriangle,
-  ChevronDown
+  ChevronDown,
+  Target
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
@@ -845,65 +846,181 @@ export default function MacroAnalysis() {
           </CardContent>
         </Card>
 
-        {/* Analysis Results - Appears after generation */}
+        {/* Analysis Results - Auto-displayed chat-style */}
         {analyses.length > 0 && (
-          <Card className="gradient-card">
-            <CardHeader className="cursor-pointer" onClick={() => setShowAnalysisResult(!showAnalysisResult)}>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Brain className="h-5 w-5" />
-                  Analysis Results
-                </div>
-                <ChevronDown className={cn("h-4 w-4 transition-transform", showAnalysisResult && "rotate-180")} />
-              </CardTitle>
-            </CardHeader>
-            {showAnalysisResult && (
-              <CardContent>
-                {analyses.map((analysis, analysisIndex) => (
-                  <div key={analysisIndex} className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {analysis.timestamp.toLocaleString()}
-                        </span>
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-foreground mb-6 flex items-center gap-2">
+              <Brain className="h-6 w-6 text-primary" />
+              Analysis Results
+            </h2>
+            {analyses.map((analysis, index) => (
+              <Card key={index} className="overflow-hidden animate-fade-in shadow-soft hover:shadow-medium transition-all">
+                <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-accent/5">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Activity className="h-5 w-5 text-primary" />
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => copyAnalysis(analysis)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
+                      <div>
+                        <CardTitle className="text-lg font-semibold text-foreground mb-1">
+                          Macro Analysis Bot
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Analysis for {analysis.query} • {analysis.timestamp.toLocaleString()}
+                        </p>
                       </div>
                     </div>
+                    <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/20">
+                      ✓ Complete
+                    </Badge>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="space-y-4">
+                  {analysis.sections.map((section, sectionIndex) => {
+                    const sectionKey = `${index}-${sectionIndex}`;
+                    const isExpanded = section.expanded || expandedSections.has(sectionKey);
                     
-                    {analysis.sections.map((section, sectionIndex) => (
-                      <div key={sectionIndex} className="border rounded-lg p-4">
-                        <div 
-                          className="flex items-center justify-between cursor-pointer"
-                          onClick={() => toggleSection(analysisIndex, sectionIndex)}
+                    return (
+                      <div key={sectionIndex} className="border border-border rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => {
+                            const newExpanded = new Set(expandedSections);
+                            if (isExpanded) {
+                              newExpanded.delete(sectionKey);
+                            } else {
+                              newExpanded.add(sectionKey);
+                            }
+                            setExpandedSections(newExpanded);
+                          }}
+                          className="w-full px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors flex justify-between items-center group"
                         >
-                          <h4 className="font-medium">{section.title}</h4>
+                          <div className="flex items-center gap-3">
+                            {section.type === "overview" && <Brain className="h-4 w-4 text-primary" />}
+                            {section.type === "technical" && <BarChart3 className="h-4 w-4 text-blue-500" />}
+                            {section.type === "fundamental" && <TrendingUp className="h-4 w-4 text-green-500" />}
+                            {section.type === "outlook" && <Globe className="h-4 w-4 text-purple-500" />}
+                            <span className="font-medium text-foreground group-hover:text-primary transition-colors">
+                              {section.title}
+                            </span>
+                          </div>
                           <ChevronDown className={cn(
-                            "h-4 w-4 transition-transform",
-                            expandedSections.has(`${analysisIndex}-${sectionIndex}`) && "rotate-180"
+                            "h-4 w-4 transition-transform text-muted-foreground group-hover:text-primary",
+                            isExpanded ? "rotate-180" : ""
                           )} />
-                        </div>
+                        </button>
                         
-                        {expandedSections.has(`${analysisIndex}-${sectionIndex}`) && (
-                          <div className="mt-3 text-sm text-muted-foreground whitespace-pre-wrap">
-                            {section.content}
+                        {isExpanded && (
+                          <div className="p-6 bg-background border-t border-border animate-fade-in">
+                            <div className="prose prose-sm max-w-none">
+                              <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed bg-muted/20 p-4 rounded-lg border">
+                                {section.content}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
-                    ))}
+                    );
+                  })}
+                  
+                  {/* Trading Levels Extraction */}
+                  {analysis.sections.some(section => section.content.includes('Support') || section.content.includes('Resistance')) && (
+                    <div className="mt-6 p-4 bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg border border-primary/20">
+                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Target className="h-4 w-4 text-primary" />
+                        Extracted Trading Levels
+                      </h4>
+                      
+                      {(() => {
+                        const fullContent = analysis.sections.map(s => s.content).join('\n');
+                        const levels = parseLevels(fullContent);
+                        
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            {levels.supports.length > 0 && (
+                              <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                                <h5 className="font-medium text-success mb-2 flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                                  Support Levels
+                                </h5>
+                                <ul className="space-y-1">
+                                  {levels.supports.slice(0, 3).map((level, i) => (
+                                    <li key={i} className="text-muted-foreground">• {level}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {levels.resistances.length > 0 && (
+                              <div className="p-3 bg-danger/10 rounded-lg border border-danger/20">
+                                <h5 className="font-medium text-danger mb-2 flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-danger rounded-full"></div>
+                                  Resistance Levels
+                                </h5>
+                                <ul className="space-y-1">
+                                  {levels.resistances.slice(0, 3).map((level, i) => (
+                                    <li key={i} className="text-muted-foreground">• {level}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {Object.keys(levels.indicators).length > 0 && (
+                              <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                                <h5 className="font-medium text-primary mb-2 flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                  Key Indicators
+                                </h5>
+                                <ul className="space-y-1">
+                                  {Object.entries(levels.indicators).slice(0, 3).map(([name, value], i) => (
+                                    <li key={i} className="text-muted-foreground">• {name}: {value}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  
+                  {/* Action Buttons */}
+                  <div className="pt-4 border-t border-border flex gap-3 justify-between items-center">
+                    <div className="text-xs text-muted-foreground">
+                      Response received in real-time
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const fullContent = analysis.sections.map(s => `${s.title}\n${s.content}`).join('\n\n');
+                          navigator.clipboard.writeText(fullContent);
+                          toast({
+                            title: "Copied!",
+                            description: "Analysis copied to clipboard"
+                          });
+                        }}
+                        className="flex items-center gap-2 hover:bg-primary hover:text-primary-foreground"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(getTradingViewUrl(selectedAsset), '_blank')}
+                        className="flex items-center gap-2 hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        TradingView
+                      </Button>
+                    </div>
                   </div>
-                ))}
-              </CardContent>
-            )}
-          </Card>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
 
         {/* Market Chart with integrated Market Focus */}
