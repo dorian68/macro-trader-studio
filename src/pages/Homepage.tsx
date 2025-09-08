@@ -1,41 +1,29 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, BarChart3, Brain, FileText, TrendingUp, Users, Shield, Zap, Target } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, FileText, TrendingUp, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+
 export default function Homepage() {
   const navigate = useNavigate();
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const [demoForm, setDemoForm] = useState({
-    name: "",
-    email: "",
-    company: "",
-    message: ""
-  });
-  const handleDemoRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Demo request submitted successfully! We'll contact you soon.");
-    setShowDemoModal(false);
-    setDemoForm({
-      name: "",
-      email: "",
-      company: "",
-      message: ""
-    });
-  };
-  return <div className="min-h-screen bg-background">
+
+  return (
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img src="/lovable-uploads/e38d6c4f-1947-43bd-ba24-1b5604dac33a.png" alt="Alphalens" className="h-12" />
+            <img src="/lovable-uploads/ce6db9ea-a9e4-484a-9728-526719e1840b.png" alt="Alphalens" className="h-12" />
           </div>
           <div className="flex items-center space-x-4">
+            <Button variant="ghost" onClick={() => navigate("/about")}>
+              About
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/features")}>
+              Features
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/contact")}>
+              Contact
+            </Button>
             <Button variant="ghost" onClick={() => navigate("/auth")}>
               Login
             </Button>
@@ -50,18 +38,18 @@ export default function Homepage() {
       <section className="relative py-24 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/20">
         <div className="container mx-auto max-w-6xl">
           <div className="mb-8">
-            <img src="/lovable-uploads/e38d6c4f-1947-43bd-ba24-1b5604dac33a.png" alt="Alphalens" className="h-24 mx-auto mb-6" />
+            <img src="/lovable-uploads/ce6db9ea-a9e4-484a-9728-526719e1840b.png" alt="Alphalens" className="h-24 mx-auto mb-6" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
             Intelligent Financial Research
-            <span className="text-accent"> Powered by AI</span>
+            <span className="text-primary"> Powered by AI</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
             Advanced FX, crypto, and macro analysis with institutional-grade insights, 
             AI-powered trade setups, and comprehensive research reports for financial professionals.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button size="lg" className="text-lg px-8 py-3 bg-primary hover:bg-primary/90" onClick={() => setShowDemoModal(true)}>
+            <Button size="lg" className="text-lg px-8 py-3 bg-primary hover:bg-primary/90" onClick={() => navigate("/contact")}>
               Try Demo <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-primary text-primary hover:bg-primary hover:text-primary-foreground" onClick={() => navigate("/auth")}>
@@ -99,8 +87,8 @@ export default function Homepage() {
 
             <Card className="p-6 hover:shadow-lg transition-shadow border-border">
               <CardContent className="text-center p-0">
-                <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <BarChart3 className="h-8 w-8 text-accent" />
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <BarChart3 className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold mb-4 text-foreground">Macro Commentary</h3>
                 <p className="text-muted-foreground leading-relaxed">
@@ -125,8 +113,8 @@ export default function Homepage() {
 
             <Card className="p-6 hover:shadow-lg transition-shadow border-border">
               <CardContent className="text-center p-0">
-                <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Target className="h-8 w-8 text-accent" />
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Target className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold mb-4 text-foreground">Technical Analysis</h3>
                 <p className="text-muted-foreground leading-relaxed">
@@ -139,9 +127,6 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* Why Choose Alphalens */}
-      
-
       {/* Call to Action */}
       <section className="py-20 px-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="container mx-auto max-w-4xl text-center">
@@ -152,7 +137,7 @@ export default function Homepage() {
             Join financial professionals who rely on Alphalens for superior market insights and trading decisions.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary" className="text-lg px-8 py-3" onClick={() => setShowDemoModal(true)}>
+            <Button size="lg" variant="secondary" className="text-lg px-8 py-3" onClick={() => navigate("/contact")}>
               Request Demo
             </Button>
             <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" onClick={() => navigate("/auth")}>
@@ -168,7 +153,7 @@ export default function Homepage() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/lovable-uploads/e38d6c4f-1947-43bd-ba24-1b5604dac33a.png" alt="Alphalens" className="h-8" />
+                <img src="/lovable-uploads/ce6db9ea-a9e4-484a-9728-526719e1840b.png" alt="Alphalens" className="h-8" />
               </div>
               <p className="text-muted-foreground text-sm">
                 Professional financial research and trading intelligence powered by artificial intelligence.
@@ -177,25 +162,25 @@ export default function Homepage() {
             <div>
               <h4 className="font-semibold mb-4 text-foreground">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">API</a></li>
+                <li><button onClick={() => navigate("/features")} className="hover:text-foreground transition-colors">Features</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Pricing</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">API</button></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-foreground">Company</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Privacy</a></li>
+                <li><button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">About</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Contact</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Privacy</button></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-foreground">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Documentation</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Documentation</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Help Center</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Terms of Service</button></li>
               </ul>
             </div>
           </div>
@@ -204,50 +189,6 @@ export default function Homepage() {
           </div>
         </div>
       </footer>
-
-      {/* Demo Modal */}
-      <Dialog open={showDemoModal} onOpenChange={setShowDemoModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Request a Demo</DialogTitle>
-            <DialogDescription>
-              Get a personalized demonstration of Alphalens' capabilities for your trading needs.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleDemoRequest} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={demoForm.name} onChange={e => setDemoForm({
-              ...demoForm,
-              name: e.target.value
-            })} required />
-            </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={demoForm.email} onChange={e => setDemoForm({
-              ...demoForm,
-              email: e.target.value
-            })} required />
-            </div>
-            <div>
-              <Label htmlFor="company">Company</Label>
-              <Input id="company" value={demoForm.company} onChange={e => setDemoForm({
-              ...demoForm,
-              company: e.target.value
-            })} />
-            </div>
-            <div>
-              <Label htmlFor="message">Message (Optional)</Label>
-              <Textarea id="message" placeholder="Tell us about your trading needs..." value={demoForm.message} onChange={e => setDemoForm({
-              ...demoForm,
-              message: e.target.value
-            })} />
-            </div>
-            <Button type="submit" className="w-full">
-              Request Demo
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>;
+    </div>
+  );
 }

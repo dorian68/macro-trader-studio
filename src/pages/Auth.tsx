@@ -24,7 +24,7 @@ export default function Auth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        if (session?.user) {
+        if (session?.user && event === 'SIGNED_IN') {
           navigate('/dashboard');
         }
       }
@@ -34,7 +34,8 @@ export default function Auth() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        navigate('/dashboard');
+        // Don't auto-navigate, let AuthGuard handle approval status
+        setSession(session);
       }
     });
 
@@ -96,7 +97,7 @@ export default function Auth() {
     } else {
       toast({
         title: "Registration Successful",
-        description: "Check your email to confirm your account. Welcome to Alphalens!"
+        description: "Check your email to confirm your account. Your account will be reviewed for approval."
       });
     }
 

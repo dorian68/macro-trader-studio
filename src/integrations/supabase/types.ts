@@ -7,13 +7,119 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
+      abcg_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          tokens: number | null
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          tokens?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          tokens?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abcg_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "abcg_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      abcg_documents: {
+        Row: {
+          asset_class: string | null
+          author: string | null
+          created_at: string
+          doc_sha256: string
+          embargo_until: string | null
+          id: string
+          published_at: string
+          region: string | null
+          source_url: string | null
+          status: string
+          storage_path: string
+          superseded_by: string | null
+          tickers: string[] | null
+          title: string
+          topics: string[] | null
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          asset_class?: string | null
+          author?: string | null
+          created_at?: string
+          doc_sha256: string
+          embargo_until?: string | null
+          id?: string
+          published_at: string
+          region?: string | null
+          source_url?: string | null
+          status?: string
+          storage_path: string
+          superseded_by?: string | null
+          tickers?: string[] | null
+          title: string
+          topics?: string[] | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          asset_class?: string | null
+          author?: string | null
+          created_at?: string
+          doc_sha256?: string
+          embargo_until?: string | null
+          id?: string
+          published_at?: string
+          region?: string | null
+          source_url?: string | null
+          status?: string
+          storage_path?: string
+          superseded_by?: string | null
+          tickers?: string[] | null
+          title?: string
+          topics?: string[] | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abcg_documents_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "abcg_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_recommendations: {
         Row: {
           confidence_score: number | null
@@ -199,6 +305,33 @@ export type Database = {
         }
         Relationships: []
       }
+      indicators_tv: {
+        Row: {
+          adx: number | null
+          atr: number | null
+          id: number
+          rsi: number | null
+          symbol: string
+          ts: string
+        }
+        Insert: {
+          adx?: number | null
+          atr?: number | null
+          id?: number
+          rsi?: number | null
+          symbol: string
+          ts: string
+        }
+        Update: {
+          adx?: number | null
+          atr?: number | null
+          id?: number
+          rsi?: number | null
+          symbol?: string
+          ts?: string
+        }
+        Relationships: []
+      }
       instruments: {
         Row: {
           asset_type: string | null
@@ -360,12 +493,176 @@ export type Database = {
         }
         Relationships: []
       }
+      prices_tv: {
+        Row: {
+          close: number | null
+          high: number | null
+          id: number
+          low: number | null
+          open: number | null
+          symbol: string
+          ts: string
+          volume: number | null
+        }
+        Insert: {
+          close?: number | null
+          high?: number | null
+          id?: number
+          low?: number | null
+          open?: number | null
+          symbol: string
+          ts: string
+          volume?: number | null
+        }
+        Update: {
+          close?: number | null
+          high?: number | null
+          id?: number
+          low?: number | null
+          open?: number | null
+          symbol?: string
+          ts?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          broker_name: string | null
+          created_at: string
+          id: string
+          role: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          broker_name?: string | null
+          created_at?: string
+          id?: string
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          broker_name?: string | null
+          created_at?: string
+          id?: string
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: string
+      }
+      search_chunks_cosine: {
+        Args: { match_count: number; query_embedding: string }
+        Returns: {
+          chunk_index: number
+          content: string
+          document_id: string
+          id: string
+          similarity: number
+        }[]
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
