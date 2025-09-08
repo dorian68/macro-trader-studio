@@ -50,7 +50,7 @@ export default function AISetup() {
       };
 
       // Send POST request to n8n workflow
-      const response = await fetch('YOUR_N8N_WORKFLOW_WEBHOOK_URL', {
+      const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,9 +156,32 @@ export default function AISetup() {
                       <SelectItem value="EUR/USD">EUR/USD</SelectItem>
                       <SelectItem value="GBP/USD">GBP/USD</SelectItem>
                       <SelectItem value="USD/JPY">USD/JPY</SelectItem>
-                      <SelectItem value="BTC">Bitcoin</SelectItem>
-                      <SelectItem value="ETH">Ethereum</SelectItem>
+                      <SelectItem value="USD/CHF">USD/CHF</SelectItem>
+                      <SelectItem value="AUD/USD">AUD/USD</SelectItem>
+                      <SelectItem value="USD/CAD">USD/CAD</SelectItem>
+                      <SelectItem value="NZD/USD">NZD/USD</SelectItem>
+                      <SelectItem value="EUR/GBP">EUR/GBP</SelectItem>
+                      <SelectItem value="EUR/JPY">EUR/JPY</SelectItem>
+                      <SelectItem value="GBP/JPY">GBP/JPY</SelectItem>
+                      <SelectItem value="BTC/USD">Bitcoin</SelectItem>
+                      <SelectItem value="ETH/USD">Ethereum</SelectItem>
+                      <SelectItem value="BNB/USD">Binance Coin</SelectItem>
+                      <SelectItem value="ADA/USD">Cardano</SelectItem>
+                      <SelectItem value="SOL/USD">Solana</SelectItem>
+                      <SelectItem value="DOT/USD">Polkadot</SelectItem>
+                      <SelectItem value="MATIC/USD">Polygon</SelectItem>
                       <SelectItem value="GOLD">Gold</SelectItem>
+                      <SelectItem value="SILVER">Silver</SelectItem>
+                      <SelectItem value="WTI">Oil (WTI)</SelectItem>
+                      <SelectItem value="BRENT">Oil (Brent)</SelectItem>
+                      <SelectItem value="AAPL">Apple</SelectItem>
+                      <SelectItem value="TSLA">Tesla</SelectItem>
+                      <SelectItem value="MSFT">Microsoft</SelectItem>
+                      <SelectItem value="GOOGL">Google</SelectItem>
+                      <SelectItem value="AMZN">Amazon</SelectItem>
+                      <SelectItem value="NVDA">NVIDIA</SelectItem>
+                      <SelectItem value="META">Meta</SelectItem>
+                      <SelectItem value="NFLX">Netflix</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
