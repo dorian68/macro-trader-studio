@@ -41,8 +41,30 @@ export default function AISetup() {
   const generateTradeSetup = async () => {
     setIsGenerating(true);
     
-    // Simulate AI generation
-    setTimeout(() => {
+    try {
+      // Prepare JSON payload for n8n workflow
+      const payload = {
+        ...parameters,
+        mode: "run",
+        type: "trade"
+      };
+
+      // Send POST request to n8n workflow
+      const response = await fetch('YOUR_N8N_WORKFLOW_WEBHOOK_URL', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate trade setup');
+      }
+
+      const result = await response.json();
+      
+      // Mock setup for now since we don't have the actual n8n response structure
       const direction = Math.random() > 0.5 ? "buy" : "sell";
       const basePrice = 1.0900;
       
@@ -70,8 +92,22 @@ export default function AISetup() {
       });
       
       setStep("generated");
+      
+      toast({
+        title: "Trade Setup Generated",
+        description: "Your AI trade setup has been generated successfully.",
+      });
+      
+    } catch (error) {
+      console.error('Error generating trade setup:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate trade setup. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   const saveSetup = () => {
