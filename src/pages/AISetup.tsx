@@ -95,21 +95,21 @@ export default function AISetup() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(macroPayload)
+          body: JSON.stringify(macroPayload),
+          signal: AbortSignal.timeout(120000) // 2 minutes timeout
         });
 
         console.log('📊 [AISetup] Macro response status:', macroResponse.status);
 
         if (!macroResponse.ok) {
-          console.log('📊 [AISetup] Macro response not ok, proceeding without macro insight');
-          macroResult = null; // Continue without macro insight
-        } else {
-          macroResult = await macroResponse.json();
-          console.log('📊 [AISetup] Macro commentary response:', macroResult);
+          throw new Error(`HTTP ${macroResponse.status}: Failed to get macro commentary`);
         }
+
+        macroResult = await macroResponse.json();
+        console.log('📊 [AISetup] Macro commentary response received:', macroResult);
       } catch (macroError) {
-        console.warn('📊 [AISetup] Macro commentary failed, proceeding without:', macroError);
-        macroResult = null; // Continue without macro insight
+        console.error('📊 [AISetup] Macro commentary failed:', macroError);
+        throw macroError; // Stop if macro fails
       }
 
       // Step 2: Prepare JSON payload for trade setup with macro insight
