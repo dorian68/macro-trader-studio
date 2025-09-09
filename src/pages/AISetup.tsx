@@ -75,15 +75,20 @@ export default function AISetup() {
     try {
       // Step 1: Call macro-commentary endpoint first
       const macroPayload = {
-        instrument: parameters.instrument,
-        customNote: parameters.customNotes,
+        type: "RAG",
+        question: parameters.customNotes || `Market analysis for ${parameters.instrument}`,
         mode: "run",
-        type: "RAG"
+        instrument: parameters.instrument,
+        timeframe: parameters.timeframe,
+        assetType: "currency",
+        analysisDepth: "detailed",
+        period: "weekly",
+        adresse: ""
       };
 
       console.log('📊 [AISetup] Calling macro-commentary endpoint:', macroPayload);
 
-      const macroResponse = await fetch('/api/macro-commentary', {
+      const macroResponse = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
