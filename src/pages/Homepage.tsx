@@ -12,7 +12,7 @@ export default function Homepage() {
       <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img src="/lovable-uploads/1239e88a-26f6-4932-a1fc-da467e9c14c7.png" alt="TradeMind" className="h-12" />
+            <img src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" alt="alphaLens.ai" className="h-8" />
           </div>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" onClick={() => navigate("/about")}>
@@ -38,7 +38,7 @@ export default function Homepage() {
       <section className="relative py-24 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/20">
         <div className="container mx-auto max-w-6xl">
           <div className="mb-8">
-            <img src="/lovable-uploads/1239e88a-26f6-4932-a1fc-da467e9c14c7.png" alt="TradeMind" className="h-24 mx-auto mb-6" />
+            <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="h-24 mx-auto mb-6" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
             Intelligent Financial Research
@@ -134,7 +134,7 @@ export default function Homepage() {
             Ready to Transform Your Trading Strategy?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Join financial professionals who rely on TradeMind for superior market insights and trading decisions.
+            Join financial professionals who rely on alphaLens.ai for superior market insights and trading decisions.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" variant="secondary" className="text-lg px-8 py-3" onClick={() => navigate("/contact")}>
@@ -153,7 +153,7 @@ export default function Homepage() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/lovable-uploads/1239e88a-26f6-4932-a1fc-da467e9c14c7.png" alt="TradeMind" className="h-8" />
+                <img src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" alt="alphaLens.ai" className="h-6" />
               </div>
               <p className="text-muted-foreground text-sm">
                 Professional financial research and trading intelligence powered by artificial intelligence.
@@ -185,7 +185,7 @@ export default function Homepage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-            <p>© 2025 TradeMind. All rights reserved.</p>
+            <p>© 2025 alphaLens.ai. All rights reserved.</p>
           </div>
         </div>
       </footer>

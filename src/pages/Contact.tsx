@@ -69,7 +69,7 @@ export default function Contact() {
       <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img src="/lovable-uploads/ce6db9ea-a9e4-484a-9728-526719e1840b.png" alt="Alphalens" className="h-12" />
+            <img src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" alt="alphaLens.ai" className="h-8" />
           </div>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" onClick={() => navigate("/")}>
@@ -273,7 +273,7 @@ export default function Contact() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/lovable-uploads/ce6db9ea-a9e4-484a-9728-526719e1840b.png" alt="Alphalens" className="h-8" />
+                <img src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" alt="alphaLens.ai" className="h-6" />
               </div>
               <p className="text-muted-foreground text-sm">
                 Professional financial research and trading intelligence powered by artificial intelligence.

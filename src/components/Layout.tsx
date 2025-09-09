@@ -41,12 +41,12 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
               className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group min-w-0"
             >
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200 shrink-0 p-1">
-                <img src="/lovable-uploads/a7975a0f-13fa-4e7b-91bb-de8563181e30.png" alt="AlphaLens" className="w-full h-full object-contain" />
+                <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
               </div>
               <div className="hidden xs:block min-w-0">
                 <img 
-                  src="/lovable-uploads/1239e88a-26f6-4932-a1fc-da467e9c14c7.png" 
-                  alt="AlphaLens" 
+                  src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" 
+                  alt="alphaLens.ai" 
                   className="h-5 sm:h-6 w-auto"
                 />
                 <p className="text-xs text-muted-foreground hidden sm:block">AI Trading Intelligence</p>
