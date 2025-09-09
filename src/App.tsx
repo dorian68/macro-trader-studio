@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import AdminGuard from "./components/AdminGuard";
 import Homepage from "./pages/Homepage";
 import Dashboard from "./pages/Dashboard";
 import AISetup from "./pages/AISetup";
@@ -13,6 +14,7 @@ import AssetDetail from "./pages/AssetDetail";
 import ProductPresentation from "./pages/ProductPresentation";
 import Portfolio from "./pages/Portfolio";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import About from "./pages/About";
 import Features from "./pages/Features";
 import Contact from "./pages/Contact";
@@ -36,6 +38,7 @@ const App = () => (
             <Route path="/reports" element={<Reports />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />
             <Route path="/about" element={<About />} />
             <Route path="/features" element={<Features />} />
             <Route path="/contact" element={<Contact />} />

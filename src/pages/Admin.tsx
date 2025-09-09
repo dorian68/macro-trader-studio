@@ -1,0 +1,257 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Users, 
+  Shield, 
+  UserCheck, 
+  UserX, 
+  Clock, 
+  RefreshCw,
+  Crown,
+  User,
+  TrendingUp
+} from "lucide-react";
+import { useAdminActions } from "@/hooks/useAdminActions";
+import { UsersTable } from "@/components/admin/UsersTable";
+import Layout from "@/components/Layout";
+
+interface AdminUser {
+  id: string;
+  user_id: string;
+  broker_name: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  role: 'user' | 'admin' | 'super_user';
+  created_at: string;
+  updated_at: string;
+  email?: string;
+}
+
+export default function Admin() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { 
+    fetchUsers, 
+    updateUserStatus, 
+    updateUserRole, 
+    loading: actionLoading 
+  } = useAdminActions();
+
+  const loadUsers = async () => {
+    setLoading(true);
+    const userData = await fetchUsers();
+    setUsers(userData);
+    setLoading(false);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadUsers();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const stats = {
+    total: users.length,
+    pending: users.filter(u => u.status === 'pending').length,
+    approved: users.filter(u => u.status === 'approved').length,
+    rejected: users.filter(u => u.status === 'rejected').length,
+    users: users.filter(u => u.role === 'user').length,
+    admins: users.filter(u => u.role === 'admin').length,
+    superUsers: users.filter(u => u.role === 'super_user').length,
+  };
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <Shield className="h-8 w-8 text-primary" />
+              Admin Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Manage users, approvals, and system permissions
+            </p>
+          </div>
+          <Button 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            variant="outline"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Total Users
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Clock className="h-4 w-4 text-warning" />
+                Pending
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{stats.pending}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-success" />
+                Approved
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{stats.approved}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <UserX className="h-4 w-4 text-danger" />
+                Rejected
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{stats.rejected}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Role Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Role Distribution
+            </CardTitle>
+            <CardDescription>
+              Current user roles and permissions in the system
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Users</span>
+                </div>
+                <Badge variant="secondary">{stats.users}</Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Admins</span>
+                </div>
+                <Badge variant="outline" className="border-primary text-primary">{stats.admins}</Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-accent" />
+                  <span className="text-sm font-medium">Super Users</span>
+                </div>
+                <Badge className="bg-accent text-accent-foreground">{stats.superUsers}</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Users Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>User Management</CardTitle>
+            <CardDescription>
+              Manage user accounts, approve registrations, and assign roles
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="all" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  All ({stats.total})
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Pending ({stats.pending})
+                </TabsTrigger>
+                <TabsTrigger value="approved" className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Approved ({stats.approved})
+                </TabsTrigger>
+                <TabsTrigger value="rejected" className="flex items-center gap-2">
+                  <UserX className="h-4 w-4" />
+                  Rejected ({stats.rejected})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all">
+                <UsersTable
+                  users={users}
+                  onUpdateStatus={updateUserStatus}
+                  onUpdateRole={updateUserRole}
+                  loading={actionLoading}
+                  onRefresh={loadUsers}
+                />
+              </TabsContent>
+
+              <TabsContent value="pending">
+                <UsersTable
+                  users={users.filter(u => u.status === 'pending')}
+                  onUpdateStatus={updateUserStatus}
+                  onUpdateRole={updateUserRole}
+                  loading={actionLoading}
+                  onRefresh={loadUsers}
+                />
+              </TabsContent>
+
+              <TabsContent value="approved">
+                <UsersTable
+                  users={users.filter(u => u.status === 'approved')}
+                  onUpdateStatus={updateUserStatus}
+                  onUpdateRole={updateUserRole}
+                  loading={actionLoading}
+                  onRefresh={loadUsers}
+                />
+              </TabsContent>
+
+              <TabsContent value="rejected">
+                <UsersTable
+                  users={users.filter(u => u.status === 'rejected')}
+                  onUpdateStatus={updateUserStatus}
+                  onUpdateRole={updateUserRole}
+                  loading={actionLoading}
+                  onRefresh={loadUsers}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+}

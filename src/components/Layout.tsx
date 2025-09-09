@@ -10,10 +10,12 @@ import {
   Zap,
   User,
   LogOut,
-  Building2
+  Building2,
+  Shield
 } from "lucide-react";
 import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { useNavigate } from "react-router-dom";
 
 interface LayoutProps {
@@ -27,6 +29,7 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
   const [timeframe, setTimeframe] = useState("4h");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin, isSuperUser } = useProfile();
   const navigate = useNavigate();
 
   return (
@@ -67,6 +70,17 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
                     <User className="h-4 w-4" />
                     <span className="text-sm">Portfolio</span>
                   </Button>
+                  {(isAdmin || isSuperUser) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/admin')}
+                      className="hidden sm:flex items-center gap-2 h-8 px-3"
+                    >
+                      <Shield className="h-4 w-4" />
+                      <span className="text-sm">Admin</span>
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -130,18 +144,34 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
                     Trading Dashboard
                   </Button>
                   {user && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        navigate('/portfolio');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="justify-start text-sm"
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      My Portfolios
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigate('/portfolio');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="justify-start text-sm"
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        My Portfolios
+                      </Button>
+                      {(isAdmin || isSuperUser) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigate('/admin');
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="justify-start text-sm"
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Admin Panel
+                        </Button>
+                      )}
+                    </>
                   )}
                   <Button
                     variant="outline"
