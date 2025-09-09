@@ -73,12 +73,40 @@ export default function AISetup() {
     setN8nResult(null);
     
     try {
-      // Prepare JSON payload for n8n workflow
+      // Step 1: Call macro-commentary endpoint first
+      const macroPayload = {
+        instrument: parameters.instrument,
+        customNote: parameters.customNotes,
+        mode: "run",
+        type: "RAG"
+      };
+
+      console.log('📊 [AISetup] Calling macro-commentary endpoint:', macroPayload);
+
+      const macroResponse = await fetch('/api/macro-commentary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(macroPayload)
+      });
+
+      if (!macroResponse.ok) {
+        throw new Error(`HTTP ${macroResponse.status}: Failed to get macro commentary`);
+      }
+
+      const macroResult = await macroResponse.json();
+      console.log('📊 [AISetup] Macro commentary response:', macroResult);
+
+      // Step 2: Prepare JSON payload for trade setup with macro insight
       const payload = {
         ...parameters,
         mode: "run",
-        type: "trade"
+        type: "trade",
+        macroInsight: macroResult
       };
+
+      console.log('📊 [AISetup] Calling trade setup endpoint with macro insight:', payload);
 
       // Send POST request to n8n workflow
       const response = await fetch('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
