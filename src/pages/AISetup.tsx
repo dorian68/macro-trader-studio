@@ -64,30 +64,78 @@ interface TradeSetup {
   reasoning: string;
 }
 
-interface N8nTradeResult {
-  instrument: string;
-  asOf: string;
-  market_commentary_anchor: {
-    summary: string;
-    key_drivers: string[];
+type N8nSetup = {
+  horizon?: string;
+  timeframe?: string;
+  strategy?: string;
+  direction?: string;
+  entryPrice?: number;
+  stopLoss?: number;
+  takeProfits?: number[];
+  riskRewardRatio?: number;
+  supports?: number[];
+  resistances?: number[];
+  context?: string;
+  riskNotes?: string;
+  strategyMeta?: {
+    indicators?: string[];
+    atrMultipleSL?: number;
+    confidence?: number; // 0..1
   };
-  setups: Array<{
-    horizon: string;
-    timeframe: string;
-    strategy: string;
-    direction: string;
-    entryPrice: number;
-    stopLoss: number;
-    takeProfits: number[];
-    riskRewardRatio: number;
-    context: string;
-    riskNotes: string;
-    strategyMeta: {
-      confidence: number;
+};
+
+type N8nTradeResult = {
+  instrument?: string;
+  asOf?: string;
+  market_commentary_anchor?: {
+    summary?: string;
+    key_drivers?: string[];
+  };
+  setups?: N8nSetup[];
+  disclaimer?: string;
+};
+
+function normalizeN8n(raw: any): N8nTradeResult | null {
+  try {
+    // Perplexity/n8n style: [{ message: { content: {...} } }]
+    const maybeContent =
+      Array.isArray(raw) && raw[0]?.message?.content
+        ? raw[0].message.content
+        : raw;
+
+    if (!maybeContent || typeof maybeContent !== 'object') return null;
+
+    const r: N8nTradeResult = {
+      instrument: maybeContent.instrument,
+      asOf: maybeContent.asOf,
+      market_commentary_anchor: maybeContent.market_commentary_anchor || {},
+      setups: Array.isArray(maybeContent.setups) ? maybeContent.setups : [],
+      disclaimer: maybeContent.disclaimer || "Illustrative ideas, not investment advice.",
     };
-  }>;
-  disclaimer: string;
+
+    // Sécurité: clamp confidence 0..1
+    r.setups?.forEach(s => {
+      if (s?.strategyMeta?.confidence != null) {
+        s.strategyMeta.confidence = Math.max(0, Math.min(1, Number(s.strategyMeta.confidence)));
+      }
+    });
+
+    return r;
+  } catch {
+    return null;
+  }
 }
+
+function fmt(n?: number, dp = 4) {
+  if (typeof n !== 'number' || isNaN(n)) return '—';
+  return n.toFixed(dp);
+}
+
+function pct(x?: number) {
+  if (typeof x !== 'number' || isNaN(x)) return '—';
+  return Math.round(x * 100) + '%';
+}
+
 
 function buildQuestion(p: any) {
   const lines = [
@@ -201,48 +249,17 @@ export default function AISetup() {
       console.log('📊[AISetup] STEP2 Response received (keys):', Object.keys(result || {}));
       setRawN8nResponse(result);
       
-      // Check if we have the expected n8n format
-      if (Array.isArray(result) && result.length > 0 && result[0].message?.content) {
-        const content = result[0].message.content;
-        console.log('N8n Result set:', content);
-        setN8nResult(content);
-        
-        toast({
-          title: "Trade Setup Generated",
-          description: "Your AI trade setup has been generated successfully.",
-        });
+      const normalized = normalizeN8n(result);
+
+      if (normalized && normalized.setups && normalized.setups.length > 0) {
+        setN8nResult(normalized);
+        setTradeSetup(null);
+        toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
       } else {
-        // Fallback to legacy format for backward compatibility
-        const direction = Math.random() > 0.5 ? "buy" : "sell";
-        const basePrice = 1.0900;
-        
-        let entry, stopLoss, takeProfit;
-        if (direction === "buy") {
-          entry = basePrice * 0.998;
-          stopLoss = entry * 0.985;
-          takeProfit = entry * 1.045;
-        } else {
-          entry = basePrice * 1.002;
-          stopLoss = entry * 1.015;
-          takeProfit = entry * 0.955;
-        }
-        
-        const riskReward = Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss);
-        
-        setTradeSetup({
-          entry: parseFloat(entry.toFixed(4)),
-          stopLoss: parseFloat(stopLoss.toFixed(4)),
-          takeProfit: parseFloat(takeProfit.toFixed(4)),
-          positionSize: parseFloat(parameters.positionSize),
-          riskReward: parseFloat(riskReward.toFixed(2)),
-          confidence: Math.floor(Math.random() * 25) + 70,
-          reasoning: `AI analysis suggests a ${direction} opportunity based on ${parameters.strategy} strategy for ${parameters.instrument}. Technical indicators show strong momentum with favorable risk-reward ratio.`
-        });
-        
-        toast({
-          title: "Trade Setup Generated",
-          description: "Your AI trade setup has been generated successfully (legacy format).",
-        });
+        setN8nResult(null);
+        setTradeSetup(null);
+        setError("Le workflow n8n a répondu sans setups exploitables.");
+        toast({ title: "No Setups Returned", description: "La réponse ne contient pas de setups.", variant: "destructive" });
       }
       
       setStep("generated");
@@ -452,7 +469,115 @@ export default function AISetup() {
             )}
 
             {n8nResult && (
-              <TradeResultPanel result={n8nResult} rawResponse={rawN8nResponse} />
+              <Card className="border bg-background">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-semibold">
+                    {n8nResult.instrument || 'Instrument'} 
+                    {n8nResult.asOf ? <span className="ml-2 text-sm text-muted-foreground">as of {new Date(n8nResult.asOf).toLocaleString()}</span> : null}
+                  </CardTitle>
+                  {n8nResult.market_commentary_anchor?.summary ? (
+                    <p className="text-sm text-muted-foreground mt-2">{n8nResult.market_commentary_anchor.summary}</p>
+                  ) : null}
+                  {Array.isArray(n8nResult.market_commentary_anchor?.key_drivers) && n8nResult.market_commentary_anchor.key_drivers.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {n8nResult.market_commentary_anchor.key_drivers.map((d: string, i: number) => (
+                        <Badge key={i} variant="outline" className="rounded-full">{d}</Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {(n8nResult.setups || []).map((s, idx) => (
+                    <Card key={idx} className="border">
+                      <CardHeader>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {s.horizon ? <Badge variant="secondary">{s.horizon}</Badge> : null}
+                          {s.timeframe ? <Badge variant="secondary">{s.timeframe}</Badge> : null}
+                          {s.strategy ? <Badge variant="secondary">{s.strategy}</Badge> : null}
+                          {s.direction ? <Badge variant="secondary" className={s.direction.toLowerCase()==='buy'?'text-green-700':'text-red-700'}>
+                            {s.direction.toUpperCase()}
+                          </Badge> : null}
+                          {s.strategyMeta?.confidence != null ? (
+                            <Badge variant="outline" className="ml-auto">Confidence: {pct(s.strategyMeta.confidence)}</Badge>
+                          ) : null}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <Label className="text-xs text-muted-foreground uppercase">Entry</Label>
+                            <div className="text-xl font-semibold">{fmt(s.entryPrice)}</div>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground uppercase">Stop Loss</Label>
+                            <div className="text-xl font-semibold">{fmt(s.stopLoss)}</div>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground uppercase">Take Profits</Label>
+                            <div className="text-sm">
+                              {(s.takeProfits || []).length ? s.takeProfits.map((tp, i) => <span key={i} className="mr-2">{fmt(tp)}</span>) : '—'}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground uppercase">R/R</Label>
+                            <div className="text-xl font-semibold">{fmt(s.riskRewardRatio, 2)}</div>
+                          </div>
+                        </div>
+
+                        {(s.supports && s.supports.length) || (s.resistances && s.resistances.length) ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-3 rounded-lg border bg-muted/30">
+                              <div className="text-xs text-muted-foreground uppercase mb-2">Supports</div>
+                              <div className="flex flex-wrap gap-2">
+                                {(s.supports || []).map((sp, i) => <Badge key={i} variant="outline">{fmt(sp)}</Badge>)}
+                                {(!s.supports || !s.supports.length) && <span className="text-sm text-muted-foreground">—</span>}
+                              </div>
+                            </div>
+                            <div className="p-3 rounded-lg border bg-muted/30">
+                              <div className="text-xs text-muted-foreground uppercase mb-2">Resistances</div>
+                              <div className="flex flex-wrap gap-2">
+                                {(s.resistances || []).map((rs, i) => <Badge key={i} variant="outline">{fmt(rs)}</Badge>)}
+                                {(!s.resistances || !s.resistances.length) && <span className="text-sm text-muted-foreground">—</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {s.context ? (
+                          <div className="p-4 rounded-lg border">
+                            <h4 className="font-medium mb-1">Context</h4>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{s.context}</p>
+                          </div>
+                        ) : null}
+
+                        {s.riskNotes ? (
+                          <div className="p-4 rounded-lg border">
+                            <h4 className="font-medium mb-1">Risk Notes</h4>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{s.riskNotes}</p>
+                          </div>
+                        ) : null}
+
+                        {s.strategyMeta?.indicators?.length ? (
+                          <div className="flex flex-wrap gap-2">
+                            {s.strategyMeta.indicators.map((ind, i) => (
+                              <Badge key={i} variant="outline" className="rounded-full">{ind}</Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  {n8nResult.disclaimer ? (
+                    <p className="text-xs text-muted-foreground border-t pt-4">{n8nResult.disclaimer}</p>
+                  ) : null}
+
+                  <details className="mt-4">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">Raw response</summary>
+                    <pre className="mt-2 text-xs whitespace-pre-wrap">{JSON.stringify(rawN8nResponse, null, 2)}</pre>
+                  </details>
+                </CardContent>
+              </Card>
             )}
 
             {tradeSetup && !n8nResult && (
