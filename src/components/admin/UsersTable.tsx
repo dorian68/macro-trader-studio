@@ -155,7 +155,8 @@ export function UsersTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead>User</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>User ID</TableHead>
               <TableHead>Broker</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Role</TableHead>
@@ -166,7 +167,7 @@ export function UsersTable({
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No users found matching your filters
                 </TableCell>
               </TableRow>
@@ -176,13 +177,13 @@ export function UsersTable({
                 return (
                   <TableRow key={user.id} className="hover:bg-muted/50">
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium text-sm truncate max-w-[200px]">
-                          {user.email || 'N/A'}
-                        </div>
-                        <div className="text-xs text-muted-foreground font-mono">
-                          ID: {user.user_id.slice(0, 8)}...
-                        </div>
+                      <div className="font-medium text-sm">
+                        {user.email || 'N/A'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded max-w-fit">
+                        {user.user_id}
                       </div>
                     </TableCell>
                     <TableCell>
