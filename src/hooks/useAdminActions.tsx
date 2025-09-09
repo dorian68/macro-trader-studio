@@ -19,26 +19,28 @@ export function useAdminActions() {
 
   const fetchUsers = async (): Promise<AdminUser[]> => {
     try {
-      const { data, error } = await supabase
+      // D'abord récupérer tous les profils
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_id
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      // Get user emails from auth.users via RPC call or direct query
+      // Ensuite récupérer les utilisateurs auth pour obtenir les emails
+      // Utiliser une fonction admin pour récupérer les emails
       const usersWithEmails = await Promise.all(
-        (data || []).map(async (profile) => {
+        (profilesData || []).map(async (profile) => {
           try {
-            // For now, we'll use the user_id as a placeholder since we can't access auth.users directly
+            // Récupérer l'email depuis auth.users via admin API
+            const { data: { user }, error } = await supabase.auth.admin.getUserById(profile.user_id);
+            
             return {
               ...profile,
-              email: `user-${profile.user_id.slice(0, 8)}@...` // Placeholder since we can't access auth.users
+              email: user?.email || 'N/A'
             } as AdminUser;
-          } catch {
+          } catch (error) {
+            console.warn(`Could not fetch email for user ${profile.user_id}:`, error);
             return {
               ...profile,
               email: 'N/A'
