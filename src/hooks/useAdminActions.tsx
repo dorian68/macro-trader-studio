@@ -104,28 +104,40 @@ export function useAdminActions() {
   const deleteUser = async (userId: string) => {
     setLoading(true);
     try {
+      console.log('Attempting to delete user:', userId);
+      
       // Call our Edge Function to delete user with proper permissions
       const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId }
+        body: { userId },
+        headers: {
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
       });
 
-      if (error) throw error;
+      console.log('Delete response:', { data, error });
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to delete user');
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        const errorMessage = data?.error || 'Failed to delete user';
+        console.error('Function returned error:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       toast({
-        title: "Success",
-        description: "User deleted successfully",
+        title: "Succès",
+        description: "Utilisateur supprimé avec succès",
       });
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete user",
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer l'utilisateur",
         variant: "destructive",
       });
       return { success: false, error };
