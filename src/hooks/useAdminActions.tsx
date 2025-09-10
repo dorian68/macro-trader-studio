@@ -104,10 +104,9 @@ export function useAdminActions() {
   const deleteUser = async (userId: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', userId);
+      // Use Supabase Auth Admin API to delete the user
+      // This will also delete the profile automatically due to ON DELETE CASCADE
+      const { error } = await supabase.auth.admin.deleteUser(userId);
 
       if (error) throw error;
 
