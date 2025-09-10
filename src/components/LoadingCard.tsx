@@ -79,18 +79,33 @@ export function LoadingCard({ request, className }: LoadingCardProps) {
   };
 
   const getProgressMessage = () => {
+    const messages = {
+      pending: ['Queued for processing...', 'Preparing analysis...', 'Initializing AI models...'],
+      processing: {
+        early: ['Generating your scenario...', 'Analyzing market data...', 'Processing market conditions...'],
+        mid: ['Processing with AI models...', 'Applying trading algorithms...', 'Evaluating risk factors...'],
+        late: ['Generating insights...', 'Finalizing recommendations...', 'Preparing results...']
+      },
+      completed: 'Analysis completed successfully',
+      failed: 'Analysis failed - please try again'
+    };
+
     switch (request.status) {
       case 'pending':
-        return 'Queued for processing...';
+        const pendingIndex = Math.floor(timeElapsed / 3) % messages.pending.length;
+        return messages.pending[pendingIndex];
       case 'processing':
-        if (request.progress < 30) return 'Analyzing market data...';
-        if (request.progress < 60) return 'Processing with AI models...';
-        if (request.progress < 90) return 'Generating insights...';
-        return 'Finalizing results...';
+        let processingMessages;
+        if (request.progress < 30) processingMessages = messages.processing.early;
+        else if (request.progress < 70) processingMessages = messages.processing.mid;
+        else processingMessages = messages.processing.late;
+        
+        const processIndex = Math.floor(timeElapsed / 4) % processingMessages.length;
+        return processingMessages[processIndex];
       case 'completed':
-        return 'Analysis completed successfully';
+        return messages.completed;
       case 'failed':
-        return 'Analysis failed - please try again';
+        return messages.failed;
       default:
         return 'Processing...';
     }
@@ -151,24 +166,46 @@ export function LoadingCard({ request, className }: LoadingCardProps) {
     );
   }
 
+  const handleCardClick = () => {
+    if (request.status === 'completed' && request.onViewResult) {
+      request.onViewResult(request.resultData);
+    }
+  };
+
+  const getCompletionTitle = () => {
+    const titles = {
+      ai_trade_setup: "Trade Setup Completed",
+      macro_commentary: "Macro Commentary Completed",
+      reports: "Report Completed"
+    };
+    return titles[request.type];
+  };
+
   return (
-    <Card className={cn("w-80 shadow-lg border-l-4", className, {
-      "border-l-yellow-500": request.status === 'pending',
-      "border-l-blue-500": request.status === 'processing',
-      "border-l-green-500": request.status === 'completed', 
-      "border-l-red-500": request.status === 'failed'
-    })}>
+    <Card 
+      className={cn("w-80 shadow-lg border-l-4 transition-all duration-200", className, {
+        "border-l-yellow-500": request.status === 'pending',
+        "border-l-blue-500": request.status === 'processing',
+        "border-l-green-500": request.status === 'completed', 
+        "border-l-red-500": request.status === 'failed',
+        "cursor-pointer hover:shadow-xl hover:scale-[1.02]": request.status === 'completed' && request.onViewResult
+      })}
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <IconComponent className="h-5 w-5" />
-            {REQUEST_LABELS[request.type]}
+            {request.status === 'completed' ? getCompletionTitle() : REQUEST_LABELS[request.type]}
           </CardTitle>
           <div className="flex gap-1">
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => setIsMinimized(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMinimized(true);
+              }}
               className="h-6 w-6 p-0"
             >
               <Minimize2 className="h-3 w-3" />
@@ -177,7 +214,10 @@ export function LoadingCard({ request, className }: LoadingCardProps) {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => request.onRemove?.(request.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  request.onRemove?.(request.id);
+                }}
                 className="h-6 w-6 p-0"
               >
                 <X className="h-3 w-3" />
@@ -196,6 +236,12 @@ export function LoadingCard({ request, className }: LoadingCardProps) {
             </div>
           </Badge>
         </div>
+        {request.status === 'completed' && request.onViewResult && (
+          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            Click to view results
+          </p>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -221,16 +267,13 @@ export function LoadingCard({ request, className }: LoadingCardProps) {
               <CheckCircle className="h-4 w-4" />
               <span>Analysis completed in {formatTime(timeElapsed)}</span>
             </div>
-            {request.onViewResult && (
-              <Button 
-                onClick={() => request.onViewResult?.(request.resultData)}
-                className="w-full"
-                size="sm"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                View Results
-              </Button>
-            )}
+            <div className="text-sm text-muted-foreground bg-green-50 p-3 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 font-medium text-green-700 mb-1">
+                <Eye className="h-4 w-4" />
+                Ready to view
+              </div>
+              <p>Your {REQUEST_LABELS[request.type].toLowerCase()} for {request.instrument} is ready. Click anywhere on this card to open the results.</p>
+            </div>
           </div>
         )}
 

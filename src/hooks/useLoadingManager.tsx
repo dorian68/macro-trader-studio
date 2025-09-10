@@ -31,7 +31,13 @@ export function useLoadingManager() {
   ): Promise<string> => {
     const id = uuidv4();
     const startTime = new Date();
-    const estimatedCompletion = new Date(Date.now() + 90000); // 1.5 minutes estimate
+    // Dynamic estimation based on request type
+    const estimationMinutes = {
+      'ai_trade_setup': 2,
+      'macro_commentary': 1.5,
+      'reports': 3
+    };
+    const estimatedCompletion = new Date(Date.now() + (estimationMinutes[type] || 2) * 60000);
 
     const newRequest: LoadingRequest = {
       id,
