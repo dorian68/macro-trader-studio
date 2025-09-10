@@ -44,6 +44,7 @@ interface UsersTableProps {
   users: AdminUser[];
   onUpdateStatus: (userId: string, status: 'pending' | 'approved' | 'rejected') => Promise<{ success: boolean }>;
   onUpdateRole: (userId: string, role: 'user' | 'admin' | 'super_user') => Promise<{ success: boolean }>;
+  onDeleteUser: (userId: string) => Promise<{ success: boolean }>;
   loading: boolean;
   onRefresh: () => void;
 }
@@ -66,12 +67,13 @@ const roleIcons = {
   super_user: Crown
 };
 
-export function UsersTable({ 
-  users, 
-  onUpdateStatus, 
-  onUpdateRole, 
+export function UsersTable({
+  users,
+  onUpdateStatus,
+  onUpdateRole,
+  onDeleteUser,
   loading,
-  onRefresh 
+  onRefresh
 }: UsersTableProps) {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -232,14 +234,15 @@ export function UsersTable({
       </div>
 
       {/* User Actions Dialog */}
-      <UserActionsDialog
-        isOpen={dialogOpen}
-        onClose={handleDialogClose}
-        user={selectedUser}
-        onUpdateStatus={onUpdateStatus}
-        onUpdateRole={onUpdateRole}
-        loading={loading}
-      />
+            <UserActionsDialog
+              isOpen={dialogOpen}
+              onClose={handleDialogClose}
+              user={selectedUser}
+              onUpdateStatus={onUpdateStatus}
+              onUpdateRole={onUpdateRole}
+              onDeleteUser={onDeleteUser}
+              loading={loading}
+            />
     </div>
   );
 }

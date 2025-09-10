@@ -16,7 +16,19 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, User, Crown } from "lucide-react";
+import { Loader2, Shield, User, Crown, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useProfile } from "@/hooks/useProfile";
 
 interface UserActionsDialogProps {
   isOpen: boolean;
@@ -30,6 +42,7 @@ interface UserActionsDialogProps {
   } | null;
   onUpdateStatus: (userId: string, status: 'pending' | 'approved' | 'rejected') => Promise<{ success: boolean }>;
   onUpdateRole: (userId: string, role: 'user' | 'admin' | 'super_user') => Promise<{ success: boolean }>;
+  onDeleteUser: (userId: string) => Promise<{ success: boolean }>;
   loading: boolean;
 }
 
@@ -57,10 +70,12 @@ export function UserActionsDialog({
   user,
   onUpdateStatus,
   onUpdateRole,
+  onDeleteUser,
   loading
 }: UserActionsDialogProps) {
   const [selectedStatus, setSelectedStatus] = useState<'pending' | 'approved' | 'rejected'>();
   const [selectedRole, setSelectedRole] = useState<'user' | 'admin' | 'super_user'>();
+  const { isSuperUser } = useProfile();
 
   if (!user) return null;
 
@@ -75,6 +90,13 @@ export function UserActionsDialog({
   const handleUpdateRole = async () => {
     if (!selectedRole) return;
     const result = await onUpdateRole(user.user_id, selectedRole);
+    if (result.success) {
+      onClose();
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    const result = await onDeleteUser(user.user_id);
     if (result.success) {
       onClose();
     }
@@ -170,8 +192,44 @@ export function UserActionsDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          {/* Delete User - Only for Super Users */}
+          {isSuperUser && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="w-full sm:w-auto">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete User
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the user account
+                    and remove all associated data from our servers.
+                    <br /><br />
+                    <strong>User:</strong> {user.email}
+                    <br />
+                    <strong>Role:</strong> {user.role.replace('_', ' ')}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteUser}
+                    disabled={loading}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Delete Permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Close
           </Button>
         </DialogFooter>

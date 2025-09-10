@@ -38,6 +38,7 @@ export default function Admin() {
     fetchUsers, 
     updateUserStatus, 
     updateUserRole,
+    deleteUser,
     createUser, 
     loading: actionLoading 
   } = useAdminActions();
@@ -226,6 +227,7 @@ export default function Admin() {
                   users={users}
                   onUpdateStatus={updateUserStatus}
                   onUpdateRole={updateUserRole}
+                  onDeleteUser={deleteUser}
                   loading={actionLoading}
                   onRefresh={loadUsers}
                 />
@@ -236,6 +238,7 @@ export default function Admin() {
                   users={users.filter(u => u.status === 'pending')}
                   onUpdateStatus={updateUserStatus}
                   onUpdateRole={updateUserRole}
+                  onDeleteUser={deleteUser}
                   loading={actionLoading}
                   onRefresh={loadUsers}
                 />
@@ -246,6 +249,7 @@ export default function Admin() {
                   users={users.filter(u => u.status === 'approved')}
                   onUpdateStatus={updateUserStatus}
                   onUpdateRole={updateUserRole}
+                  onDeleteUser={deleteUser}
                   loading={actionLoading}
                   onRefresh={loadUsers}
                 />
@@ -256,6 +260,7 @@ export default function Admin() {
                   users={users.filter(u => u.status === 'rejected')}
                   onUpdateStatus={updateUserStatus}
                   onUpdateRole={updateUserRole}
+                  onDeleteUser={deleteUser}
                   loading={actionLoading}
                   onRefresh={loadUsers}
                 />
