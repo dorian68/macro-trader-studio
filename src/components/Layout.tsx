@@ -11,7 +11,8 @@ import {
   User,
   LogOut,
   Building2,
-  Shield
+  Shield,
+  FileText
 } from "lucide-react";
 import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,7 +41,7 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
           <div className="flex items-center justify-between h-full">
             {/* Logo - Mobile optimized */}
             <button
-              onClick={() => onModuleChange("welcome")}
+              onClick={() => navigate('/dashboard')}
               className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group min-w-0"
             >
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200 shrink-0 p-1">
@@ -142,6 +143,42 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
                   >
                     <Activity className="h-4 w-4 mr-2" />
                     Trading Dashboard
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigate('/history');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="justify-start text-sm"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    History
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigate('/macro-analysis');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="justify-start text-sm"
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Macro Analysis
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigate('/reports');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="justify-start text-sm"
+                  >
+                    <Activity className="h-4 w-4 mr-2" />
+                    Reports
                   </Button>
                   {user && (
                     <>

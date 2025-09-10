@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import alphalensLogo from '@/assets/alphalens-logo.png';
+
+const { useState, useEffect } = React;
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -16,6 +19,7 @@ export default function Auth() {
   const [brokerName, setBrokerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState(null);
+  const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -113,6 +117,11 @@ export default function Auth() {
       password
     });
 
+    // Store stay logged in preference separately after successful login
+    if (data.user && !error && stayLoggedIn) {
+      localStorage.setItem('alphalens_stay_logged_in', 'true');
+    }
+
     if (error) {
       toast({
         title: "Login Error",
@@ -171,6 +180,16 @@ export default function Auth() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="stay-logged-in"
+                    checked={stayLoggedIn}
+                    onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
+                  />
+                  <Label htmlFor="stay-logged-in" className="text-sm text-muted-foreground cursor-pointer">
+                    Stay logged in
+                  </Label>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

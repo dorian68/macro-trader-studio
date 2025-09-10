@@ -44,6 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    // Clear stay logged in preference
+    localStorage.removeItem('alphalens_stay_logged_in');
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
