@@ -556,6 +556,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          instrument: string
+          job_id: string | null
+          parameters: Json | null
+          request_content: string
+          request_type: string
+          response_content: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          instrument: string
+          job_id?: string | null
+          parameters?: Json | null
+          request_content: string
+          request_type: string
+          response_content?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          instrument?: string
+          job_id?: string | null
+          parameters?: Json | null
+          request_content?: string
+          request_type?: string
+          response_content?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

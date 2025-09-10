@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
 import AdminGuard from "./components/AdminGuard";
 import Homepage from "./pages/Homepage";
 import Dashboard from "./pages/Dashboard";
@@ -13,6 +14,7 @@ import Reports from "./pages/Reports";
 import AssetDetail from "./pages/AssetDetail";
 import ProductPresentation from "./pages/ProductPresentation";
 import Portfolio from "./pages/Portfolio";
+import History from "./pages/History";
 import Auth from "./pages/Auth";
 import EmailConfirmation from "./pages/EmailConfirmation";
 import Admin from "./pages/Admin";
@@ -27,27 +29,30 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Homepage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/asset/:symbol" element={<AssetDetail />} />
-            <Route path="/ai-setup" element={<AISetup />} />
-            <Route path="/macro-analysis" element={<MacroAnalysis />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/email-confirmation" element={<EmailConfirmation />} />
-            <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />
-            <Route path="/about" element={<About />} />
-            <Route path="/features" element={<Features />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/product" element={<ProductPresentation />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <GlobalLoadingProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Homepage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/asset/:symbol" element={<AssetDetail />} />
+              <Route path="/ai-setup" element={<AISetup />} />
+              <Route path="/macro-analysis" element={<MacroAnalysis />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/email-confirmation" element={<EmailConfirmation />} />
+              <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />
+              <Route path="/about" element={<About />} />
+              <Route path="/features" element={<Features />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/product" element={<ProductPresentation />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </GlobalLoadingProvider>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>

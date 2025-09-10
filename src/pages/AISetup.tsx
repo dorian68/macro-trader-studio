@@ -12,6 +12,8 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import TradeResultPanel from "@/components/TradeResultPanel";
+import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { useGlobalLoading } from "@/components/GlobalLoadingProvider";
 
 async function safeFetchJson(url, options) {
   console.log('🌐 safeFetchJson→', url, options?.method || 'GET');
@@ -185,12 +187,14 @@ function extractMacroInsight(macroResult: any) {
 export default function AISetup() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const globalLoading = useGlobalLoading();
   const [step, setStep] = useState<"parameters" | "generated">("parameters");
   const [isGenerating, setIsGenerating] = useState(false);
   const [tradeSetup, setTradeSetup] = useState<TradeSetup | null>(null);
   const [n8nResult, setN8nResult] = useState<N8nTradeResult | null>(null);
   const [rawN8nResponse, setRawN8nResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState("EURUSD");
   
   const [parameters, setParameters] = useState({
     instrument: "EUR/USD",
@@ -205,6 +209,17 @@ export default function AISetup() {
     setIsGenerating(true);
     setError(null);
     setN8nResult(null);
+    
+    // Create loading request
+    const requestId = await globalLoading.createRequest(
+      'ai_trade_setup',
+      parameters.instrument,
+      `Generate AI trade setup for ${parameters.instrument} with ${parameters.strategy} strategy`,
+      parameters
+    );
+    
+    // Start processing immediately
+    const progressInterval = globalLoading.startProcessing(requestId);
     
     try {
       // STEP 1: macro-commentary
@@ -265,11 +280,13 @@ export default function AISetup() {
       if (normalized && normalized.setups && normalized.setups.length > 0) {
         setN8nResult(normalized);
         setTradeSetup(null);
+        globalLoading.completeRequest(requestId, normalized);
         toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
       } else {
         setN8nResult(null);
         setTradeSetup(null);
         setError("The n8n workflow responded without exploitable setups.");
+        globalLoading.failRequest(requestId, "No exploitable setups returned");
         toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
       }
       
@@ -279,6 +296,9 @@ export default function AISetup() {
       console.error('Error generating trade setup:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError(errorMessage);
+      
+      clearInterval(progressInterval);
+      globalLoading.failRequest(requestId, errorMessage);
       
       toast({
         title: "Generation Failed",
@@ -478,6 +498,51 @@ export default function AISetup() {
                 </CardContent>
               </Card>
             )}
+
+            {/* TradingView Chart Integration */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <TradingViewWidget
+                  selectedSymbol={selectedSymbol}
+                  onSymbolChange={setSelectedSymbol}
+                  className="h-[500px]"
+                />
+              </div>
+              
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Trade Visualization</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {n8nResult ? (
+                      <div className="space-y-3">
+                        <div className="text-sm">
+                          <strong>Instrument:</strong> {n8nResult.instrument}
+                        </div>
+                        {n8nResult.setups?.[0] && (
+                          <div className="space-y-2">
+                            <div className="text-sm">
+                              <strong>Entry:</strong> {fmt(n8nResult.setups[0].entryPrice)}
+                            </div>
+                            <div className="text-sm">
+                              <strong>Stop Loss:</strong> {fmt(n8nResult.setups[0].stopLoss)}
+                            </div>
+                            <div className="text-sm">
+                              <strong>Direction:</strong> {n8nResult.setups[0].direction}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Generate a trade setup to see levels on the chart
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
 
             {n8nResult && (
               <Card className="border bg-background">
