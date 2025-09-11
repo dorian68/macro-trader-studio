@@ -276,6 +276,8 @@ export default function MacroAnalysis() {
         });
         
         setQueryParams(prev => ({ ...prev, query: "" }));
+      } else {
+        throw new Error('Réponse vide du workflow n8n');
       }
 
     } catch (error) {
