@@ -208,6 +208,21 @@ export default function MacroAnalysis() {
         const responseJson = JSON.parse(responseText);
         console.log('📊 [MacroAnalysis] Response JSON:', responseJson);
         
+        // Check for n8n workflow errors first
+        const isError = responseJson?.error || 
+                       responseJson?.status === 'error' ||
+                       (Array.isArray(responseJson) && responseJson[0]?.error) ||
+                       (Array.isArray(responseJson) && responseJson[0]?.status === 'error');
+        
+        if (isError) {
+          const errorMessage = responseJson?.error || 
+                              responseJson?.message || 
+                              (Array.isArray(responseJson) && responseJson[0]?.error) ||
+                              (Array.isArray(responseJson) && responseJson[0]?.message) ||
+                              'Erreur du workflow n8n';
+          throw new Error(`Erreur n8n: ${errorMessage}`);
+        }
+        
         // Extract analysis content from n8n response
         let analysisContent = '';
         
