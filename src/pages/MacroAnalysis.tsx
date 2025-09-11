@@ -32,17 +32,6 @@ import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 
 const { useState, useEffect } = React;
 
-function normalizeN8n(raw: any) {
-  const node = Array.isArray(raw) ? raw[0] : raw;
-  const root = node?.body ?? node;
-  const envelope = root?.message ?? root;
-  return {
-    status: envelope?.status ?? null,
-    job_id: envelope?.job_id ?? null,
-    payload: envelope?.message ?? null, // contains { base_report, fundamentals, citations_news, content }
-  };
-}
-
 interface AnalysisSection {
   title: string;
   content: string;
@@ -247,57 +236,53 @@ export default function MacroAnalysis() {
       }
       
       // Check if we got the final n8n response with status done
-      const norm = normalizeN8n(responseJson);
-
-      if (norm?.status === "done") {
-        console.log('📊 [MacroAnalysis] Found status done, stopping polling');
-        setIsGenerating(false);
+      // N8N returns an array with one object containing the message
+      if (responseJson && Array.isArray(responseJson) && responseJson.length > 0) {
+        const messageObj = responseJson[0].message;
         
-        const analysisContent = typeof norm.payload?.content === "string"
-          ? norm.payload.content
-          : JSON.stringify(norm.payload ?? {}, null, 2);
-
-        const realAnalysis: MacroAnalysis = {
-          query: queryParams.query,
-          timestamp: new Date(),
-          sections: [
-            { title: "Analysis Results", content: analysisContent, type: "overview", expanded: true }
-          ],
-          sources: []
-        };
-
-        setAnalyses(prev => [realAnalysis, ...prev]);
-        setJobStatus("done");
-        setIsGenerating(false);
-        localStorage.removeItem("strategist_job_id");
-        setJobId(null);
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
+        if (messageObj && messageObj.status === 'done') {
+          console.log('📊 [MacroAnalysis] Found status done, stopping polling');
+          setIsGenerating(false);
+          
+          // Extract the content from the nested message structure
+          let analysisContent = '';
+          if (messageObj.message && messageObj.message.content && messageObj.message.content.content) {
+            analysisContent = messageObj.message.content.content;
+          }
+          
+          const realAnalysis: MacroAnalysis = {
+            query: queryParams.query,
+            timestamp: new Date(),
+            sections: [
+              {
+                title: "Analysis Results",
+                content: analysisContent,
+                type: "overview",
+                expanded: true
+              }
+            ],
+            sources: []
+          };
+          
+          setAnalyses(prev => [realAnalysis, ...prev]);
+          setJobStatus("done");
+          setIsGenerating(false);
+          localStorage.removeItem("strategist_job_id");
+          setJobId(null);
+          
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            setPollingInterval(null);
+          }
+          
+          toast({
+            title: "Analysis Completed",
+            description: "Your macro analysis is ready"
+          });
+          return;
         }
-        toast({ title: "Analysis Completed", description: "Your macro analysis is ready" });
-        return;
+        
       }
-
-      if (norm?.status === "error") {
-        setJobStatus("error");
-        setIsGenerating(false);
-        localStorage.removeItem("strategist_job_id");
-        setJobId(null);
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
-        toast({
-          title: "Analysis Error",
-          description: norm.payload?.message || norm.payload?.error || "Analysis failed",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Otherwise still queued/running
-      if (norm?.status) setJobStatus(norm.status);
       
       // Case 2: Check for direct status at root level (fallback)
       if (responseJson && !Array.isArray(responseJson) && responseJson.status === 'done') {
@@ -619,32 +604,46 @@ export default function MacroAnalysis() {
             console.log('📊 [MacroAnalysis] LAUNCH response JSON:', launchResponseJson);
             
             // Check if this is the final result with status done
-            const norm = normalizeN8n(launchResponseJson);
-
-            if (norm?.status === "done") {
+            if (launchResponseJson.status === 'done' || (Array.isArray(launchResponseJson) && launchResponseJson[0]?.message?.status === 'done')) {
               console.log('📊 [MacroAnalysis] Found immediate result in launch response!');
               
-              const analysisContent = typeof norm.payload?.content === "string"
-                ? norm.payload.content
-                : JSON.stringify(norm.payload ?? {}, null, 2);
-
+              let analysisContent = '';
+              
+              if (Array.isArray(launchResponseJson) && launchResponseJson[0]?.message?.message?.content?.content) {
+                analysisContent = launchResponseJson[0].message.message.content.content;
+              } else if (launchResponseJson.message?.content?.content) {
+                analysisContent = launchResponseJson.message.content.content;
+              } else if (launchResponseJson.content?.content) {
+                analysisContent = launchResponseJson.content.content;
+              } else {
+                analysisContent = JSON.stringify(launchResponseJson, null, 2);
+              }
+              
               const realAnalysis: MacroAnalysis = {
                 query: queryParams.query,
                 timestamp: new Date(),
                 sections: [
-                  { title: "Analysis Results", content: analysisContent, type: "overview", expanded: true }
+                  {
+                    title: "Analysis Results",
+                    content: analysisContent,
+                    type: "overview",
+                    expanded: true
+                  }
                 ],
                 sources: []
               };
-
+              
               setAnalyses(prev => [realAnalysis, ...prev]);
               setJobStatus("done");
               setIsGenerating(false);
               localStorage.removeItem("strategist_job_id");
               setJobId(null);
-
-              toast({ title: "Analysis Completed", description: "Your macro analysis is ready" });
-              return; // no polling needed
+              
+              toast({
+                title: "Analysis Completed",
+                description: "Your macro analysis is ready"
+              });
+              return; // Don't start polling if we already have the result
             }
           }
         }
