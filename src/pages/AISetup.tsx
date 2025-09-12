@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Zap, Target, TrendingUp, Settings, RotateCcw, Save, AlertCircle } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ArrowLeft, Zap, Target, TrendingUp, Settings, RotateCcw, Save, AlertCircle, ChevronDown } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -653,13 +654,20 @@ export default function AISetup() {
                   {/* Structured Response Display */}
                   {rawN8nResponse && (
                     <Card className="mt-6 border bg-muted/30">
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          Response Details
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
+                      <Collapsible defaultOpen={false}>
+                        <CardHeader>
+                          <CollapsibleTrigger className="w-full">
+                            <CardTitle className="text-base flex items-center justify-between w-full">
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4" />
+                                Response Details
+                              </div>
+                              <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </CardTitle>
+                          </CollapsibleTrigger>
+                        </CardHeader>
+                        <CollapsibleContent>
+                          <CardContent className="space-y-6 pt-0">
                         {(() => {
                           try {
                             // Extract content from the expected structure
@@ -950,7 +958,9 @@ export default function AISetup() {
                             );
                           }
                         })()}
-                      </CardContent>
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Collapsible>
                     </Card>
                   )}
                 </CardContent>
