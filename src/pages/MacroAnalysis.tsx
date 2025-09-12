@@ -228,15 +228,28 @@ export default function MacroAnalysis() {
         let analysisContent = '';
         
         try {
-          // Extract from the specific field: message.message.content.content
-          const contentPath = responseJson?.message?.message?.content?.content;
-          if (contentPath && typeof contentPath === 'string') {
-            analysisContent = contentPath;
+          // Handle array or object responses and extract from: message.message.content.content
+          if (Array.isArray(responseJson)) {
+            const firstWithContent = responseJson.find((item: any) => {
+              const v = item?.message?.message?.content?.content;
+              return typeof v === 'string' && v.trim().length > 0;
+            });
+            const v = firstWithContent?.message?.message?.content?.content;
+            if (typeof v === 'string' && v.trim()) {
+              analysisContent = v;
+            } else {
+              throw new Error('Content not found in list at message.message.content.content');
+            }
           } else {
-            throw new Error('Content not found at message.message.content.content');
+            const v = responseJson?.message?.message?.content?.content;
+            if (typeof v === 'string' && v.trim()) {
+              analysisContent = v;
+            } else {
+              throw new Error('Content not found at message.message.content.content');
+            }
           }
         } catch (pathError) {
-          console.warn('Failed to extract from message.message.content.content:', pathError);
+          console.warn('Failed to extract from message.message.content.content:', pathError, responseJson);
           analysisContent = 'Impossible d\'extraire le contenu de l\'analyse depuis le workflow n8n';
         }
         
