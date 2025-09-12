@@ -3,12 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, BarChart3, Brain, FileText, TrendingUp, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PublicNavbar from "@/components/PublicNavbar";
-
 export default function Homepage() {
   const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <PublicNavbar />
 
       {/* Hero Section */}
@@ -88,18 +85,7 @@ export default function Homepage() {
               </CardContent>
             </Card>
 
-            <Card className="p-6 hover:shadow-lg transition-shadow border-border">
-              <CardContent className="text-center p-0">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Target className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-4 text-foreground">Technical Analysis</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  TradingView-integrated signals and indicators to validate trend, momentum, 
-                  and key market levels.
-                </p>
-              </CardContent>
-            </Card>
+            
           </div>
         </div>
       </section>
@@ -166,6 +152,5 @@ export default function Homepage() {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 }
