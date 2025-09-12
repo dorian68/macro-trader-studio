@@ -227,22 +227,53 @@ export default function MacroAnalysis() {
       // Extract analysis content from n8n response
       let analysisContent = '';
       
+      // Helper function to safely extract string content from nested objects
+      const extractStringContent = (obj: any): string => {
+        if (typeof obj === 'string') {
+          return obj;
+        }
+        if (obj && typeof obj === 'object') {
+          // Handle MaxDepthReached objects
+          if ((obj as any)._type === 'MaxDepthReached' && (obj as any).value) {
+            return String((obj as any).value);
+          }
+          // Handle nested content objects
+          if (obj.content) {
+            return extractStringContent(obj.content);
+          }
+          // Handle weekly_outlook and trade_idea structure
+          if (obj.weekly_outlook && obj.trade_idea) {
+            let content = String(obj.weekly_outlook);
+            if (obj.trade_idea && typeof obj.trade_idea === 'object') {
+              content += '\n\nTrade Idea:\n';
+              Object.entries(obj.trade_idea).forEach(([key, value]) => {
+                if (value && typeof value === 'object' && (value as any)._type === 'MaxDepthReached') {
+                  content += `${key}: ${(value as any).value}\n`;
+                } else {
+                  content += `${key}: ${value}\n`;
+                }
+              });
+            }
+            return content;
+          }
+          // Fallback to stringifying the object
+          return JSON.stringify(obj, null, 2);
+        }
+        return String(obj);
+      };
+      
       // Handle array format response from n8n
       if (Array.isArray(responseJson) && responseJson.length > 0) {
         const deepContent = responseJson[0]?.message?.message?.content?.content;
-        if (typeof deepContent === 'string') {
-          analysisContent = deepContent;
-        } else {
-          analysisContent = JSON.stringify(responseJson[0], null, 2);
-        }
+        analysisContent = extractStringContent(deepContent);
       }
       // Handle direct response format
       else if (responseJson?.message?.content?.content) {
-        analysisContent = responseJson.message.content.content;
+        analysisContent = extractStringContent(responseJson.message.content.content);
       }
       // Fallback
       else {
-        analysisContent = JSON.stringify(responseJson, null, 2);
+        analysisContent = extractStringContent(responseJson);
       }
 
         
@@ -539,7 +570,10 @@ export default function MacroAnalysis() {
                   })}
                   
                   {/* Trading Levels Extraction */}
-                  {analysis.sections.some(section => section.content.includes('Support') || section.content.includes('Resistance')) && (
+                  {analysis.sections.some(section => 
+                    typeof section.content === 'string' && 
+                    (section.content.includes('Support') || section.content.includes('Resistance'))
+                  ) && (
                     <div className="mt-6 p-4 bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                         <Target className="h-4 w-4 text-primary" />
@@ -547,7 +581,9 @@ export default function MacroAnalysis() {
                       </h4>
                       
                       {(() => {
-                        const fullContent = analysis.sections.map(s => s.content).join('\n');
+                        const fullContent = analysis.sections
+                          .map(s => typeof s.content === 'string' ? s.content : '')
+                          .join('\n');
                         const levels = parseLevels(fullContent);
                         
                         return (
