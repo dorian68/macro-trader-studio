@@ -64,11 +64,6 @@ export default function Features() {
 
   const additionalFeatures = [
     {
-      icon: TrendingUp,
-      title: "Portfolio Management",
-      description: "Track your positions and get AI-powered recommendations for your portfolio optimization."
-    },
-    {
       icon: Globe2,
       title: "Multi-Asset Coverage",
       description: "FX, cryptocurrencies, and major indices with comprehensive market coverage."
