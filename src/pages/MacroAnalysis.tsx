@@ -220,8 +220,8 @@ export default function MacroAnalysis() {
                               responseJson?.message || 
                               (Array.isArray(responseJson) && responseJson[0]?.error) ||
                               (Array.isArray(responseJson) && responseJson[0]?.message) ||
-                              'Erreur du workflow n8n';
-          throw new Error(`Erreur n8n: ${errorMessage}`);
+                              'n8n workflow error';
+          throw new Error(`n8n workflow error: ${errorMessage}`);
         }
         
         // Extract analysis content from n8n response - always from message.message.content.content
@@ -250,7 +250,7 @@ export default function MacroAnalysis() {
           }
         } catch (pathError) {
           console.warn('Failed to extract from message.message.content.content:', pathError, responseJson);
-          analysisContent = 'Impossible d\'extraire le contenu de l\'analyse depuis le workflow n8n';
+          analysisContent = 'Unable to extract the macro analysis content from the n8n workflow';
         }
         
         const realAnalysis: MacroAnalysis = {
@@ -278,7 +278,7 @@ export default function MacroAnalysis() {
         
         setQueryParams(prev => ({ ...prev, query: "" }));
       } else {
-        throw new Error('Réponse vide du workflow n8n');
+        throw new Error('Empty response from n8n workflow');
       }
 
     } catch (error) {
