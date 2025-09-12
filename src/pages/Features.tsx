@@ -88,7 +88,7 @@ export default function Features() {
       {/* Main Features */}
       <section className="py-16 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 justify-items-center">
             {features.map((feature, index) => (
               <Card key={index} className="p-6 hover:shadow-lg transition-shadow border-border bg-card">
                 <CardHeader className="pb-4">
@@ -135,7 +135,7 @@ export default function Features() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
             {additionalFeatures.map((feature, index) => (
               <Card key={index} className="p-6 text-center hover:shadow-lg transition-shadow border-border">
                 <CardContent className="p-0">

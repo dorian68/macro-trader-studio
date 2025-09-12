@@ -7,22 +7,30 @@ export default function PublicNavbar() {
   return (
     <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-        {/* Logo Section - Optimized for mobile */}
+        {/* Logo Section - Clickable and optimized for mobile */}
         <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <button 
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             {/* Icon logo for mobile */}
             <img 
               src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" 
               alt="alphaLens.ai" 
               className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" 
             />
-            {/* Text logo - hidden on very small screens, visible on xs+ */}
-            <img 
-              src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" 
-              alt="alphaLens.ai" 
-              className="h-6 sm:h-8 w-auto hidden xs:block" 
-            />
-          </div>
+            {/* Text logo and tagline - hidden on very small screens, visible on xs+ */}
+            <div className="hidden xs:flex flex-col items-start">
+              <img 
+                src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" 
+                alt="alphaLens.ai" 
+                className="h-6 sm:h-8 w-auto" 
+              />
+              <span className="text-xs text-muted-foreground font-medium leading-none">
+                AI Trading Intelligence
+              </span>
+            </div>
+          </button>
         </div>
         
         {/* Navigation - Responsive */}
