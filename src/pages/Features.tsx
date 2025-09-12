@@ -46,19 +46,6 @@ export default function Features() {
       ],
       ctaText: "View Reports",
       ctaRoute: "/reports"
-    },
-    {
-      icon: Target,
-      title: "Technical Analysis",
-      description: "TradingView-integrated technical indicators with key level identification and trend momentum analysis.",
-      details: [
-        "Real-time technical indicators (RSI, MACD, ADX)",
-        "Key support and resistance level identification",
-        "Trend and momentum analysis",
-        "Interactive TradingView chart integration"
-      ],
-      ctaText: "View Charts",
-      ctaRoute: "/dashboard"
     }
   ];
 
