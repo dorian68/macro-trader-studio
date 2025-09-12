@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import alphalensLogo from '@/assets/alphalens-logo.png';
+import PublicNavbar from '@/components/PublicNavbar';
 
 const { useState, useEffect } = React;
 
@@ -137,7 +138,9 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen bg-background">
+      <PublicNavbar />
+      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -243,6 +246,7 @@ export default function Auth() {
           </Tabs>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
