@@ -650,10 +650,309 @@ export default function AISetup() {
                     <p className="text-xs text-muted-foreground border-t pt-4">{n8nResult.disclaimer}</p>
                   ) : null}
 
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-sm text-muted-foreground">Raw response</summary>
-                    <pre className="mt-2 text-xs whitespace-pre-wrap">{JSON.stringify(rawN8nResponse, null, 2)}</pre>
-                  </details>
+                  {/* Structured Response Display */}
+                  {rawN8nResponse && (
+                    <Card className="mt-6 border bg-muted/30">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          Response Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {(() => {
+                          try {
+                            // Extract content from the expected structure
+                            const content = rawN8nResponse?.content || 
+                                          (Array.isArray(rawN8nResponse) && rawN8nResponse[0]?.content) ||
+                                          rawN8nResponse;
+                            
+                            if (!content || typeof content !== 'object') {
+                              return (
+                                <div className="p-4 rounded-lg border bg-background">
+                                  <h4 className="font-medium mb-2">Raw Response</h4>
+                                  <pre className="text-xs whitespace-pre-wrap text-muted-foreground">
+                                    {JSON.stringify(rawN8nResponse, null, 2)}
+                                  </pre>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <>
+                                {/* Header Info */}
+                                {(content.instrument || content.asOf) && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {content.instrument && (
+                                      <div className="p-3 rounded-lg border bg-background">
+                                        <Label className="text-xs text-muted-foreground uppercase">Instrument</Label>
+                                        <div className="font-medium">{content.instrument}</div>
+                                      </div>
+                                    )}
+                                    {content.asOf && (
+                                      <div className="p-3 rounded-lg border bg-background">
+                                        <Label className="text-xs text-muted-foreground uppercase">As Of</Label>
+                                        <div className="font-medium">{content.asOf}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* User Inputs */}
+                                {(content.timeframe || content.riskLevel || content.strategy || content.positionSize || content.customNote) && (
+                                  <div className="p-4 rounded-lg border bg-background">
+                                    <h4 className="font-medium mb-3">User Inputs</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                      {content.timeframe && <div><span className="text-muted-foreground">Timeframe:</span> {content.timeframe}</div>}
+                                      {content.riskLevel && <div><span className="text-muted-foreground">Risk Level:</span> {content.riskLevel}</div>}
+                                      {content.strategy && <div><span className="text-muted-foreground">Strategy:</span> {content.strategy}</div>}
+                                      {content.positionSize && <div><span className="text-muted-foreground">Position Size:</span> {content.positionSize}</div>}
+                                      {content.customNote && <div className="col-span-full"><span className="text-muted-foreground">Notes:</span> {content.customNote}</div>}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Market Commentary */}
+                                {content.market_commentary_anchor && (
+                                  <div className="p-4 rounded-lg border bg-background">
+                                    <h4 className="font-medium mb-3">Market Commentary</h4>
+                                    {content.market_commentary_anchor.summary && (
+                                      <div className="mb-3">
+                                        <Label className="text-xs text-muted-foreground uppercase">Summary</Label>
+                                        <p className="text-sm leading-relaxed mt-1 whitespace-pre-wrap">{content.market_commentary_anchor.summary}</p>
+                                      </div>
+                                    )}
+                                    {content.market_commentary_anchor.key_drivers && Array.isArray(content.market_commentary_anchor.key_drivers) && (
+                                      <div>
+                                        <Label className="text-xs text-muted-foreground uppercase">Key Drivers</Label>
+                                        <ul className="text-sm mt-1 space-y-1">
+                                          {content.market_commentary_anchor.key_drivers.map((driver, i) => (
+                                            <li key={i} className="flex items-start gap-2">
+                                              <span className="text-muted-foreground">•</span>
+                                              <span>{driver}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Data Fresheners */}
+                                {(content.macro_recent || content.macro_upcoming || content.cb_signals || content.positioning || content.citations_news) && (
+                                  <div className="p-4 rounded-lg border bg-background">
+                                    <h4 className="font-medium mb-3">Data Fresheners</h4>
+                                    <div className="space-y-3 text-sm">
+                                      {content.macro_recent && Array.isArray(content.macro_recent) && (
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground uppercase">Macro Recent</Label>
+                                          <ul className="mt-1 space-y-1">
+                                            {content.macro_recent.map((item, i) => (
+                                              <li key={i} className="flex items-start gap-2">
+                                                <span className="text-muted-foreground">•</span>
+                                                <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {content.macro_upcoming && Array.isArray(content.macro_upcoming) && (
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground uppercase">Macro Upcoming</Label>
+                                          <ul className="mt-1 space-y-1">
+                                            {content.macro_upcoming.map((item, i) => (
+                                              <li key={i} className="flex items-start gap-2">
+                                                <span className="text-muted-foreground">•</span>
+                                                <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {content.cb_signals && Array.isArray(content.cb_signals) && (
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground uppercase">CB Signals</Label>
+                                          <ul className="mt-1 space-y-1">
+                                            {content.cb_signals.map((item, i) => (
+                                              <li key={i} className="flex items-start gap-2">
+                                                <span className="text-muted-foreground">•</span>
+                                                <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {content.positioning && Array.isArray(content.positioning) && (
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground uppercase">Positioning</Label>
+                                          <ul className="mt-1 space-y-1">
+                                            {content.positioning.map((item, i) => (
+                                              <li key={i} className="flex items-start gap-2">
+                                                <span className="text-muted-foreground">•</span>
+                                                <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {content.citations_news && Array.isArray(content.citations_news) && (
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground uppercase">Citations News</Label>
+                                          <ul className="mt-1 space-y-1">
+                                            {content.citations_news.map((item, i) => (
+                                              <li key={i} className="flex items-start gap-2">
+                                                <span className="text-muted-foreground">•</span>
+                                                <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Setups */}
+                                {content.setups && Array.isArray(content.setups) && content.setups.length > 0 && (
+                                  <div className="space-y-4">
+                                    <h4 className="font-medium">Detailed Setups</h4>
+                                    {content.setups.map((setup, index) => (
+                                      <Card key={index} className="border bg-background">
+                                        <CardContent className="p-4 space-y-4">
+                                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                            {setup.horizon && <div><span className="text-muted-foreground">Horizon:</span> {setup.horizon}</div>}
+                                            {setup.timeframe && <div><span className="text-muted-foreground">Timeframe:</span> {setup.timeframe}</div>}
+                                            {setup.strategy && <div><span className="text-muted-foreground">Strategy:</span> {setup.strategy}</div>}
+                                            {setup.direction && <div><span className="text-muted-foreground">Direction:</span> {setup.direction}</div>}
+                                          </div>
+                                          
+                                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                            {setup.entryPrice !== undefined && (
+                                              <div className="p-2 rounded border">
+                                                <Label className="text-xs text-muted-foreground uppercase">Entry</Label>
+                                                <div className="font-medium">{fmt(setup.entryPrice)}</div>
+                                              </div>
+                                            )}
+                                            {setup.stopLoss !== undefined && (
+                                              <div className="p-2 rounded border">
+                                                <Label className="text-xs text-muted-foreground uppercase">Stop Loss</Label>
+                                                <div className="font-medium">{fmt(setup.stopLoss)}</div>
+                                              </div>
+                                            )}
+                                            {setup.takeProfits && Array.isArray(setup.takeProfits) && (
+                                              <div className="p-2 rounded border">
+                                                <Label className="text-xs text-muted-foreground uppercase">Take Profits</Label>
+                                                <div className="text-xs space-y-1">
+                                                  {setup.takeProfits.map((tp, i) => (
+                                                    <div key={i}>{fmt(tp)}</div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {setup.riskRewardRatio !== undefined && (
+                                              <div className="p-2 rounded border">
+                                                <Label className="text-xs text-muted-foreground uppercase">R/R</Label>
+                                                <div className="font-medium">{fmt(setup.riskRewardRatio, 2)}</div>
+                                              </div>
+                                            )}
+                                            {setup.positionSize !== undefined && (
+                                              <div className="p-2 rounded border">
+                                                <Label className="text-xs text-muted-foreground uppercase">Position</Label>
+                                                <div className="font-medium">{setup.positionSize}</div>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {(setup.supports || setup.resistances) && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                              {setup.supports && Array.isArray(setup.supports) && (
+                                                <div className="p-3 rounded border bg-muted/30">
+                                                  <Label className="text-xs text-muted-foreground uppercase">Supports</Label>
+                                                  <div className="flex flex-wrap gap-1 mt-1">
+                                                    {setup.supports.map((s, i) => (
+                                                      <Badge key={i} variant="outline" className="text-xs">{fmt(s)}</Badge>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
+                                              {setup.resistances && Array.isArray(setup.resistances) && (
+                                                <div className="p-3 rounded border bg-muted/30">
+                                                  <Label className="text-xs text-muted-foreground uppercase">Resistances</Label>
+                                                  <div className="flex flex-wrap gap-1 mt-1">
+                                                    {setup.resistances.map((r, i) => (
+                                                      <Badge key={i} variant="outline" className="text-xs">{fmt(r)}</Badge>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+
+                                          {setup.context && (
+                                            <div className="p-3 rounded border">
+                                              <Label className="text-xs text-muted-foreground uppercase">Context</Label>
+                                              <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{setup.context}</p>
+                                            </div>
+                                          )}
+
+                                          {setup.riskNotes && (
+                                            <div className="p-3 rounded border">
+                                              <Label className="text-xs text-muted-foreground uppercase">Risk Notes</Label>
+                                              <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{setup.riskNotes}</p>
+                                            </div>
+                                          )}
+
+                                          {setup.strategyMeta && (
+                                            <div className="p-3 rounded border bg-muted/30">
+                                              <Label className="text-xs text-muted-foreground uppercase">Strategy Meta</Label>
+                                              <div className="mt-2 space-y-2 text-sm">
+                                                {setup.strategyMeta.indicators && Array.isArray(setup.strategyMeta.indicators) && (
+                                                  <div>
+                                                    <span className="text-muted-foreground">Indicators:</span>
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                      {setup.strategyMeta.indicators.map((ind, i) => (
+                                                        <Badge key={i} variant="outline" className="text-xs">{ind}</Badge>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {setup.strategyMeta.atrMultipleSL !== undefined && (
+                                                  <div><span className="text-muted-foreground">ATR Multiple:</span> {fmt(setup.strategyMeta.atrMultipleSL, 2)}</div>
+                                                )}
+                                                {setup.strategyMeta.confidence !== undefined && (
+                                                  <div><span className="text-muted-foreground">Confidence:</span> {pct(setup.strategyMeta.confidence)}</div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </CardContent>
+                                      </Card>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Disclaimer */}
+                                {content.disclaimer && (
+                                  <div className="p-3 rounded border bg-muted/30">
+                                    <p className="text-xs text-muted-foreground">{content.disclaimer}</p>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          } catch (error) {
+                            return (
+                              <div className="p-4 rounded-lg border bg-background">
+                                <h4 className="font-medium mb-2">Raw Response (Fallback)</h4>
+                                <pre className="text-xs whitespace-pre-wrap text-muted-foreground">
+                                  {JSON.stringify(rawN8nResponse, null, 2)}
+                                </pre>
+                              </div>
+                            );
+                          }
+                        })()}
+                      </CardContent>
+                    </Card>
+                  )}
                 </CardContent>
               </Card>
             )}
