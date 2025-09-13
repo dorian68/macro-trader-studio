@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { BubbleSystem } from "@/components/BubbleSystem";
@@ -316,6 +316,18 @@ export default function TradingDashboard() {
           </div>
           </CardContent>
         </Card>
+
+        {/* Quick Access - History Button */}
+        <div className="flex justify-end">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/history')}
+            className="flex items-center gap-2"
+          >
+            <History className="h-4 w-4" />
+            View AI History
+          </Button>
+        </div>
 
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
