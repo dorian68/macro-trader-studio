@@ -319,13 +319,16 @@ export default function TradingDashboard() {
                 title: 'Analyzing EUR/USD trade setup...'
               });
               
-              // Simulate job completion after 3 seconds
+              // Start progress simulation
+              jobManager.simulateProgress(jobId);
+              
+              // Simulate job completion after realistic time
               setTimeout(() => {
                 jobManager.updateJob(jobId, {
                   status: 'completed',
                   result: { analysis: 'BUY signal detected' }
                 });
-              }, 3000);
+              }, 5000);
             }}
             className="flex items-center gap-2"
           >

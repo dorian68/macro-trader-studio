@@ -86,15 +86,6 @@ export default function Layout({ children, activeModule, onModuleChange, complet
               {/* Auth Section */}
               {user ? (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/portfolio')}
-                    className="hidden sm:flex items-center gap-2 h-8 px-3"
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="text-sm">Portfolio</span>
-                  </Button>
                   {(isAdmin || isSuperUser) && (
                     <Button
                       variant="ghost"
@@ -206,18 +197,6 @@ export default function Layout({ children, activeModule, onModuleChange, complet
                   </Button>
                   {user && (
                     <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          navigate('/portfolio');
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="justify-start text-sm"
-                      >
-                        <User className="h-4 w-4 mr-2" />
-                        My Portfolios
-                      </Button>
                       {(isAdmin || isSuperUser) && (
                         <Button
                           variant="outline"

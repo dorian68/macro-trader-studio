@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { X, Loader2, CheckCircle, AlertCircle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +11,7 @@ export interface JobStatus {
   type: 'ai_setup' | 'macro_commentary' | 'report';
   status: 'pending' | 'running' | 'completed' | 'failed';
   title: string;
+  progress?: number;
   result?: any;
   error?: string;
   createdAt: Date;
@@ -99,6 +101,18 @@ export function JobStatusCard({ jobs, onViewResult, onDismiss, className }: JobS
                   ? currentJob.error || 'Processing failed'
                   : 'Processing your request...'}
               </p>
+
+              {(currentJob.status === 'running' || currentJob.status === 'pending') && (
+                <div className="mt-2">
+                  <Progress 
+                    value={currentJob.progress || 10} 
+                    className="h-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {Math.round(currentJob.progress || 10)}% complete
+                  </p>
+                </div>
+              )}
 
               {currentJob.status === 'completed' && (
                 <Button
