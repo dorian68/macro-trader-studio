@@ -71,7 +71,7 @@ export default function Layout({ children, activeModule, onModuleChange, complet
                     navigate('/history');
                     onResetJobsCount?.();
                   }}
-                  className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
+                  className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 hidden md:inline-flex"
                 >
                   <History className="h-4 w-4" />
                   <span className="hidden sm:inline ml-2">History</span>

@@ -103,6 +103,17 @@ export function TradingViewWidget({
     // Clear container
     chartContainerRef.current.innerHTML = '';
 
+    // Create wrapper container
+    const container = document.createElement('div');
+    container.className = 'tradingview-widget-container h-full w-full';
+    container.style.height = '100%';
+
+    // Target element for TradingView (must exist when script runs)
+    const chartEl = document.createElement('div');
+    chartEl.id = 'tradingview_chart';
+    chartEl.style.height = '100%';
+    chartEl.style.width = '100%';
+
     // Create TradingView widget script
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
@@ -128,9 +139,8 @@ export function TradingViewWidget({
       "save_image": false,
       "container_id": "tradingview_chart"
     });
-    const container = document.createElement('div');
-    container.className = 'tradingview-widget-container h-full w-full';
-    container.style.height = '100%';
+
+    container.appendChild(chartEl);
     container.appendChild(script);
     chartContainerRef.current.appendChild(container);
   };
@@ -178,7 +188,7 @@ export function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="w-full h-64 sm:h-80 lg:h-96 border border-border rounded-lg overflow-hidden" />
+        <div ref={chartContainerRef} className="relative w-full h-64 sm:h-80 lg:h-96 border border-border rounded-lg overflow-hidden" />
 
         <div className="mt-3 sm:mt-4 text-sm text-muted-foreground">
           <div className="flex justify-between items-center">
