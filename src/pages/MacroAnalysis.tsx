@@ -429,11 +429,11 @@ export default function MacroAnalysis() {
               </div>
 
               {/* Compact parameters row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Select value={queryParams.assetType} onValueChange={(value) => 
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <Select value={queryParams.assetType} onValueChange={(value) =>
                   setQueryParams(prev => ({ ...prev, assetType: value }))
                 }>
-                  <SelectTrigger className="text-sm">
+                  <SelectTrigger className="text-xs sm:text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Asset Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -447,7 +447,7 @@ export default function MacroAnalysis() {
                 <Select value={queryParams.analysisDepth} onValueChange={(value) => 
                   setQueryParams(prev => ({ ...prev, analysisDepth: value }))
                 }>
-                  <SelectTrigger className="text-sm">
+                  <SelectTrigger className="text-xs sm:text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Depth" />
                   </SelectTrigger>
                   <SelectContent>
@@ -460,7 +460,7 @@ export default function MacroAnalysis() {
                 <Select value={queryParams.period} onValueChange={(value) => 
                   setQueryParams(prev => ({ ...prev, period: value }))
                 }>
-                  <SelectTrigger className="text-sm">
+                  <SelectTrigger className="text-xs sm:text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Period" />
                   </SelectTrigger>
                   <SelectContent>

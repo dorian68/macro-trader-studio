@@ -51,11 +51,11 @@ export function AssetSummaryBanner({ asset, onViewComplete, className }: AssetSu
 
   return (
     <Card className={cn(
-      "gradient-card border-primary/20 shadow-glow-primary sticky top-4 z-40",
+      "gradient-card border-primary/20 shadow-glow-primary sticky top-16 sm:top-4 z-40",
       className
     )}>
-      <CardContent className="p-4 lg:p-6">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <CardContent className="p-3 sm:p-4 lg:p-6">
+        <div className="flex flex-col sm:flex-row lg:flex-row items-start lg:items-center justify-between gap-4">
           {/* Informations principales */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
@@ -63,7 +63,7 @@ export function AssetSummaryBanner({ asset, onViewComplete, className }: AssetSu
                 <span className="text-lg">{getCountryFlag(asset.country)}</span>
               )}
               <div className="min-w-0 flex-1">
-                <h2 className="text-xl lg:text-2xl font-bold text-foreground truncate">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">
                   {asset.name || asset.symbol}
                 </h2>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -97,7 +97,7 @@ export function AssetSummaryBanner({ asset, onViewComplete, className }: AssetSu
           </div>
 
           {/* Indicateurs clés */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full lg:w-auto">
             {asset.market_cap && (
               <div className="text-center lg:text-right">
                 <div className="flex items-center justify-center lg:justify-end gap-1 text-xs text-muted-foreground mb-1">
@@ -142,12 +142,14 @@ export function AssetSummaryBanner({ asset, onViewComplete, className }: AssetSu
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto lg:w-auto justify-end">
             {asset.website && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => window.open(asset.website!, '_blank')}
+                className="touch-manipulation"
+                style={{ minHeight: '44px' }}
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Site</span>
@@ -155,7 +157,8 @@ export function AssetSummaryBanner({ asset, onViewComplete, className }: AssetSu
             )}
             <Button
               onClick={onViewComplete}
-              className="bg-primary hover:bg-primary-dark"
+              className="bg-primary hover:bg-primary-dark touch-manipulation"
+              style={{ minHeight: '44px' }}
             >
               <Eye className="h-4 w-4 mr-1" />
               Complete Profile

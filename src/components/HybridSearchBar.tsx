@@ -322,7 +322,8 @@ export function HybridSearchBar({
             }}
             onKeyPress={handleKeyPress}
             onFocus={() => searchTerm && setShowDropdown(true)}
-            className="w-full pl-10 pr-16 sm:pr-20 py-3 sm:py-4 bg-input/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth text-sm sm:text-base"
+            className="w-full pl-10 pr-16 sm:pr-20 py-3 sm:py-4 bg-input/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth text-sm sm:text-base touch-manipulation"
+            style={{ minHeight: '44px' }}
           />
           
           {/* AI Query Button - Mobile optimized */}
@@ -331,7 +332,8 @@ export function HybridSearchBar({
               onClick={handleAIQuery}
               disabled={isLoading}
               size="sm"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 touch-manipulation"
+              style={{ minHeight: '44px' }}
             >
               {isLoading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -362,7 +364,8 @@ export function HybridSearchBar({
                       <button
                         onClick={() => handleAssetSelect(asset)}
                         onMouseEnter={() => setSelectedAssetForPreview(asset.symbol)}
-                        className="w-full px-3 py-2 text-left hover:bg-primary/10 transition-smooth flex items-center gap-2 rounded-md border border-border/20"
+                        className="w-full px-3 py-2 text-left hover:bg-primary/10 transition-smooth flex items-center gap-2 rounded-md border border-border/20 touch-manipulation"
+                        style={{ minHeight: '44px' }}
                       >
                         <span className="text-sm">{asset.icon}</span>
                         <span className="text-sm font-medium text-foreground">{asset.symbol}</span>
@@ -396,7 +399,8 @@ export function HybridSearchBar({
                       <button
                         key={asset.id}
                         onClick={() => handleAssetProfileSelect(asset)}
-                        className="w-full p-3 text-left rounded-lg transition-smooth border border-transparent hover:bg-primary/10 hover:border-primary/30"
+                        className="w-full p-3 text-left rounded-lg transition-smooth border border-transparent hover:bg-primary/10 hover:border-primary/30 touch-manipulation"
+                        style={{ minHeight: '44px' }}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
@@ -455,7 +459,7 @@ export function HybridSearchBar({
                 <button
                   onClick={handleAIQuery}
                   disabled={isLoading}
-                  className="w-full px-3 py-4 sm:py-3 text-left hover:bg-primary/10 transition-smooth flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 min-h-[44px]"
+                  className="w-full px-3 py-4 sm:py-3 text-left hover:bg-primary/10 transition-smooth flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 min-h-[44px] touch-manipulation"
                 >
                   <Brain className="h-5 w-5 sm:h-4 sm:w-4 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">

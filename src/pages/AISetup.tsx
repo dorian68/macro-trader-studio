@@ -362,7 +362,7 @@ export default function AISetup() {
                 <div className="space-y-2">
                   <Label htmlFor="instrument">Instrument</Label>
                   <Select value={parameters.instrument} onValueChange={(value) => setParameters({...parameters, instrument: value})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -402,7 +402,7 @@ export default function AISetup() {
                 <div className="space-y-2">
                   <Label htmlFor="timeframe">Timeframe</Label>
                   <Select value={parameters.timeframe} onValueChange={(value) => setParameters({...parameters, timeframe: value})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -417,7 +417,7 @@ export default function AISetup() {
                 <div className="space-y-2">
                   <Label htmlFor="riskLevel">Risk Level</Label>
                   <Select value={parameters.riskLevel} onValueChange={(value) => setParameters({...parameters, riskLevel: value})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -436,13 +436,14 @@ export default function AISetup() {
                     value={parameters.positionSize}
                     onChange={(e) => setParameters({...parameters, positionSize: e.target.value})}
                     placeholder="2"
+                    className="h-11 text-sm touch-manipulation"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="strategy">Strategy</Label>
                   <Select value={parameters.strategy} onValueChange={(value) => setParameters({...parameters, strategy: value})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

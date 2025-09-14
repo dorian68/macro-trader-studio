@@ -73,7 +73,7 @@ export function JobStatusCard({ jobs, onViewResult, onDismiss, className }: JobS
 
   return (
     <div className={cn(
-      "fixed top-20 right-4 z-50 w-80 max-w-[calc(100vw-2rem)]",
+      "fixed top-16 sm:top-20 right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] sm:w-80 max-w-[calc(100vw-1rem)]",
       className
     )}>
       <Card className="shadow-lg border-primary/20 bg-card/95 backdrop-blur-sm">
@@ -119,10 +119,10 @@ export function JobStatusCard({ jobs, onViewResult, onDismiss, className }: JobS
                   size="sm"
                   variant="outline"
                   onClick={() => onViewResult?.(currentJob)}
-                  className="mt-2 h-7 text-xs flex items-center gap-1"
+                  className="mt-2 h-7 text-xs flex items-center gap-1 w-full sm:w-auto"
                 >
                   <Eye className="h-3 w-3" />
-                  View Result
+                  <span className="truncate">View Result</span>
                 </Button>
               )}
             </div>
@@ -131,7 +131,7 @@ export function JobStatusCard({ jobs, onViewResult, onDismiss, className }: JobS
               variant="ghost"
               size="sm"
               onClick={() => onDismiss?.(currentJob.id)}
-              className="h-6 w-6 p-0 shrink-0"
+              className="h-6 w-6 p-0 shrink-0 absolute top-2 right-2 sm:relative sm:top-auto sm:right-auto"
             >
               <X className="h-3 w-3" />
             </Button>

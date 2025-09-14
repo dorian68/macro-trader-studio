@@ -139,16 +139,16 @@ export function TradingViewWidget({
   useEffect(() => {
     fetchData();
   }, [selectedSymbol, timeframe]);
-  return <Card className={className}>
+  return <Card className={`w-full ${className}`}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
             Market Chart
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Select value={selectedSymbol} onValueChange={onSymbolChange}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full sm:w-32 h-10 touch-manipulation">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -158,7 +158,7 @@ export function TradingViewWidget({
               </SelectContent>
             </Select>
             <Select value={timeframe} onValueChange={setTimeframe}>
-              <SelectTrigger className="w-20">
+              <SelectTrigger className="w-20 h-10 touch-manipulation">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -183,7 +183,7 @@ export function TradingViewWidget({
         <div className="mt-4 text-sm text-muted-foreground">
           <div className="flex justify-between">
             
-            <Button variant="outline" size="sm" onClick={fetchData} className="h-7">
+            <Button variant="outline" size="sm" onClick={fetchData} className="h-7 touch-manipulation" style={{ minHeight: '44px' }}>
               Refresh
             </Button>
           </div>

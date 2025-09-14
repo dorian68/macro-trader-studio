@@ -264,18 +264,19 @@ export default function TradingDashboard() {
 
 
         {/* Popular assets - Mobile-first horizontal scroll */}
-        <div className="w-full -mx-3 sm:mx-0">
-          <div className="flex gap-2 overflow-x-auto pb-2 px-3 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="w-full -mx-2 sm:mx-0">
+          <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide">
             {allAssets.slice(0, 6).map((asset) => (
               <button
                 key={asset.symbol}
                 onClick={() => setSelectedAsset(asset.symbol)}
                 className={cn(
-                  "px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-smooth flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 snap-start min-w-fit",
+                  "px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-smooth flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 snap-start min-w-fit touch-manipulation",
                   selectedAsset === asset.symbol
                     ? "bg-primary text-primary-foreground shadow-glow-primary"
                     : "bg-card/50 hover:bg-primary/10 text-foreground border border-border/30"
                 )}
+                style={{ minHeight: '44px' }}
               >
                 <span className="text-sm sm:text-base">{asset.icon}</span>
                 <span className="font-semibold">{asset.symbol}</span>
@@ -339,18 +340,19 @@ export default function TradingDashboard() {
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card 
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth" 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation" 
             onClick={() => navigate('/ai-setup')}
+            style={{ minHeight: '44px' }}
           >
             <CardContent className="p-6 text-center">
               <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
                 <Zap className="h-6 w-6 text-primary-foreground" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">AI Trade Setup</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                 Generate intelligent trade setups with AI-powered analysis
               </p>
-              <Button size="sm" className="w-full">
+              <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
                 Get Started
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
@@ -358,18 +360,19 @@ export default function TradingDashboard() {
           </Card>
 
           <Card 
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth" 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation" 
             onClick={() => navigate('/macro-analysis')}
+            style={{ minHeight: '44px' }}
           >
             <CardContent className="p-6 text-center">
               <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
                 <Activity className="h-6 w-6 text-primary-foreground" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">Macro Commentary</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                 In-depth macroeconomic analysis and market insights
               </p>
-              <Button size="sm" className="w-full">
+              <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
                 Explore
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
@@ -377,18 +380,19 @@ export default function TradingDashboard() {
           </Card>
 
           <Card 
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth" 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation" 
             onClick={() => navigate('/reports')}
+            style={{ minHeight: '44px' }}
           >
             <CardContent className="p-6 text-center">
               <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
                 <Activity className="h-6 w-6 text-primary-foreground" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">Reports</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                 Generate comprehensive market reports and analysis
               </p>
-              <Button size="sm" className="w-full">
+              <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
                 Create Report
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>

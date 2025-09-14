@@ -134,8 +134,9 @@ const AssetInfoCard: React.FC<AssetInfoCardProps> = ({ symbol, className }) => {
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0"
+              className="shrink-0 touch-manipulation"
               onClick={() => window.open(assetInfo.website!, '_blank')}
+              style={{ minHeight: '44px' }}
             >
               <ExternalLink className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Visit</span>
