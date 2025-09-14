@@ -188,7 +188,7 @@ export function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="relative w-full h-64 sm:h-80 lg:h-96 border border-border rounded-lg overflow-hidden" />
+        <div ref={chartContainerRef} className="relative w-full h-[380px] sm:h-[460px] lg:h-[560px] border border-border rounded-lg overflow-hidden" />
 
         <div className="mt-3 sm:mt-4 text-sm text-muted-foreground">
           <div className="flex justify-between items-center">
