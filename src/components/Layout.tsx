@@ -12,7 +12,8 @@ import {
   LogOut,
   Building2,
   Shield,
-  FileText
+  FileText,
+  History
 } from "lucide-react";
 import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,9 +24,11 @@ interface LayoutProps {
   children: React.ReactNode;
   activeModule?: string;
   onModuleChange?: (module: string) => void;
+  completedJobsCount?: number;
+  onResetJobsCount?: () => void;
 }
 
-export default function Layout({ children, activeModule, onModuleChange }: LayoutProps) {
+export default function Layout({ children, activeModule, onModuleChange, completedJobsCount = 0, onResetJobsCount }: LayoutProps) {
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("4h");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -59,6 +62,27 @@ export default function Layout({ children, activeModule, onModuleChange }: Layou
 
             {/* Mobile Navigation + Auth + Status */}
             <div className="flex items-center gap-2">
+              {/* AI History Button with Notification Counter */}
+              {user && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigate('/history');
+                    onResetJobsCount?.();
+                  }}
+                  className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
+                >
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-2">History</span>
+                  {completedJobsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
+                      {completedJobsCount > 9 ? '9+' : completedJobsCount}
+                    </span>
+                  )}
+                </Button>
+              )}
+
               {/* Auth Section */}
               {user ? (
                 <div className="flex items-center gap-2">

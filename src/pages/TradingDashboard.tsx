@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight, History } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { BubbleSystem } from "@/components/BubbleSystem";
@@ -13,6 +13,8 @@ import { HybridSearchBar } from "@/components/HybridSearchBar";
 import { AssetSummaryBanner } from "@/components/AssetSummaryBanner";
 import { getSymbolForAsset } from "@/lib/assetMapping";
 import AssetInfoCard from "@/components/AssetInfoCard";
+import { JobStatusCard } from "@/components/JobStatusCard";
+import { useJobStatusManager } from "@/hooks/useJobStatusManager";
 
 // Popular assets with their categories
 const assetCategories = {
@@ -47,6 +49,7 @@ interface PriceData {
 
 export default function TradingDashboard() {
   const navigate = useNavigate();
+  const jobManager = useJobStatusManager();
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("4h");
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -142,7 +145,12 @@ export default function TradingDashboard() {
   const currentAsset = allAssets.find(asset => asset.symbol === selectedAsset);
 
   return (
-    <Layout activeModule="trading" onModuleChange={() => {}}>
+    <Layout 
+      activeModule="trading" 
+      onModuleChange={() => {}}
+      completedJobsCount={jobManager.completedJobsCount}
+      onResetJobsCount={jobManager.resetCompletedCount}
+    >
       <div className="space-y-4 sm:space-y-6 overflow-x-hidden">
         {/* Mobile-first header with real-time price */}
         <div className="space-y-4">
@@ -299,17 +307,6 @@ export default function TradingDashboard() {
           />
         </div>
 
-        {/* Quick Access - History Button */}
-        <div className="flex justify-end">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/history')}
-            className="flex items-center gap-2"
-          >
-            <History className="h-4 w-4" />
-            View AI History
-          </Button>
-        </div>
 
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -372,6 +369,26 @@ export default function TradingDashboard() {
         </div>
 
       </div>
+
+      {/* Job Status Card */}
+      <JobStatusCard
+        jobs={jobManager.activeJobs}
+        onViewResult={(job) => {
+          // Navigate to appropriate result page based on job type
+          switch (job.type) {
+            case 'ai_setup':
+              navigate('/history');
+              break;
+            case 'macro_commentary':
+              navigate('/macro-analysis');
+              break;
+            case 'report':
+              navigate('/reports');
+              break;
+          }
+        }}
+        onDismiss={jobManager.removeJob}
+      />
 
       {/* Floating bubble system */}
       <BubbleSystem 
