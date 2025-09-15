@@ -38,10 +38,16 @@ export function TradingViewWidget({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFallback, setHasFallback] = useState(false);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  // Local symbol state to keep dropdown selection stable and update chart
+  const [currentSymbol, setCurrentSymbol] = useState<string>(selectedSymbol);
+
+  // Sync with parent when prop changes
+  useEffect(() => {
+    setCurrentSymbol(selectedSymbol);
+  }, [selectedSymbol]);
 
   // Available symbols
   const symbols = [{
@@ -75,8 +81,8 @@ export function TradingViewWidget({
                i.rsi, i.atr, i.adx
         FROM prices_tv p
         LEFT JOIN indicators_tv i ON p.symbol = i.symbol AND p.ts = i.ts
-        WHERE p.symbol = '${selectedSymbol}'
-        ORDER BY p.ts ASC
+         WHERE p.symbol = '${currentSymbol}'
+         ORDER BY p.ts ASC
         LIMIT 500
       `;
       const response = await fetch(`https://jqrlegdulnnrpiixiecf.supabase.co/rest/v1/rpc/search_chunks_cosine?query_embedding=[]&match_count=1`, {
@@ -150,7 +156,7 @@ export function TradingViewWidget({
       // @ts-ignore
       new window.TradingView.widget({
         autosize: true,
-        symbol: selectedSymbol,
+        symbol: currentSymbol,
         interval,
         timezone: 'Etc/UTC',
         theme: 'light',
@@ -171,7 +177,7 @@ export function TradingViewWidget({
   // Load data when symbol or timeframe changes
   useEffect(() => {
     fetchData();
-  }, [selectedSymbol, timeframe]);
+  }, [currentSymbol, timeframe]);
   return <Card className={`w-full ${className}`}>
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -180,7 +186,7 @@ export function TradingViewWidget({
             Market Chart
           </CardTitle>
           <div className="flex gap-2 w-full sm:w-auto">
-            <Select value={selectedSymbol} onValueChange={onSymbolChange}>
+            <Select value={currentSymbol} onValueChange={(v) => { setCurrentSymbol(v); onSymbolChange?.(v); }}>
               <SelectTrigger className="w-full sm:w-32 h-10 touch-manipulation">
                 <SelectValue />
               </SelectTrigger>
