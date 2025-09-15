@@ -19,18 +19,18 @@ import { useJobStatusManager } from "@/hooks/useJobStatusManager";
 // Popular assets with their categories
 const assetCategories = {
   forex: [
-    { symbol: "EUR/USD", name: "Euro / US Dollar", icon: "💶" },
-    { symbol: "GBP/USD", name: "British Pound / US Dollar", icon: "💷" },
-    { symbol: "USD/JPY", name: "US Dollar / Japanese Yen", icon: "💴" },
+    { symbol: "EUR/USD", name: "Euro / US Dollar", icon: "" },
+    { symbol: "GBP/USD", name: "British Pound / US Dollar", icon: "" },
+    { symbol: "USD/JPY", name: "US Dollar / Japanese Yen", icon: "" },
   ],
   crypto: [
-    { symbol: "BTC", name: "Bitcoin", icon: "₿" },
-    { symbol: "ETH", name: "Ethereum", icon: "Ξ" },
+    { symbol: "BTC", name: "Bitcoin", icon: "" },
+    { symbol: "ETH", name: "Ethereum", icon: "" },
   ],
   commodities: [
-    { symbol: "GOLD", name: "Gold", icon: "🥇" },
-    { symbol: "SILVER", name: "Silver", icon: "🥈" },
-    { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️" },
+    { symbol: "GOLD", name: "Gold", icon: "" },
+    { symbol: "SILVER", name: "Silver", icon: "" },
+    { symbol: "CRUDE", name: "Crude Oil", icon: "" },
   ]
 };
 
@@ -214,7 +214,6 @@ export default function TradingDashboard() {
                   // Affichage par défaut avec données temps réel
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-2xl shrink-0">{currentAsset?.icon}</span>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
                         <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
@@ -277,8 +276,7 @@ export default function TradingDashboard() {
                     : "bg-card/50 hover:bg-primary/10 text-foreground border border-border/30"
                 )}
                 style={{ minHeight: '44px' }}
-              >
-                <span className="text-sm sm:text-base">{asset.icon}</span>
+                >
                 <span className="font-semibold">{asset.symbol}</span>
               </button>
             ))}
