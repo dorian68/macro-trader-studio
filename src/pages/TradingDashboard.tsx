@@ -264,7 +264,7 @@ export default function TradingDashboard() {
 
         {/* Popular assets - Mobile-first horizontal scroll */}
         <div className="w-full -mx-2 sm:mx-0">
-          <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {allAssets.slice(0, 6).map((asset) => (
               <button
                 key={asset.symbol}
