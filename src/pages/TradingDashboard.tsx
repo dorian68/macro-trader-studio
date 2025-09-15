@@ -311,7 +311,7 @@ export default function TradingDashboard() {
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card 
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation" 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
             onClick={() => navigate('/ai-setup')}
             style={{ minHeight: '44px' }}
           >
@@ -331,7 +331,7 @@ export default function TradingDashboard() {
           </Card>
 
           <Card 
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation" 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
             onClick={() => navigate('/macro-analysis')}
             style={{ minHeight: '44px' }}
           >
@@ -351,7 +351,7 @@ export default function TradingDashboard() {
           </Card>
 
           <Card 
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation" 
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
             onClick={() => navigate('/reports')}
             style={{ minHeight: '44px' }}
           >
