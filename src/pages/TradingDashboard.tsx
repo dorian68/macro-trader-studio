@@ -309,33 +309,6 @@ export default function TradingDashboard() {
         </div>
 
 
-        {/* Test Job Status - Development only */}
-        <div className="flex justify-end">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              const jobId = jobManager.addJob({
-                type: 'ai_setup',
-                status: 'running',
-                title: 'Analyzing EUR/USD trade setup...'
-              });
-              
-              // Start progress simulation
-              jobManager.simulateProgress(jobId);
-              
-              // Simulate job completion after realistic time
-              setTimeout(() => {
-                jobManager.updateJob(jobId, {
-                  status: 'completed',
-                  result: { analysis: 'BUY signal detected' }
-                });
-              }, 5000);
-            }}
-            className="flex items-center gap-2"
-          >
-            🧪 Test Job Status
-          </Button>
-        </div>
 
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
