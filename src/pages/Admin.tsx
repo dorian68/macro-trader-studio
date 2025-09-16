@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format, subDays, parseISO } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
 import { JobsMonitoring } from "@/components/admin/JobsMonitoring";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface AdminUser {
   id: string;
@@ -46,12 +48,19 @@ interface UserCostStats {
   totalCost: number;
 }
 
+interface DailyCostStats {
+  date: string;
+  cost: number;
+  requests: number;
+}
+
 export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [costStats, setCostStats] = useState<UserCostStats[]>([]);
   const [loadingCosts, setLoadingCosts] = useState(false);
+  const [dailyCostStats, setDailyCostStats] = useState<DailyCostStats[]>([]);
   const { isSuperUser } = useProfile();
   const { 
     fetchUsers, 
@@ -102,7 +111,7 @@ export default function Admin() {
 
       const usersWithEmails = response.data || [];
 
-      // Tarification par fonctionnalité
+      // Tarification par fonctionnalité (en dollars)
       const featureCosts = {
         'AI Trade setup': 0.06,
         'Macro Commentary': 0.07,
@@ -143,6 +152,31 @@ export default function Admin() {
       });
 
       setCostStats(Array.from(userStatsMap.values()));
+
+      // Calculer les statistiques par jour (30 derniers jours)
+      const dailyStatsMap = new Map<string, DailyCostStats>();
+      const last30Days = Array.from({ length: 30 }, (_, i) => {
+        const date = subDays(new Date(), i);
+        const dateStr = format(date, 'yyyy-MM-dd');
+        dailyStatsMap.set(dateStr, {
+          date: dateStr,
+          cost: 0,
+          requests: 0
+        });
+        return dateStr;
+      }).reverse();
+
+      jobsData?.forEach(job => {
+        const jobDate = format(parseISO(job.created_at), 'yyyy-MM-dd');
+        if (dailyStatsMap.has(jobDate)) {
+          const dayStats = dailyStatsMap.get(jobDate)!;
+          const cost = featureCosts[job.feature as keyof typeof featureCosts] || 0;
+          dayStats.cost += cost;
+          dayStats.requests += 1;
+        }
+      });
+
+      setDailyCostStats(Array.from(dailyStatsMap.values()));
     } catch (error) {
       console.error('Error loading cost stats:', error);
     } finally {
@@ -332,9 +366,9 @@ export default function Admin() {
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Euro className="h-4 w-4 text-success" />
-                      <span className="text-sm font-medium">Total Cost</span>
-                    </div>
-                    <div className="text-xl font-bold">€{globalCostStats.totalCost.toFixed(2)}</div>
+                  <span className="text-sm font-medium">Total Cost</span>
+                </div>
+                <div className="text-xl font-bold">${globalCostStats.totalCost.toFixed(2)}</div>
                   </CardContent>
                 </Card>
                 <Card className="rounded-xl border">
@@ -343,8 +377,8 @@ export default function Admin() {
                       <BarChart3 className="h-4 w-4 text-blue-500" />
                       <span className="text-sm font-medium">AI Trade</span>
                     </div>
-                    <div className="text-xl font-bold">{globalCostStats.aiTradeSetupTotal}</div>
-                    <div className="text-xs text-muted-foreground">€{(globalCostStats.aiTradeSetupTotal * 0.06).toFixed(2)}</div>
+                <div className="text-xl font-bold">{globalCostStats.aiTradeSetupTotal}</div>
+                <div className="text-xs text-muted-foreground">${(globalCostStats.aiTradeSetupTotal * 0.06).toFixed(2)}</div>
                   </CardContent>
                 </Card>
                 <Card className="rounded-xl border">
@@ -353,10 +387,52 @@ export default function Admin() {
                       <BarChart3 className="h-4 w-4 text-orange-500" />
                       <span className="text-sm font-medium">Reports</span>
                     </div>
-                    <div className="text-xl font-bold">{globalCostStats.reportTotal}</div>
-                    <div className="text-xs text-muted-foreground">€{(globalCostStats.reportTotal * 0.14).toFixed(2)}</div>
+                <div className="text-xl font-bold">{globalCostStats.reportTotal}</div>
+                <div className="text-xs text-muted-foreground">${(globalCostStats.reportTotal * 0.14).toFixed(2)}</div>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Daily Cost Chart */}
+              <div className="rounded-xl border mb-6">
+                <div className="p-4 border-b">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Daily Costs (Last 30 Days)
+                  </h3>
+                </div>
+                <div className="p-4">
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={dailyCostStats}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => format(parseISO(value), 'MM/dd')}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => `$${value.toFixed(2)}`}
+                        />
+                        <Tooltip 
+                          labelFormatter={(value) => format(parseISO(value as string), 'MMM dd, yyyy')}
+                          formatter={(value: number, name: string) => [
+                            name === 'cost' ? `$${value.toFixed(2)}` : value,
+                            name === 'cost' ? 'Cost' : 'Requests'
+                          ]}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="cost" 
+                          stroke="hsl(var(--primary))" 
+                          strokeWidth={2}
+                          dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
 
               {/* User Costs Table */}
@@ -402,18 +478,18 @@ export default function Admin() {
                               </td>
                               <td className="text-right p-3">
                                 <div className="text-sm">{userStat.aiTradeSetupCount}</div>
-                                <div className="text-xs text-muted-foreground">€{(userStat.aiTradeSetupCount * 0.06).toFixed(2)}</div>
+                                <div className="text-xs text-muted-foreground">${(userStat.aiTradeSetupCount * 0.06).toFixed(2)}</div>
                               </td>
                               <td className="text-right p-3">
                                 <div className="text-sm">{userStat.macroCommentaryCount}</div>
-                                <div className="text-xs text-muted-foreground">€{(userStat.macroCommentaryCount * 0.07).toFixed(2)}</div>
+                                <div className="text-xs text-muted-foreground">${(userStat.macroCommentaryCount * 0.07).toFixed(2)}</div>
                               </td>
                               <td className="text-right p-3">
                                 <div className="text-sm">{userStat.reportCount}</div>
-                                <div className="text-xs text-muted-foreground">€{(userStat.reportCount * 0.14).toFixed(2)}</div>
+                                <div className="text-xs text-muted-foreground">${(userStat.reportCount * 0.14).toFixed(2)}</div>
                               </td>
                               <td className="text-right p-3">
-                                <div className="font-semibold text-sm">€{userStat.totalCost.toFixed(2)}</div>
+                                <div className="font-semibold text-sm">${userStat.totalCost.toFixed(2)}</div>
                               </td>
                             </tr>
                           ))
