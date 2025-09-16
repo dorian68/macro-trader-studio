@@ -10,6 +10,7 @@ interface CreateUserRequest {
   email: string;
   role: 'user' | 'admin' | 'super_user';
   brokerName?: string;
+  password?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -73,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { email, role, brokerName }: CreateUserRequest = await req.json();
+    const { email, role, brokerName, password }: CreateUserRequest = await req.json();
 
     // Validate input
     if (!email || !role) {
@@ -91,13 +92,20 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Create user with admin client
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const createUserData: any = {
       email,
       email_confirm: true,
       user_metadata: {
         broker_name: brokerName || null
       }
-    });
+    };
+
+    // Add password if provided
+    if (password) {
+      createUserData.password = password;
+    }
+
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser(createUserData);
 
     if (createError) {
       console.error('Error creating user:', createError);

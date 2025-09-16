@@ -65,7 +65,8 @@ export function CreateUserDialog({ onCreateUser, loading: externalLoading, onSuc
         body: {
           email: formData.email.trim(),
           role: formData.role,
-          brokerName: formData.brokerName.trim() || null
+          brokerName: formData.brokerName.trim() || null,
+          password: formData.password.trim() || undefined
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -151,6 +152,17 @@ export function CreateUserDialog({ onCreateUser, loading: externalLoading, onSuc
                 <SelectItem value="super_user">Super User</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">Password (Optional)</Label>
+            <Input
+              id="password"
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              placeholder="Leave empty for passwordless account"
+            />
           </div>
 
           <div className="space-y-2">
