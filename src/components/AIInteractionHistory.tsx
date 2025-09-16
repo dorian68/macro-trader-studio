@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Calendar, MessageSquare, TrendingUp, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, MessageSquare, TrendingUp, FileText, Trash2, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 interface AIInteraction {
   id: string;
@@ -32,9 +33,9 @@ const FEATURE_ICONS = {
 };
 
 const FEATURE_COLORS = {
-  trade_setup: 'bg-blue-100 text-blue-800',
-  market_commentary: 'bg-green-100 text-green-800',
-  report: 'bg-purple-100 text-purple-800'
+  trade_setup: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+  market_commentary: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+  report: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
 };
 
 export function AIInteractionHistory() {
@@ -113,23 +114,182 @@ export function AIInteractionHistory() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch {
+      return new Date(dateString).toLocaleString();
+    }
   };
 
-  const renderResponse = (response: any) => {
+  const extractInstrument = (userQuery: string): string => {
+    // Extract instrument from user query patterns
+    const patterns = [
+      /for\s+([A-Z]{3}\/[A-Z]{3})/i, // EUR/USD
+      /for\s+([A-Z]{3,4})/i, // GOLD, BTC
+      /([A-Z]{3}\/[A-Z]{3})/i, // Direct match
+      /([A-Z]{2,4}\/[A-Z]{2,4})/i // Flexible match
+    ];
+    
+    for (const pattern of patterns) {
+      const match = userQuery.match(pattern);
+      if (match) return match[1];
+    }
+    return 'N/A';
+  };
+
+  const extractSummary = (response: any): string => {
     if (typeof response === 'string') {
-      return <p className="text-sm text-muted-foreground whitespace-pre-wrap">{response}</p>;
+      return response.slice(0, 150) + (response.length > 150 ? '...' : '');
     }
     
     if (typeof response === 'object' && response !== null) {
+      // Try to extract meaningful content from different response types
+      if (response.summary) return response.summary.slice(0, 150) + '...';
+      if (response.content) return response.content.slice(0, 150) + '...';
+      if (response.analysis) return response.analysis.slice(0, 150) + '...';
+      if (response.commentary) return response.commentary.slice(0, 150) + '...';
+      if (response.conclusion) return response.conclusion.slice(0, 150) + '...';
+      if (response.recommendation) return response.recommendation.slice(0, 150) + '...';
+      
+      // Try to find any text content
+      const textContent = Object.values(response).find(value => 
+        typeof value === 'string' && value.length > 20
+      ) as string;
+      
+      if (textContent) {
+        return textContent.slice(0, 150) + (textContent.length > 150 ? '...' : '');
+      }
+    }
+    
+    return 'AI analysis completed successfully';
+  };
+
+  const deleteInteraction = async (id: string) => {
+    const { error } = await supabase
+      .from('ai_interactions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete interaction",
+        variant: "destructive"
+      });
+    } else {
+      setInteractions(prev => prev.filter(item => item.id !== id));
+      toast({
+        title: "Deleted",
+        description: "Interaction removed from history"
+      });
+    }
+  };
+
+  const clearAllHistory = async () => {
+    if (!user?.id) return;
+    
+    const { error } = await supabase
+      .from('ai_interactions')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear history",
+        variant: "destructive"
+      });
+    } else {
+      setInteractions([]);
+      toast({
+        title: "Cleared",
+        description: "All interaction history has been cleared"
+      });
+    }
+  };
+
+  const renderFormattedResponse = (response: any) => {
+    if (typeof response === 'string') {
       return (
-        <pre className="text-sm text-muted-foreground bg-muted p-3 rounded-md overflow-auto max-h-96">
-          {JSON.stringify(response, null, 2)}
-        </pre>
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <p className="text-sm text-foreground whitespace-pre-wrap">{response}</p>
+        </div>
       );
     }
     
-    return <p className="text-sm text-muted-foreground">No response data</p>;
+    if (typeof response === 'object' && response !== null) {
+      // Extract meaningful sections from the response
+      const sections = [];
+      
+      if (response.summary) {
+        sections.push({ title: 'Summary', content: response.summary });
+      }
+      if (response.analysis) {
+        sections.push({ title: 'Analysis', content: response.analysis });
+      }
+      if (response.commentary) {
+        sections.push({ title: 'Commentary', content: response.commentary });
+      }
+      if (response.recommendation) {
+        sections.push({ title: 'Recommendation', content: response.recommendation });
+      }
+      if (response.conclusion) {
+        sections.push({ title: 'Conclusion', content: response.conclusion });
+      }
+      if (response.content) {
+        sections.push({ title: 'Content', content: response.content });
+      }
+      
+      // Extract sources if available
+      const sources = response.sources || response.data_sources || [];
+      
+      if (sections.length > 0) {
+        return (
+          <div className="space-y-4">
+            {sections.map((section, index) => (
+              <div key={index} className="space-y-2">
+                <h5 className="font-medium text-sm text-foreground">{section.title}</h5>
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md border-l-2 border-primary/20">
+                  {typeof section.content === 'string' ? (
+                    <p className="whitespace-pre-wrap">{section.content}</p>
+                  ) : (
+                    <pre className="text-xs overflow-auto">{JSON.stringify(section.content, null, 2)}</pre>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {sources.length > 0 && (
+              <div className="space-y-2">
+                <h5 className="font-medium text-sm text-foreground">Sources</h5>
+                <div className="text-xs text-muted-foreground">
+                  {sources.map((source: string, index: number) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="w-1 h-1 bg-muted-foreground rounded-full"></span>
+                      <span>{source}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+      
+      // Fallback for unstructured objects - but make it more readable
+      return (
+        <details className="group">
+          <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+            View raw response data
+          </summary>
+          <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-md overflow-auto max-h-64 mt-2 border">
+            {JSON.stringify(response, null, 2)}
+          </pre>
+        </details>
+      );
+    }
+    
+    return <p className="text-sm text-muted-foreground italic">No response data available</p>;
   };
 
   if (loading) {
@@ -142,20 +302,33 @@ export function AIInteractionHistory() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-2xl font-bold">AI Interaction History</h2>
-        <Select value={selectedFeature} onValueChange={setSelectedFeature}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by feature" />
-          </SelectTrigger>
-          <SelectContent>
-            {FEATURES.map(feature => (
-              <SelectItem key={feature.value} value={feature.value}>
-                {feature.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <Select value={selectedFeature} onValueChange={setSelectedFeature}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter by feature" />
+            </SelectTrigger>
+            <SelectContent>
+              {FEATURES.map(feature => (
+                <SelectItem key={feature.value} value={feature.value}>
+                  {feature.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {interactions.length > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={clearAllHistory}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear All
+            </Button>
+          )}
+        </div>
       </div>
 
       {interactions.length === 0 ? (
@@ -176,64 +349,92 @@ export function AIInteractionHistory() {
             const featureName = interaction.feature_name as keyof typeof FEATURE_ICONS;
             const Icon = FEATURE_ICONS[featureName] || MessageSquare;
             const isExpanded = expandedItems.has(interaction.id);
+            const instrument = extractInstrument(interaction.user_query);
+            const summary = extractSummary(interaction.ai_response);
+            
             return (
-              <Card key={interaction.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <CardTitle className="text-base">
-                          {FEATURES.find(f => f.value === interaction.feature_name)?.label}
-                        </CardTitle>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">
-                            {formatDate(interaction.created_at)}
-                          </span>
+              <Card key={interaction.id} className="transition-all duration-200 hover:shadow-md border border-border/50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CardTitle className="text-base font-semibold">
+                            {FEATURES.find(f => f.value === interaction.feature_name)?.label}
+                          </CardTitle>
                           <Badge className={FEATURE_COLORS[featureName] || 'bg-gray-100 text-gray-800'}>
                             {interaction.feature_name.replace('_', ' ')}
                           </Badge>
                         </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(interaction.created_at)}</span>
+                          </div>
+                          {instrument !== 'N/A' && (
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3" />
+                              <span className="font-medium">{instrument}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <p className="text-sm text-foreground/80 line-clamp-2">
+                          {summary}
+                        </p>
                       </div>
                     </div>
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(interaction.id)}
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </CollapsibleTrigger>
-                    </Collapsible>
+                    
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleExpanded(interaction.id)}
+                        className="shrink-0"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        {isExpanded ? 'Hide' : 'View'}
+                        {isExpanded ? (
+                          <ChevronUp className="h-3 w-3 ml-1" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteInteraction(interaction.id)}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">User Query:</h4>
-                      <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
-                        {interaction.user_query}
-                      </p>
-                    </div>
-
-                    <Collapsible open={isExpanded}>
-                      <CollapsibleContent>
+                <Collapsible open={isExpanded}>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 border-t border-border/30">
+                      <div className="space-y-4">
                         <div>
-                          <h4 className="font-medium text-sm mb-2">AI Response:</h4>
-                          {renderResponse(interaction.ai_response)}
+                          <h4 className="font-medium text-sm mb-2 text-foreground">Original Query</h4>
+                          <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-md border-l-2 border-primary/30">
+                            {interaction.user_query}
+                          </div>
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                </CardContent>
+
+                        <div>
+                          <h4 className="font-medium text-sm mb-3 text-foreground">AI Response</h4>
+                          {renderFormattedResponse(interaction.ai_response)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
               </Card>
             );
           })}
