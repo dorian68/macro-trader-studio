@@ -222,6 +222,80 @@ export function AIInteractionHistory() {
     }
     
     if (typeof response === 'object' && response !== null) {
+      // Check for sections structure (new format)
+      if (response.sections && Array.isArray(response.sections)) {
+        return (
+          <div className="space-y-4">
+            {response.query && (
+              <div className="space-y-2">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Query</h5>
+                <div className="text-sm text-foreground bg-gradient-to-r from-muted/20 to-muted/10 p-3 rounded-lg border border-border/20">
+                  {response.query}
+                </div>
+              </div>
+            )}
+            
+            {response.sections.map((section: any, index: number) => (
+              <div key={index} className="space-y-2">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">
+                  {section.title || `Section ${index + 1}`}
+                </h5>
+                <div className="text-sm text-foreground bg-gradient-to-r from-muted/20 to-muted/10 p-4 rounded-lg border border-border/20">
+                  {section.content && (() => {
+                    // Parse structured content with headers
+                    const contentSections = section.content.split('\n\n').filter((s: string) => s.trim());
+                    return (
+                      <div className="space-y-4">
+                        {contentSections.map((contentSection: string, csIndex: number) => {
+                          const lines = contentSection.split('\n');
+                          const firstLine = lines[0];
+                          
+                          // Check if first line is a header (common analysis headers)
+                          if (firstLine.match(/^(Executive Summary|Fundamental Analysis|Directional Bias|Key Levels|AI Insights|Fundamentals|Rate Differentials|Positioning|Balance of Payments|Central Bank Pricing|Sentiment Drivers|Event Watch|USD Weekly Outlook|Analysis Results)$/i)) {
+                            const headerContent = lines.slice(1).join('\n').trim();
+                            return (
+                              <div key={csIndex} className="space-y-2">
+                                <h6 className="font-medium text-xs text-primary/80 uppercase tracking-wide border-b border-border/20 pb-1">
+                                  {firstLine}
+                                </h6>
+                                <div className="text-sm text-foreground/90 pl-2 border-l-2 border-primary/20">
+                                  <pre className="whitespace-pre-wrap font-sans leading-relaxed">{headerContent}</pre>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          // Regular content block
+                          return (
+                            <div key={csIndex} className="text-sm text-foreground/90">
+                              <pre className="whitespace-pre-wrap font-sans leading-relaxed">{contentSection}</pre>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            ))}
+            
+            {response.sources && response.sources.length > 0 && (
+              <div className="space-y-2">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Sources</h5>
+                <div className="text-xs text-muted-foreground bg-muted/20 p-3 rounded-md">
+                  {response.sources.map((source: string, index: number) => (
+                    <div key={index} className="flex items-center gap-2 py-1">
+                      <span className="w-1.5 h-1.5 bg-primary/60 rounded-full"></span>
+                      <span>{source}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
       // Check for macro analysis structure
       if (response.message?.content?.content) {
         const content = response.message.content.content;
