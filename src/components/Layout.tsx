@@ -22,7 +22,6 @@ import { useNavigate } from "react-router-dom";
 import { useResultNotifications } from "@/hooks/useResultNotifications";
 import { ResultNotification } from "./ResultNotification";
 import { DiscreetJobStatus } from "./DiscreetJobStatus";
-import { PersistentTaskIndicator } from "./PersistentTaskIndicator";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -285,9 +284,6 @@ export default function Layout({ children, activeModule, onModuleChange, complet
 
       {/* Discreet Job Status - shows when jobs are running */}
       <DiscreetJobStatus activeJobsCount={activeJobsCount} />
-
-      {/* Persistent Task Indicator - top-right corner for active tasks */}
-      <PersistentTaskIndicator onHistoryClick={() => navigate('/history')} />
 
       {/* Result Notification - shows when new results are available */}
       <ResultNotification 
