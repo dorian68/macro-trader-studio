@@ -220,7 +220,8 @@ export default function Reports() {
           enableJobTracking: true,
           jobType: 'reports',
           instrument: selectedAsset?.symbol || "Multi-Asset",
-          feature: 'report'
+          feature: 'report',
+          jobId
         }
       );
 

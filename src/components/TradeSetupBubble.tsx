@@ -90,7 +90,8 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
         {
           enableJobTracking: true,
           jobType: 'tradesetup',
-          instrument: parameters.instrument
+          instrument: parameters.instrument,
+          jobId
         }
       );
 

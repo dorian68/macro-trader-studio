@@ -15,6 +15,7 @@ export async function enhancedPostRequest(
     instrument?: string;
     feature?: string;
     headers?: Record<string, string>;
+    jobId?: string; // Optional: reuse an existing job id instead of creating a new one
   } = {}
 ): Promise<{ response: Response; jobId?: string }> {
   
@@ -25,7 +26,7 @@ export async function enhancedPostRequest(
     const { data: user } = await supabase.auth.getUser();
     
     if (user.user) {
-      jobId = uuidv4();
+      jobId = options.jobId || uuidv4();
       
       // Add job_id to the payload
       const enhancedPayload = {
@@ -33,16 +34,18 @@ export async function enhancedPostRequest(
         job_id: jobId
       };
       
-      // Create job record in Supabase
-      await supabase
-        .from('jobs')
-        .insert({
-          id: jobId,
-          status: 'pending',
-          request_payload: enhancedPayload,
-          user_id: user.user.id,
-          feature: options.feature
-        });
+      // Create job record in Supabase only if we don't already have one
+      if (!options.jobId) {
+        await supabase
+          .from('jobs')
+          .insert({
+            id: jobId,
+            status: 'pending',
+            request_payload: enhancedPayload,
+            user_id: user.user.id,
+            feature: options.feature
+          });
+      }
       
       // Send the enhanced payload with job_id
       const response = await safePostRequest(url, enhancedPayload, options.headers);

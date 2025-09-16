@@ -262,7 +262,8 @@ export default function AISetup() {
             enableJobTracking: true,
             jobType: 'macro_commentary',
             instrument: parameters.instrument,
-            feature: 'macro_commentary'
+            feature: 'macro_commentary',
+            jobId: macroJobId
           }
         );
         
@@ -312,7 +313,8 @@ export default function AISetup() {
           enableJobTracking: true,
           jobType: 'trade_setup',
           instrument: parameters.instrument,
-          feature: 'ai_trade_setup'
+          feature: 'ai_trade_setup',
+          jobId: tradeJobId
         }
       );
 
