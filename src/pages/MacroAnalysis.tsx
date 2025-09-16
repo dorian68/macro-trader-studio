@@ -512,15 +512,7 @@ export default function MacroAnalysis() {
               const sectionKey = `${index}-${sectionIndex}`;
               const isExpanded = section.expanded || expandedSections.has(sectionKey);
               return <div key={sectionIndex} className="border border-border rounded-lg overflow-hidden">
-                        <button onClick={() => {
-                  const newExpanded = new Set(expandedSections);
-                  if (isExpanded) {
-                    newExpanded.delete(sectionKey);
-                  } else {
-                    newExpanded.add(sectionKey);
-                  }
-                  setExpandedSections(newExpanded);
-                }} className="w-full px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors flex justify-between items-center group">
+                        <button onClick={() => toggleSection(index, sectionIndex)} className="w-full px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors flex justify-between items-center group">
                           <div className="flex items-center gap-3">
                             {section.type === "overview" && <Brain className="h-4 w-4 text-primary" />}
                             {section.type === "technical" && <BarChart3 className="h-4 w-4 text-blue-500" />}
