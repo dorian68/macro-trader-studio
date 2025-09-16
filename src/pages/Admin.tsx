@@ -109,7 +109,7 @@ export default function Admin() {
         },
       });
 
-      const usersWithEmails = response.data || [];
+      const usersWithEmails = Array.isArray(response.data) ? response.data : [];
 
       // Tarification par fonctionnalité (en dollars)
       const featureCosts = {
