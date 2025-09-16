@@ -19,6 +19,9 @@ import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useNavigate } from "react-router-dom";
+import { useResultNotifications } from "@/hooks/useResultNotifications";
+import { ResultNotification } from "./ResultNotification";
+import { DiscreetJobStatus } from "./DiscreetJobStatus";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -26,15 +29,28 @@ interface LayoutProps {
   onModuleChange?: (module: string) => void;
   completedJobsCount?: number;
   onResetJobsCount?: () => void;
+  activeJobsCount?: number;
 }
 
-export default function Layout({ children, activeModule, onModuleChange, completedJobsCount = 0, onResetJobsCount }: LayoutProps) {
+export default function Layout({ children, activeModule, onModuleChange, completedJobsCount = 0, onResetJobsCount, activeJobsCount = 0 }: LayoutProps) {
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("4h");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
   const { isAdmin, isSuperUser } = useProfile();
   const navigate = useNavigate();
+  
+  // Result notification system
+  const { hasNewResults, notificationCount, markResultsAsSeen } = useResultNotifications();
+
+  const handleViewResult = () => {
+    markResultsAsSeen();
+    navigate('/history');
+  };
+
+  const handleDismissNotification = () => {
+    markResultsAsSeen();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/20 overflow-x-hidden">
@@ -64,23 +80,24 @@ export default function Layout({ children, activeModule, onModuleChange, complet
             <div className="flex items-center gap-2">
               {/* AI History Button with Notification Counter */}
               {user && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    navigate('/history');
-                    onResetJobsCount?.();
-                  }}
-                  className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 hidden md:inline-flex"
-                >
-                  <History className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-2">History</span>
-                  {completedJobsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
-                      {completedJobsCount > 9 ? '9+' : completedJobsCount}
-                    </span>
-                  )}
-                </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      navigate('/history');
+                      onResetJobsCount?.();
+                      markResultsAsSeen();
+                    }}
+                    className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 hidden md:inline-flex"
+                  >
+                    <History className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-2">History</span>
+                    {(completedJobsCount > 0 || notificationCount > 0) && (
+                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
+                        {Math.max(completedJobsCount, notificationCount) > 9 ? '9+' : Math.max(completedJobsCount, notificationCount)}
+                      </span>
+                    )}
+                  </Button>
               )}
 
               {/* Auth Section */}
@@ -197,6 +214,24 @@ export default function Layout({ children, activeModule, onModuleChange, complet
                   </Button>
                   {user && (
                     <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigate('/history');
+                          markResultsAsSeen();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="justify-start text-sm relative"
+                      >
+                        <History className="h-4 w-4 mr-2" />
+                        History
+                        {(notificationCount > 0) && (
+                          <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center min-w-[1rem]">
+                            {notificationCount > 9 ? '9+' : notificationCount}
+                          </span>
+                        )}
+                      </Button>
                       {(isAdmin || isSuperUser) && (
                         <Button
                           variant="outline"
@@ -246,6 +281,16 @@ export default function Layout({ children, activeModule, onModuleChange, complet
           )}
         </div>
       </header>
+
+      {/* Discreet Job Status - shows when jobs are running */}
+      <DiscreetJobStatus activeJobsCount={activeJobsCount} />
+
+      {/* Result Notification - shows when new results are available */}
+      <ResultNotification 
+        show={hasNewResults}
+        onDismiss={handleDismissNotification}
+        onViewResult={handleViewResult}
+      />
 
       {/* Main Content - Mobile responsive */}
       <main className="flex-1 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">

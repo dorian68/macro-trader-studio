@@ -150,6 +150,7 @@ export default function TradingDashboard() {
       onModuleChange={() => {}}
       completedJobsCount={jobManager.completedJobsCount}
       onResetJobsCount={jobManager.resetCompletedCount}
+      activeJobsCount={jobManager.activeJobs.filter(job => job.status === 'pending' || job.status === 'running').length}
     >
       <div className="space-y-4 sm:space-y-6 overflow-x-hidden overflow-y-hidden scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {/* Mobile-first header with real-time price */}

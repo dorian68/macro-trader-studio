@@ -4,9 +4,16 @@ import { ArrowLeft } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { AIInteractionHistory } from "@/components/AIInteractionHistory";
+import { useResultNotifications } from "@/hooks/useResultNotifications";
 
 export default function History() {
   const navigate = useNavigate();
+  const { markResultsAsSeen } = useResultNotifications();
+
+  // Mark results as seen when visiting history page
+  React.useEffect(() => {
+    markResultsAsSeen();
+  }, [markResultsAsSeen]);
 
   return (
     <Layout activeModule="history" onModuleChange={() => {}}>
