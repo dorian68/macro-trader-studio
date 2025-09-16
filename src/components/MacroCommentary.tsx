@@ -237,7 +237,8 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
         enableJobTracking: true,
         jobType: 'macro_commentary',
-        instrument: instrument || 'markets'
+        instrument: instrument || 'markets',
+        feature: 'macro_commentary'
       });
 
       const rawData = await handleResponseWithFallback(response, jobId);

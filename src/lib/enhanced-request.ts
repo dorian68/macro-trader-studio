@@ -13,6 +13,7 @@ export async function enhancedPostRequest(
     enableJobTracking?: boolean;
     jobType?: string;
     instrument?: string;
+    feature?: string;
     headers?: Record<string, string>;
   } = {}
 ): Promise<{ response: Response; jobId?: string }> {
@@ -39,7 +40,8 @@ export async function enhancedPostRequest(
           id: jobId,
           status: 'pending',
           request_payload: enhancedPayload,
-          user_id: user.user.id
+          user_id: user.user.id,
+          feature: options.feature
         });
       
       // Send the enhanced payload with job_id

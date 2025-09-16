@@ -138,8 +138,9 @@ export function Reports() {
         customNotes: ""
       }, {
         enableJobTracking: true,
-        jobType: 'report_generation',
-        instrument: selectedAsset?.symbol || 'multi-asset'
+        jobType: 'reports',
+        instrument: selectedAsset?.symbol || "Multi-Asset",
+        feature: 'report'
       });
 
       const result = await handleResponseWithFallback(response, jobId);

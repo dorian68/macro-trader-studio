@@ -244,7 +244,8 @@ export default function MacroAnalysis() {
       const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
         enableJobTracking: true,
         jobType: 'macro_analysis',
-        instrument: selectedAsset.symbol
+        instrument: selectedAsset.symbol,
+        feature: 'macro_commentary'
       });
       const responseJson = await handleResponseWithFallback(response, jobId);
       console.log('📊 [MacroAnalysis] Response JSON:', responseJson);
