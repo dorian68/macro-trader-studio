@@ -210,15 +210,21 @@ export function AIInteractionHistory() {
 
   const renderFormattedResponse = (response: any) => {
     if (typeof response === 'string') {
-      return (
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-          <div className="space-y-3">
-            <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
-              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{response}</p>
+      // Try to parse JSON string to enable formatted rendering
+      try {
+        const parsed = JSON.parse(response);
+        return renderFormattedResponse(parsed);
+      } catch {
+        return (
+          <div className="prose prose-sm max-w-none dark:prose-invert">
+            <div className="space-y-3">
+              <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{response}</p>
+              </div>
             </div>
           </div>
-        </div>
-      );
+        );
+      }
     }
     
     if (typeof response === 'object' && response !== null) {
@@ -227,44 +233,102 @@ export function AIInteractionHistory() {
         (response.entry !== undefined && response.stopLoss !== undefined && response.takeProfit !== undefined) ||
         (response.entryPrice !== undefined && response.stopLoss !== undefined && response.takeProfit !== undefined) ||
         (response.direction !== undefined && (response.entry !== undefined || response.entryPrice !== undefined)) ||
-        (typeof response.direction === 'string' && (response.direction === 'BUY' || response.direction === 'SELL')) ||
+        (typeof response.direction === 'string' && (response.direction === 'BUY' || response.direction === 'SELL' || response.direction.toLowerCase() === 'long' || response.direction.toLowerCase() === 'short')) ||
         (response.trade_direction !== undefined) ||
         (response.recommendation !== undefined && typeof response.recommendation === 'object' && 
-         (response.recommendation.entry !== undefined || response.recommendation.direction !== undefined))
+         (response.recommendation.entry !== undefined || response.recommendation.direction !== undefined)) ||
+        (Array.isArray(response.setups) && response.setups.length > 0)
       );
       
       if (isTradeSetup) {
-        // Extract trade data from various possible structures
-        const tradeData = {
-          direction: response.direction || response.trade_direction || (response.recommendation && response.recommendation.direction),
-          entry: response.entry || response.entryPrice || (response.recommendation && response.recommendation.entry),
-          stopLoss: response.stopLoss || response.stop_loss || (response.recommendation && response.recommendation.stopLoss),
-          takeProfit: response.takeProfit || response.take_profit || (response.recommendation && response.recommendation.takeProfit),
-          riskReward: response.riskReward || response.risk_reward || (response.recommendation && response.recommendation.riskReward),
-          confidence: response.confidence || (response.recommendation && response.recommendation.confidence),
-          positionSize: response.positionSize || response.position_size || (response.recommendation && response.recommendation.positionSize),
-          reasoning: response.reasoning || response.analysis || response.rationale || (response.recommendation && response.recommendation.reasoning),
-          technicalAnalysis: response.technicalAnalysis || response.technical_analysis || (response.recommendation && response.recommendation.technicalAnalysis)
-        };
+        // Extract trade data from various possible structures (including nested setups[])
+        const setup = Array.isArray(response.setups) && response.setups.length > 0 ? response.setups[0] : response;
 
+        const takeProfitTargets = setup.takeProfits || setup.take_profits || (setup.takeProfit !== undefined ? [setup.takeProfit] : undefined);
+        const supports = setup.levels?.supports;
+        const resistances = setup.levels?.resistances;
+
+        const tradeData = {
+          direction: setup.direction || setup.trade_direction || (response.recommendation && response.recommendation.direction),
+          entry: setup.entry || setup.entryPrice || (response.recommendation && response.recommendation.entry),
+          stopLoss: setup.stopLoss || setup.stop_loss || (response.recommendation && response.recommendation.stopLoss),
+          takeProfit: setup.takeProfit || setup.take_profit || (response.recommendation && response.recommendation.takeProfit),
+          takeProfitTargets,
+          riskReward: setup.riskReward || setup.risk_reward || setup.riskRewardRatio || (response.recommendation && response.recommendation.riskReward),
+          confidence: setup.confidence || setup.strategyMeta?.confidence || (response.recommendation && response.recommendation.confidence),
+          positionSize: setup.positionSize || setup.position_size || (response.recommendation && response.recommendation.positionSize),
+          reasoning: setup.reasoning || setup.context || response.reasoning || response.analysis || response.rationale || (response.recommendation && response.recommendation.reasoning),
+          technicalAnalysis: setup.technicalAnalysis || setup.technical_analysis || (response.recommendation && response.recommendation.technicalAnalysis) || { indicators: setup.strategyMeta?.indicators },
+          timeframe: setup.timeframe,
+          horizon: setup.horizon,
+          strategy: setup.strategy,
+          riskNotes: setup.riskNotes,
+          atrMultipleSL: setup.strategyMeta?.atrMultipleSL,
+          supports,
+          resistances,
+          instrument: response.instrument || setup.instrument,
+          asOf: response.asOf
+        } as any;
         return (
           <div className="space-y-4">
+            {/* Meta */}
+            {(tradeData.instrument || tradeData.timeframe || tradeData.horizon || tradeData.strategy || tradeData.asOf) && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {tradeData.instrument && (
+                  <div className="bg-muted/20 p-3 rounded-lg border border-border/20">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Instrument</div>
+                    <div className="text-sm font-semibold text-foreground">{tradeData.instrument}</div>
+                  </div>
+                )}
+                {tradeData.timeframe && (
+                  <div className="bg-muted/20 p-3 rounded-lg border border-border/20">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Timeframe</div>
+                    <div className="text-sm font-semibold text-foreground">{tradeData.timeframe}</div>
+                  </div>
+                )}
+                {tradeData.horizon && (
+                  <div className="bg-muted/20 p-3 rounded-lg border border-border/20">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Horizon</div>
+                    <div className="text-sm font-semibold text-foreground">{tradeData.horizon}</div>
+                  </div>
+                )}
+                {tradeData.strategy && (
+                  <div className="bg-muted/20 p-3 rounded-lg border border-border/20">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Strategy</div>
+                    <div className="text-sm font-semibold text-foreground">{tradeData.strategy}</div>
+                  </div>
+                )}
+                {tradeData.asOf && (
+                  <div className="bg-muted/20 p-3 rounded-lg border border-border/20 col-span-2 sm:col-span-1">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">As of</div>
+                    <div className="text-sm font-semibold text-foreground">{formatDate(tradeData.asOf)}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Trade Direction */}
             {tradeData.direction && (
               <div className="space-y-2">
                 <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Direction</h5>
-                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  tradeData.direction === "BUY" || tradeData.direction === "buy" || tradeData.direction === "Buy"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" 
-                    : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                }`}>
-                  {tradeData.direction.toUpperCase()}
-                </div>
+                {(() => {
+                  const dir = String(tradeData.direction).toUpperCase();
+                  const isLong = dir === 'BUY' || dir === 'LONG';
+                  return (
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      isLong
+                        ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" 
+                        : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                    }`}>
+                      {dir}
+                    </div>
+                  );
+                })()}
               </div>
             )}
             
             {/* Trade Levels */}
-            {(tradeData.entry || tradeData.stopLoss || tradeData.takeProfit) && (
+            {(tradeData.entry || tradeData.stopLoss) && (
               <div className="space-y-2">
                 <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Trade Levels</h5>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -280,10 +344,48 @@ export function AIInteractionHistory() {
                       <div className="text-lg font-semibold text-red-700 dark:text-red-300">{Number(tradeData.stopLoss).toFixed(4)}</div>
                     </div>
                   )}
-                  {tradeData.takeProfit && (
-                    <div className="bg-gradient-to-r from-green-50/50 to-green-100/30 dark:from-green-950/20 dark:to-green-900/10 p-3 rounded-lg border border-green-200/30 dark:border-green-800/30">
-                      <div className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Take Profit</div>
-                      <div className="text-lg font-semibold text-green-700 dark:text-green-300">{Number(tradeData.takeProfit).toFixed(4)}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Targets */}
+            {tradeData.takeProfitTargets && tradeData.takeProfitTargets.length > 0 && (
+              <div className="space-y-2">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Targets</h5>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {tradeData.takeProfitTargets.map((tp: number, idx: number) => (
+                    <div key={idx} className="bg-gradient-to-r from-green-50/50 to-green-100/30 dark:from-green-950/20 dark:to-green-900/10 p-3 rounded-lg border border-green-200/30 dark:border-green-800/30">
+                      <div className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">TP{idx + 1}</div>
+                      <div className="text-lg font-semibold text-green-700 dark:text-green-300">{Number(tp).toFixed(4)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Key Levels */}
+            {(tradeData.supports?.length || tradeData.resistances?.length) && (
+              <div className="space-y-2">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Key Levels</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {tradeData.supports?.length > 0 && (
+                    <div className="bg-muted/20 p-3 rounded-lg border border-border/20">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Supports</div>
+                      <div className="flex flex-wrap gap-2">
+                        {tradeData.supports.map((s: number, i: number) => (
+                          <span key={i} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md border border-primary/20">{Number(s).toFixed(4)}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {tradeData.resistances?.length > 0 && (
+                    <div className="bg-muted/20 p-3 rounded-lg border border-border/20">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Resistances</div>
+                      <div className="flex flex-wrap gap-2">
+                        {tradeData.resistances.map((r: number, i: number) => (
+                          <span key={i} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md border border-primary/20">{Number(r).toFixed(4)}</span>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -291,7 +393,7 @@ export function AIInteractionHistory() {
             )}
             
             {/* Risk & Metrics */}
-            {(tradeData.riskReward || tradeData.confidence || tradeData.positionSize) && (
+            {(tradeData.riskReward || tradeData.confidence || tradeData.positionSize || tradeData.atrMultipleSL) && (
               <div className="space-y-2">
                 <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Risk Metrics</h5>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -301,10 +403,10 @@ export function AIInteractionHistory() {
                       <div className="text-lg font-semibold text-foreground">{Number(tradeData.riskReward).toFixed(2)}:1</div>
                     </div>
                   )}
-                  {tradeData.confidence && (
+                  {tradeData.confidence !== undefined && (
                     <div className="bg-gradient-to-r from-muted/20 to-muted/10 p-3 rounded-lg border border-border/20 text-center">
                       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Confidence</div>
-                      <div className="text-lg font-semibold text-foreground">{tradeData.confidence}%</div>
+                      <div className="text-lg font-semibold text-foreground">{Math.round((Number(tradeData.confidence) > 1 ? Number(tradeData.confidence) : Number(tradeData.confidence) * 100))}%</div>
                     </div>
                   )}
                   {tradeData.positionSize && (
@@ -313,16 +415,32 @@ export function AIInteractionHistory() {
                       <div className="text-lg font-semibold text-foreground">{Number(tradeData.positionSize).toFixed(2)}</div>
                     </div>
                   )}
+                  {tradeData.atrMultipleSL && (
+                    <div className="bg-gradient-to-r from-muted/20 to-muted/10 p-3 rounded-lg border border-border/20 text-center">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">ATR Multiple SL</div>
+                      <div className="text-lg font-semibold text-foreground">{Number(tradeData.atrMultipleSL).toFixed(2)}x</div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            
-            {/* Reasoning */}
+
+            {/* Reasoning / Context */}
             {tradeData.reasoning && (
               <div className="space-y-2">
-                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Analysis & Reasoning</h5>
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Context</h5>
                 <div className="bg-gradient-to-r from-muted/20 to-muted/10 p-4 rounded-lg border border-border/20">
                   <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{tradeData.reasoning}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Risk Notes */}
+            {tradeData.riskNotes && (
+              <div className="space-y-2">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Risk Notes</h5>
+                <div className="bg-gradient-to-r from-muted/20 to-muted/10 p-4 rounded-lg border border-border/20">
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{tradeData.riskNotes}</p>
                 </div>
               </div>
             )}
