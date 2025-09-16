@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { safePostRequest } from "@/lib/safe-request";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
+import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 const {
   useState,
   useEffect
@@ -52,9 +53,8 @@ interface AssetInfo {
 }
 export default function MacroAnalysis() {
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const { logInteraction } = useAIInteractionLogger();
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -323,6 +323,12 @@ export default function MacroAnalysis() {
         toast({
           title: "Analysis Completed",
           description: "Your macro analysis is ready"
+        });
+        // Log interaction to Supabase history
+        await logInteraction({
+          featureName: 'market_commentary',
+          userQuery: `${queryParams.query} for ${selectedAsset.display}`,
+          aiResponse: realAnalysis
         });
         setQueryParams(prev => ({
           ...prev,
