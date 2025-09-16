@@ -140,7 +140,7 @@ export default function Admin() {
         if (!userStatsMap.has(userId)) {
           const email = emailByUserId.get(userId);
           const broker = brokerByUserId.get(userId);
-          const displayName = broker || email || 'Unknown';
+          const displayName = email || broker || 'Unknown';
           userStatsMap.set(userId, {
             user_id: userId,
             email: displayName,
