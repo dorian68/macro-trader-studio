@@ -99,7 +99,7 @@ export default function Admin() {
       // Charger les emails des utilisateurs
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id');
+        .select('user_id, broker_name');
 
       if (profilesError) throw profilesError;
 
@@ -111,8 +111,18 @@ export default function Admin() {
         },
       });
 
-      const usersWithEmails = Array.isArray(response.data) ? response.data : [];
+      const usersWithEmails = Array.isArray(response.data) ? response.data : (response.data?.users ?? []);
 
+      // Build lookup maps for user display names
+      const emailByUserId = new Map<string, string>();
+      usersWithEmails.forEach((u: any) => {
+        if (u?.user_id && u?.email) emailByUserId.set(u.user_id, u.email);
+      });
+
+      const brokerByUserId = new Map<string, string>();
+      profilesData?.forEach((p: any) => {
+        if (p?.user_id && p?.broker_name) brokerByUserId.set(p.user_id, p.broker_name);
+      });
       // Tarification par fonctionnalité (en dollars)
       const featureCosts = {
         'AI Trade setup': 0.06,
@@ -128,10 +138,12 @@ export default function Admin() {
         const feature = job.feature;
         
         if (!userStatsMap.has(userId)) {
-          const user = usersWithEmails.find((u: any) => u.user_id === userId);
+          const email = emailByUserId.get(userId);
+          const broker = brokerByUserId.get(userId);
+          const displayName = broker || email || 'Unknown';
           userStatsMap.set(userId, {
             user_id: userId,
-            email: user?.email || 'Unknown',
+            email: displayName,
             aiTradeSetupCount: 0,
             macroCommentaryCount: 0,
             reportCount: 0,
