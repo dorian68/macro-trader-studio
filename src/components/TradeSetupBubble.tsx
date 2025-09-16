@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { safePostRequest } from "@/lib/safe-request";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +59,16 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const { createJob } = useRealtimeJobManager();
+
+  // Set up automatic response injection from Supabase
+  useRealtimeResponseInjector({
+    onTradeSetupResult: (responseData, jobId) => {
+      console.log('⚡ [TradeSetupBubble] Realtime response injected:', { responseData, jobId });
+      
+      // Process the trade setup data from Supabase exactly as HTTP response
+      processTradeSetupData(responseData);
+    }
+  });
 
   // Form parameters
   const [parameters, setParameters] = useState({

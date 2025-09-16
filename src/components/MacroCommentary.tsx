@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -155,6 +156,68 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
   const isMobile = useIsMobile();
+
+  // Set up automatic response injection from Supabase
+  useRealtimeResponseInjector({
+    onMacroCommentaryResult: (responseData, jobId) => {
+      console.log('📊 [MacroCommentary] Realtime response injected:', { responseData, jobId });
+      
+      // Process the response data exactly as if it came from HTTP
+      let processedData: WebhookResponse;
+      
+      if (activeMode === "article_analysis") {
+        // Handle article analysis response format
+        let analysisContent;
+        
+        if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].message?.content) {
+          analysisContent = JSON.parse(responseData[0].message.content);
+        } else if (responseData.content && typeof responseData.content === 'string') {
+          analysisContent = JSON.parse(responseData.content);
+        } else {
+          analysisContent = responseData;
+        }
+        
+        processedData = {
+          content: analysisContent.summary?.join('\n\n') || 'Analysis completed',
+          summary: analysisContent.summary?.join('\n\n'),
+          region: Array.isArray(analysisContent.region) ? analysisContent.region.join(', ') : analysisContent.region,
+          products: analysisContent.products || [],
+          categories: analysisContent.categories || [],
+          impacts: analysisContent.impacts?.map((impact: any) => ({
+            ...impact,
+            confidence: impact.confidence ? Math.round(impact.confidence * 100) : impact.confidence,
+            intensity_score: impact.intensity_score ? Math.round(impact.intensity_score * 100) : impact.intensity_score
+          })) || [],
+          sentiment: analysisContent.sentiment,
+          themes: analysisContent.themes || [],
+          definitions: analysisContent.definitions || [],
+          sources: [{
+            title: analysisContent.source || 'Article Analysis',
+            url: articleText.startsWith('http') ? articleText : '#',
+            date: analysisContent.analysis_timestamp
+          }]
+        };
+      } else {
+        // Handle standard macro commentary response
+        processedData = {
+          content: responseData.content?.content || responseData.content || 'Analysis completed',
+          sources: responseData.citations?.map((url: string) => ({
+            title: url.split('/').pop() || url,
+            url: url
+          })) || []
+        };
+      }
+      
+      setCommentary(processedData);
+      setIsLoading(false);
+      
+      toast({
+        title: "Analysis Complete",
+        description: "Your macro commentary has been generated successfully",
+        duration: 5000
+      });
+    }
+  });
 
   // Input validation and detection for Article Analysis mode
   const detectInputType = (input: string): "url" | "text" | "question" | null => {

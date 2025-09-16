@@ -17,6 +17,7 @@ import { safePostRequest } from "@/lib/safe-request";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 
 interface AssetProfile {
   id: number;
@@ -58,6 +59,41 @@ export default function Reports() {
   const { toast } = useToast();
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
+
+  // Set up automatic response injection from Supabase
+  useRealtimeResponseInjector({
+    onReportResult: (responseData, jobId) => {
+      console.log('📄 [Reports] Realtime response injected:', { responseData, jobId });
+      
+      // Process the report data from Supabase exactly as HTTP response
+      const includedSections = availableSections.filter(s => s.included);
+      const generatedSections = includedSections.map(section => ({
+        title: section.title,
+        content: responseData.sections?.[section.id] || responseData.content || `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
+        userNotes: section.userNotes || ""
+      }));
+
+      const newReport: GeneratedReport = {
+        id: jobId,
+        title: reportConfig.title,
+        sections: generatedSections,
+        customNotes: reportConfig.customNotes,
+        exportFormat: reportConfig.exportFormat,
+        createdAt: new Date(),
+        status: "generated"
+      };
+
+      setCurrentReport(newReport);
+      setStep("generated");
+      setIsGenerating(false);
+      
+      toast({
+        title: "Report Generated",
+        description: "Your report has been successfully generated from realtime data",
+        duration: 5000
+      });
+    }
+  });
   const [step, setStep] = useState<"compose" | "preview" | "generated">("compose");
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentReport, setCurrentReport] = useState<GeneratedReport | null>(null);
