@@ -533,13 +533,9 @@ export default function MacroAnalysis() {
                           <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground group-hover:text-primary", isExpanded ? "rotate-180" : "")} />
                         </button>
                         
-                        {isExpanded && <div className="p-6 bg-background border-t border-border animate-fade-in">
-                            <div className="prose prose-sm max-w-none">
-                              <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed bg-muted/20 p-4 rounded-lg border">
+                        {isExpanded && <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed bg-muted/20 p-4 rounded-lg border animate-fade-in">
                                 {section.content}
-                              </div>
-                            </div>
-                          </div>}
+                              </div>}
                       </div>;
             })}
                   
