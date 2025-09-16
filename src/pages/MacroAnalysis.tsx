@@ -13,7 +13,8 @@ import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { safePostRequest } from "@/lib/safe-request";
+import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
+import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
@@ -55,6 +56,7 @@ export default function MacroAnalysis() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logInteraction } = useAIInteractionLogger();
+  const { createJob } = useRealtimeJobManager();
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -238,15 +240,14 @@ export default function MacroAnalysis() {
         payload: payload,
         timestamp: new Date().toISOString()
       });
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload);
-      if (!response.ok) {
-        throw new Error(`Request failed! status: ${response.status}`);
-      }
-      const responseText = await response.text();
-      console.log('📊 [MacroAnalysis] Response text:', responseText);
-      if (responseText.trim()) {
-        const responseJson = JSON.parse(responseText);
-        console.log('📊 [MacroAnalysis] Response JSON:', responseJson);
+      const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
+        enableJobTracking: true,
+        jobType: 'macro_analysis',
+        instrument: selectedAsset.symbol
+      });
+      const responseJson = await handleResponseWithFallback(response, jobId);
+      console.log('📊 [MacroAnalysis] Response JSON:', responseJson);
+      if (responseJson) {
 
         // Check for n8n workflow errors first
         const isError = responseJson?.error || responseJson?.status === 'error' || Array.isArray(responseJson) && responseJson[0]?.error || Array.isArray(responseJson) && responseJson[0]?.status === 'error';

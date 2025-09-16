@@ -3,7 +3,8 @@ import ApplyToPortfolioButton from "./ApplyToPortfolioButton";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
-import { safePostRequest } from "@/lib/safe-request";
+import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
+import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -152,6 +153,7 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
   
   const { toast } = useToast();
   const { logInteraction } = useAIInteractionLogger();
+  const { createJob } = useRealtimeJobManager();
   const isMobile = useIsMobile();
 
   // Input validation and detection for Article Analysis mode
@@ -232,20 +234,13 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
         };
       }
 
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload);
+      const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
+        enableJobTracking: true,
+        jobType: 'macro_commentary',
+        instrument: instrument || 'markets'
+      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const text = await response.text();
-      console.log('Raw response:', text);
-      
-      if (!text.trim()) {
-        throw new Error('Empty response from webhook');
-      }
-      
-      const rawData = JSON.parse(text);
+      const rawData = await handleResponseWithFallback(response, jobId);
       console.log('Parsed JSON:', rawData);
       
       let data: WebhookResponse;
@@ -426,13 +421,13 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
         user_id: "12345"
       };
 
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload);
+      const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
+        enableJobTracking: true,
+        jobType: 'portfolio_analysis',
+        instrument: 'portfolio'
+      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      const result = await handleResponseWithFallback(response, jobId);
       setPortfolioAnalysisResult(result);
       
       toast({

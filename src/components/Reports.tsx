@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { safePostRequest } from "@/lib/safe-request";
+import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
+import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -108,6 +109,7 @@ export function Reports() {
     }), {})
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const { createJob } = useRealtimeJobManager();
 
   const handleSectionChange = (sectionId: string, checked: boolean) => {
     setSections(prev => ({ ...prev, [sectionId]: checked }));
@@ -120,8 +122,8 @@ export function Reports() {
       const includedSectionsList = includedSections.filter(section => sections[section.id]);
       const sectionsText = includedSectionsList.map(s => s.label).join(", ");
       
-      // Call n8n webhook
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      // Call n8n webhook with job tracking
+      const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         type: "reports",
         question: `Generate report "${reportTitle || `${getSelectedReportType()?.label} - ${selectedAsset?.symbol || "Multi-Asset"} - ${new Date().toLocaleDateString()}`}" with sections: ${sectionsText}.`,
         instrument: selectedAsset?.symbol || "Multi-Asset",
@@ -134,19 +136,17 @@ export function Reports() {
           order: index + 1
         })),
         customNotes: ""
+      }, {
+        enableJobTracking: true,
+        jobType: 'report_generation',
+        instrument: selectedAsset?.symbol || 'multi-asset'
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      const result = await handleResponseWithFallback(response, jobId);
       console.log('Report generated:', result);
       
       // In real app, this would trigger download or preview based on exportFormat
-      setTimeout(() => {
-        setIsGenerating(false);
-      }, 1000);
+      setIsGenerating(false);
     } catch (error) {
       console.error('Error generating report:', error);
       setIsGenerating(false);
