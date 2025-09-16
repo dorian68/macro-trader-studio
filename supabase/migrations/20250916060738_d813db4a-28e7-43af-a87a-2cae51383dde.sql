@@ -1,0 +1,2 @@
+-- Edge Function pour la création d'utilisateurs par les super users
+-- Cette fonction sera accessible uniquement via l'API Edge Function

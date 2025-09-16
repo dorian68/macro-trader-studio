@@ -15,8 +15,10 @@ import {
   TrendingUp
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
+import { useProfile } from "@/hooks/useProfile";
 import { UsersTable } from "@/components/admin/UsersTable";
 import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
+import CreateUserByAdminDialog from "@/components/admin/CreateUserByAdminDialog";
 import Layout from "@/components/Layout";
 
 interface AdminUser {
@@ -34,6 +36,7 @@ export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { isSuperUser } = useProfile();
   const { 
     fetchUsers, 
     updateUserStatus, 
@@ -90,6 +93,9 @@ export default function Admin() {
               loading={actionLoading}
               onSuccess={loadUsers}
             />
+            {isSuperUser && (
+              <CreateUserByAdminDialog onSuccess={loadUsers} />
+            )}
             <Button 
               onClick={handleRefresh} 
               disabled={refreshing}
