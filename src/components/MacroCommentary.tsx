@@ -241,7 +241,15 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
         feature: 'macro_commentary'
       });
 
-      const rawData = await handleResponseWithFallback(response, jobId);
+      console.log('📊 [MacroCommentary] Job created with ID:', jobId);
+      
+      const rawData = await handleResponseWithFallback(response, jobId, (result) => {
+        console.log('📊 [MacroCommentary] Realtime result received:', result);
+        if (result && !result.error) {
+          setCommentary(result);
+          setIsLoading(false);
+        }
+      });
       console.log('Parsed JSON:', rawData);
       
       let data: WebhookResponse;
