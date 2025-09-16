@@ -125,11 +125,14 @@ export function JobsMonitoring() {
       }
 
       // Fetch jobs with user emails using edge function
-      const { data: usersData } = await supabase.functions.invoke('fetch-users-with-emails');
-      const userEmailMap = usersData?.users?.reduce((acc: any, user: any) => {
+      const { data: usersResponse } = await supabase.functions.invoke('fetch-users-with-emails');
+      const usersWithEmails = Array.isArray(usersResponse) ? usersResponse : [];
+      console.log('📧 Fetched users with emails:', usersWithEmails.length);
+      
+      const userEmailMap = usersWithEmails.reduce((acc: any, user: any) => {
         acc[user.user_id] = user.email;
         return acc;
-      }, {}) || {};
+      }, {});
 
       // Check current user role for super_user permissions
       const { data: profile } = await supabase
@@ -141,10 +144,18 @@ export function JobsMonitoring() {
       const isSuperUser = profile?.role === 'super_user';
       console.log('Current user role:', profile?.role, 'isSuperUser:', isSuperUser);
 
-      // Build query - super_users see all jobs, others see only their own
+      // Build query with profiles join to get user info
       let query = supabase
         .from('jobs')
-        .select('*')
+        .select(`
+          *,
+          profiles!inner(
+            user_id,
+            role,
+            status,
+            broker_name
+          )
+        `)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false });
 

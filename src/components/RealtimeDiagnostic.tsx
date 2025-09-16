@@ -191,11 +191,19 @@ export function RealtimeDiagnostic() {
         payload: { table: 'jobs' }
       });
 
-      // Test read permission on jobs table
+      // Test read permission on jobs table with profile join
       const { data: jobsData, error: jobsError } = await supabase
         .from('jobs')
-        .select('id, status, created_at')
-        .limit(1);
+        .select(`
+          id, status, created_at, user_id,
+          profiles!inner(
+            user_id,
+            role,
+            status,
+            broker_name
+          )
+        `)
+        .limit(3);
 
       addEvent({
         timestamp: new Date().toISOString(),
