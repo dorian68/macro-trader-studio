@@ -1,23 +1,26 @@
-// Mapping des actifs vers les symboles Binance
-export const assetToBinanceSymbol: Record<string, string> = {
-  'EUR/USD': 'EURUSDT',  // Proxy via Tether
-  'GBP/USD': 'BTCUSDT',  // Fallback vers BTC (pas de paire GBP/USD sur spot)
-  'USD/JPY': 'BTCUSDT',  // Fallback vers BTC (pas de JPY direct)
-  'GOLD': 'PAXGUSDT',    // PAX Gold
-  'Gold': 'PAXGUSDT',    // PAX Gold
-  'SILVER': 'AGTUSDT',   // Silver token
-  'Silver': 'AGTUSDT',   // Silver token
-  'CRUDE': 'BTCUSDT',    // Fallback vers BTC (pas de pétrole direct)
-  'Crude Oil': 'BTCUSDT', // Fallback vers BTC
-  'Bitcoin': 'BTCUSDT',
-  'Ethereum': 'ETHUSDT',
-  'BTC': 'BTCUSDT',
-  'ETH': 'ETHUSDT'
+// Mapping des actifs vers les symboles Twelve Data
+export const assetToTwelveDataSymbol: Record<string, string> = {
+  'EUR/USD': 'EUR/USD',
+  'GBP/USD': 'GBP/USD', 
+  'USD/JPY': 'USD/JPY',
+  'GOLD': 'XAU/USD',
+  'Gold': 'XAU/USD',
+  'SILVER': 'XAG/USD',
+  'Silver': 'XAG/USD',
+  'CRUDE': 'WTI/USD',
+  'Crude Oil': 'WTI/USD',
+  'Bitcoin': 'BTC/USD',
+  'Ethereum': 'ETH/USD',
+  'BTC': 'BTC/USD',
+  'ETH': 'ETH/USD'
 };
+
+// Cache pour stocker toutes les données reçues
+export const priceCache = new Map<string, any>();
 
 // Tous les actifs supportent maintenant les données en temps réel
 export const getSymbolForAsset = (asset: string): string => {
-  return assetToBinanceSymbol[asset] || 'BTCUSDT'; // Fallback vers BTC
+  return assetToTwelveDataSymbol[asset] || 'BTC/USD'; // Fallback vers BTC
 };
 
 // Tous les actifs ont des données temps réel

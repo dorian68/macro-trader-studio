@@ -70,11 +70,11 @@ export default function TradingDashboard() {
   // Selected asset from search bar
   const [selectedAssetProfile, setSelectedAssetProfile] = useState<any>(null);
 
-  // WebSocket for real-time prices - Fixed synchronization
+  // WebSocket for real-time prices - Twelve Data integration
   useEffect(() => {
-    const symbol = getSymbolForAsset(selectedAsset);
     let ws: WebSocket;
     let isMounted = true;
+    let priceCache = new Map<string, any>();
 
     const connectWebSocket = () => {
       // Clean up previous connection
@@ -82,12 +82,23 @@ export default function TradingDashboard() {
         ws.close();
       }
 
-      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
+      ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes?apikey=d325jn9r01qn0gi2h72gd325jn9r01qn0gi2h730`);
       
       ws.onopen = () => {
         if (isMounted) {
           setIsConnected(true);
-          console.log(`Connected to ${selectedAsset} (${symbol}) price feed`);
+          console.log('Connected to Twelve Data WebSocket');
+          
+          // Subscribe to all symbols
+          const subscriptionPayload = {
+            action: "subscribe",
+            params: {
+              symbols: "EUR/USD,GBP/USD,USD/JPY,USD/CHF,AUD/USD,NZD/USD,USD/CAD,NOK/USD,SEK/USD,DKK/USD,BTC/USD,ETH/USD,SOL/USD,BNB/USD,AAPL,MSFT,GOOGL,NVDA,AMZN,META,TSLA"
+            }
+          };
+          
+          ws.send(JSON.stringify(subscriptionPayload));
+          console.log('Subscribed to symbols:', subscriptionPayload.params.symbols);
         }
       };
 
@@ -96,42 +107,60 @@ export default function TradingDashboard() {
         
         try {
           const data = JSON.parse(event.data);
-          // Verify the symbol matches current selection
-          if (data.s === symbol) {
-            setPriceData({
-              symbol: selectedAsset,
-              price: parseFloat(data.c),
-              change24h: parseFloat(data.P),
-              volume: parseFloat(data.v)
-            });
+          
+          // Handle subscription confirmation
+          if (data.status === 'ok') {
+            console.log('Subscription confirmed:', data);
+            return;
+          }
+          
+          // Handle price updates
+          if (data.symbol && data.price) {
+            // Store in cache
+            priceCache.set(data.symbol, data);
+            
+            // Update display only if this matches the currently selected asset
+            const currentSymbol = getSymbolForAsset(selectedAsset);
+            if (data.symbol === currentSymbol) {
+              setPriceData({
+                symbol: selectedAsset,
+                price: parseFloat(data.price),
+                change24h: parseFloat(data.percent_change || data.change_percent || 0),
+                volume: parseFloat(data.volume || 0)
+              });
+              
+              console.log(`Price update for ${selectedAsset}:`, {
+                price: data.price,
+                change: data.percent_change || data.change_percent
+              });
+            }
           }
         } catch (error) {
-          console.error('Error parsing price data:', error);
+          console.error('Error parsing Twelve Data message:', error);
         }
       };
 
       ws.onclose = () => {
         if (isMounted) {
           setIsConnected(false);
-          console.log(`Disconnected from ${selectedAsset} price feed`);
-          // Only reconnect if still mounted and same asset
+          console.log('Disconnected from Twelve Data WebSocket');
+          // Reconnect after 3 seconds
           setTimeout(() => {
-            if (isMounted && symbol === getSymbolForAsset(selectedAsset)) {
+            if (isMounted) {
               connectWebSocket();
             }
           }, 3000);
         }
       };
 
-      ws.onerror = () => {
+      ws.onerror = (error) => {
         if (isMounted) {
           setIsConnected(false);
+          console.error('Twelve Data WebSocket error:', error);
         }
       };
     };
 
-    // Reset price data when asset changes
-    setPriceData(null);
     connectWebSocket();
 
     return () => {
@@ -140,7 +169,15 @@ export default function TradingDashboard() {
         ws.close();
       }
     };
-  }, [selectedAsset]); // Only depend on selectedAsset
+  }, []); // Empty dependency array - single connection for all assets
+
+  // Update displayed price when asset selection changes
+  useEffect(() => {
+    // Check cache for existing data when asset changes
+    const symbol = getSymbolForAsset(selectedAsset);
+    // Reset price data when asset changes - will be updated by WebSocket if data is available
+    setPriceData(null);
+  }, [selectedAsset]);
 
   const currentAsset = allAssets.find(asset => asset.symbol === selectedAsset);
 
