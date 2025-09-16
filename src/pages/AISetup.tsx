@@ -245,7 +245,7 @@ export default function AISetup() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(macroPayload),
-            signal: AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined
+            signal: AbortSignal.timeout ? AbortSignal.timeout(180000) : undefined
           }
         );
       } catch (e) {
@@ -273,7 +273,7 @@ export default function AISetup() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(payload),
-          signal: AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined
+          signal: AbortSignal.timeout ? AbortSignal.timeout(180000) : undefined
         }
       );
 

@@ -47,6 +47,28 @@ export async function safePostRequest(url: string, payload: any, headers: Record
     throw new Error('Invalid JSON payload');
   }
 
+  // Check if this is an n8n endpoint that needs extended timeout
+  const isN8nEndpoint = url.includes('/webhook/') || url.includes('/n8n/') || url.includes('/api/flow/') || url.includes('n8n.cloud');
+  
+  if (isN8nEndpoint) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 180000); // 3 min timeout for n8n
+
+    return fetch(url, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        ...headers
+      },
+      body,
+      signal: controller.signal
+    }).finally(() => {
+      clearTimeout(timeout);
+    });
+  }
+
   return fetch(url, {
     method: 'POST',
     mode: 'cors',
