@@ -212,12 +212,53 @@ export function AIInteractionHistory() {
     if (typeof response === 'string') {
       return (
         <div className="prose prose-sm max-w-none dark:prose-invert">
-          <p className="text-sm text-foreground whitespace-pre-wrap">{response}</p>
+          <div className="space-y-3">
+            <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{response}</p>
+            </div>
+          </div>
         </div>
       );
     }
     
     if (typeof response === 'object' && response !== null) {
+      // Check for macro analysis structure
+      if (response.message?.content?.content) {
+        const content = response.message.content.content;
+        const sections = content.split('\n\n').filter((section: string) => section.trim());
+        
+        return (
+          <div className="space-y-4">
+            {sections.map((section: string, index: number) => {
+              const lines = section.split('\n');
+              const title = lines[0];
+              const content = lines.slice(1).join('\n').trim();
+              
+              if (title.includes('Executive Summary') || title.includes('Fundamental Analysis') || 
+                  title.includes('Directional Bias') || title.includes('Key Levels') ||
+                  title.includes('AI Insights') || title.includes('Fundamentals')) {
+                return (
+                  <div key={index} className="space-y-2">
+                    <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">
+                      {title.replace(/^#+\s*/, '')}
+                    </h5>
+                    <div className="text-sm text-foreground bg-gradient-to-r from-muted/20 to-muted/10 p-4 rounded-lg border border-border/20">
+                      <pre className="whitespace-pre-wrap font-sans leading-relaxed">{content}</pre>
+                    </div>
+                  </div>
+                );
+              }
+              
+              return (
+                <div key={index} className="p-3 bg-muted/20 rounded-md border-l-2 border-muted-foreground/20">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{section}</p>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+      
       // Extract meaningful sections from the response
       const sections = [];
       
@@ -248,12 +289,14 @@ export function AIInteractionHistory() {
           <div className="space-y-4">
             {sections.map((section, index) => (
               <div key={index} className="space-y-2">
-                <h5 className="font-medium text-sm text-foreground">{section.title}</h5>
-                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md border-l-2 border-primary/20">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">
+                  {section.title}
+                </h5>
+                <div className="text-sm text-foreground bg-gradient-to-r from-muted/20 to-muted/10 p-4 rounded-lg border border-border/20">
                   {typeof section.content === 'string' ? (
-                    <p className="whitespace-pre-wrap">{section.content}</p>
+                    <p className="whitespace-pre-wrap leading-relaxed">{section.content}</p>
                   ) : (
-                    <pre className="text-xs overflow-auto">{JSON.stringify(section.content, null, 2)}</pre>
+                    <pre className="text-xs overflow-auto font-mono">{JSON.stringify(section.content, null, 2)}</pre>
                   )}
                 </div>
               </div>
@@ -261,11 +304,11 @@ export function AIInteractionHistory() {
             
             {sources.length > 0 && (
               <div className="space-y-2">
-                <h5 className="font-medium text-sm text-foreground">Sources</h5>
-                <div className="text-xs text-muted-foreground">
+                <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Sources</h5>
+                <div className="text-xs text-muted-foreground bg-muted/20 p-3 rounded-md">
                   {sources.map((source: string, index: number) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="w-1 h-1 bg-muted-foreground rounded-full"></span>
+                    <div key={index} className="flex items-center gap-2 py-1">
+                      <span className="w-1.5 h-1.5 bg-primary/60 rounded-full"></span>
                       <span>{source}</span>
                     </div>
                   ))}
@@ -279,10 +322,11 @@ export function AIInteractionHistory() {
       // Fallback for unstructured objects - but make it more readable
       return (
         <details className="group">
-          <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+          <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
+            <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
             View raw response data
           </summary>
-          <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-md overflow-auto max-h-64 mt-2 border">
+          <pre className="text-xs text-muted-foreground bg-muted/50 p-4 rounded-md overflow-auto max-h-64 mt-3 border border-border/30 font-mono">
             {JSON.stringify(response, null, 2)}
           </pre>
         </details>
@@ -427,9 +471,23 @@ export function AIInteractionHistory() {
                           </div>
                         </div>
 
-                        <div>
-                          <h4 className="font-medium text-sm mb-3 text-foreground">AI Response</h4>
-                          {renderFormattedResponse(interaction.ai_response)}
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="font-medium text-sm mb-3 text-foreground">AI Response (Formatted)</h4>
+                            {renderFormattedResponse(interaction.ai_response)}
+                          </div>
+                          
+                          <div>
+                            <details className="group">
+                              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 py-2">
+                                <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
+                                View raw response data
+                              </summary>
+                              <pre className="text-xs text-muted-foreground bg-muted/50 p-4 rounded-md overflow-auto max-h-64 mt-3 border border-border/30 font-mono">
+                                {JSON.stringify(interaction.ai_response, null, 2)}
+                              </pre>
+                            </details>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
