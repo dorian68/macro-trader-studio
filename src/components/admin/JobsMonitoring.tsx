@@ -124,15 +124,26 @@ export function JobsMonitoring() {
         return;
       }
 
-      // Fetch jobs with user emails using edge function
-      const { data: usersResponse } = await supabase.functions.invoke('fetch-users-with-emails');
-      const usersWithEmails = Array.isArray(usersResponse) ? usersResponse : [];
-      console.log('📧 Fetched users with emails:', usersWithEmails.length);
+      // Fetch jobs with user emails using edge function (authorized) and build map
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: usersResp, error: usersError } = await supabase.functions.invoke('fetch-users-with-emails', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+      const usersWithEmails = usersError
+        ? []
+        : (Array.isArray(usersResp) ? usersResp : (usersResp?.users ?? []));
+      console.log('📧 Fetched users with emails:', Array.isArray(usersWithEmails) ? usersWithEmails.length : 0);
       
-      const userEmailMap = usersWithEmails.reduce((acc: any, user: any) => {
-        acc[user.user_id] = user.email;
+      const userEmailMap = (usersWithEmails as any[]).reduce((acc: any, u: any) => {
+        if (u?.user_id && u?.email) acc[u.user_id] = u.email;
         return acc;
       }, {});
+      // Always ensure current user's email is available
+      if (user?.id && user?.email && !userEmailMap[user.id]) {
+        userEmailMap[user.id] = user.email;
+      }
 
       // Check current user role for super_user permissions
       const { data: profile } = await supabase
@@ -144,18 +155,10 @@ export function JobsMonitoring() {
       const isSuperUser = profile?.role === 'super_user';
       console.log('Current user role:', profile?.role, 'isSuperUser:', isSuperUser);
 
-      // Build query with profiles join to get user info
+      // Build base jobs query without profile join (avoid join issues)
       let query = supabase
         .from('jobs')
-        .select(`
-          *,
-          profiles!inner(
-            user_id,
-            role,
-            status,
-            broker_name
-          )
-        `)
+        .select('*')
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false });
 
