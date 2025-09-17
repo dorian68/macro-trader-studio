@@ -125,7 +125,7 @@ export default function Admin() {
       });
       // Tarification par fonctionnalité (en dollars)
       const featureCosts = {
-        'AI Trade setup': 0.06,
+        'AI Trade Setup': 0.06,
         'Macro Commentary': 0.07,
         'Report': 0.14
       };
