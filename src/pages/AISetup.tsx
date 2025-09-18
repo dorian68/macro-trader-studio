@@ -18,6 +18,7 @@ import { useGlobalLoading } from "@/components/GlobalLoadingProvider";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+import { dualResponseHandler } from "@/lib/dual-response-handler";
 
 const { useState } = React;
 
@@ -297,9 +298,18 @@ export default function AISetup() {
 
       let macroResult;
       try {
+        // Register dual response handler for macro request
+        dualResponseHandler.registerHandler(macroJobId, (data, source) => {
+          console.log(`[AISetup-Macro] Response received from ${source}:`, data);
+          macroResult = data;
+        });
+
         const { response: macroResponse, jobId: macroJobIdFromRequest } = await enhancedPostRequest(
           'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-          macroPayload,
+          {
+            ...macroPayload,
+            job_id: macroJobId
+          },
           {
             enableJobTracking: true,
             jobType: 'macro_commentary',
@@ -309,13 +319,20 @@ export default function AISetup() {
           }
         );
         
-        macroResult = await handleResponseWithFallback(
-          macroResponse,
-          macroJobIdFromRequest,
-          (realtimeResult) => {
-            console.log('📊[AISetup] STEP1 Realtime result received:', realtimeResult);
+        // Handle HTTP response for macro
+        try {
+          if (macroResponse.ok) {
+            const responseData = await macroResponse.json();
+            dualResponseHandler.handleHttpResponse(macroJobId, responseData);
+          } else {
+            console.log(`[AISetup-Macro] HTTP error ${macroResponse.status}, waiting for Supabase response`);
           }
-        );
+        } catch (httpError) {
+          console.log(`[AISetup-Macro] HTTP response failed, waiting for Supabase response:`, httpError);
+        }
+
+        // Wait a moment for the response to be processed
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         console.error('❌ STEP1 failed before parsing (network/CORS):', e);
         throw e;
@@ -348,9 +365,36 @@ export default function AISetup() {
 
       console.log('📊[AISetup] STEP2 Request trade-setup, macroInsight length =', macroInsight?.length);
 
+      // Register dual response handler for trade setup
+      dualResponseHandler.registerHandler(tradeJobId, (data, source) => {
+        console.log(`[AISetup-Trade] Response received from ${source}:`, data);
+        
+        setRawN8nResponse(data);
+        const normalized = normalizeN8n(data);
+
+        if (normalized && normalized.setups && normalized.setups.length > 0) {
+          setN8nResult(normalized);
+          setTradeSetup(null);
+          globalLoading.completeRequest(requestId, normalized);
+          
+          toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
+        } else {
+          setN8nResult(null);
+          setTradeSetup(null);
+          setError("The n8n workflow responded without exploitable setups.");
+          globalLoading.failRequest(requestId, "No exploitable setups returned");
+          toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
+        }
+        
+        setStep("generated");
+      });
+
       const { response: tradeResponse, jobId: tradeJobIdFromRequest } = await enhancedPostRequest(
         'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-        payload,
+        {
+          ...payload,
+          job_id: tradeJobId
+        },
         {
           enableJobTracking: true,
           jobType: 'trade_setup',
@@ -360,41 +404,20 @@ export default function AISetup() {
         }
       );
 
-      const result = await handleResponseWithFallback(
-        tradeResponse,
-        tradeJobIdFromRequest,
-        (realtimeResult) => {
-          console.log('📊[AISetup] STEP2 Realtime result received:', realtimeResult);
+      // Handle HTTP response for trade setup
+      try {
+        if (tradeResponse.ok) {
+          const responseData = await tradeResponse.json();
+          dualResponseHandler.handleHttpResponse(tradeJobId, responseData);
+        } else {
+          console.log(`[AISetup-Trade] HTTP error ${tradeResponse.status}, waiting for Supabase response`);
         }
-      );
-
-      console.log('📊[AISetup] STEP2 Response received (keys):', Object.keys(result || {}));
-      setRawN8nResponse(result);
-      
-      const normalized = normalizeN8n(result);
-
-      if (normalized && normalized.setups && normalized.setups.length > 0) {
-        setN8nResult(normalized);
-        setTradeSetup(null);
-        globalLoading.completeRequest(requestId, normalized);
-        
-        // Log successful interaction
-        await logInteraction({
-          featureName: 'trade_setup',
-          userQuery: `Generate AI trade setup for ${parameters.instrument} with ${parameters.strategy} strategy. Parameters: ${JSON.stringify(parameters)}`,
-          aiResponse: normalized
-        });
-        
-        toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
-      } else {
-        setN8nResult(null);
-        setTradeSetup(null);
-        setError("The n8n workflow responded without exploitable setups.");
-        globalLoading.failRequest(requestId, "No exploitable setups returned");
-        toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
+      } catch (httpError) {
+        console.log(`[AISetup-Trade] HTTP response failed, waiting for Supabase response:`, httpError);
       }
-      
-      setStep("generated");
+
+      // Wait a moment for the response to be processed
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
     } catch (error) {
       console.error('Error generating trade setup:', error);

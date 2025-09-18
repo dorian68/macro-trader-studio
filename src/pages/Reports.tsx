@@ -18,6 +18,7 @@ import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
+import { dualResponseHandler } from "@/lib/dual-response-handler";
 
 interface AssetProfile {
   id: number;
@@ -241,57 +242,69 @@ export default function Reports() {
       };
 
       // Create Realtime job for report generation
-      const jobId = await createJob(
+      const reportJobId = await createJob(
         'reports',
         selectedAsset?.symbol || "Multi-Asset",
         reportPayload,
         'Report'
       );
 
+      // Register dual response handler
+      dualResponseHandler.registerHandler(reportJobId, (data, source) => {
+        console.log(`[Reports] Response received from ${source}:`, data);
+        
+        const generatedSections = includedSections.map(section => ({
+          title: section.title,
+          content: data.sections?.[section.id] || data.content || `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
+          userNotes: section.userNotes || ""
+        }));
+
+        const newReport: GeneratedReport = {
+          id: reportJobId,
+          title: reportConfig.title,
+          sections: generatedSections,
+          customNotes: reportConfig.customNotes,
+          exportFormat: reportConfig.exportFormat,
+          createdAt: new Date(),
+          status: "generated"
+        };
+
+        setCurrentReport(newReport);
+        setStep("generated");
+        
+        toast({
+          title: "Report Generated",
+          description: "Your report has been successfully generated."
+        });
+      });
+
       // Call to n8n webhook with Realtime tracking
-      const { response, jobId: jobIdFromRequest } = await enhancedPostRequest(
+      const { response } = await enhancedPostRequest(
         'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-        reportPayload,
+        {
+          ...reportPayload,
+          job_id: reportJobId
+        },
         {
           enableJobTracking: true,
           jobType: 'reports',
           instrument: selectedAsset?.symbol || "Multi-Asset",
           feature: 'report',
-          jobId
+          jobId: reportJobId
         }
       );
 
-      // Handle response with Realtime fallback
-      const result = await handleResponseWithFallback(
-        response,
-        jobIdFromRequest,
-        (realtimeResult) => {
-          console.log('📊[Reports] Realtime result received:', realtimeResult);
-          
-          // Process realtime result if needed
-          if (realtimeResult && !realtimeResult.error) {
-            // Update UI with realtime result if available
-            const generatedSections = includedSections.map(section => ({
-              title: section.title,
-              content: realtimeResult.sections?.[section.id] || `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
-              userNotes: section.userNotes || ""
-            }));
-
-            const newReport: GeneratedReport = {
-              id: Date.now().toString(),
-              title: reportConfig.title,
-              sections: generatedSections,
-              customNotes: reportConfig.customNotes,
-              exportFormat: reportConfig.exportFormat,
-              createdAt: new Date(),
-              status: "generated"
-            };
-
-            setCurrentReport(newReport);
-            setStep("generated");
-          }
+      // Handle HTTP response
+      try {
+        if (response.ok) {
+          const responseData = await response.json();
+          dualResponseHandler.handleHttpResponse(reportJobId, responseData);
+        } else {
+          console.log(`[Reports] HTTP error ${response.status}, waiting for Supabase response`);
         }
-      );
+      } catch (httpError) {
+        console.log(`[Reports] HTTP response failed, waiting for Supabase response:`, httpError);
+      }
 
       // Report generation simulation for display (fallback)
       if (!currentReport) {

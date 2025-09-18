@@ -19,6 +19,7 @@ import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
+import { dualResponseHandler } from "@/lib/dual-response-handler";
 const {
   useState,
   useEffect
@@ -241,23 +242,21 @@ export default function MacroAnalysis() {
         payload: payload,
         timestamp: new Date().toISOString()
       });
-      const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
+      const responseJobId = Date.now().toString();
+      const { response } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        ...payload,
+        job_id: responseJobId
+      }, {
         enableJobTracking: true,
         jobType: 'macro_analysis',
         instrument: selectedAsset.symbol,
         feature: 'Macro Commentary'
       });
-      const responseJson = await handleResponseWithFallback(response, jobId);
-      console.log('📊 [MacroAnalysis] Response JSON:', responseJson);
-      if (responseJson) {
-
-        // Check for n8n workflow errors first
-        const isError = responseJson?.error || responseJson?.status === 'error' || Array.isArray(responseJson) && responseJson[0]?.error || Array.isArray(responseJson) && responseJson[0]?.status === 'error';
-        if (isError) {
-          const errorMessage = responseJson?.error || responseJson?.message || Array.isArray(responseJson) && responseJson[0]?.error || Array.isArray(responseJson) && responseJson[0]?.message || 'Erreur du workflow n8n';
-          throw new Error(`Erreur n8n: ${errorMessage}`);
-        }
-
+      
+      // Register dual response handler
+      dualResponseHandler.registerHandler(responseJobId, async (data, source) => {
+        console.log(`[MacroAnalysis] Response received from ${source}:`, data);
+        
         // Extract analysis content from n8n response
         let analysisContent = '';
 
@@ -297,18 +296,19 @@ export default function MacroAnalysis() {
         };
 
         // Handle array format response from n8n
-        if (Array.isArray(responseJson) && responseJson.length > 0) {
-          const deepContent = responseJson[0]?.message?.message?.content?.content;
+        if (Array.isArray(data) && data.length > 0) {
+          const deepContent = data[0]?.message?.message?.content?.content;
           analysisContent = extractStringContent(deepContent);
         }
         // Handle direct response format
-        else if (responseJson?.message?.content?.content) {
-          analysisContent = extractStringContent(responseJson.message.content.content);
+        else if (data?.message?.content?.content) {
+          analysisContent = extractStringContent(data.message.content.content);
         }
         // Fallback
         else {
-          analysisContent = extractStringContent(responseJson);
+          analysisContent = extractStringContent(data);
         }
+        
         const realAnalysis: MacroAnalysis = {
           query: queryParams.query,
           timestamp: new Date(),
@@ -318,28 +318,46 @@ export default function MacroAnalysis() {
             type: "overview",
             expanded: true
           }],
-          sources: []
+          sources: [
+            { title: `Analysis (${source})`, url: "#", type: "research" }
+          ]
         };
+        
         setAnalyses(prev => [realAnalysis, ...prev]);
         setJobStatus("done");
         setIsGenerating(false);
+        
         toast({
           title: "Analysis Completed",
           description: "Your macro analysis is ready"
         });
+        
         // Log interaction to Supabase history
         await logInteraction({
           featureName: 'market_commentary',
           userQuery: `${queryParams.query} for ${selectedAsset.display}`,
           aiResponse: realAnalysis
         });
+        
         setQueryParams(prev => ({
           ...prev,
           query: ""
         }));
-      } else {
-        throw new Error('Réponse vide du workflow n8n');
+      });
+
+      // Handle HTTP response
+      try {
+        if (response.ok) {
+          const responseData = await response.json();
+          dualResponseHandler.handleHttpResponse(responseJobId, responseData);
+        } else {
+          console.log(`[MacroAnalysis] HTTP error ${response.status}, waiting for Supabase response`);
+        }
+      } catch (httpError) {
+        console.log(`[MacroAnalysis] HTTP response failed, waiting for Supabase response:`, httpError);
       }
+      // Return early since dual response handler will manage the UI updates
+      return;
     } catch (error) {
       console.error('Analysis error:', error);
       setIsGenerating(false);
