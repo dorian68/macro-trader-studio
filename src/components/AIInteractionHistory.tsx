@@ -559,10 +559,15 @@ export function AIInteractionHistory() {
               <div className="space-y-2">
                 <h5 className="font-semibold text-sm text-primary border-b border-border/30 pb-1">Sources</h5>
                 <div className="text-xs text-muted-foreground bg-muted/20 p-3 rounded-md">
-                  {response.sources.map((source: string, index: number) => (
+                  {response.sources.map((source: any, index: number) => (
                     <div key={index} className="flex items-center gap-2 py-1">
                       <span className="w-1.5 h-1.5 bg-primary/60 rounded-full"></span>
-                      <span>{source}</span>
+                      <span>
+                        {typeof source === 'string' 
+                          ? source 
+                          : source.title || source.url || JSON.stringify(source)
+                        }
+                      </span>
                     </div>
                   ))}
                 </div>
