@@ -55,11 +55,10 @@ async function resubscribeAllChannels(): Promise<void> {
   
   const channelsToResubscribe = Array.from(activeChannels.entries());
   
-  // Clear the map temporarily
-  activeChannels.clear();
-  
   for (const [channelName, oldChannel] of channelsToResubscribe) {
     try {
+      console.log(`🔄 [RealtimeManager] Re-subscribing channel: ${channelName}`);
+      
       // Get stored subscription options
       const subscriptionOptions = (oldChannel as any)._subscriptionOptions;
       
