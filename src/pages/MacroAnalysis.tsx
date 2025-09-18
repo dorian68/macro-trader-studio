@@ -20,6 +20,7 @@ import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
+import { subscribeToPostgresChanges } from "@/utils/supabaseRealtimeManager";
 const {
   useState,
   useEffect
@@ -72,6 +73,112 @@ export default function MacroAnalysis() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string>("");
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Handler functions for Realtime responses
+  const handleRealtimeResponse = async (responsePayload: any, jobId: string) => {
+    console.log('📩 [Realtime] Processing response payload:', responsePayload);
+    
+    // Extract analysis content using the same logic as the dual response handler
+    let analysisContent = '';
+    
+    // Helper function to safely extract string content from nested objects
+    const extractStringContent = (obj: any): string => {
+      if (typeof obj === 'string') {
+        return obj;
+      }
+      if (obj && typeof obj === 'object') {
+        // Handle MaxDepthReached objects
+        if ((obj as any)._type === 'MaxDepthReached' && (obj as any).value) {
+          return String((obj as any).value);
+        }
+        // Handle nested content objects
+        if (obj.content) {
+          return extractStringContent(obj.content);
+        }
+        // Handle weekly_outlook and trade_idea structure
+        if (obj.weekly_outlook && obj.trade_idea) {
+          let content = String(obj.weekly_outlook);
+          if (obj.trade_idea && typeof obj.trade_idea === 'object') {
+            content += '\n\nTrade Idea:\n';
+            Object.entries(obj.trade_idea).forEach(([key, value]) => {
+              if (value && typeof value === 'object' && (value as any)._type === 'MaxDepthReached') {
+                content += `${key}: ${(value as any).value}\n`;
+              } else {
+                content += `${key}: ${value}\n`;
+              }
+            });
+          }
+          return content;
+        }
+        // Fallback to stringifying the object
+        return JSON.stringify(obj, null, 2);
+      }
+      return String(obj);
+    };
+
+    // Handle array format response from n8n
+    if (Array.isArray(responsePayload) && responsePayload.length > 0) {
+      const deepContent = responsePayload[0]?.message?.message?.content?.content;
+      analysisContent = extractStringContent(deepContent);
+    }
+    // Handle direct response format
+    else if (responsePayload?.message?.content?.content) {
+      analysisContent = extractStringContent(responsePayload.message.content.content);
+    }
+    // Fallback
+    else {
+      analysisContent = extractStringContent(responsePayload);
+    }
+    
+    const realAnalysis: MacroAnalysis = {
+      query: queryParams.query,
+      timestamp: new Date(),
+      sections: [{
+        title: "Analysis Results",
+        content: analysisContent,
+        type: "overview",
+        expanded: true
+      }],
+      sources: [
+        { title: "Analysis (Realtime)", url: "#", type: "research" }
+      ]
+    };
+    
+    setAnalyses(prev => [realAnalysis, ...prev]);
+    setJobStatus("done");
+    console.log('🔄 [Loader] Stopping loader - Realtime response received');
+    setIsGenerating(false);
+    
+    toast({
+      title: "Analysis Completed",
+      description: "Your macro analysis is ready"
+    });
+    
+    // Log interaction to Supabase history
+    await logInteraction({
+      featureName: 'market_commentary',
+      userQuery: `${queryParams.query} for ${selectedAsset.display}`,
+      aiResponse: realAnalysis
+    });
+    
+    setQueryParams(prev => ({
+      ...prev,
+      query: ""
+    }));
+  };
+
+  const handleRealtimeError = (errorMessage: string) => {
+    console.log('❌ [Realtime] Error received:', errorMessage);
+    console.log('🔄 [Loader] Stopping loader - Realtime error received');
+    setIsGenerating(false);
+    setJobStatus("error");
+    
+    toast({
+      title: "Analysis Error",
+      description: errorMessage || "Unable to complete analysis. Please retry.",
+      variant: "destructive"
+    });
+  };
 
   // All available assets from Supabase
   const assets: AssetInfo[] = [
@@ -212,10 +319,46 @@ export default function MacroAnalysis() {
   // Simplified workflow: single request with mode="run"
   const generateAnalysis = async () => {
     if (!queryParams.query.trim()) return;
+    console.log('🔄 [Loader] Starting analysis generation');
     setIsGenerating(true);
     setJobStatus("running");
+    
     try {
-      // Single request with mode="run"
+      // Generate job ID first
+      const responseJobId = Date.now().toString();
+      
+      // 1. CRITICAL: Subscribe to Realtime BEFORE sending POST request
+      console.log('📡 [Realtime] Subscribing to channel before POST request');
+      
+      const realtimeChannel = subscribeToPostgresChanges(
+        `macro-analysis-${responseJobId}`,
+        {
+          event: 'UPDATE',
+          schema: 'public', 
+          table: 'jobs',
+          filter: `id=eq.${responseJobId}`
+        },
+        (payload) => {
+          console.log('📩 [Realtime] Payload received:', payload);
+          const job = payload.new as any;
+          
+          if (job && job.status) {
+            console.log(`✅ [Realtime] Job completed with status: ${job.status}`);
+            
+            if (job.status === 'completed' && job.response_payload) {
+              console.log('📩 [Realtime] Processing completed response');
+              handleRealtimeResponse(job.response_payload, responseJobId);
+            } else if (job.status === 'error') {
+              console.log('❌ [Realtime] Job failed:', job.error_message);
+              handleRealtimeError(job.error_message);
+            }
+          }
+        }
+      );
+      
+      console.log('📡 [Realtime] Subscribed before POST');
+      
+      // 2. Build payload
       const payload = {
         type: "RAG",
         question: queryParams.query,
@@ -237,12 +380,14 @@ export default function MacroAnalysis() {
         period: queryParams.period,
         adresse: queryParams.adresse
       };
+      
       console.log('📊 [MacroAnalysis] Analysis request:', {
         url: 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
         payload: payload,
         timestamp: new Date().toISOString()
       });
-      const responseJobId = Date.now().toString();
+      
+      // 3. Send POST request after subscription is active
       const { response } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         ...payload,
         job_id: responseJobId
@@ -253,117 +398,22 @@ export default function MacroAnalysis() {
         feature: 'Macro Commentary'
       });
       
-      // Register dual response handler
-      dualResponseHandler.registerHandler(responseJobId, async (data, source) => {
-        console.log(`📊 [MacroAnalysis] Response received from ${source}:`, {
-          source,
-          hasData: !!data,
-          dataType: typeof data,
-          dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
-          timestamp: new Date().toISOString()
-        });
-        console.log(`📊 [MacroAnalysis] Full response data from ${source}:`, data);
-        
-        // Extract analysis content from n8n response
-        let analysisContent = '';
-
-        // Helper function to safely extract string content from nested objects
-        const extractStringContent = (obj: any): string => {
-          if (typeof obj === 'string') {
-            return obj;
-          }
-          if (obj && typeof obj === 'object') {
-            // Handle MaxDepthReached objects
-            if ((obj as any)._type === 'MaxDepthReached' && (obj as any).value) {
-              return String((obj as any).value);
-            }
-            // Handle nested content objects
-            if (obj.content) {
-              return extractStringContent(obj.content);
-            }
-            // Handle weekly_outlook and trade_idea structure
-            if (obj.weekly_outlook && obj.trade_idea) {
-              let content = String(obj.weekly_outlook);
-              if (obj.trade_idea && typeof obj.trade_idea === 'object') {
-                content += '\n\nTrade Idea:\n';
-                Object.entries(obj.trade_idea).forEach(([key, value]) => {
-                  if (value && typeof value === 'object' && (value as any)._type === 'MaxDepthReached') {
-                    content += `${key}: ${(value as any).value}\n`;
-                  } else {
-                    content += `${key}: ${value}\n`;
-                  }
-                });
-              }
-              return content;
-            }
-            // Fallback to stringifying the object
-            return JSON.stringify(obj, null, 2);
-          }
-          return String(obj);
-        };
-
-        // Handle array format response from n8n
-        if (Array.isArray(data) && data.length > 0) {
-          const deepContent = data[0]?.message?.message?.content?.content;
-          analysisContent = extractStringContent(deepContent);
-        }
-        // Handle direct response format
-        else if (data?.message?.content?.content) {
-          analysisContent = extractStringContent(data.message.content.content);
-        }
-        // Fallback
-        else {
-          analysisContent = extractStringContent(data);
-        }
-        
-        const realAnalysis: MacroAnalysis = {
-          query: queryParams.query,
-          timestamp: new Date(),
-          sections: [{
-            title: "Analysis Results",
-            content: analysisContent,
-            type: "overview",
-            expanded: true
-          }],
-          sources: [
-            { title: `Analysis (${source})`, url: "#", type: "research" }
-          ]
-        };
-        
-        setAnalyses(prev => [realAnalysis, ...prev]);
-        setJobStatus("done");
-        setIsGenerating(false);
-        
-        toast({
-          title: "Analysis Completed",
-          description: "Your macro analysis is ready"
-        });
-        
-        // Log interaction to Supabase history
-        await logInteraction({
-          featureName: 'market_commentary',
-          userQuery: `${queryParams.query} for ${selectedAsset.display}`,
-          aiResponse: realAnalysis
-        });
-        
-        setQueryParams(prev => ({
-          ...prev,
-          query: ""
-        }));
-      });
-
-      // Handle HTTP response
+      // 4. Handle HTTP response (secondary path)
       try {
         if (response.ok) {
           const responseData = await response.json();
-          dualResponseHandler.handleHttpResponse(responseJobId, responseData);
+          console.log('📩 [HTTP] Response:', responseData);
+          // Note: Realtime is primary, HTTP is just a backup log
+          // The UI updates will be handled by Realtime callback
         } else {
-          console.log(`📊 [MacroAnalysis] HTTP error ${response.status}, waiting for Supabase response`);
+          console.log(`⚠️ [HTTP] Error ${response.status}, waiting for Realtime…`);
         }
       } catch (httpError) {
-        console.log(`📊 [MacroAnalysis] HTTP response failed, waiting for Supabase response:`, httpError);
+        console.log(`⚠️ [HTTP] Timeout, waiting for Realtime…`, httpError);
+        // CRITICAL: Do NOT stop loading here - wait for Realtime
       }
-      // Return early since dual response handler will manage the UI updates
+      
+      // Return early - Realtime will handle all UI updates
       return;
     } catch (error) {
       console.error('Analysis error:', error);
