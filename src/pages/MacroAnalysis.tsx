@@ -255,7 +255,14 @@ export default function MacroAnalysis() {
       
       // Register dual response handler
       dualResponseHandler.registerHandler(responseJobId, async (data, source) => {
-        console.log(`[MacroAnalysis] Response received from ${source}:`, data);
+        console.log(`📊 [MacroAnalysis] Response received from ${source}:`, {
+          source,
+          hasData: !!data,
+          dataType: typeof data,
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+          timestamp: new Date().toISOString()
+        });
+        console.log(`📊 [MacroAnalysis] Full response data from ${source}:`, data);
         
         // Extract analysis content from n8n response
         let analysisContent = '';
@@ -351,10 +358,10 @@ export default function MacroAnalysis() {
           const responseData = await response.json();
           dualResponseHandler.handleHttpResponse(responseJobId, responseData);
         } else {
-          console.log(`[MacroAnalysis] HTTP error ${response.status}, waiting for Supabase response`);
+          console.log(`📊 [MacroAnalysis] HTTP error ${response.status}, waiting for Supabase response`);
         }
       } catch (httpError) {
-        console.log(`[MacroAnalysis] HTTP response failed, waiting for Supabase response:`, httpError);
+        console.log(`📊 [MacroAnalysis] HTTP response failed, waiting for Supabase response:`, httpError);
       }
       // Return early since dual response handler will manage the UI updates
       return;

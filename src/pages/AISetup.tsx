@@ -300,7 +300,14 @@ export default function AISetup() {
       try {
         // Register dual response handler for macro request
         dualResponseHandler.registerHandler(macroJobId, (data, source) => {
-          console.log(`[AISetup-Macro] Response received from ${source}:`, data);
+          console.log(`⚡ [AISetup-Macro] Response received from ${source}:`, {
+            source,
+            hasData: !!data,
+            dataType: typeof data,
+            dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+            timestamp: new Date().toISOString()
+          });
+          console.log(`⚡ [AISetup-Macro] Full response data from ${source}:`, data);
           macroResult = data;
         });
 
@@ -325,10 +332,10 @@ export default function AISetup() {
             const responseData = await macroResponse.json();
             dualResponseHandler.handleHttpResponse(macroJobId, responseData);
           } else {
-            console.log(`[AISetup-Macro] HTTP error ${macroResponse.status}, waiting for Supabase response`);
+            console.log(`⚡ [AISetup-Macro] HTTP error ${macroResponse.status}, waiting for Supabase response`);
           }
         } catch (httpError) {
-          console.log(`[AISetup-Macro] HTTP response failed, waiting for Supabase response:`, httpError);
+          console.log(`⚡ [AISetup-Macro] HTTP response failed, waiting for Supabase response:`, httpError);
         }
 
         // Wait a moment for the response to be processed
@@ -367,7 +374,14 @@ export default function AISetup() {
 
       // Register dual response handler for trade setup
       dualResponseHandler.registerHandler(tradeJobId, (data, source) => {
-        console.log(`[AISetup-Trade] Response received from ${source}:`, data);
+        console.log(`⚡ [AISetup-Trade] Response received from ${source}:`, {
+          source,
+          hasData: !!data,
+          dataType: typeof data,
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+          timestamp: new Date().toISOString()
+        });
+        console.log(`⚡ [AISetup-Trade] Full response data from ${source}:`, data);
         
         setRawN8nResponse(data);
         const normalized = normalizeN8n(data);
@@ -410,10 +424,10 @@ export default function AISetup() {
           const responseData = await tradeResponse.json();
           dualResponseHandler.handleHttpResponse(tradeJobId, responseData);
         } else {
-          console.log(`[AISetup-Trade] HTTP error ${tradeResponse.status}, waiting for Supabase response`);
+          console.log(`⚡ [AISetup-Trade] HTTP error ${tradeResponse.status}, waiting for Supabase response`);
         }
       } catch (httpError) {
-        console.log(`[AISetup-Trade] HTTP response failed, waiting for Supabase response:`, httpError);
+        console.log(`⚡ [AISetup-Trade] HTTP response failed, waiting for Supabase response:`, httpError);
       }
 
       // Wait a moment for the response to be processed

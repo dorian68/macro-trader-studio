@@ -251,7 +251,14 @@ export default function Reports() {
 
       // Register dual response handler
       dualResponseHandler.registerHandler(reportJobId, (data, source) => {
-        console.log(`[Reports] Response received from ${source}:`, data);
+        console.log(`📄 [Reports] Response received from ${source}:`, {
+          source,
+          hasData: !!data,
+          dataType: typeof data,
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+          timestamp: new Date().toISOString()
+        });
+        console.log(`📄 [Reports] Full response data from ${source}:`, data);
         
         const generatedSections = includedSections.map(section => ({
           title: section.title,
@@ -300,10 +307,10 @@ export default function Reports() {
           const responseData = await response.json();
           dualResponseHandler.handleHttpResponse(reportJobId, responseData);
         } else {
-          console.log(`[Reports] HTTP error ${response.status}, waiting for Supabase response`);
+          console.log(`📄 [Reports] HTTP error ${response.status}, waiting for Supabase response`);
         }
       } catch (httpError) {
-        console.log(`[Reports] HTTP response failed, waiting for Supabase response:`, httpError);
+        console.log(`📄 [Reports] HTTP response failed, waiting for Supabase response:`, httpError);
       }
 
       // Report generation simulation for display (fallback)
