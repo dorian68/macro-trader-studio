@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { subscribeToPostgresChanges, unsubscribeChannel } from '@/utils/supabaseRealtimeManager';
 
 interface JobCompletionEvent {
   jobId: string;
@@ -96,42 +97,41 @@ export function useRealtimeResponseInjector({
 
     console.log('🔄 [ResponseInjector] Setting up realtime listener for user:', user.id);
 
-    const channel = supabase
-      .channel('response-injector')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'jobs',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          const job = payload.new as any;
-          
-          if (job.status === 'completed' && job.response_payload) {
-            console.log('✅ [ResponseInjector] Job completed:', {
-              id: job.id,
-              feature: job.feature,
-              status: job.status
-            });
+    const channelName = `response-injector-${user.id}`;
+    
+    const channel = subscribeToPostgresChanges(
+      channelName,
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'jobs',
+        filter: `user_id=eq.${user.id}`
+      },
+      (payload) => {
+        const job = payload.new as any;
+        
+        if (job.status === 'completed' && job.response_payload) {
+          console.log('✅ [ResponseInjector] Job completed:', {
+            id: job.id,
+            feature: job.feature,
+            status: job.status
+          });
 
-            const jobEvent: JobCompletionEvent = {
-              jobId: job.id,
-              feature: job.feature,
-              responsePayload: job.response_payload,
-              instrument: job.request_payload?.instrument || 'unknown'
-            };
+          const jobEvent: JobCompletionEvent = {
+            jobId: job.id,
+            feature: job.feature,
+            responsePayload: job.response_payload,
+            instrument: job.request_payload?.instrument || 'unknown'
+          };
 
-            injectResponse(jobEvent);
-          }
+          injectResponse(jobEvent);
         }
-      )
-      .subscribe();
+      }
+    );
 
     return () => {
       console.log('🔄 [ResponseInjector] Cleaning up realtime listener');
-      supabase.removeChannel(channel);
+      unsubscribeChannel(channelName);
     };
   }, [user?.id, injectResponse]);
 

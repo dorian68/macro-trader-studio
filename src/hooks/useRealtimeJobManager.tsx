@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { subscribeToPostgresChanges, initializeRealtimeAuthManager, unsubscribeChannel } from "@/utils/supabaseRealtimeManager";
 
 const { useState, useCallback, useEffect } = React;
 
@@ -50,6 +51,11 @@ export function useRealtimeJobManager() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Initialize realtime auth manager once
+  useEffect(() => {
+    initializeRealtimeAuthManager();
+  }, []);
+
   // Subscribe to realtime updates for jobs table
   useEffect(() => {
     if (!user?.id) {
@@ -59,101 +65,93 @@ export function useRealtimeJobManager() {
 
     console.log('🔍 [RealtimeJobManager] Setting up subscription for user:', user.id);
 
-    const channel = supabase
-      .channel('jobs-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'jobs',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('🔍 [RealtimeJobManager] Received realtime event:', {
-            eventType: payload.eventType,
-            old: payload.old,
-            new: payload.new,
-            timestamp: new Date().toISOString()
+    const channelName = `jobs-changes-${user.id}`;
+    
+    const channel = subscribeToPostgresChanges(
+      channelName,
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'jobs',
+        filter: `user_id=eq.${user.id}`
+      },
+      (payload) => {
+        console.log('🔍 [RealtimeJobManager] Received realtime event:', {
+          eventType: payload.eventType,
+          old: payload.old,
+          new: payload.new,
+          timestamp: new Date().toISOString()
+        });
+
+        const job = payload.new as JobStatus;
+        
+        if (job.status === 'completed' && job.response_payload) {
+          console.log('✅ [RealtimeJobManager] Job completed:', {
+            jobId: job.id,
+            feature: job.feature,
+            hasResponse: !!job.response_payload
           });
 
-          const job = payload.new as JobStatus;
-          
-          if (job.status === 'completed' && job.response_payload) {
-            console.log('✅ [RealtimeJobManager] Job completed:', {
-              jobId: job.id,
-              feature: job.feature,
-              hasResponse: !!job.response_payload
-            });
+          // Update the active job with results
+          setActiveJobs(prev => prev.map(activeJob => 
+            activeJob.id === job.id 
+              ? { 
+                  ...activeJob, 
+                  status: 'completed', 
+                  resultData: job.response_payload 
+                }
+              : activeJob
+          ));
 
-            // Update the active job with results
-            setActiveJobs(prev => prev.map(activeJob => 
-              activeJob.id === job.id 
-                ? { 
-                    ...activeJob, 
-                    status: 'completed', 
-                    resultData: job.response_payload 
-                  }
-                : activeJob
-            ));
+          toast({
+            title: "Analysis Complete",
+            description: "Your request has been processed successfully",
+            duration: Infinity, // Reste visible jusqu'au clic
+            className: "fixed top-4 left-4 z-[100] max-w-sm"
+          });
+        } else if (job.status === 'error') {
+          console.log('❌ [RealtimeJobManager] Job failed:', {
+            jobId: job.id,
+            feature: job.feature
+          });
 
-            toast({
-              title: "Analysis Complete",
-              description: "Your request has been processed successfully",
-              duration: Infinity, // Reste visible jusqu'au clic
-              className: "fixed top-4 left-4 z-[100] max-w-sm"
-            });
-          } else if (job.status === 'error') {
-            console.log('❌ [RealtimeJobManager] Job failed:', {
-              jobId: job.id,
-              feature: job.feature
-            });
+          setActiveJobs(prev => prev.map(activeJob => 
+            activeJob.id === job.id 
+              ? { ...activeJob, status: 'error' }
+              : activeJob
+          ));
 
-            setActiveJobs(prev => prev.map(activeJob => 
-              activeJob.id === job.id 
-                ? { ...activeJob, status: 'error' }
-                : activeJob
-            ));
+          toast({
+            title: "Analysis Failed",
+            description: "The request could not be processed",
+            variant: "destructive",
+            duration: Infinity, // Reste visible jusqu'au clic
+            className: "fixed top-4 left-4 z-[100] max-w-sm"
+          });
+        } else if (job.status === 'running') {
+          console.log('🔄 [RealtimeJobManager] Job running:', {
+            jobId: job.id,
+            feature: job.feature
+          });
 
-            toast({
-              title: "Analysis Failed",
-              description: "The request could not be processed",
-              variant: "destructive",
-              duration: Infinity, // Reste visible jusqu'au clic
-              className: "fixed top-4 left-4 z-[100] max-w-sm"
-            });
-          } else if (job.status === 'running') {
-            console.log('🔄 [RealtimeJobManager] Job running:', {
-              jobId: job.id,
-              feature: job.feature
-            });
-
-            setActiveJobs(prev => prev.map(activeJob => 
-              activeJob.id === job.id 
-                ? { ...activeJob, status: 'running' }
-                : activeJob
-            ));
-          } else {
-            console.log('ℹ️ [RealtimeJobManager] Job status update:', {
-              jobId: job.id,
-              status: job.status,
-              hasResponse: !!job.response_payload
-            });
-          }
+          setActiveJobs(prev => prev.map(activeJob => 
+            activeJob.id === job.id 
+              ? { ...activeJob, status: 'running' }
+              : activeJob
+          ));
+        } else {
+          console.log('ℹ️ [RealtimeJobManager] Job status update:', {
+            jobId: job.id,
+            status: job.status,
+            hasResponse: !!job.response_payload
+          });
         }
-      )
-      .subscribe((status, err) => {
-        console.log('🔍 [RealtimeJobManager] Channel status:', status, err);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [RealtimeJobManager] Successfully subscribed to jobs channel');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [RealtimeJobManager] Channel subscription error:', err);
-        }
-      });
+      }
+    );
 
     return () => {
       console.log('🔍 [RealtimeJobManager] Cleaning up subscription');
-      supabase.removeChannel(channel);
+      unsubscribeChannel(channelName);
     };
   }, [user?.id, toast]);
 
