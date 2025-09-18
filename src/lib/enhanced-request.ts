@@ -16,6 +16,7 @@ export async function enhancedPostRequest(
     feature?: string;
     headers?: Record<string, string>;
     jobId?: string; // Optional: reuse an existing job id instead of creating a new one
+    onRealtimeSetup?: (jobId: string) => void; // Callback when Realtime is ready
   } = {}
 ): Promise<{ response: Response; jobId?: string }> {
   
@@ -47,6 +48,12 @@ export async function enhancedPostRequest(
           });
       }
       
+      // CRITICAL: Set up Realtime subscription BEFORE sending POST request
+      if (options.onRealtimeSetup) {
+        console.log(`🔄 [Realtime] Setting up subscription for job: ${jobId}`);
+        options.onRealtimeSetup(jobId);
+      }
+      
       // Send the enhanced payload with job_id
       const response = await safePostRequest(url, enhancedPayload, options.headers);
       
@@ -65,7 +72,8 @@ export async function enhancedPostRequest(
 export async function handleResponseWithFallback(
   response: Response,
   jobId?: string,
-  onRealtimeResult?: (result: any) => void
+  onRealtimeResult?: (result: any) => void,
+  keepLoading?: () => void
 ): Promise<any> {
   
   let httpResult: any = null;
@@ -75,17 +83,23 @@ export async function handleResponseWithFallback(
   try {
     if (response.ok) {
       httpResult = await response.json();
+      console.log(`✅ [HTTP] Response received for job: ${jobId}`, httpResult);
     } else {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
   } catch (error) {
     httpError = error;
-    console.log('HTTP response failed, waiting for realtime result...', error);
+    console.log(`⚠️ [HTTP] Request failed, waiting for Realtime response...`, error);
+    
+    // CRITICAL: Keep loading state active when HTTP fails
+    if (keepLoading) {
+      keepLoading();
+    }
   }
   
-  // If we have a job ID and HTTP failed, set up realtime listener
+  // If we have a job ID and HTTP failed, rely on realtime
   if (jobId && httpError && onRealtimeResult) {
-    console.log('Setting up realtime listener for job:', jobId);
+    console.log(`🔄 [Realtime] Waiting for job completion: ${jobId}`);
     
     const channel = supabase
       .channel(`job-${jobId}`)
@@ -99,12 +113,15 @@ export async function handleResponseWithFallback(
         },
         (payload) => {
           const job = payload.new as any;
+          console.log(`📡 [Realtime] Job update received:`, job);
           
           if (job.status === 'completed' && job.response_payload) {
+            console.log(`✅ [Realtime] Job completed successfully: ${jobId}`, job.response_payload);
             onRealtimeResult(job.response_payload);
             supabase.removeChannel(channel);
           } else if (job.status === 'error') {
-            onRealtimeResult({ error: 'Job failed' });
+            console.log(`❌ [Realtime] Job failed: ${jobId}`, job.error_message || 'Unknown error');
+            onRealtimeResult({ error: job.error_message || 'Job failed' });
             supabase.removeChannel(channel);
           }
         }
@@ -113,6 +130,7 @@ export async function handleResponseWithFallback(
     
     // Set timeout to clean up the listener
     setTimeout(() => {
+      console.log(`⏰ [Realtime] Timeout reached for job: ${jobId}`);
       supabase.removeChannel(channel);
     }, 300000); // 5 minutes timeout
     
@@ -130,8 +148,9 @@ export async function handleResponseWithFallback(
     });
   }
   
-  // If HTTP succeeded, return the result
+  // If HTTP succeeded, return the result immediately
   if (httpResult) {
+    console.log(`🚀 [HTTP] Using immediate HTTP response for job: ${jobId}`);
     return httpResult;
   }
   

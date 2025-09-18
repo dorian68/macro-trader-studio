@@ -54,11 +54,11 @@ export class DualResponseHandler {
     }
 
     if (handler.resolved) {
-      console.log(`[DualResponseHandler] Late response ignored from: n8n for job ${jobId}`);
+      console.log(`⚠️ [HTTP] Late response ignored for job ${jobId}`);
       return;
     }
 
-    console.log(`[DualResponseHandler] HTTP response received first for job ${jobId}`);
+    console.log(`✅ [HTTP] Response received first for job ${jobId}`, data);
     handler.resolved = true;
     handler.onResponse(data, 'n8n');
     this.unregisterHandler(jobId);
@@ -83,22 +83,23 @@ export class DualResponseHandler {
         },
         (payload) => {
           const job = payload.new as any;
+          console.log(`📡 [Realtime] Job update received for ${jobId}:`, job);
           
           if (job.status === 'completed' && job.response_payload) {
             if (handler.resolved) {
-              console.log(`[DualResponseHandler] Late response ignored from: supabase for job ${jobId}`);
+              console.log(`⚠️ [Realtime] Late response ignored for job ${jobId}`);
               return;
             }
 
-            console.log(`[DualResponseHandler] Supabase response received first for job ${jobId}`);
+            console.log(`✅ [Realtime] Response received first for job ${jobId}`, job.response_payload);
             handler.resolved = true;
             handler.onResponse(job.response_payload, 'supabase');
             this.unregisterHandler(jobId);
           } else if (job.status === 'error') {
             if (!handler.resolved) {
-              console.log(`[DualResponseHandler] Job failed via Supabase for job ${jobId}`);
+              console.log(`❌ [Realtime] Job failed for job ${jobId}:`, job.error_message || 'Unknown error');
               handler.resolved = true;
-              handler.onResponse({ error: 'Job failed' }, 'supabase');
+              handler.onResponse({ error: job.error_message || 'Job failed' }, 'supabase');
               this.unregisterHandler(jobId);
             }
           }
