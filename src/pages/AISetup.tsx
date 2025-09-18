@@ -19,6 +19,7 @@ import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
+import { supabase } from "@/integrations/supabase/client";
 
 const { useState } = React;
 
@@ -260,6 +261,7 @@ export default function AISetup() {
     setIsGenerating(true);
     setError(null);
     setN8nResult(null);
+    console.log('🔄 [Loader] Starting AI trade setup generation');
     
     // Create loading request
     const requestId = await globalLoading.createRequest(
@@ -286,6 +288,35 @@ export default function AISetup() {
         'Macro Commentary'
       );
 
+      // 1. CRITICAL: Subscribe to jobs table BEFORE sending POST request
+      console.log('📡 [Realtime] Subscribing to jobs updates before POST');
+      
+      const realtimeChannel = supabase
+        .channel(`ai-setup-jobs-${macroJobId}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'jobs',
+          filter: `id=eq.${macroJobId}`
+        }, (payload) => {
+          console.log('📩 [Realtime] Job update received:', payload);
+          const job = payload.new as any;
+          
+          if (job && job.status) {
+            console.log(`✅ [Realtime] Job completed with status: ${job.status}`);
+            
+            if (job.status === 'completed' && job.response_payload) {
+              console.log('📩 [Realtime] Processing completed response');
+              // Handle macro response here if needed
+            } else if (job.status === 'error') {
+              console.log('❌ [Realtime] Job failed:', job.error_message);
+            }
+          }
+        })
+        .subscribe();
+      
+      console.log('📡 [Realtime] Subscribed before POST');
+
       // STEP 1: macro-commentary with Realtime tracking
       const macroPayload = {
         type: "RAG",
@@ -311,32 +342,35 @@ export default function AISetup() {
           macroResult = data;
         });
 
-        const { response: macroResponse, jobId: macroJobIdFromRequest } = await enhancedPostRequest(
-          'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-          {
-            ...macroPayload,
-            job_id: macroJobId
-          },
-          {
-            enableJobTracking: true,
-            jobType: 'macro_commentary',
-            instrument: parameters.instrument,
-            feature: 'macro_commentary',
-            jobId: macroJobId
-          }
-        );
-        
-        // Handle HTTP response for macro
-        try {
-          if (macroResponse.ok) {
-            const responseData = await macroResponse.json();
-            dualResponseHandler.handleHttpResponse(macroJobId, responseData);
-          } else {
-            console.log(`⚡ [AISetup-Macro] HTTP error ${macroResponse.status}, waiting for Supabase response`);
-          }
-        } catch (httpError) {
-          console.log(`⚡ [AISetup-Macro] HTTP response failed, waiting for Supabase response:`, httpError);
+      // 2. Send POST request after subscription is active
+      const { response: macroResponse, jobId: macroJobIdFromRequest } = await enhancedPostRequest(
+        'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        {
+          ...macroPayload,
+          job_id: macroJobId
+        },
+        {
+          enableJobTracking: true,
+          jobType: 'macro_commentary',
+          instrument: parameters.instrument,
+          feature: 'macro_commentary',
+          jobId: macroJobId
         }
+      );
+      
+      // 3. Handle HTTP response (secondary path)
+      try {
+        if (macroResponse.ok) {
+          const responseData = await macroResponse.json();
+          console.log('📩 [HTTP] Response:', responseData);
+          dualResponseHandler.handleHttpResponse(macroJobId, responseData);
+        } else {
+          console.log(`⚠️ [HTTP] Error ${macroResponse.status}, waiting for Realtime…`);
+        }
+      } catch (httpError) {
+        console.log(`⚠️ [HTTP] Timeout, waiting for Realtime…`, httpError);
+        // CRITICAL: Do NOT stop loading here - wait for Realtime
+      }
 
         // Wait a moment for the response to be processed
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -361,6 +395,59 @@ export default function AISetup() {
         },
         'AI Trade Setup'
       );
+
+      // Subscribe to trade setup job updates BEFORE sending POST
+      console.log('📡 [Realtime] Subscribing to trade setup job updates before POST');
+      
+      const tradeRealtimeChannel = supabase
+        .channel(`ai-setup-trade-jobs-${tradeJobId}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'jobs',
+          filter: `id=eq.${tradeJobId}`
+        }, (payload) => {
+          console.log('📩 [Realtime] Trade job update received:', payload);
+          const job = payload.new as any;
+          
+          if (job && job.status) {
+            console.log(`✅ [Realtime] Trade job completed with status: ${job.status}`);
+            
+            if (job.status === 'completed' && job.response_payload) {
+              console.log('📩 [Realtime] Processing trade setup response');
+              console.log('🔄 [Loader] Stopping loader - Realtime response received');
+              
+              setRawN8nResponse(job.response_payload);
+              const normalized = normalizeN8n(job.response_payload);
+
+              if (normalized && normalized.setups && normalized.setups.length > 0) {
+                setN8nResult(normalized);
+                setTradeSetup(null);
+                globalLoading.completeRequest(requestId, normalized);
+                
+                toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
+              } else {
+                setN8nResult(null);
+                setTradeSetup(null);
+                setError("The n8n workflow responded without exploitable setups.");
+                globalLoading.failRequest(requestId, "No exploitable setups returned");
+                toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
+              }
+              
+              setStep("generated");
+              setIsGenerating(false);
+            } else if (job.status === 'error') {
+              console.log('❌ [Realtime] Trade job failed:', job.error_message);
+              console.log('🔄 [Loader] Stopping loader - Realtime error received');
+              setIsGenerating(false);
+              setError(job.error_message || 'Job failed');
+              globalLoading.failRequest(requestId, job.error_message || 'Job failed');
+            }
+          }
+        })
+        .subscribe();
+      
+      console.log('📡 [Realtime] Subscribed to trade setup job before POST');
 
       // STEP 2: ai-trade-setup with Realtime tracking
       const payload = {
@@ -403,6 +490,7 @@ export default function AISetup() {
         setStep("generated");
       });
 
+      // Send trade setup POST request after subscription is active
       const { response: tradeResponse, jobId: tradeJobIdFromRequest } = await enhancedPostRequest(
         'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
         {
@@ -418,16 +506,19 @@ export default function AISetup() {
         }
       );
 
-      // Handle HTTP response for trade setup
+      // Handle HTTP response for trade setup (secondary path)
       try {
         if (tradeResponse.ok) {
           const responseData = await tradeResponse.json();
-          dualResponseHandler.handleHttpResponse(tradeJobId, responseData);
+          console.log('📩 [HTTP] Trade setup response:', responseData);
+          // Note: Realtime is primary, HTTP is just a backup log
+          // The UI updates are handled by Realtime callback above
         } else {
-          console.log(`⚡ [AISetup-Trade] HTTP error ${tradeResponse.status}, waiting for Supabase response`);
+          console.log(`⚠️ [HTTP] Trade setup error ${tradeResponse.status}, waiting for Realtime…`);
         }
       } catch (httpError) {
-        console.log(`⚡ [AISetup-Trade] HTTP response failed, waiting for Supabase response:`, httpError);
+        console.log(`⚠️ [HTTP] Trade setup timeout, waiting for Realtime…`, httpError);
+        // CRITICAL: Do NOT stop loading here - wait for Realtime
       }
 
       // Wait a moment for the response to be processed

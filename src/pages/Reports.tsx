@@ -19,6 +19,7 @@ import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AssetProfile {
   id: number;
@@ -217,6 +218,7 @@ export default function Reports() {
 
   const generateReport = async () => {
     setIsGenerating(true);
+    console.log('🔄 [Loader] Starting report generation');
 
     try {
       const includedSections = availableSections.filter(s => s.included);
@@ -248,6 +250,67 @@ export default function Reports() {
         reportPayload,
         'Report'
       );
+
+      // 1. CRITICAL: Subscribe to jobs table BEFORE sending POST request
+      console.log('📡 [Realtime] Subscribing to jobs updates before POST');
+      
+      const realtimeChannel = supabase
+        .channel(`reports-${reportJobId}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'jobs',
+          filter: `id=eq.${reportJobId}`
+        }, (payload) => {
+          console.log('📩 [Realtime] Job update received:', payload);
+          const job = payload.new as any;
+          
+          if (job && job.status) {
+            console.log(`✅ [Realtime] Job completed with status: ${job.status}`);
+            
+            if (job.status === 'completed' && job.response_payload) {
+              console.log('📩 [Realtime] Processing completed response');
+              console.log('🔄 [Loader] Stopping loader - Realtime response received');
+              
+              const generatedSections = includedSections.map(section => ({
+                title: section.title,
+                content: job.response_payload.sections?.[section.id] || job.response_payload.content || `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
+                userNotes: section.userNotes || ""
+              }));
+
+              const newReport: GeneratedReport = {
+                id: reportJobId,
+                title: reportConfig.title,
+                sections: generatedSections,
+                customNotes: reportConfig.customNotes,
+                exportFormat: reportConfig.exportFormat,
+                createdAt: new Date(),
+                status: "generated"
+              };
+
+              setCurrentReport(newReport);
+              setStep("generated");
+              setIsGenerating(false);
+              
+              toast({
+                title: "Report Generated",
+                description: "Your report has been successfully generated."
+              });
+            } else if (job.status === 'error') {
+              console.log('❌ [Realtime] Job failed:', job.error_message);
+              console.log('🔄 [Loader] Stopping loader - Realtime error received');
+              setIsGenerating(false);
+              toast({
+                title: "Error",
+                description: job.error_message || "Failed to generate report. Please try again.",
+                variant: "destructive"
+              });
+            }
+          }
+        })
+        .subscribe();
+      
+      console.log('📡 [Realtime] Subscribed before POST');
 
       // Register dual response handler
       dualResponseHandler.registerHandler(reportJobId, (data, source) => {
@@ -285,7 +348,7 @@ export default function Reports() {
         });
       });
 
-      // Call to n8n webhook with Realtime tracking
+      // 2. Send POST request after subscription is active
       const { response } = await enhancedPostRequest(
         'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
         {
@@ -301,16 +364,19 @@ export default function Reports() {
         }
       );
 
-      // Handle HTTP response
+      // 3. Handle HTTP response (secondary path)
       try {
         if (response.ok) {
           const responseData = await response.json();
-          dualResponseHandler.handleHttpResponse(reportJobId, responseData);
+          console.log('📩 [HTTP] Response:', responseData);
+          // Note: Realtime is primary, HTTP is just a backup log
+          // The UI updates are handled by Realtime callback above
         } else {
-          console.log(`📄 [Reports] HTTP error ${response.status}, waiting for Supabase response`);
+          console.log(`⚠️ [HTTP] Error ${response.status}, waiting for Realtime…`);
         }
       } catch (httpError) {
-        console.log(`📄 [Reports] HTTP response failed, waiting for Supabase response:`, httpError);
+        console.log(`⚠️ [HTTP] Timeout, waiting for Realtime…`, httpError);
+        // CRITICAL: Do NOT stop loading here - wait for Realtime
       }
 
       // Report generation simulation for display (fallback)

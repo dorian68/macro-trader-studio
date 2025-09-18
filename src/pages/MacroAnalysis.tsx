@@ -20,7 +20,7 @@ import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
-import { subscribeToPostgresChanges } from "@/utils/supabaseRealtimeManager";
+import { supabase } from "@/integrations/supabase/client";
 const {
   useState,
   useEffect
@@ -328,17 +328,16 @@ export default function MacroAnalysis() {
       const responseJobId = Date.now().toString();
       
       // 1. CRITICAL: Subscribe to Realtime BEFORE sending POST request
-      console.log('📡 [Realtime] Subscribing to channel before POST request');
+      console.log('📡 [Realtime] Subscribing to jobs updates before POST');
       
-      const realtimeChannel = subscribeToPostgresChanges(
-        `macro-analysis-${responseJobId}`,
-        {
+      const realtimeChannel = supabase
+        .channel(`macro-analysis-${responseJobId}`)
+        .on('postgres_changes', {
           event: 'UPDATE',
-          schema: 'public', 
+          schema: 'public',
           table: 'jobs',
           filter: `id=eq.${responseJobId}`
-        },
-        (payload) => {
+        }, (payload) => {
           console.log('📩 [Realtime] Payload received:', payload);
           const job = payload.new as any;
           
@@ -353,8 +352,8 @@ export default function MacroAnalysis() {
               handleRealtimeError(job.error_message);
             }
           }
-        }
-      );
+        })
+        .subscribe();
       
       console.log('📡 [Realtime] Subscribed before POST');
       
