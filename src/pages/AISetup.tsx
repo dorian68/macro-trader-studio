@@ -20,6 +20,7 @@ import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const { useState } = React;
 
@@ -195,6 +196,7 @@ function extractMacroInsight(macroResult: any) {
 export default function AISetup() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const globalLoading = useGlobalLoading();
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
@@ -297,12 +299,12 @@ export default function AISetup() {
           event: 'UPDATE',
           schema: 'public',
           table: 'jobs',
-          filter: `id=eq.${macroJobId}`
+          filter: `user_id=eq.${user?.id}`
         }, (payload) => {
           console.log('📩 [Realtime] Job update received:', payload);
           const job = payload.new as any;
           
-          if (job && job.status) {
+          if (job && job.status && job.id === macroJobId) {
             console.log(`✅ [Realtime] Job completed with status: ${job.status}`);
             
             if (job.status === 'completed' && job.response_payload) {
@@ -405,12 +407,12 @@ export default function AISetup() {
           event: 'UPDATE',
           schema: 'public',
           table: 'jobs',
-          filter: `id=eq.${tradeJobId}`
+          filter: `user_id=eq.${user?.id}`
         }, (payload) => {
           console.log('📩 [Realtime] Trade job update received:', payload);
           const job = payload.new as any;
           
-          if (job && job.status) {
+          if (job && job.status && job.id === tradeJobId) {
             console.log(`✅ [Realtime] Trade job completed with status: ${job.status}`);
             
             if (job.status === 'completed' && job.response_payload) {

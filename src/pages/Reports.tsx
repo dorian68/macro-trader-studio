@@ -20,6 +20,7 @@ import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AssetProfile {
   id: number;
@@ -59,6 +60,7 @@ interface GeneratedReport {
 export default function Reports() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
 
@@ -260,12 +262,12 @@ export default function Reports() {
           event: 'UPDATE',
           schema: 'public',
           table: 'jobs',
-          filter: `id=eq.${reportJobId}`
+          filter: `user_id=eq.${user?.id}`
         }, (payload) => {
           console.log('📩 [Realtime] Job update received:', payload);
           const job = payload.new as any;
           
-          if (job && job.status) {
+          if (job && job.status && job.id === reportJobId) {
             console.log(`✅ [Realtime] Job completed with status: ${job.status}`);
             
             if (job.status === 'completed' && job.response_payload) {

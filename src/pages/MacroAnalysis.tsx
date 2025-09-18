@@ -21,6 +21,7 @@ import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 const {
   useState,
   useEffect
@@ -58,6 +59,7 @@ interface AssetInfo {
 export default function MacroAnalysis() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -336,12 +338,12 @@ export default function MacroAnalysis() {
           event: 'UPDATE',
           schema: 'public',
           table: 'jobs',
-          filter: `id=eq.${responseJobId}`
+          filter: `user_id=eq.${user?.id}`
         }, (payload) => {
           console.log('📩 [Realtime] Payload received:', payload);
           const job = payload.new as any;
           
-          if (job && job.status) {
+          if (job && job.status && job.id === responseJobId) {
             console.log(`✅ [Realtime] Job completed with status: ${job.status}`);
             
             if (job.status === 'completed' && job.response_payload) {
