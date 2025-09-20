@@ -65,16 +65,16 @@ export function BubbleSystem({
       {/* Mobile-optimized Floating Access Bubbles */}
       {!activeBubble}
 
-      {/* Mobile-responsive Active Specialized Bubbles */}
+      {/* Mobile-responsive Active Specialized Bubbles avec positionnement différentiel */}
       {activeBubble === "tradesetup" && <div className="fixed inset-x-4 top-6 sm:inset-x-auto sm:right-6 sm:top-24 z-[99999] sm:w-auto sm:max-w-md mobile-fade-in safe-top shadow-2xl">
           <TradeSetupBubble instrument={instrument} timeframe={timeframe} onClose={handleCloseBubble} onTradeLevelsUpdate={onTradeLevelsUpdate} />
         </div>}
       
-      {activeBubble === "macro" && <div className="fixed inset-x-4 top-6 bottom-6 sm:inset-x-auto sm:right-6 sm:top-24 z-[99999] max-h-[calc(100vh-3rem)] sm:max-h-[calc(100vh-7rem)] mobile-fade-in safe-top safe-bottom shadow-2xl">
+      {activeBubble === "macro" && <div className="fixed inset-x-4 top-6 bottom-6 sm:inset-x-auto sm:left-6 sm:right-auto sm:top-24 z-[99999] max-h-[calc(100vh-3rem)] sm:max-h-[calc(100vh-7rem)] sm:w-[600px] sm:max-w-[calc(100vw-12rem)] mobile-fade-in safe-top safe-bottom shadow-2xl">
           <MacroCommentary instrument={instrument} timeframe={timeframe} onClose={handleCloseBubble} />
         </div>}
       
-      {activeBubble === "reports" && <div className="fixed inset-x-4 top-6 sm:inset-x-auto sm:right-6 sm:top-24 z-[99999] sm:w-auto sm:max-w-md mobile-fade-in safe-top shadow-2xl">
+      {activeBubble === "reports" && <div className="fixed inset-x-4 top-6 sm:inset-x-auto sm:right-6 sm:left-auto sm:top-[calc(50vh-200px)] z-[99999] sm:w-auto sm:max-w-md mobile-fade-in safe-top shadow-2xl">
           <ReportsBubble instrument={instrument} timeframe={timeframe} onClose={handleCloseBubble} />
         </div>}
     </>;
