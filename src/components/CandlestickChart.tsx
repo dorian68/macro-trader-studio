@@ -108,11 +108,11 @@ export function CandlestickChart({
       </CardHeader>
       )}
       <CardContent className="pb-4 sm:pb-6">
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden isolate z-0">
           <TradingViewWidget 
             selectedSymbol={binanceSymbol}
             onSymbolChange={() => {}}
-            className="border-0 shadow-none"
+            className="border-0 shadow-none z-0"
           />
           
           {/* Mobile-responsive Trade Levels Overlay */}
