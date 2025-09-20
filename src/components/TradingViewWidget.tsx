@@ -186,7 +186,10 @@ export function TradingViewWidget({
                             currentSymbol === 'EURUSD' ? '1.0856' :
                             currentSymbol === 'GBPUSD' ? '1.2734' :
                             currentSymbol === 'XAUUSD' ? '2687.45' :
-                            currentSymbol === 'USDJPY' ? '154.23' : '1.0000';
+                            currentSymbol === 'USDJPY' ? '154.23' :
+                            currentSymbol === 'ETHUSD' ? '3421.67' :
+                            currentSymbol === 'XAGUSD' ? '31.45' :
+                            currentSymbol === 'USOIL' ? '68.92' : '1.0000';
             onPriceUpdate(mockPrice);
           }
         }

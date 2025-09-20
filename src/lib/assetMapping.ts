@@ -1,23 +1,23 @@
 // Mapping des actifs vers les symboles Binance
 export const assetToBinanceSymbol: Record<string, string> = {
-  'EUR/USD': 'EURUSDT',  // Proxy via Tether
-  'GBP/USD': 'GBPUSDT',  // GBP/USD via USDT
-  'USD/JPY': 'USDCJPY',  // Approximation avec USDC/JPY
-  'GOLD': 'PAXGUSDT',    // PAX Gold
-  'Gold': 'PAXGUSDT',    // PAX Gold
-  'SILVER': 'AGTUSDT',   // Silver token
-  'Silver': 'AGTUSDT',   // Silver token
-  'CRUDE': 'BTCUSDT',    // Fallback vers BTC (pas de pétrole direct)
-  'Crude Oil': 'BTCUSDT', // Fallback vers BTC
-  'Bitcoin': 'BTCUSDT',
-  'Ethereum': 'ETHUSDT',
-  'BTC': 'BTCUSDT',
-  'ETH': 'ETHUSDT'
+  'EUR/USD': 'EURUSD',     // EUR/USD forex pair
+  'GBP/USD': 'GBPUSD',     // GBP/USD forex pair
+  'USD/JPY': 'USDJPY',     // USD/JPY forex pair
+  'GOLD': 'XAUUSD',        // Gold vs USD
+  'Gold': 'XAUUSD',        // Gold vs USD
+  'SILVER': 'XAGUSD',      // Silver vs USD
+  'Silver': 'XAGUSD',      // Silver vs USD
+  'CRUDE': 'USOIL',        // Crude Oil
+  'Crude Oil': 'USOIL',    // Crude Oil
+  'Bitcoin': 'BTCUSD',
+  'Ethereum': 'ETHUSD',
+  'BTC': 'BTCUSD',
+  'ETH': 'ETHUSD'
 };
 
 // Tous les actifs supportent maintenant les données en temps réel
 export const getSymbolForAsset = (asset: string): string => {
-  return assetToBinanceSymbol[asset] || 'BTCUSDT'; // Fallback vers BTC
+  return assetToBinanceSymbol[asset] || 'BTCUSD'; // Fallback vers BTC
 };
 
 // Tous les actifs ont des données temps réel
