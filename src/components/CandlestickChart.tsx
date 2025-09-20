@@ -107,7 +107,7 @@ export function CandlestickChart({
         </div>
       </CardHeader>
       )}
-      <CardContent className="pb-0">
+      <CardContent className="pb-4 sm:pb-6">
         <div className="relative overflow-hidden">
           <TradingViewWidget 
             selectedSymbol={binanceSymbol}
