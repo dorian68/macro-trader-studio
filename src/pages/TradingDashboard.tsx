@@ -310,7 +310,7 @@ export default function TradingDashboard() {
 
 
         {/* Navigation Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 md:mt-14">
           <Card 
             className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
             onClick={() => navigate('/ai-setup')}
