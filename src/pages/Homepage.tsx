@@ -126,7 +126,7 @@ export default function Homepage() {
               <h4 className="font-semibold mb-4 text-foreground">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><button onClick={() => navigate("/features")} className="hover:text-foreground transition-colors">Features</button></li>
-                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Pricing</button></li>
+                <li><button onClick={() => navigate("/pricing")} className="hover:text-foreground transition-colors">Pricing</button></li>
                 <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">API</button></li>
               </ul>
             </div>

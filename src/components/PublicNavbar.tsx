@@ -34,6 +34,9 @@ export default function PublicNavbar() {
           <Button variant="ghost" onClick={() => navigate("/features")} className="hidden md:flex text-sm px-2 sm:px-4 min-h-[44px]">
             Features
           </Button>
+          <Button variant="ghost" onClick={() => navigate("/pricing")} className="hidden md:flex text-sm px-2 sm:px-4 min-h-[44px]">
+            Pricing
+          </Button>
           <Button variant="ghost" onClick={() => navigate("/contact")} className="hidden lg:flex text-sm px-2 sm:px-4 min-h-[44px]">
             Contact
           </Button>
