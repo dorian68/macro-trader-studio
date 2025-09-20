@@ -1,0 +1,239 @@
+import React, { useEffect } from 'react';
+import { Check } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import Layout from '@/components/Layout';
+
+const Pricing = () => {
+  useEffect(() => {
+    console.log('📊 [Pricing] Alphalens pricing page initialized');
+  }, []);
+
+  const handleCTAClick = (plan: string) => {
+    console.log(`📊 [Pricing] CTA clicked: ${plan}`);
+    // TODO: Implement actual subscription logic
+  };
+
+  const b2cPlans = [
+    {
+      name: 'Basic',
+      price: '$25',
+      description: 'Perfect for individual traders getting started',
+      features: [
+        'Market Commentary',
+        'AI Trade Setup',
+        'Research Reports'
+      ],
+      usage: [
+        '70 queries per month',
+        '20 investment ideas per month',
+        '4 reports per month'
+      ],
+      highlight: false
+    },
+    {
+      name: 'Standard',
+      price: '$35',
+      description: 'Ideal for active traders and investors',
+      features: [
+        'Market Commentary',
+        'AI Trade Setup',
+        'Research Reports'
+      ],
+      usage: [
+        '120 queries per month',
+        '35 investment ideas per month',
+        '8 reports per month'
+      ],
+      highlight: false
+    },
+    {
+      name: 'Premium',
+      price: '$49',
+      description: 'Complete solution for professional traders',
+      features: [
+        'Market Commentary',
+        'AI Trade Setup',
+        'Research Reports'
+      ],
+      usage: [
+        'Unlimited queries',
+        '50 investment ideas per month',
+        '16 reports per month'
+      ],
+      highlight: true
+    }
+  ];
+
+  return (
+    <Layout>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-16">
+          {/* Header */}
+          <div className="text-center mb-16">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+              Alphalens AI Pricing
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Choose the perfect plan for your trading and investment needs. 
+              Professional AI-powered market analysis for every level.
+            </p>
+          </div>
+
+          {/* B2B Model Section */}
+          <div className="mb-20">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-semibold text-foreground mb-4">
+                B2B Partnership Model
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Designed for brokers and financial institutions
+              </p>
+            </div>
+            
+            <Card className="max-w-4xl mx-auto border-primary/20">
+              <CardHeader className="text-center pb-8">
+                <CardTitle className="text-2xl">Enterprise Partnership</CardTitle>
+                <CardDescription className="text-lg mt-2">
+                  Complete Alphalens integration for your client base
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4">Pricing Structure</h4>
+                    <ul className="space-y-3">
+                      <li className="flex items-start gap-3">
+                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Flat $1,000 per month (billed at start of month)</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>$1 per active user (billed at end of month)</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4">Free Access Tier</h4>
+                    <ul className="space-y-3">
+                      <li className="flex items-start gap-3">
+                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Market Commentary & AI Trade Setup</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>15 queries per month</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>5 investment ideas per month</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Entry-level access to showcase Alphalens' value to all broker clients. 
+                    Direct revenue from traders who subscribe to paid plans.
+                  </p>
+                  <Button 
+                    size="lg" 
+                    className="w-full md:w-auto"
+                    onClick={() => handleCTAClick('B2B Contact Sales')}
+                  >
+                    Contact Sales
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* B2C Plans Section */}
+          <div>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-semibold text-foreground mb-4">
+                Individual Plans
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Professional AI analysis for individual traders and investors
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {b2cPlans.map((plan) => (
+                <Card 
+                  key={plan.name} 
+                  className={`relative ${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'}`}
+                >
+                  {plan.highlight && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <Badge variant="default" className="px-4 py-1">
+                        Most Complete
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  <CardHeader className="text-center pb-6">
+                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                    <div className="mt-4">
+                      <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                      <span className="text-muted-foreground">/month</span>
+                    </div>
+                    <CardDescription className="mt-2">
+                      {plan.description}
+                    </CardDescription>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-6">
+                    <div>
+                      <h4 className="font-semibold mb-3">Features</h4>
+                      <ul className="space-y-2">
+                        {plan.features.map((feature, index) => (
+                          <li key={index} className="flex items-center gap-3">
+                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                            <span className="text-sm">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold mb-3">Usage Limits</h4>
+                      <ul className="space-y-2">
+                        {plan.usage.map((usage, index) => (
+                          <li key={index} className="flex items-center gap-3">
+                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                            <span className="text-sm">{usage}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <Button 
+                      className="w-full mt-6"
+                      variant={plan.highlight ? "default" : "outline"}
+                      onClick={() => handleCTAClick(plan.name)}
+                    >
+                      Get Started
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer Note */}
+          <div className="text-center mt-16 max-w-2xl mx-auto">
+            <p className="text-sm text-muted-foreground">
+              All plans include access to our comprehensive market analysis platform. 
+              Upgrade or downgrade your plan at any time to match your trading activity.
+            </p>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default Pricing;
