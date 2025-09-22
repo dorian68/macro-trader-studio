@@ -36,7 +36,12 @@ const timeframes = [
   { value: '1m', label: '1 Minute' },
   { value: '5m', label: '5 Minutes' },
   { value: '15m', label: '15 Minutes' },
-  { value: '1h', label: '1 Hour' },
+  { value: '30m', label: '30 Minutes' },
+  { value: '1h', label: '1 Heure' },
+  { value: '4h', label: '4 Heures' },
+  { value: '1d', label: '1 Jour' },
+  { value: '1w', label: '1 Semaine' },
+  { value: '1M', label: '1 Mois' },
 ];
 
 export function CandlestickChart({ 
