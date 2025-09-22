@@ -17,7 +17,7 @@ export default function PublicNavbar() {
           </div>
           <div className="hidden xs:block min-w-0">
             <img 
-              src="/lovable-uploads/favicon.png" 
+              src="/lovable-uploads/Only_text_white_BG_2.png" 
               alt="alphaLens.ai" 
               className="h-5 sm:h-6 w-auto"
             />
