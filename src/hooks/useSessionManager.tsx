@@ -7,6 +7,23 @@ export function useSessionManager() {
   const { user, session, signOut } = useAuth();
   const { toast } = useToast();
   const currentSessionRef = useRef<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Generate or retrieve stable device ID
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('alphalens_device_id');
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem('alphalens_device_id', deviceId);
+    }
+    return deviceId;
+  };
+
+  // Generate stable session ID
+  const getSessionId = (userId: string) => {
+    const deviceId = getDeviceId();
+    return `${userId}:${deviceId}`;
+  };
 
   // Generate device info for session tracking
   const getDeviceInfo = () => {
@@ -17,8 +34,14 @@ export function useSessionManager() {
 
   // Track current session
   useEffect(() => {
+    // Clear previous interval if it exists
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     if (session && user) {
-      const sessionId = session.access_token.substring(0, 64); // Use longer part of access token as session ID for uniqueness
+      const sessionId = getSessionId(user.id);
       currentSessionRef.current = sessionId;
 
       // Register this session and invalidate others
@@ -30,12 +53,15 @@ export function useSessionManager() {
             current_session_id: sessionId
           });
 
-          // Then register the current session
-          await supabase.from('user_sessions').insert({
+          // Then upsert the current session
+          await supabase.from('user_sessions').upsert({
             user_id: user.id,
             session_id: sessionId,
             device_info: getDeviceInfo(),
-            is_active: true
+            is_active: true,
+            last_seen: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,session_id'
           });
 
           // Set up periodic session validation
@@ -58,9 +84,7 @@ export function useSessionManager() {
           };
 
           // Check session validity every 30 seconds
-          const intervalId = setInterval(validateSession, 30000);
-
-          return () => clearInterval(intervalId);
+          intervalRef.current = setInterval(validateSession, 30000);
         } catch (error) {
           console.error('Error managing session:', error);
         }
@@ -68,7 +92,15 @@ export function useSessionManager() {
 
       registerSession();
     }
-  }, [session, user, toast, signOut]);
+
+    // Cleanup function
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [user?.id, toast, signOut]); // Removed session from dependencies to prevent re-registration on token refresh
 
   // Listen for session invalidation via realtime
   useEffect(() => {
@@ -114,13 +146,18 @@ export function useSessionManager() {
       if (currentSessionRef.current && user) {
         supabase
           .from('user_sessions')
-          .update({ is_active: false })
+          .update({ is_active: false, last_seen: new Date().toISOString() })
           .eq('session_id', currentSessionRef.current)
           .eq('user_id', user.id);
+      }
+      // Clear interval on cleanup
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
 
     // Cleanup on component unmount or user change
     return cleanup;
-  }, [user]);
+  }, [user?.id]);
 }

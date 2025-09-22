@@ -43,17 +43,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Generate or retrieve stable device ID
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('alphalens_device_id');
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem('alphalens_device_id', deviceId);
+    }
+    return deviceId;
+  };
+
+  // Generate stable session ID
+  const getSessionId = (userId: string) => {
+    const deviceId = getDeviceId();
+    return `${userId}:${deviceId}`;
+  };
+
   const signOut = async () => {
     // Clear stay logged in preference
     localStorage.removeItem('alphalens_stay_logged_in');
     
     // Clean up current session in database before signing out
-    if (session && user) {
-      const sessionId = session.access_token.substring(0, 64);
+    if (user) {
+      const sessionId = getSessionId(user.id);
       try {
         await supabase
           .from('user_sessions')
-          .update({ is_active: false })
+          .update({ is_active: false, last_seen: new Date().toISOString() })
           .eq('session_id', sessionId)
           .eq('user_id', user.id);
       } catch (error) {
