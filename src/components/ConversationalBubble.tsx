@@ -150,6 +150,14 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
     } catch (error) {
       console.error('Webhook error:', error);
       
+      // Show user-friendly error notification
+      const errorText = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast({
+        title: "Request Failed",
+        description: errorText,
+        variant: "destructive"
+      });
+      
       // Fallback AI message in case of error
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),

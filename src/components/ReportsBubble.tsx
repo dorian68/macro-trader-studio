@@ -239,9 +239,11 @@ export function ReportsBubble({ instrument, timeframe, onClose }: ReportsBubbleP
     } catch (error) {
       console.error('Webhook error:', error);
       
+      // Show detailed error message
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       toast({
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
+        title: "Report Generation Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

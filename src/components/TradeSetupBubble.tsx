@@ -131,9 +131,12 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
 
     } catch (error) {
       console.error('Error generating trade setup:', error);
+      
+      // Show detailed error message
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       toast({
-        title: "Error",
-        description: "Failed to generate trade setup. Please try again.",
+        title: "Trade Setup Generation Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -253,6 +256,14 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
       });
     } catch (error) {
       console.error('Technical analysis error:', error);
+      
+      // Show error notification
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast({
+        title: "Technical Analysis Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
       
       // Fallback avec analyse technique simulée
       const enhancedSetup: TradeSetup = {

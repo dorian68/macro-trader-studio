@@ -377,6 +377,18 @@ export default function AISetup() {
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         console.error('❌ STEP1 failed before parsing (network/CORS):', e);
+        
+        // Reset loading states
+        setIsGenerating(false);
+        
+        // Show user-friendly error notification
+        const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred';
+        toast({
+          title: "Request Failed",
+          description: `Macro analysis failed: ${errorMessage}`,
+          variant: "destructive"
+        });
+        
         throw e;
       }
 

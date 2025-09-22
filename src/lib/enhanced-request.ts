@@ -82,8 +82,22 @@ export async function handleResponseWithFallback(
   // Try to get HTTP response
   try {
     if (response.ok) {
-      httpResult = await response.json();
-      console.log(`✅ [HTTP] Response received for job: ${jobId}`, httpResult);
+      const responseText = await response.text();
+      
+      // Check if response is valid JSON
+      try {
+        httpResult = JSON.parse(responseText);
+        
+        // Check for explicit error fields in the response
+        if (httpResult && typeof httpResult === 'object' && httpResult.error) {
+          throw new Error(`n8n error: ${httpResult.error}`);
+        }
+        
+        console.log(`✅ [HTTP] Response received for job: ${jobId}`, httpResult);
+      } catch (jsonError) {
+        // If JSON parsing fails, treat as error
+        throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+      }
     } else {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -123,14 +137,19 @@ export async function handleResponseWithFallback(
             console.log(`❌ [Realtime] Job failed: ${jobId}`, job.error_message || 'Unknown error');
             onRealtimeResult({ error: job.error_message || 'Job failed' });
             supabase.removeChannel(channel);
+          } else if (job.status === 'failed') {
+            console.log(`❌ [Realtime] Job failed: ${jobId}`, job.error_message || 'Unknown error');
+            onRealtimeResult({ error: job.error_message || 'Job failed' });
+            supabase.removeChannel(channel);
           }
         }
       )
       .subscribe();
     
-    // Set timeout to clean up the listener
+    // Set timeout to clean up the listener and notify of timeout
     setTimeout(() => {
       console.log(`⏰ [Realtime] Timeout reached for job: ${jobId}`);
+      onRealtimeResult({ error: 'Request timeout - the operation took too long to complete' });
       supabase.removeChannel(channel);
     }, 300000); // 5 minutes timeout
     

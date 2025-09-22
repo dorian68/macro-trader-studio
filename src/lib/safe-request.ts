@@ -54,19 +54,36 @@ export async function safePostRequest(url: string, payload: any, headers: Record
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 180000); // 3 min timeout for n8n
 
-    return fetch(url, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        ...headers
-      },
-      body,
-      signal: controller.signal
-    }).finally(() => {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          ...headers
+        },
+        body,
+        signal: controller.signal
+      });
+      
       clearTimeout(timeout);
-    });
+      return response;
+    } catch (error) {
+      clearTimeout(timeout);
+      
+      // Handle abort error specifically
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout - the server took too long to respond');
+      }
+      
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error - please check your connection and try again');
+      }
+      
+      throw error;
+    }
   }
 
   return fetch(url, {

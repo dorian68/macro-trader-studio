@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -110,6 +111,7 @@ export function Reports() {
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const { createJob } = useRealtimeJobManager();
+  const { toast } = useToast();
 
   const handleSectionChange = (sectionId: string, checked: boolean) => {
     setSections(prev => ({ ...prev, [sectionId]: checked }));
@@ -150,6 +152,15 @@ export function Reports() {
       setIsGenerating(false);
     } catch (error) {
       console.error('Error generating report:', error);
+      
+      // Show user-friendly error notification
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast({
+        title: "Report Generation Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
       setIsGenerating(false);
     }
   };
