@@ -661,6 +661,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string
+          device_info: string | null
+          id: string
+          is_active: boolean
+          last_seen: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          is_active?: boolean
+          last_seen?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          is_active?: boolean
+          last_seen?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -701,6 +731,10 @@ export type Database = {
       hnswhandler: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      invalidate_previous_sessions: {
+        Args: { current_session_id: string; current_user_id: string }
+        Returns: undefined
       }
       is_admin_or_super_user: {
         Args: { user_id: string }

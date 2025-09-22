@@ -46,6 +46,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     // Clear stay logged in preference
     localStorage.removeItem('alphalens_stay_logged_in');
+    
+    // Clean up current session in database before signing out
+    if (session && user) {
+      const sessionId = session.access_token.substring(0, 20);
+      try {
+        await supabase
+          .from('user_sessions')
+          .update({ is_active: false })
+          .eq('session_id', sessionId)
+          .eq('user_id', user.id);
+      } catch (error) {
+        console.error('Error cleaning up session:', error);
+      }
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
