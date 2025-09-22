@@ -220,11 +220,15 @@ export function TradingViewWidget({
         
         try {
           const data = JSON.parse(event.data);
+          console.log(`📈 [Binance] Received price for ${data.s}:`, data.c);
           // Verify the symbol matches current selection
           if (data.s === symbol) {
             const price = parseFloat(data.c);
             const formattedPrice = price.toFixed(symbol.includes('JPY') ? 2 : 4);
+            console.log(`💰 [Price Update] ${symbol}: ${formattedPrice}`);
             onPriceUpdate(formattedPrice);
+          } else {
+            console.log(`⚠️ [Binance] Symbol mismatch: received ${data.s}, expected ${symbol}`);
           }
         } catch (error) {
           console.error('Error parsing Binance price data:', error);
