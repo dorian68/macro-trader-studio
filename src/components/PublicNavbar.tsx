@@ -17,8 +17,8 @@ export default function PublicNavbar() {
           </div>
           <div className="hidden xs:block min-w-0">
             <img 
-              src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" 
-              alt="alphaLens.ai" 
+              src="/lovable-uploads/AlphaLensAI.png" 
+              alt="alphaLens AI" 
               className="h-5 sm:h-6 w-auto"
             />
             <p className="text-xs text-muted-foreground hidden sm:block">AI Trading Intelligence</p>
