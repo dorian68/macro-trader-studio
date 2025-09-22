@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart3, Wifi, WifiOff } from 'lucide-react';
 import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
+import { TradingViewWidget } from './TradingViewWidget';
 
 const { useState } = React;
 
@@ -193,17 +194,12 @@ export function CandlestickChart({
       )}
       <CardContent className="pb-4 sm:pb-6">
         <div className="relative overflow-hidden isolate z-0">
-          {/* Chart container for direct implementation */}
-          <div className="w-full h-[380px] sm:h-[460px] lg:h-[560px] border border-border rounded-lg bg-card flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-4xl font-mono font-bold text-primary mb-2">
-                ${parseFloat(currentPrice).toLocaleString('en-US', { minimumFractionDigits: binanceSymbol.includes('JPY') ? 2 : 4 })}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Live price from Binance WebSocket
-              </div>
-            </div>
-          </div>
+          <TradingViewWidget 
+            selectedSymbol={binanceSymbol}
+            timeframe={timeframe}
+            onPriceUpdate={(price) => setCurrentPrice(price)}
+            className="border-0 shadow-none"
+          />
           
           {/* Mobile-responsive Trade Levels Overlay */}
           {tradeLevels && (
