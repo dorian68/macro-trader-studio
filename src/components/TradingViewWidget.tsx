@@ -179,35 +179,8 @@ export function TradingViewWidget({
         studies: ['RSI@tv-basicstudies', 'ATR@tv-basicstudies', 'ADX@tv-basicstudies'],
         container_id: CONTAINER_ID,
         onChartReady: () => {
-          // Set up real-time price updates
-          if (onPriceUpdate && window.TradingView) {
-            const widget = this;
-            
-            // Set initial price
-            const basePrice = currentSymbol === 'BTCUSD' ? 95247.50 : 
-                             currentSymbol === 'EURUSD' ? 1.0856 :
-                             currentSymbol === 'GBPUSD' ? 1.2734 :
-                             currentSymbol === 'XAUUSD' ? 2687.45 :
-                             currentSymbol === 'USDJPY' ? 154.23 :
-                             currentSymbol === 'ETHUSD' ? 3421.67 :
-                             currentSymbol === 'XAGUSD' ? 31.45 :
-                             currentSymbol === 'USOIL' ? 68.92 : 1.0000;
-            
-            // Simulate real-time price updates
-            const updatePrice = () => {
-              const variation = (Math.random() - 0.5) * 0.01; // ±0.5% variation
-              const newPrice = basePrice * (1 + variation);
-              onPriceUpdate(newPrice.toFixed(currentSymbol.includes('JPY') ? 2 : 4));
-            };
-            
-            updatePrice(); // Initial price
-            
-            // Update price every 2 seconds for real-time effect
-            const priceInterval = setInterval(updatePrice, 2000);
-            
-            // Store interval for cleanup
-            (window as any).tvPriceInterval = priceInterval;
-          }
+          console.log('TradingView chart ready');
+          // Real-time prices are now handled by the Binance WebSocket
         }
       });
     } catch (e) {
@@ -219,6 +192,78 @@ export function TradingViewWidget({
   useEffect(() => {
     fetchData();
   }, [currentSymbol, timeframe]);
+
+  // WebSocket for real-time Binance prices
+  useEffect(() => {
+    if (!onPriceUpdate) return;
+
+    const symbol = currentSymbol;
+    let ws: WebSocket;
+    let isMounted = true;
+
+    const connectWebSocket = () => {
+      // Clean up previous connection
+      if (ws) {
+        ws.close();
+      }
+
+      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
+      
+      ws.onopen = () => {
+        if (isMounted) {
+          console.log(`Connected to ${symbol} price feed`);
+        }
+      };
+
+      ws.onmessage = (event) => {
+        if (!isMounted) return;
+        
+        try {
+          const data = JSON.parse(event.data);
+          // Verify the symbol matches current selection
+          if (data.s === symbol) {
+            const price = parseFloat(data.c);
+            const formattedPrice = price.toFixed(symbol.includes('JPY') ? 2 : 4);
+            onPriceUpdate(formattedPrice);
+          }
+        } catch (error) {
+          console.error('Error parsing Binance price data:', error);
+        }
+      };
+
+      ws.onclose = () => {
+        if (isMounted) {
+          console.log(`Disconnected from ${symbol} price feed`);
+          // Reconnect after 3 seconds if still mounted
+          setTimeout(() => {
+            if (isMounted && symbol === currentSymbol) {
+              connectWebSocket();
+            }
+          }, 3000);
+        }
+      };
+
+      ws.onerror = (error) => {
+        if (isMounted) {
+          console.error('WebSocket error:', error);
+        }
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      isMounted = false;
+      if (ws) {
+        ws.close();
+      }
+      // Clear any existing price interval
+      if ((window as any).tvPriceInterval) {
+        clearInterval((window as any).tvPriceInterval);
+        (window as any).tvPriceInterval = null;
+      }
+    };
+  }, [currentSymbol, onPriceUpdate]);
   return <Card className={`w-full ${className}`}>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
