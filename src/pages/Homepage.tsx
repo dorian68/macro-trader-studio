@@ -12,7 +12,7 @@ export default function Homepage() {
       <section className="relative py-24 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/20">
         <div className="container mx-auto max-w-6xl">
           <div className="mb-8">
-            <img src="/lovable-uploads/Full_logo_no_BG_2.png" alt="alphaLens.ai" className="h-24 mx-auto mb-6" />
+            <img src="/lovable-uploads/Full_logo_no_BG_2.png" alt="alphaLens.ai" className="h-32 mx-auto mb-6" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
             Intelligent Financial Research
