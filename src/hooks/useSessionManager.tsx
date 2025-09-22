@@ -18,7 +18,7 @@ export function useSessionManager() {
   // Track current session
   useEffect(() => {
     if (session && user) {
-      const sessionId = session.access_token.substring(0, 20); // Use part of access token as session ID
+      const sessionId = session.access_token.substring(0, 64); // Use longer part of access token as session ID for uniqueness
       currentSessionRef.current = sessionId;
 
       // Register this session and invalidate others

@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Clean up current session in database before signing out
     if (session && user) {
-      const sessionId = session.access_token.substring(0, 20);
+      const sessionId = session.access_token.substring(0, 64);
       try {
         await supabase
           .from('user_sessions')
