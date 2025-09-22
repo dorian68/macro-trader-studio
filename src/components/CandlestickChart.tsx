@@ -6,9 +6,9 @@ import { BarChart3, Wifi, WifiOff } from 'lucide-react';
 import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
-
-const { useState } = React;
-
+const {
+  useState
+} = React;
 interface TradeLevels {
   entry: number;
   stopLoss: number;
@@ -21,7 +21,6 @@ interface TradeLevels {
     confirmation: boolean;
   };
 }
-
 interface CandlestickChartProps {
   asset: string;
   title?: string;
@@ -31,23 +30,38 @@ interface CandlestickChartProps {
   onLevelUpdate?: (type: 'entry' | 'stopLoss' | 'takeProfit', value: number) => void;
   historicalData?: any[];
 }
-
-const timeframes = [
-  { value: '1m', label: '1 Minute' },
-  { value: '5m', label: '5 Minutes' },
-  { value: '15m', label: '15 Minutes' },
-  { value: '30m', label: '30 Minutes' },
-  { value: '1h', label: '1 Hour' },
-  { value: '4h', label: '4 Hours' },
-  { value: 'D', label: '1 Day' },
-  { value: 'W', label: '1 Week' },
-  { value: 'M', label: '1 Month' },
-];
-
-export function CandlestickChart({ 
-  asset, 
-  title, 
-  showHeader = true, 
+const timeframes = [{
+  value: '1m',
+  label: '1 Minute'
+}, {
+  value: '5m',
+  label: '5 Minutes'
+}, {
+  value: '15m',
+  label: '15 Minutes'
+}, {
+  value: '30m',
+  label: '30 Minutes'
+}, {
+  value: '1h',
+  label: '1 Hour'
+}, {
+  value: '4h',
+  label: '4 Hours'
+}, {
+  value: 'D',
+  label: '1 Day'
+}, {
+  value: 'W',
+  label: '1 Week'
+}, {
+  value: 'M',
+  label: '1 Month'
+}];
+export function CandlestickChart({
+  asset,
+  title,
+  showHeader = true,
   height = 400,
   tradeLevels,
   onLevelUpdate,
@@ -56,23 +70,12 @@ export function CandlestickChart({
   const [timeframe, setTimeframe] = useState('1h');
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
-  
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
 
   // Prix de fallback mis à jour (utilisés seulement en attendant WebSocket)
   React.useEffect(() => {
-    const basePrice = asset === 'Bitcoin' || asset === 'BTC' ? 67500.00 : 
-                     asset === 'EUR/USD' ? 1.0850 :
-                     asset === 'GBP/USD' ? 1.2650 :
-                     asset === 'GOLD' || asset === 'Gold' ? 2650.00 :
-                     asset === 'USD/JPY' ? 150.50 :
-                     asset === 'Ethereum' || asset === 'ETH' ? 3500.00 :
-                     asset === 'SILVER' || asset === 'Silver' ? 31.50 :
-                     asset === 'CRUDE' || asset === 'Crude Oil' ? 75.00 :
-                     asset === 'AUD/USD' ? 0.6650 :
-                     asset === 'NZD/USD' ? 0.6100 : 1.0000;
-    
+    const basePrice = asset === 'Bitcoin' || asset === 'BTC' ? 67500.00 : asset === 'EUR/USD' ? 1.0850 : asset === 'GBP/USD' ? 1.2650 : asset === 'GOLD' || asset === 'Gold' ? 2650.00 : asset === 'USD/JPY' ? 150.50 : asset === 'Ethereum' || asset === 'ETH' ? 3500.00 : asset === 'SILVER' || asset === 'Silver' ? 31.50 : asset === 'CRUDE' || asset === 'Crude Oil' ? 75.00 : asset === 'AUD/USD' ? 0.6650 : asset === 'NZD/USD' ? 0.6100 : 1.0000;
     setCurrentPrice(basePrice.toString());
   }, [asset]);
 
@@ -80,36 +83,29 @@ export function CandlestickChart({
   React.useEffect(() => {
     let ws: WebSocket | null = null;
     let isMounted = true;
-    
     const connectToBinance = () => {
       const wsUrl = `wss://stream.binance.com:9443/ws/${binanceSymbol.toLowerCase()}@ticker`;
       console.log(`🔌 Connecting to Binance WebSocket: ${wsUrl}`);
-      
       ws = new WebSocket(wsUrl);
-      
       ws.onopen = () => {
         if (isMounted) {
           console.log(`✅ Connected to ${binanceSymbol} price feed (Binance)`);
           setIsConnected(true);
         }
       };
-      
-      ws.onmessage = (event) => {
+      ws.onmessage = event => {
         if (!isMounted) return;
-        
         try {
           const data = JSON.parse(event.data);
           if (data && data.c) {
             const price = parseFloat(data.c);
-            const decimals = binanceSymbol.includes('JPY') ? 2 : 
-                            binanceSymbol.includes('USDT') ? 2 : 4;
+            const decimals = binanceSymbol.includes('JPY') ? 2 : binanceSymbol.includes('USDT') ? 2 : 4;
             setCurrentPrice(price.toFixed(decimals));
           }
         } catch (error) {
           console.error('Error parsing Binance data:', error);
         }
       };
-      
       ws.onclose = () => {
         if (isMounted) {
           console.log(`🔌 Disconnected from ${binanceSymbol} price feed`);
@@ -122,17 +118,14 @@ export function CandlestickChart({
           }, 3000);
         }
       };
-      
-      ws.onerror = (error) => {
+      ws.onerror = error => {
         if (isMounted) {
           console.error('Binance WebSocket error:', error);
           setIsConnected(false);
         }
       };
     };
-    
     connectToBinance();
-    
     return () => {
       isMounted = false;
       if (ws) {
@@ -140,15 +133,11 @@ export function CandlestickChart({
       }
     };
   }, [binanceSymbol]);
-
   const handleTimeframeChange = (newTimeframe: string) => {
     setTimeframe(newTimeframe);
   };
-
-  return (
-    <Card className="gradient-card border-border-light shadow-medium">
-      {showHeader && (
-        <CardHeader className="pb-4">
+  return <Card className="gradient-card border-border-light shadow-medium">
+      {showHeader && <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -160,10 +149,7 @@ export function CandlestickChart({
                   <Badge variant="outline" className="border-primary/20 text-primary">
                     {asset}
                   </Badge>
-                  <Badge 
-                    variant="outline" 
-                    className={`border-${isConnected && hasRealTimeData ? 'success' : 'warning'}/20 text-${isConnected && hasRealTimeData ? 'success' : 'warning'}`}
-                  >
+                  <Badge variant="outline" className={`border-${isConnected && hasRealTimeData ? 'success' : 'warning'}/20 text-${isConnected && hasRealTimeData ? 'success' : 'warning'}`}>
                     {isConnected && hasRealTimeData ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
                     {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
                   </Badge>
@@ -172,43 +158,29 @@ export function CandlestickChart({
           </CardTitle>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className="text-2xl font-mono font-bold text-foreground">
-                ${parseFloat(currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </div>
+              
             </div>
             <Select value={timeframe} onValueChange={handleTimeframeChange}>
               <SelectTrigger className="w-32 bg-background/50 border-border-light">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {timeframes.map((tf) => (
-                  <SelectItem key={tf.value} value={tf.value}>
+                {timeframes.map(tf => <SelectItem key={tf.value} value={tf.value}>
                     {tf.label}
-                  </SelectItem>
-                ))}
+                  </SelectItem>)}
               </SelectContent>
             </Select>
           </div>
         </div>
-      </CardHeader>
-      )}
+      </CardHeader>}
       <CardContent className="pb-4 sm:pb-6">
         <div className="relative overflow-hidden isolate z-0">
-          <TradingViewWidget 
-            selectedSymbol={binanceSymbol}
-            timeframe={timeframe}
-            onPriceUpdate={(price) => setCurrentPrice(price)}
-            className="border-0 shadow-none"
-          />
+          <TradingViewWidget selectedSymbol={binanceSymbol} timeframe={timeframe} onPriceUpdate={price => setCurrentPrice(price)} className="border-0 shadow-none" />
           
           {/* Mobile-responsive Trade Levels Overlay */}
-          {tradeLevels && (
-            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-lg sm:rounded-xl p-2 sm:p-3 shadow-xl w-[calc(100%-1rem)] max-w-[280px] sm:min-w-[240px] sm:max-w-[300px] sm:w-auto z-10">
+          {tradeLevels && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-lg sm:rounded-xl p-2 sm:p-3 shadow-xl w-[calc(100%-1rem)] max-w-[280px] sm:min-w-[240px] sm:max-w-[300px] sm:w-auto z-10">
               <div className="flex items-center gap-2 mb-3">
-                <div className={cn(
-                  "w-3 h-3 rounded-full animate-pulse",
-                  tradeLevels.direction === "BUY" ? "bg-success" : "bg-destructive"
-                )}></div>
+                <div className={cn("w-3 h-3 rounded-full animate-pulse", tradeLevels.direction === "BUY" ? "bg-success" : "bg-destructive")}></div>
                 <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                   {tradeLevels.direction} Setup
                 </span>
@@ -245,8 +217,7 @@ export function CandlestickChart({
                   </span>
                 </div>
 
-                {tradeLevels.technicalAnalysis && (
-                  <div className="pt-2 border-t border-border/30">
+                {tradeLevels.technicalAnalysis && <div className="pt-2 border-t border-border/30">
                     <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">
                       Technical Confirmation
                     </div>
@@ -254,17 +225,11 @@ export function CandlestickChart({
                       {tradeLevels.technicalAnalysis.summary.substring(0, 80)}...
                     </p>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {tradeLevels.technicalAnalysis.indicators.slice(0, 2).map((indicator, index) => (
-                        <span 
-                          key={index} 
-                          className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-medium"
-                        >
+                      {tradeLevels.technicalAnalysis.indicators.slice(0, 2).map((indicator, index) => <span key={index} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-medium">
                           {indicator}
-                        </span>
-                      ))}
+                        </span>)}
                     </div>
-                  </div>
-                )}
+                  </div>}
 
                 <div className="pt-2 border-t border-border/30">
                   <div className="text-[10px] text-muted-foreground mb-1">
@@ -273,19 +238,12 @@ export function CandlestickChart({
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
         </div>
         
-        {showHeader && (
-          <div className="mt-3 text-xs text-muted-foreground text-center">
-            {hasRealTimeData 
-              ? `Real-time data from TradingView`
-              : `Historical data • ${asset} chart`
-            }
-          </div>
-        )}
+        {showHeader && <div className="mt-3 text-xs text-muted-foreground text-center">
+            {hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`}
+          </div>}
       </CardContent>
-    </Card>
-  );
+    </Card>;
 }
