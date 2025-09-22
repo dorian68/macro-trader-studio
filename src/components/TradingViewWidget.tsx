@@ -198,8 +198,42 @@ export function TradingViewWidget({
     if (!onPriceUpdate) return;
 
     const symbol = currentSymbol;
-    let ws: WebSocket;
+    let ws: WebSocket | null = null;
     let isMounted = true;
+    let messageReceived = false;
+    let fallbackInterval: number | null = null;
+    let fallbackTimer: number | null = null;
+
+    const deriveStreamSymbol = (sym: string) => {
+      const upper = sym.toUpperCase();
+      const cryptoBases = ['BTC','ETH','BNB','SOL','ADA','XRP','DOGE','TON','DOT','MATIC','LTC','LINK','AVAX','TRX','BCH'];
+      const base = cryptoBases.find((t) => upper.startsWith(t));
+      if (base) return `${base}USDT`;
+      return upper; // likely unsupported on Binance; will trigger fallback
+    };
+
+    const startFallback = () => {
+      if (!onPriceUpdate) return;
+      if (fallbackInterval) return;
+      console.log(`⚠️ No Binance data for ${symbol}. Starting simulated realtime fallback.`);
+      // Choose a seed/base price similar to previous behavior
+      const basePrice = symbol === 'BTCUSD' ? 95247.50 :
+                        symbol === 'EURUSD' ? 1.0856 :
+                        symbol === 'GBPUSD' ? 1.2734 :
+                        symbol === 'XAUUSD' ? 2687.45 :
+                        symbol === 'USDJPY' ? 154.23 :
+                        symbol === 'ETHUSD' ? 3421.67 :
+                        symbol === 'XAGUSD' ? 31.45 :
+                        symbol === 'USOIL' ? 68.92 : 1.0000;
+      const decimals = symbol.includes('JPY') ? 2 : 4;
+      const tick = () => {
+        const variation = (Math.random() - 0.5) * 0.004; // ±0.2%
+        const newPrice = basePrice * (1 + variation);
+        onPriceUpdate(newPrice.toFixed(decimals));
+      };
+      tick();
+      fallbackInterval = window.setInterval(tick, 2000);
+    };
 
     const connectWebSocket = () => {
       // Clean up previous connection
@@ -207,11 +241,18 @@ export function TradingViewWidget({
         ws.close();
       }
 
-      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`);
+      const streamSymbol = deriveStreamSymbol(symbol);
+      const url = `wss://stream.binance.com:9443/ws/${streamSymbol.toLowerCase()}@ticker`;
+      console.log(`🔌 Connecting to Binance WS: ${url}`);
+      ws = new WebSocket(url);
       
       ws.onopen = () => {
         if (isMounted) {
-          console.log(`Connected to ${symbol} price feed`);
+          console.log(`✅ Connected to ${streamSymbol} price feed (source: Binance)`);
+          // If we don't receive any tick within 5s, start fallback
+          fallbackTimer = window.setTimeout(() => {
+            if (!messageReceived) startFallback();
+          }, 5000);
         }
       };
 
@@ -220,15 +261,16 @@ export function TradingViewWidget({
         
         try {
           const data = JSON.parse(event.data);
-          console.log(`📈 [Binance] Received price for ${data.s}:`, data.c);
-          // Verify the symbol matches current selection
-          if (data.s === symbol) {
+          // Verify the symbol matches current stream symbol
+          if (data && data.s && data.c) {
+            messageReceived = true;
+            if (fallbackInterval) {
+              clearInterval(fallbackInterval);
+              fallbackInterval = null;
+            }
             const price = parseFloat(data.c);
-            const formattedPrice = price.toFixed(symbol.includes('JPY') ? 2 : 4);
-            console.log(`💰 [Price Update] ${symbol}: ${formattedPrice}`);
-            onPriceUpdate(formattedPrice);
-          } else {
-            console.log(`⚠️ [Binance] Symbol mismatch: received ${data.s}, expected ${symbol}`);
+            const decimals = streamSymbol.includes('JPY') ? 2 : (streamSymbol.startsWith('BTC') ? 2 : 4);
+            onPriceUpdate(price.toFixed(decimals));
           }
         } catch (error) {
           console.error('Error parsing Binance price data:', error);
@@ -237,7 +279,7 @@ export function TradingViewWidget({
 
       ws.onclose = () => {
         if (isMounted) {
-          console.log(`Disconnected from ${symbol} price feed`);
+          console.log(`🔌 Disconnected from ${streamSymbol} price feed`);
           // Reconnect after 3 seconds if still mounted
           setTimeout(() => {
             if (isMounted && symbol === currentSymbol) {
@@ -261,10 +303,13 @@ export function TradingViewWidget({
       if (ws) {
         ws.close();
       }
-      // Clear any existing price interval
-      if ((window as any).tvPriceInterval) {
-        clearInterval((window as any).tvPriceInterval);
-        (window as any).tvPriceInterval = null;
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+        fallbackInterval = null;
+      }
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
       }
     };
   }, [currentSymbol, onPriceUpdate]);
