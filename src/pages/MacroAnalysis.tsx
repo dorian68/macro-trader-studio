@@ -716,19 +716,6 @@ export default function MacroAnalysis() {
                 Market Analysis - {selectedAsset.display}
               </div>
               <div className="flex items-center gap-3">
-                {/* Timeframe Selector */}
-                <Select value={timeframe} onValueChange={setTimeframe}>
-                  <SelectTrigger className="w-32 bg-background/50 border-border-light">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeframes.map((tf) => (
-                      <SelectItem key={tf.value} value={tf.value}>
-                        {tf.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 {/* Asset Selector */}
                 <Select value={selectedAsset.symbol} onValueChange={value => {
                 const asset = assets.find(a => a.symbol === value);
@@ -746,6 +733,19 @@ export default function MacroAnalysis() {
                     {assets.filter(a => a.market === "CRYPTO").map(asset => <SelectItem key={asset.symbol} value={asset.symbol}>
                         {asset.display}
                       </SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {/* Timeframe Selector */}
+                <Select value={timeframe} onValueChange={setTimeframe}>
+                  <SelectTrigger className="w-32 bg-background/50 border-border-light">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeframes.map((tf) => (
+                      <SelectItem key={tf.value} value={tf.value}>
+                        {tf.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
