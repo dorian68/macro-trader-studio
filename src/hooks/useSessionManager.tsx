@@ -53,33 +53,95 @@ export function useSessionManager() {
             current_session_id: sessionId
           });
 
-          // Then upsert the current session
-          await supabase.from('user_sessions').upsert({
-            user_id: user.id,
-            session_id: sessionId,
+          // Then update the current session; if none updated, insert
+          const updatePayload = {
             device_info: getDeviceInfo(),
             is_active: true,
-            last_seen: new Date().toISOString()
-          }, {
-            onConflict: 'user_id,session_id'
-          });
+            last_seen: new Date().toISOString(),
+          };
+          const { data: updatedRows, error: updateError } = await supabase
+            .from('user_sessions')
+            .update(updatePayload)
+            .eq('user_id', user.id)
+            .eq('session_id', sessionId)
+            .select('user_id'); // returns rows if any updated
+
+          if (updateError) {
+            console.error('Session update error:', updateError);
+          }
+
+          if (!updatedRows || updatedRows.length === 0) {
+            const { error: insertError } = await supabase
+              .from('user_sessions')
+              .insert({
+                user_id: user.id,
+                session_id: sessionId,
+                device_info: updatePayload.device_info,
+                is_active: true,
+                last_seen: updatePayload.last_seen,
+              });
+            if (insertError) {
+              console.error('Session insert error:', insertError);
+            }
+          }
 
           // Set up periodic session validation
           const validateSession = async () => {
-            const { data } = await supabase
-              .from('user_sessions')
-              .select('is_active')
-              .eq('user_id', user.id)
-              .eq('session_id', sessionId)
-              .single();
+            try {
+              const { data, error } = await supabase
+                .from('user_sessions')
+                .select('is_active')
+                .eq('user_id', user.id)
+                .eq('session_id', sessionId)
+                .maybeSingle();
 
-            if (!data?.is_active) {
-              toast({
-                title: "Session Expired",
-                description: "Your account has been signed in from another device.",
-                variant: "destructive",
-              });
-              await signOut();
+              if (error) {
+                console.error('Session validate error:', error);
+                return;
+              }
+
+              if (!data) {
+                // If missing, recreate/activate without disconnecting the user
+                const updatePayload = {
+                  device_info: getDeviceInfo(),
+                  is_active: true,
+                  last_seen: new Date().toISOString(),
+                };
+
+                const { data: updatedRows } = await supabase
+                  .from('user_sessions')
+                  .update(updatePayload)
+                  .eq('user_id', user.id)
+                  .eq('session_id', sessionId)
+                  .select('user_id');
+
+                if (!updatedRows || updatedRows.length === 0) {
+                  const { error: insertError } = await supabase
+                    .from('user_sessions')
+                    .insert({
+                      user_id: user.id,
+                      session_id: sessionId,
+                      device_info: updatePayload.device_info,
+                      is_active: true,
+                      last_seen: updatePayload.last_seen,
+                    });
+                  if (insertError) {
+                    console.error('Session re-create error:', insertError);
+                  }
+                }
+                return;
+              }
+
+              if (data.is_active === false) {
+                toast({
+                  title: "Session Expired",
+                  description: "Your account has been signed in from another device.",
+                  variant: "destructive",
+                });
+                await signOut();
+              }
+            } catch (e) {
+              console.error('Session validate exception:', e);
             }
           };
 
