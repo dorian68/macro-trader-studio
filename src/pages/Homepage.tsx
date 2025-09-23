@@ -9,10 +9,10 @@ export default function Homepage() {
       <PublicNavbar />
 
       {/* Hero Section */}
-      <section className="relative py-24 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/20">
+      <section className="relative py-24 px-4 text-center bg-white">
         <div className="container mx-auto max-w-6xl">
           <div className="mb-8">
-            <img src="/lovable-uploads/Full_logi_white_BG_FINAL.png" alt="alphaLens.ai" className="h-96 mx-auto mb-6" />
+            <img src="/lovable-uploads/Full_logi_white_BG_FINAL.png" alt="alphaLens.ai" className="h-80 mx-auto mb-6" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
             Intelligent Financial Research
