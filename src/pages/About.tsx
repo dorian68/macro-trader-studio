@@ -10,9 +10,7 @@ export default function About() {
       <div className="max-w-4xl mx-auto space-y-6 px-4 py-6">
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit">
-            <img src="/lovable-uploads/Full_logi_white_BG_FINAL-2.png" alt="alphaLens.ai" className="h-12 w-auto" />
-          </div>
+          <img src="/lovable-uploads/Full_logi_white_BG_FINAL-2.png" alt="alphaLens.ai" className="h-[4.2rem] w-auto mx-auto" />
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
             About
           </h1>
