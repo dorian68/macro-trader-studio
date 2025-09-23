@@ -11,7 +11,7 @@ export default function About() {
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit">
-            <Building2 className="h-8 w-8 text-primary-foreground" />
+            <img src="/lovable-uploads/Full_logi_white_BG_FINAL-2.png" alt="alphaLens.ai" className="h-12 w-auto" />
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
             About
