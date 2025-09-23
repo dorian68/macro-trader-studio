@@ -53,9 +53,7 @@ export default function About() {
           {/* ABCG Research Card */}
           <Card className="gradient-card border-primary/20 shadow-glow-primary">
             <CardHeader className="text-center pb-4">
-              <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
-                <Building2 className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <img src="/lovable-uploads/abcg-research-logo.png" alt="ABCG Research" className="h-10 w-auto mx-auto mb-4" />
               <CardTitle className="text-xl text-foreground">ABCG Research</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
