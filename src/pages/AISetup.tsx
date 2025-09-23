@@ -237,18 +237,39 @@ export default function AISetup() {
       "SOL/USD": "SOLUSD",
       "DOT/USD": "DOTUSD",
       "MATIC/USD": "MATICUSD",
+      "AVAX/USD": "AVAXUSD",
+      "LINK/USD": "LINKUSD",
+      "UNI/USD": "UNIUSD",
+      "ATOM/USD": "ATOMUSD",
+      "LTC/USD": "LTCUSD",
+      "BCH/USD": "BCHUSD",
+      "XRP/USD": "XRPUSD",
+      "XLM/USD": "XLMUSD",
+      "AXS/USD": "AXSUSD",
+      "SAND/USD": "SANDUSD",
+      "MANA/USD": "MANAUSD",
+      "FTM/USD": "FTMUSD",
+      "ALGO/USD": "ALGOUSD",
+      "VET/USD": "VETUSD",
+      "ICP/USD": "ICPUSD",
+      "FIL/USD": "FILUSD",
+      "THETA/USD": "THETAUSD",
+      "TRX/USD": "TRXUSD",
+      "EOS/USD": "EOSUSD",
+      "XTZ/USD": "XTZUSD",
+      "NEAR/USD": "NEARUSD",
+      "FLOW/USD": "FLOWUSD",
+      "EGLD/USD": "EGLDUSD",
+      "APE/USD": "APEUSD",
+      "CRV/USD": "CRVUSD",
+      "LDO/USD": "LDOUSD",
+      "ARB/USD": "ARBUSD",
+      "OP/USD": "OPUSD",
+      "RNDR/USD": "RNDRUSD",
       "GOLD": "XAUUSD",
       "SILVER": "XAGUSD",
       "WTI": "USOIL",
-      "BRENT": "UKOIL",
-      "AAPL": "AAPL",
-      "TSLA": "TSLA",
-      "MSFT": "MSFT",
-      "GOOGL": "GOOGL",
-      "AMZN": "AMZN",
-      "NVDA": "NVDA",
-      "META": "META",
-      "NFLX": "NFLX"
+      "BRENT": "UKOIL"
     };
     return symbolMap[instrument] || "EURUSD";
   };
@@ -598,6 +619,7 @@ export default function AISetup() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      {/* Forex Currencies */}
                       <SelectItem value="EUR/USD">EUR/USD</SelectItem>
                       <SelectItem value="GBP/USD">GBP/USD</SelectItem>
                       <SelectItem value="USD/JPY">USD/JPY</SelectItem>
@@ -608,25 +630,50 @@ export default function AISetup() {
                       <SelectItem value="EUR/GBP">EUR/GBP</SelectItem>
                       <SelectItem value="EUR/JPY">EUR/JPY</SelectItem>
                       <SelectItem value="GBP/JPY">GBP/JPY</SelectItem>
-                      <SelectItem value="BTC/USD">Bitcoin</SelectItem>
-                      <SelectItem value="ETH/USD">Ethereum</SelectItem>
-                      <SelectItem value="BNB/USD">Binance Coin</SelectItem>
-                      <SelectItem value="ADA/USD">Cardano</SelectItem>
-                      <SelectItem value="SOL/USD">Solana</SelectItem>
-                      <SelectItem value="DOT/USD">Polkadot</SelectItem>
-                      <SelectItem value="MATIC/USD">Polygon</SelectItem>
+                      
+                      {/* Crypto Currencies */}
+                      <SelectItem value="BTC/USD">Bitcoin (BTC)</SelectItem>
+                      <SelectItem value="ETH/USD">Ethereum (ETH)</SelectItem>
+                      <SelectItem value="BNB/USD">Binance Coin (BNB)</SelectItem>
+                      <SelectItem value="ADA/USD">Cardano (ADA)</SelectItem>
+                      <SelectItem value="SOL/USD">Solana (SOL)</SelectItem>
+                      <SelectItem value="DOT/USD">Polkadot (DOT)</SelectItem>
+                      <SelectItem value="MATIC/USD">Polygon (MATIC)</SelectItem>
+                      <SelectItem value="AVAX/USD">Avalanche (AVAX)</SelectItem>
+                      <SelectItem value="LINK/USD">Chainlink (LINK)</SelectItem>
+                      <SelectItem value="UNI/USD">Uniswap (UNI)</SelectItem>
+                      <SelectItem value="ATOM/USD">Cosmos (ATOM)</SelectItem>
+                      <SelectItem value="LTC/USD">Litecoin (LTC)</SelectItem>
+                      <SelectItem value="BCH/USD">Bitcoin Cash (BCH)</SelectItem>
+                      <SelectItem value="XRP/USD">Ripple (XRP)</SelectItem>
+                      <SelectItem value="XLM/USD">Stellar (XLM)</SelectItem>
+                      <SelectItem value="AXS/USD">Axie Infinity (AXS)</SelectItem>
+                      <SelectItem value="SAND/USD">The Sandbox (SAND)</SelectItem>
+                      <SelectItem value="MANA/USD">Decentraland (MANA)</SelectItem>
+                      <SelectItem value="FTM/USD">Fantom (FTM)</SelectItem>
+                      <SelectItem value="ALGO/USD">Algorand (ALGO)</SelectItem>
+                      <SelectItem value="VET/USD">VeChain (VET)</SelectItem>
+                      <SelectItem value="ICP/USD">Internet Computer (ICP)</SelectItem>
+                      <SelectItem value="FIL/USD">Filecoin (FIL)</SelectItem>
+                      <SelectItem value="THETA/USD">Theta Network (THETA)</SelectItem>
+                      <SelectItem value="TRX/USD">TRON (TRX)</SelectItem>
+                      <SelectItem value="EOS/USD">EOS (EOS)</SelectItem>
+                      <SelectItem value="XTZ/USD">Tezos (XTZ)</SelectItem>
+                      <SelectItem value="NEAR/USD">NEAR Protocol (NEAR)</SelectItem>
+                      <SelectItem value="FLOW/USD">Flow (FLOW)</SelectItem>
+                      <SelectItem value="EGLD/USD">MultiversX (EGLD)</SelectItem>
+                      <SelectItem value="APE/USD">ApeCoin (APE)</SelectItem>
+                      <SelectItem value="CRV/USD">Curve DAO (CRV)</SelectItem>
+                      <SelectItem value="LDO/USD">Lido DAO (LDO)</SelectItem>
+                      <SelectItem value="ARB/USD">Arbitrum (ARB)</SelectItem>
+                      <SelectItem value="OP/USD">Optimism (OP)</SelectItem>
+                      <SelectItem value="RNDR/USD">Render Token (RNDR)</SelectItem>
+                      
+                      {/* Commodities */}
                       <SelectItem value="GOLD">Gold</SelectItem>
                       <SelectItem value="SILVER">Silver</SelectItem>
                       <SelectItem value="WTI">Oil (WTI)</SelectItem>
                       <SelectItem value="BRENT">Oil (Brent)</SelectItem>
-                      <SelectItem value="AAPL">Apple</SelectItem>
-                      <SelectItem value="TSLA">Tesla</SelectItem>
-                      <SelectItem value="MSFT">Microsoft</SelectItem>
-                      <SelectItem value="GOOGL">Google</SelectItem>
-                      <SelectItem value="AMZN">Amazon</SelectItem>
-                      <SelectItem value="NVDA">NVIDIA</SelectItem>
-                      <SelectItem value="META">Meta</SelectItem>
-                      <SelectItem value="NFLX">Netflix</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
