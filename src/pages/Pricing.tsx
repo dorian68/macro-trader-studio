@@ -3,7 +3,7 @@ import { Check } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import Layout from '@/components/Layout';
+import PublicNavbar from '@/components/PublicNavbar';
 
 const Pricing = () => {
   useEffect(() => {
@@ -67,7 +67,8 @@ const Pricing = () => {
   ];
 
   return (
-    <Layout>
+    <>
+      <PublicNavbar />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-16">
           {/* Header */}
@@ -232,7 +233,7 @@ const Pricing = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 
