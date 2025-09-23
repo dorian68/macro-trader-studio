@@ -189,7 +189,7 @@ export default function Features() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" alt="alphaLens.ai" className="h-6" />
+                <img src="/lovable-uploads/Only_text_white_BG_FINAL.png" alt="alphaLens.ai" className="h-[1.95rem]" />
               </div>
               <p className="text-muted-foreground text-sm">
                 Professional financial research and trading intelligence powered by artificial intelligence.
@@ -199,7 +199,7 @@ export default function Features() {
               <h4 className="font-semibold mb-4 text-foreground">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><button onClick={() => navigate("/features")} className="hover:text-foreground transition-colors">Features</button></li>
-                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Pricing</button></li>
+                <li><button onClick={() => navigate("/pricing")} className="hover:text-foreground transition-colors">Pricing</button></li>
                 <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">API</button></li>
               </ul>
             </div>
@@ -221,7 +221,7 @@ export default function Features() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-            <p>© 2025 Alphalens. All rights reserved.</p>
+            <p>© 2025 alphaLens.ai. All rights reserved.</p>
           </div>
         </div>
       </footer>

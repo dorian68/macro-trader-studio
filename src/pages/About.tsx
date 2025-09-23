@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Building2, TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import PublicNavbar from "@/components/PublicNavbar";
 
 export default function About() {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-background">
       <PublicNavbar />
@@ -103,6 +106,49 @@ export default function About() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-background border-t border-border py-12 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <img src="/lovable-uploads/Only_text_white_BG_FINAL.png" alt="alphaLens.ai" className="h-[1.95rem]" />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Professional financial research and trading intelligence powered by artificial intelligence.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-foreground">Product</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={() => navigate("/features")} className="hover:text-foreground transition-colors">Features</button></li>
+                <li><button onClick={() => navigate("/pricing")} className="hover:text-foreground transition-colors">Pricing</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">API</button></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-foreground">Company</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">About</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Contact</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Privacy</button></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-foreground">Support</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Documentation</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Help Center</button></li>
+                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Terms of Service</button></li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm">
+            <p>© 2025 alphaLens.ai. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
