@@ -24,7 +24,7 @@ export default function About() {
           {/* OptiQuant IA Card */}
           <Card className="gradient-card border-primary/20 shadow-glow-primary">
             <CardHeader className="text-center pb-4">
-              <img src="/lovable-uploads/optiquant-logo.png" alt="OptiQuant IA" className="h-12 w-auto mx-auto mb-4" />
+              <img src="/lovable-uploads/optiquant-logo.png" alt="OptiQuant IA" className="h-14 w-auto mx-auto mb-4" />
               <CardTitle className="text-xl text-foreground">OptiQuant IA</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
