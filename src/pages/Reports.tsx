@@ -527,13 +527,25 @@ export default function Reports() {
 
                 <div className="space-y-2">
                   <Label htmlFor="customNotes">Custom Notes</Label>
-                  <Textarea
-                    id="customNotes"
-                    value={reportConfig.customNotes}
-                    onChange={(e) => setReportConfig({ ...reportConfig, customNotes: e.target.value })}
-                    placeholder="Add specific notes or instructions for the report..."
-                    rows={3}
-                  />
+                  <div className="relative">
+                    <Textarea
+                      id="customNotes"
+                      value={reportConfig.customNotes}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length <= 500) {
+                          setReportConfig({ ...reportConfig, customNotes: value });
+                        }
+                      }}
+                      placeholder="Add specific notes or instructions for the report..."
+                      rows={3}
+                      className="pb-8"
+                      maxLength={500}
+                    />
+                    <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
+                      {reportConfig.customNotes.length}/500
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -597,14 +609,25 @@ export default function Reports() {
                               <Label htmlFor={`notes-${section.id}`} className="text-sm font-medium">
                                 User Notes
                               </Label>
-                              <Textarea
-                                id={`notes-${section.id}`}
-                                value={section.userNotes || ""}
-                                onChange={(e) => updateSectionNotes(section.id, e.target.value)}
-                                placeholder="Add comments, focus areas, or questions for this section..."
-                                rows={2}
-                                className="text-sm"
-                              />
+                              <div className="relative">
+                                <Textarea
+                                  id={`notes-${section.id}`}
+                                  value={section.userNotes || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value.length <= 500) {
+                                      updateSectionNotes(section.id, value);
+                                    }
+                                  }}
+                                  placeholder="Add comments, focus areas, or questions for this section..."
+                                  rows={2}
+                                  className="text-sm pb-8"
+                                  maxLength={500}
+                                />
+                                <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
+                                  {(section.userNotes || "").length}/500
+                                </div>
+                              </div>
                             </div>
                           )}
                         </CardContent>
