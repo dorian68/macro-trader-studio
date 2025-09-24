@@ -80,7 +80,7 @@ const Pricing = () => {
                       </li>
                       <li className="flex items-start gap-3">
                         <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>$3 per active user (billed at end of month)</span>
+                        <span>$3 per user (billed at end of month)</span>
                       </li>
                     </ul>
                   </div>
