@@ -76,7 +76,7 @@ const Pricing = () => {
                     <ul className="space-y-3">
                       <li className="flex items-start gap-3">
                         <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>Flat $1,000 per month (billed at start of month)</span>
+                        <span>Flat $2,500 per month (billed at start of month)</span>
                       </li>
                       <li className="flex items-start gap-3">
                         <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
