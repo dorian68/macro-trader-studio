@@ -63,6 +63,7 @@ export default function Admin() {
   const [costStats, setCostStats] = useState<UserCostStats[]>([]);
   const [loadingCosts, setLoadingCosts] = useState(false);
   const [dailyCostStats, setDailyCostStats] = useState<DailyCostStats[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(30);
   const { isSuperUser } = useProfile();
   const { 
     fetchUsers, 
@@ -167,10 +168,10 @@ export default function Admin() {
 
       setCostStats(Array.from(userStatsMap.values()));
 
-      // Calculer les statistiques par jour (30 derniers jours)
+      // Calculer les statistiques par jour pour la période sélectionnée
       const dailyStatsMap = new Map<string, DailyCostStats>();
-      const last30Days = Array.from({ length: 30 }, (_, i) => {
-        const date = subDays(new Date(), 29 - i); // Changé pour avoir l'ordre croissant
+      const selectedDays = Array.from({ length: selectedPeriod }, (_, i) => {
+        const date = subDays(new Date(), selectedPeriod - 1 - i); // Ordre croissant
         const dateStr = format(date, 'yyyy-MM-dd');
         dailyStatsMap.set(dateStr, {
           date: dateStr,
@@ -178,7 +179,7 @@ export default function Admin() {
           requests: 0
         });
         return dateStr;
-      }); // Supprimé le .reverse() pour garder l'ordre croissant
+      });
 
       jobsData?.forEach(job => {
         const jobDate = format(parseISO(job.created_at), 'yyyy-MM-dd');
@@ -209,7 +210,7 @@ export default function Admin() {
     if (isSuperUser) {
       loadCostStats();
     }
-  }, [isSuperUser]);
+  }, [isSuperUser, selectedPeriod]);
 
   const stats = {
     total: users.length,
@@ -409,11 +410,25 @@ export default function Admin() {
 
               {/* Daily Cost Chart */}
               <div className="rounded-xl border mb-6">
-                <div className="p-4 border-b">
+                <div className="p-4 border-b flex items-center justify-between">
                   <h3 className="font-semibold flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
-                    Daily Costs (Last 30 Days)
+                    Daily Costs (Last {selectedPeriod} Days)
                   </h3>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground">Period:</label>
+                    <select 
+                      value={selectedPeriod} 
+                      onChange={(e) => setSelectedPeriod(Number(e.target.value))}
+                      className="px-3 py-1 text-sm border border-border rounded-md bg-background"
+                    >
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                      <option value={30}>30 days</option>
+                      <option value={60}>60 days</option>
+                      <option value={90}>90 days</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="p-4">
                   <div className="h-64">
