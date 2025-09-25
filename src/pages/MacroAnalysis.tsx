@@ -653,16 +653,28 @@ export default function MacroAnalysis() {
         console.log('📩 [Realtime] Payload received:', payload);
         const job = payload.new as any;
         if (job && job.status && job.id === responseJobId) {
-          console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
-          console.log("Hello Dodo, it is a BLAST");
-          // Realtime logic kept intact but temporarily ignored
-          // if (job.status === 'completed' && job.response_payload) {
-          //   console.log('📩 [Realtime] Processing completed response');
-          //   handleRealtimeResponse(job.response_payload, responseJobId);
-          // } else if (job.status === 'error') {
-          //   console.log('❌ [Realtime] Job failed:', job.error_message);
-          //   handleRealtimeError(job.error_message);
-          // }
+          console.log(`ℹ️ [Realtime] Event received - status: ${job.status}`);
+          
+          if (job.status === 'completed' && job.response_payload) {
+            console.log('📩 [Realtime] Processing completed response from websocket');
+            try {
+              // Parse JSON payload if it's a string
+              let parsedPayload = job.response_payload;
+              if (typeof job.response_payload === 'string') {
+                parsedPayload = JSON.parse(job.response_payload);
+              }
+              handleRealtimeResponse(parsedPayload, responseJobId);
+            } catch (parseError) {
+              console.error('❌ [Realtime] Error parsing response_payload:', parseError);
+              handleRealtimeError('Invalid response format received');
+            }
+          } else if (job.status === 'error') {
+            console.log('❌ [Realtime] Job failed:', job.error_message);
+            handleRealtimeError(job.error_message || 'Analysis failed');
+          } else if (job.status === 'completed' && !job.response_payload) {
+            console.log('⚠️ [Realtime] Job completed but no response_payload');
+            handleRealtimeError('No macro analysis available yet.');
+          }
         }
       }).subscribe();
       console.log('📡 [Realtime] Subscribed before POST');
