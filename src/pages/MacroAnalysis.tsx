@@ -58,10 +58,18 @@ interface AssetInfo {
 }
 export default function MacroAnalysis() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const { logInteraction } = useAIInteractionLogger();
-  const { createJob } = useRealtimeJobManager();
+  const {
+    toast
+  } = useToast();
+  const {
+    user
+  } = useAuth();
+  const {
+    logInteraction
+  } = useAIInteractionLogger();
+  const {
+    createJob
+  } = useRealtimeJobManager();
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -80,10 +88,10 @@ export default function MacroAnalysis() {
   // Handler functions for Realtime responses
   const handleRealtimeResponse = async (responsePayload: any, jobId: string) => {
     console.log('📩 [Realtime] Processing response payload:', responsePayload);
-    
+
     // Extract analysis content using the same logic as the dual response handler
     let analysisContent = '';
-    
+
     // Helper function to safely extract string content from nested objects
     const extractStringContent = (obj: any): string => {
       if (typeof obj === 'string') {
@@ -132,7 +140,6 @@ export default function MacroAnalysis() {
     else {
       analysisContent = extractStringContent(responsePayload);
     }
-    
     const realAnalysis: MacroAnalysis = {
       query: queryParams.query,
       timestamp: new Date(),
@@ -142,40 +149,37 @@ export default function MacroAnalysis() {
         type: "overview",
         expanded: true
       }],
-      sources: [
-        { title: "Analysis (Realtime)", url: "#", type: "research" }
-      ]
+      sources: [{
+        title: "Analysis (Realtime)",
+        url: "#",
+        type: "research"
+      }]
     };
-    
     setAnalyses(prev => [realAnalysis, ...prev]);
     setJobStatus("done");
     console.log('🔄 [Loader] Stopping loader - Realtime response received');
     setIsGenerating(false);
-    
     toast({
       title: "Analysis Completed",
       description: "Your macro analysis is ready"
     });
-    
+
     // Log interaction to Supabase history
     await logInteraction({
       featureName: 'market_commentary',
       userQuery: `${queryParams.query} for ${selectedAsset.display}`,
       aiResponse: realAnalysis
     });
-    
     setQueryParams(prev => ({
       ...prev,
       query: ""
     }));
   };
-
   const handleRealtimeError = (errorMessage: string) => {
     console.log('❌ [Realtime] Error received:', errorMessage);
     console.log('🔄 [Loader] Stopping loader - Realtime error received');
     setIsGenerating(false);
     setJobStatus("error");
-    
     toast({
       title: "Analysis Error",
       description: errorMessage || "Unable to complete analysis. Please retry.",
@@ -547,17 +551,34 @@ export default function MacroAnalysis() {
   }];
 
   // Timeframes compatible with TradingView
-  const timeframes = [
-    { value: '1m', label: '1 Minute' },
-    { value: '5m', label: '5 Minutes' },
-    { value: '15m', label: '15 Minutes' },
-    { value: '30m', label: '30 Minutes' },
-    { value: '1h', label: '1 Hour' },
-    { value: '4h', label: '4 Hours' },
-    { value: 'D', label: '1 Day' },
-    { value: 'W', label: '1 Week' },
-    { value: 'M', label: '1 Month' },
-  ];
+  const timeframes = [{
+    value: '1m',
+    label: '1 Minute'
+  }, {
+    value: '5m',
+    label: '5 Minutes'
+  }, {
+    value: '15m',
+    label: '15 Minutes'
+  }, {
+    value: '30m',
+    label: '30 Minutes'
+  }, {
+    value: '1h',
+    label: '1 Hour'
+  }, {
+    value: '4h',
+    label: '4 Hours'
+  }, {
+    value: 'D',
+    label: '1 Day'
+  }, {
+    value: 'W',
+    label: '1 Week'
+  }, {
+    value: 'M',
+    label: '1 Month'
+  }];
 
   // Harmonized parameters with MacroCommentaryBubble
   const [queryParams, setQueryParams] = useState({
@@ -617,42 +638,35 @@ export default function MacroAnalysis() {
     console.log('🔄 [Loader] Starting analysis generation');
     setIsGenerating(true);
     setJobStatus("running");
-    
     try {
       // Generate job ID first
       const responseJobId = Date.now().toString();
-      
+
       // 1. CRITICAL: Subscribe to Realtime BEFORE sending POST request
       console.log('📡 [Realtime] Subscribing to jobs updates before POST');
-      
-      const realtimeChannel = supabase
-        .channel(`macro-analysis-${responseJobId}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'jobs',
-          filter: `user_id=eq.${user?.id}`
-         }, (payload) => {
-           console.log('📩 [Realtime] Payload received:', payload);
-           const job = payload.new as any;
-           
-           if (job && job.status && job.id === responseJobId) {
-             console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
-             console.log("Hello Dodo, it is a BLAST");
-             // Realtime logic kept intact but temporarily ignored
-             // if (job.status === 'completed' && job.response_payload) {
-             //   console.log('📩 [Realtime] Processing completed response');
-             //   handleRealtimeResponse(job.response_payload, responseJobId);
-             // } else if (job.status === 'error') {
-             //   console.log('❌ [Realtime] Job failed:', job.error_message);
-             //   handleRealtimeError(job.error_message);
-             // }
-           }
-         })
-        .subscribe();
-      
+      const realtimeChannel = supabase.channel(`macro-analysis-${responseJobId}`).on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'jobs',
+        filter: `user_id=eq.${user?.id}`
+      }, payload => {
+        console.log('📩 [Realtime] Payload received:', payload);
+        const job = payload.new as any;
+        if (job && job.status && job.id === responseJobId) {
+          console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
+          console.log("Hello Dodo, it is a BLAST");
+          // Realtime logic kept intact but temporarily ignored
+          // if (job.status === 'completed' && job.response_payload) {
+          //   console.log('📩 [Realtime] Processing completed response');
+          //   handleRealtimeResponse(job.response_payload, responseJobId);
+          // } else if (job.status === 'error') {
+          //   console.log('❌ [Realtime] Job failed:', job.error_message);
+          //   handleRealtimeError(job.error_message);
+          // }
+        }
+      }).subscribe();
       console.log('📡 [Realtime] Subscribed before POST');
-      
+
       // 2. Build payload
       const payload = {
         type: "RAG",
@@ -675,15 +689,16 @@ export default function MacroAnalysis() {
         period: queryParams.period,
         adresse: queryParams.adresse
       };
-      
       console.log('📊 [MacroAnalysis] Analysis request:', {
         url: 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
         payload: payload,
         timestamp: new Date().toISOString()
       });
-      
+
       // 3. Send POST request after subscription is active
-      const { response } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const {
+        response
+      } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
         ...payload,
         job_id: responseJobId
       }, {
@@ -692,34 +707,32 @@ export default function MacroAnalysis() {
         instrument: selectedAsset.symbol,
         feature: 'Macro Commentary'
       });
-      
+
       // 4. Handle HTTP response with proper error handling
       try {
         if (response.ok) {
           const responseText = await response.text();
-          
+
           // Validate JSON response
           if (!responseText || responseText.trim() === '') {
             throw new Error('Empty response from server');
           }
-          
           let responseData;
           try {
             responseData = JSON.parse(responseText);
           } catch (jsonError) {
             throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
           }
-          
+
           // Check for explicit error fields in the response
           if (responseData && typeof responseData === 'object' && responseData.error) {
             throw new Error(`Server error: ${responseData.error}`);
           }
-          
           console.log('📩 [HTTP] Response (active):', responseData);
-          
+
           // Process the HTTP response immediately
           await handleRealtimeResponse(responseData, responseJobId);
-          
+
           // Clean up the realtime channel since we got HTTP response
           supabase.removeChannel(realtimeChannel);
         } else {
@@ -727,22 +740,19 @@ export default function MacroAnalysis() {
         }
       } catch (httpError) {
         console.log(`❌ [HTTP] Request failed:`, httpError);
-        
+
         // Stop loading and show error to user
         setIsGenerating(false);
         setJobStatus("error");
-        
+
         // Clean up the realtime channel
         supabase.removeChannel(realtimeChannel);
-        
         const errorMessage = httpError instanceof Error ? httpError.message : 'Request failed - please try again';
-        
         toast({
-          title: "Analysis Error", 
+          title: "Analysis Error",
           description: errorMessage,
           variant: "destructive"
         });
-        
         return; // Exit early, don't continue with realtime fallback
       }
     } catch (error) {
@@ -804,22 +814,15 @@ export default function MacroAnalysis() {
             <div className="space-y-4">
               {/* Main search input */}
               <div className="relative">
-                <Textarea 
-                  value={queryParams.query} 
-                  onChange={e => {
-                    const value = e.target.value;
-                    if (value.length <= 500) {
-                      setQueryParams(prev => ({
-                        ...prev,
-                        query: value
-                      }));
-                    }
-                  }} 
-                  placeholder="Ask your macro question or describe the context to analyze..." 
-                  rows={3} 
-                  className="text-base resize-none pr-12 pb-8" 
-                  maxLength={500}
-                />
+                <Textarea value={queryParams.query} onChange={e => {
+                const value = e.target.value;
+                if (value.length <= 500) {
+                  setQueryParams(prev => ({
+                    ...prev,
+                    query: value
+                  }));
+                }
+              }} placeholder="Ask your macro question or describe the context to analyze..." rows={3} className="text-base resize-none pr-12 pb-8" maxLength={500} />
                 <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
                   {queryParams.query.length}/500
                 </div>
@@ -849,55 +852,7 @@ export default function MacroAnalysis() {
               </div>
 
               {/* Compact parameters row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                <Select value={queryParams.assetType} onValueChange={value => setQueryParams(prev => ({
-                ...prev,
-                assetType: value
-              }))}>
-                  <SelectTrigger className="text-xs sm:text-sm h-9 sm:h-10">
-                    <SelectValue placeholder="Asset Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="currency">Currency</SelectItem>
-                    <SelectItem value="commodity">Commodity</SelectItem>
-                    <SelectItem value="crypto">Crypto</SelectItem>
-                    <SelectItem value="equity">Equity</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={queryParams.analysisDepth} onValueChange={value => setQueryParams(prev => ({
-                ...prev,
-                analysisDepth: value
-              }))}>
-                  <SelectTrigger className="text-xs sm:text-sm h-9 sm:h-10">
-                    <SelectValue placeholder="Depth" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="summary">Summary</SelectItem>
-                    <SelectItem value="detailed">Detailed</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={queryParams.period} onValueChange={value => setQueryParams(prev => ({
-                ...prev,
-                period: value
-              }))}>
-                  <SelectTrigger className="text-xs sm:text-sm h-9 sm:h-10">
-                    <SelectValue placeholder="Period" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Input value={queryParams.adresse} onChange={e => setQueryParams(prev => ({
-                ...prev,
-                adresse: e.target.value
-              }))} placeholder="Dev address" className="text-sm" required />
-              </div>
+              
 
               {/* Status indicator */}
               {isGenerating && <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1069,11 +1024,9 @@ export default function MacroAnalysis() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {timeframes.map((tf) => (
-                      <SelectItem key={tf.value} value={tf.value}>
+                    {timeframes.map(tf => <SelectItem key={tf.value} value={tf.value}>
                         {tf.label}
-                      </SelectItem>
-                    ))}
+                      </SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1092,13 +1045,10 @@ export default function MacroAnalysis() {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="chart" className="p-4 pt-2">
-                <TradingViewWidget 
-                  selectedSymbol={selectedAsset.tradingViewSymbol} 
-                  timeframe={timeframe}
-                  onSymbolChange={symbol => {
-                  const asset = assets.find(a => a.symbol === symbol);
-                  if (asset) setSelectedAsset(asset);
-                }} />
+                <TradingViewWidget selectedSymbol={selectedAsset.tradingViewSymbol} timeframe={timeframe} onSymbolChange={symbol => {
+                const asset = assets.find(a => a.symbol === symbol);
+                if (asset) setSelectedAsset(asset);
+              }} />
               </TabsContent>
               <TabsContent value="technical" className="p-4 pt-2">
                 <TechnicalDashboard selectedAsset={selectedAsset} timeframe={timeframe} />
