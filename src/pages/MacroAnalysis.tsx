@@ -638,6 +638,7 @@ export default function MacroAnalysis() {
            
            if (job && job.status && job.id === responseJobId) {
              console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
+             console.log("Hello Dodo you are having a BLAST")
              // Realtime logic kept intact but temporarily ignored
              // if (job.status === 'completed' && job.response_payload) {
              //   console.log('📩 [Realtime] Processing completed response');
