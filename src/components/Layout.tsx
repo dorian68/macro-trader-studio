@@ -70,7 +70,7 @@ export default function Layout({ children, activeModule, onModuleChange, complet
                 <img 
                   src="/lovable-uploads/Only_text_white_BG_FINAL-2.png" 
                   alt="alphaLens.ai" 
-                  className="h-5 sm:h-6 w-auto"
+                  className="h-6 sm:h-8 w-auto"
                 />
                 <p className="text-xs text-muted-foreground hidden sm:block">AI Trading Intelligence</p>
               </div>
