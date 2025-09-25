@@ -21,9 +21,9 @@ import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-
-const { useState } = React;
-
+const {
+  useState
+} = React;
 async function safeFetchJson(url, options) {
   console.log('🌐 safeFetchJson→', url, options?.method || 'GET');
   let res;
@@ -56,15 +56,18 @@ async function safeFetchJson(url, options) {
     } else {
       const txt = await res.text();
       console.warn('⚠️ content-type not JSON, returning text:', ct);
-      return { _rawText: txt };
+      return {
+        _rawText: txt
+      };
     }
   } catch (e) {
     console.error('❌ body parse failed (JSON/text):', e);
     const txt = await res.text().catch(() => '[unreadable]');
-    return { _rawText: txt };
+    return {
+      _rawText: txt
+    };
   }
 }
-
 interface TradeSetup {
   entry: number;
   stopLoss: number;
@@ -74,7 +77,6 @@ interface TradeSetup {
   confidence: number;
   reasoning: string;
 }
-
 type N8nSetup = {
   horizon?: string;
   timeframe?: string;
@@ -94,7 +96,6 @@ type N8nSetup = {
     confidence?: number; // 0..1
   };
 };
-
 type N8nTradeResult = {
   instrument?: string;
   asOf?: string;
@@ -105,12 +106,10 @@ type N8nTradeResult = {
   setups?: N8nSetup[];
   disclaimer?: string;
 };
-
 function normalizeN8n(raw: any): N8nTradeResult | null {
   try {
     // Handle multiple response formats
     let maybeContent;
-    
     if (Array.isArray(raw) && raw[0]?.message?.content) {
       // Format: [{ message: { content: {...} } }]
       maybeContent = raw[0].message.content;
@@ -124,15 +123,13 @@ function normalizeN8n(raw: any): N8nTradeResult | null {
       // Direct format: {...}
       maybeContent = raw;
     }
-
     if (!maybeContent || typeof maybeContent !== 'object') return null;
-
     const r: N8nTradeResult = {
       instrument: maybeContent.instrument,
       asOf: maybeContent.asOf,
       market_commentary_anchor: maybeContent.market_commentary_anchor || {},
       setups: Array.isArray(maybeContent.setups) ? maybeContent.setups : [],
-      disclaimer: maybeContent.disclaimer || "Illustrative ideas, not investment advice.",
+      disclaimer: maybeContent.disclaimer || "Illustrative ideas, not investment advice."
     };
 
     // Security: clamp confidence 0..1
@@ -141,39 +138,28 @@ function normalizeN8n(raw: any): N8nTradeResult | null {
         s.strategyMeta.confidence = Math.max(0, Math.min(1, Number(s.strategyMeta.confidence)));
       }
     });
-
     return r;
   } catch {
     return null;
   }
 }
-
 function fmt(n?: number, dp = 4) {
   if (typeof n !== 'number' || isNaN(n)) return '—';
   return n.toFixed(dp);
 }
-
 function pct(x?: number) {
   if (typeof x !== 'number' || isNaN(x)) return '—';
   return Math.round(x * 100) + '%';
 }
-
-
 function buildQuestion(p: any) {
-  const lines = [
-    `Provide an institutional macro outlook and risks for ${p.instrument}, then a macro-grounded trade idea (entry/SL/TP).`,
-    `Prioritize central banks / Bloomberg / Reuters; ignore low-authority sources unless they synthesize institutional research.`,
-    `Focus on policy divergence, inflation, growth, labor, real yields, financial conditions.`,
-    `Use technicals only to refine entries after macro.`
-  ];
-  if (p?.timeframe)    lines.push(`User timeframe: ${p.timeframe}.`);
-  if (p?.riskLevel)    lines.push(`User risk: ${p.riskLevel}.`);
-  if (p?.strategy)     lines.push(`Strategy: ${p.strategy}.`);
+  const lines = [`Provide an institutional macro outlook and risks for ${p.instrument}, then a macro-grounded trade idea (entry/SL/TP).`, `Prioritize central banks / Bloomberg / Reuters; ignore low-authority sources unless they synthesize institutional research.`, `Focus on policy divergence, inflation, growth, labor, real yields, financial conditions.`, `Use technicals only to refine entries after macro.`];
+  if (p?.timeframe) lines.push(`User timeframe: ${p.timeframe}.`);
+  if (p?.riskLevel) lines.push(`User risk: ${p.riskLevel}.`);
+  if (p?.strategy) lines.push(`Strategy: ${p.strategy}.`);
   if (p?.positionSize) lines.push(`Position size: ${p.positionSize}.`);
-  if (p?.customNotes)  lines.push(`Note: ${p.customNotes}.`);
+  if (p?.customNotes) lines.push(`Note: ${p.customNotes}.`);
   return lines.join(' ');
 }
-
 function extractMacroInsight(macroResult: any) {
   try {
     if (Array.isArray(macroResult) && macroResult[0]?.message?.content) {
@@ -192,14 +178,21 @@ function extractMacroInsight(macroResult: any) {
     return "[macro insight unavailable]";
   }
 }
-
 export default function AISetup() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user
+  } = useAuth();
   const globalLoading = useGlobalLoading();
-  const { logInteraction } = useAIInteractionLogger();
-  const { createJob } = useRealtimeJobManager();
+  const {
+    logInteraction
+  } = useAIInteractionLogger();
+  const {
+    createJob
+  } = useRealtimeJobManager();
   const [step, setStep] = useState<"parameters" | "generated">("parameters");
   const [isGenerating, setIsGenerating] = useState(false);
   const [tradeSetup, setTradeSetup] = useState<TradeSetup | null>(null);
@@ -207,7 +200,6 @@ export default function AISetup() {
   const [rawN8nResponse, setRawN8nResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedSymbol, setSelectedSymbol] = useState("EURUSD");
-  
   const [parameters, setParameters] = useState({
     instrument: "EUR/USD",
     timeframe: "4h",
@@ -221,7 +213,7 @@ export default function AISetup() {
   const mapInstrumentToSymbol = (instrument: string): string => {
     const symbolMap: Record<string, string> = {
       "EUR/USD": "EURUSD",
-      "GBP/USD": "GBPUSD", 
+      "GBP/USD": "GBPUSD",
       "USD/JPY": "USDJPY",
       "USD/CHF": "USDCHF",
       "AUD/USD": "AUDUSD",
@@ -301,65 +293,47 @@ export default function AISetup() {
     const newSymbol = mapInstrumentToSymbol(parameters.instrument);
     setSelectedSymbol(newSymbol);
   }, [parameters.instrument]);
-
   const generateTradeSetup = async () => {
     setIsGenerating(true);
     setError(null);
     setN8nResult(null);
     console.log('🔄 [Loader] Starting AI trade setup generation');
-    
+
     // Create loading request
-    const requestId = await globalLoading.createRequest(
-      'ai_trade_setup',
-      parameters.instrument,
-      `Generate AI trade setup for ${parameters.instrument} with ${parameters.strategy} strategy`,
-      parameters
-    );
-    
+    const requestId = await globalLoading.createRequest('ai_trade_setup', parameters.instrument, `Generate AI trade setup for ${parameters.instrument} with ${parameters.strategy} strategy`, parameters);
+
     // Start processing immediately
     const progressInterval = globalLoading.startProcessing(requestId);
-    
     try {
       // Create Realtime jobs for both requests
-      const macroJobId = await createJob(
-        'macro_commentary',
-        parameters.instrument,
-        {
-          type: "RAG",
-          mode: "run",
-          instrument: parameters.instrument,
-          question: buildQuestion(parameters)
-        },
-        'Macro Commentary'
-      );
+      const macroJobId = await createJob('macro_commentary', parameters.instrument, {
+        type: "RAG",
+        mode: "run",
+        instrument: parameters.instrument,
+        question: buildQuestion(parameters)
+      }, 'Macro Commentary');
 
       // 1. CRITICAL: Subscribe to jobs table BEFORE sending POST request
       console.log('📡 [Realtime] Subscribing to jobs updates before POST');
-      
-      const realtimeChannel = supabase
-        .channel(`ai-setup-jobs-${macroJobId}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'jobs',
-          filter: `user_id=eq.${user?.id}`
-         }, (payload) => {
-           console.log('📩 [Realtime] Job update received:', payload);
-           const job = payload.new as any;
-           
-           if (job && job.status && job.id === macroJobId) {
-             console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
-             // Realtime logic kept intact but temporarily ignored
-             // if (job.status === 'completed' && job.response_payload) {
-             //   console.log('📩 [Realtime] Processing completed response');
-             //   // Handle macro response here if needed
-             // } else if (job.status === 'error') {
-             //   console.log('❌ [Realtime] Job failed:', job.error_message);
-             // }
-           }
-         })
-        .subscribe();
-      
+      const realtimeChannel = supabase.channel(`ai-setup-jobs-${macroJobId}`).on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'jobs',
+        filter: `user_id=eq.${user?.id}`
+      }, payload => {
+        console.log('📩 [Realtime] Job update received:', payload);
+        const job = payload.new as any;
+        if (job && job.status && job.id === macroJobId) {
+          console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
+          // Realtime logic kept intact but temporarily ignored
+          // if (job.status === 'completed' && job.response_payload) {
+          //   console.log('📩 [Realtime] Processing completed response');
+          //   // Handle macro response here if needed
+          // } else if (job.status === 'error') {
+          //   console.log('❌ [Realtime] Job failed:', job.error_message);
+          // }
+        }
+      }).subscribe();
       console.log('📡 [Realtime] Subscribed before POST');
 
       // STEP 1: macro-commentary with Realtime tracking
@@ -367,11 +341,9 @@ export default function AISetup() {
         type: "RAG",
         mode: "run",
         instrument: parameters.instrument,
-        question: buildQuestion(parameters),
+        question: buildQuestion(parameters)
       };
-
       console.log('📊[AISetup] STEP1 Request macro-commentary payload =', macroPayload);
-
       let macroResult;
       try {
         // Register dual response handler for macro request
@@ -387,43 +359,42 @@ export default function AISetup() {
           macroResult = data;
         });
 
-      // 2. Send POST request after subscription is active
-      const { response: macroResponse, jobId: macroJobIdFromRequest } = await enhancedPostRequest(
-        'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-        {
+        // 2. Send POST request after subscription is active
+        const {
+          response: macroResponse,
+          jobId: macroJobIdFromRequest
+        } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
           ...macroPayload,
           job_id: macroJobId
-        },
-        {
+        }, {
           enableJobTracking: true,
           jobType: 'macro_commentary',
           instrument: parameters.instrument,
           feature: 'macro_commentary',
           jobId: macroJobId
+        });
+
+        // 3. Handle HTTP response (active path)
+        try {
+          if (macroResponse.ok) {
+            const responseData = await macroResponse.json();
+            console.log('📩 [HTTP] Response (active):', responseData);
+            dualResponseHandler.handleHttpResponse(macroJobId, responseData);
+          } else {
+            console.log(`⚠️ [HTTP] Error ${macroResponse.status}`);
+          }
+        } catch (httpError) {
+          console.log(`⚠️ [HTTP] Error:`, httpError);
         }
-      );
-      
-       // 3. Handle HTTP response (active path)
-       try {
-         if (macroResponse.ok) {
-           const responseData = await macroResponse.json();
-           console.log('📩 [HTTP] Response (active):', responseData);
-           dualResponseHandler.handleHttpResponse(macroJobId, responseData);
-         } else {
-           console.log(`⚠️ [HTTP] Error ${macroResponse.status}`);
-         }
-       } catch (httpError) {
-         console.log(`⚠️ [HTTP] Error:`, httpError);
-       }
 
         // Wait a moment for the response to be processed
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         console.error('❌ STEP1 failed before parsing (network/CORS):', e);
-        
+
         // Reset loading states
         setIsGenerating(false);
-        
+
         // Show user-friendly error notification
         const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred';
         toast({
@@ -431,78 +402,65 @@ export default function AISetup() {
           description: `Macro analysis failed: ${errorMessage}`,
           variant: "destructive"
         });
-        
         throw e;
       }
-
       console.log('📊[AISetup] STEP1 Response (keys):', Object.keys(macroResult || {}));
       const macroInsight = extractMacroInsight(macroResult);
       console.log('📊[AISetup] STEP1 macroInsight length =', macroInsight?.length);
 
       // Create second Realtime job for trade setup
-      const tradeJobId = await createJob(
-        'trade_setup',
-        parameters.instrument,
-        {
-          ...parameters,
-          mode: "run",
-          type: "trade",
-          macroInsight
-        },
-        'AI Trade Setup'
-      );
+      const tradeJobId = await createJob('trade_setup', parameters.instrument, {
+        ...parameters,
+        mode: "run",
+        type: "trade",
+        macroInsight
+      }, 'AI Trade Setup');
 
       // Subscribe to trade setup job updates BEFORE sending POST
       console.log('📡 [Realtime] Subscribing to trade setup job updates before POST');
-      
-      const tradeRealtimeChannel = supabase
-        .channel(`ai-setup-trade-jobs-${tradeJobId}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'jobs',
-          filter: `user_id=eq.${user?.id}`
-         }, (payload) => {
-           console.log('📩 [Realtime] Trade job update received:', payload);
-           const job = payload.new as any;
-           
-           if (job && job.status && job.id === tradeJobId) {
-             console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
-             // Realtime logic kept intact but temporarily ignored
-             // if (job.status === 'completed' && job.response_payload) {
-             //   console.log('📩 [Realtime] Processing trade setup response');
-             //   console.log('🔄 [Loader] Stopping loader - Realtime response received');
-             //   
-             //   setRawN8nResponse(job.response_payload);
-             //   const normalized = normalizeN8n(job.response_payload);
+      const tradeRealtimeChannel = supabase.channel(`ai-setup-trade-jobs-${tradeJobId}`).on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'jobs',
+        filter: `user_id=eq.${user?.id}`
+      }, payload => {
+        console.log('📩 [Realtime] Trade job update received:', payload);
+        const job = payload.new as any;
+        if (job && job.status && job.id === tradeJobId) {
+          console.log(`ℹ️ [Realtime] Event received but ignored (temporary patch) - status: ${job.status}`);
+          // Realtime logic kept intact but temporarily ignored
+          // if (job.status === 'completed' && job.response_payload) {
+          //   console.log('📩 [Realtime] Processing trade setup response');
+          //   console.log('🔄 [Loader] Stopping loader - Realtime response received');
+          //   
+          //   setRawN8nResponse(job.response_payload);
+          //   const normalized = normalizeN8n(job.response_payload);
 
-             //   if (normalized && normalized.setups && normalized.setups.length > 0) {
-             //     setN8nResult(normalized);
-             //     setTradeSetup(null);
-             //     globalLoading.completeRequest(requestId, normalized);
-             //     
-             //     toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
-             //   } else {
-             //     setN8nResult(null);
-             //     setTradeSetup(null);
-             //     setError("The n8n workflow responded without exploitable setups.");
-             //     globalLoading.failRequest(requestId, "No exploitable setups returned");
-             //     toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
-             //   }
-             //   
-              //   setStep("generated");
-              //   setIsGenerating(false);
-             // } else if (job.status === 'error') {
-             //   console.log('❌ [Realtime] Trade job failed:', job.error_message);
-             //   console.log('🔄 [Loader] Stopping loader - Realtime error received');
-             //   setIsGenerating(false);
-             //   setError(job.error_message || 'Job failed');
-             //   globalLoading.failRequest(requestId, job.error_message || 'Job failed');
-             // }
-          }
-        })
-        .subscribe();
-      
+          //   if (normalized && normalized.setups && normalized.setups.length > 0) {
+          //     setN8nResult(normalized);
+          //     setTradeSetup(null);
+          //     globalLoading.completeRequest(requestId, normalized);
+          //     
+          //     toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
+          //   } else {
+          //     setN8nResult(null);
+          //     setTradeSetup(null);
+          //     setError("The n8n workflow responded without exploitable setups.");
+          //     globalLoading.failRequest(requestId, "No exploitable setups returned");
+          //     toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
+          //   }
+          //   
+          //   setStep("generated");
+          //   setIsGenerating(false);
+          // } else if (job.status === 'error') {
+          //   console.log('❌ [Realtime] Trade job failed:', job.error_message);
+          //   console.log('🔄 [Loader] Stopping loader - Realtime error received');
+          //   setIsGenerating(false);
+          //   setError(job.error_message || 'Job failed');
+          //   globalLoading.failRequest(requestId, job.error_message || 'Job failed');
+          // }
+        }
+      }).subscribe();
       console.log('📡 [Realtime] Subscribed to trade setup job before POST');
 
       // STEP 2: ai-trade-setup with Realtime tracking
@@ -510,9 +468,8 @@ export default function AISetup() {
         ...parameters,
         mode: "run",
         type: "trade",
-        macroInsight, // string compacte
+        macroInsight // string compacte
       };
-
       console.log('📊[AISetup] STEP2 Request trade-setup, macroInsight length =', macroInsight?.length);
 
       // Register dual response handler for trade setup
@@ -525,42 +482,44 @@ export default function AISetup() {
           timestamp: new Date().toISOString()
         });
         console.log(`⚡ [AISetup-Trade] Full response data from ${source}:`, data);
-        
         setRawN8nResponse(data);
         const normalized = normalizeN8n(data);
-
         if (normalized && normalized.setups && normalized.setups.length > 0) {
           setN8nResult(normalized);
           setTradeSetup(null);
           globalLoading.completeRequest(requestId, normalized);
-          
-          toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
+          toast({
+            title: "Trade Setup Generated",
+            description: "AI trade setup generated successfully."
+          });
         } else {
           setN8nResult(null);
           setTradeSetup(null);
           setError("The n8n workflow responded without exploitable setups.");
           globalLoading.failRequest(requestId, "No exploitable setups returned");
-          toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
+          toast({
+            title: "No Setups Returned",
+            description: "The response contains no setups.",
+            variant: "destructive"
+          });
         }
-        
         setStep("generated");
       });
 
       // Send trade setup POST request after subscription is active
-      const { response: tradeResponse, jobId: tradeJobIdFromRequest } = await enhancedPostRequest(
-        'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-        {
-          ...payload,
-          job_id: tradeJobId
-        },
-        {
-          enableJobTracking: true,
-          jobType: 'trade_setup',
-          instrument: parameters.instrument,
-          feature: 'ai_trade_setup',
-          jobId: tradeJobId
-        }
-      );
+      const {
+        response: tradeResponse,
+        jobId: tradeJobIdFromRequest
+      } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+        ...payload,
+        job_id: tradeJobId
+      }, {
+        enableJobTracking: true,
+        jobType: 'trade_setup',
+        instrument: parameters.instrument,
+        feature: 'ai_trade_setup',
+        jobId: tradeJobId
+      });
 
       // Handle HTTP response for trade setup (secondary path)
       try {
@@ -579,15 +538,12 @@ export default function AISetup() {
 
       // Wait a moment for the response to be processed
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
     } catch (error) {
       console.error('Error generating trade setup:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError(errorMessage);
-      
       clearInterval(progressInterval);
       globalLoading.failRequest(requestId, errorMessage);
-      
       toast({
         title: "Generation Failed",
         description: errorMessage,
@@ -597,25 +553,17 @@ export default function AISetup() {
       setIsGenerating(false);
     }
   };
-
   const saveSetup = () => {
     toast({
       title: "Setup Saved",
-      description: "Your trade configuration has been saved successfully.",
+      description: "Your trade configuration has been saved successfully."
     });
   };
-
-  return (
-    <Layout activeModule="ai-setup" onModuleChange={() => {}}>
+  return <Layout activeModule="ai-setup" onModuleChange={() => {}}>
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={() => navigate('/dashboard')}
-            className="shrink-0 min-h-[44px] w-11"
-          >
+          <Button variant="outline" size="icon" onClick={() => navigate('/dashboard')} className="shrink-0 min-h-[44px] w-11">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0 flex-1">
@@ -624,8 +572,7 @@ export default function AISetup() {
           </div>
         </div>
 
-        {step === "parameters" && (
-          <Card className="gradient-card rounded-2xl shadow-sm border">
+        {step === "parameters" && <Card className="gradient-card rounded-2xl shadow-sm border">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
                 <Settings className="h-5 w-5" />
@@ -636,7 +583,10 @@ export default function AISetup() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="instrument">Instrument</Label>
-                  <Select value={parameters.instrument} onValueChange={(value) => setParameters({...parameters, instrument: value})}>
+                  <Select value={parameters.instrument} onValueChange={value => setParameters({
+                ...parameters,
+                instrument: value
+              })}>
                     <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
@@ -724,7 +674,10 @@ export default function AISetup() {
 
                 <div className="space-y-2">
                   <Label htmlFor="timeframe">Timeframe</Label>
-                  <Select value={parameters.timeframe} onValueChange={(value) => setParameters({...parameters, timeframe: value})}>
+                  <Select value={parameters.timeframe} onValueChange={value => setParameters({
+                ...parameters,
+                timeframe: value
+              })}>
                     <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
@@ -744,7 +697,10 @@ export default function AISetup() {
 
                 <div className="space-y-2">
                   <Label htmlFor="riskLevel">Risk Level</Label>
-                  <Select value={parameters.riskLevel} onValueChange={(value) => setParameters({...parameters, riskLevel: value})}>
+                  <Select value={parameters.riskLevel} onValueChange={value => setParameters({
+                ...parameters,
+                riskLevel: value
+              })}>
                     <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
@@ -756,21 +712,14 @@ export default function AISetup() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="positionSize">Position Size (%)</Label>
-                  <Input 
-                    id="positionSize"
-                    type="number"
-                    value={parameters.positionSize}
-                    onChange={(e) => setParameters({...parameters, positionSize: e.target.value})}
-                    placeholder="2"
-                    className="h-11 text-sm touch-manipulation"
-                  />
-                </div>
+                
 
                 <div className="space-y-2">
                   <Label htmlFor="strategy">Strategy</Label>
-                  <Select value={parameters.strategy} onValueChange={(value) => setParameters({...parameters, strategy: value})}>
+                  <Select value={parameters.strategy} onValueChange={value => setParameters({
+                ...parameters,
+                strategy: value
+              })}>
                     <SelectTrigger className="h-11 text-sm touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
@@ -787,52 +736,35 @@ export default function AISetup() {
               <div className="space-y-2">
                 <Label htmlFor="customNotes">Custom Notes</Label>
                 <div className="relative">
-                  <Textarea 
-                    id="customNotes"
-                    value={parameters.customNotes}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value.length <= 500) {
-                        setParameters({...parameters, customNotes: value});
-                      }
-                    }}
-                    placeholder="Add specific instructions for the AI..."
-                    rows={3}
-                    className="pb-8"
-                    maxLength={500}
-                  />
+                  <Textarea id="customNotes" value={parameters.customNotes} onChange={e => {
+                const value = e.target.value;
+                if (value.length <= 500) {
+                  setParameters({
+                    ...parameters,
+                    customNotes: value
+                  });
+                }
+              }} placeholder="Add specific instructions for the AI..." rows={3} className="pb-8" maxLength={500} />
                   <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
                     {parameters.customNotes.length}/500
                   </div>
                 </div>
               </div>
 
-              <Button 
-                onClick={generateTradeSetup} 
-                disabled={isGenerating}
-                className="w-full min-h-[44px]"
-                size="lg"
-              >
-                {isGenerating ? (
-                  <>
+              <Button onClick={generateTradeSetup} disabled={isGenerating} className="w-full min-h-[44px]" size="lg">
+                {isGenerating ? <>
                     <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
-                  </>
-                ) : (
-                  <>
+                  </> : <>
                     <Zap className="mr-2 h-4 w-4" />
                     Generate Trade Setup
-                  </>
-                )}
+                  </>}
               </Button>
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
-        {step === "generated" && (
-          <div className="space-y-6">
-            {error && (
-              <Card className="border-red-200 bg-red-50/50">
+        {step === "generated" && <div className="space-y-6">
+            {error && <Card className="border-red-200 bg-red-50/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-red-800">
                     <AlertCircle className="h-5 w-5" />
@@ -843,26 +775,17 @@ export default function AISetup() {
                   <p className="text-sm text-red-700">
                     We're experiencing a temporary issue processing your request. This could be due to high server load or a connectivity problem. Please try again in a moment.
                   </p>
-                  <Button 
-                    onClick={() => setStep("parameters")} 
-                    variant="outline" 
-                    className="mt-4"
-                  >
+                  <Button onClick={() => setStep("parameters")} variant="outline" className="mt-4">
                     <RotateCcw className="mr-2 h-4 w-4" />
                     Retry
                   </Button>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
             {/* TradingView Chart Integration */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <TradingViewWidget
-                  selectedSymbol={selectedSymbol}
-                  onSymbolChange={setSelectedSymbol}
-                  className="h-[500px]"
-                />
+                <TradingViewWidget selectedSymbol={selectedSymbol} onSymbolChange={setSelectedSymbol} className="h-[500px]" />
               </div>
               
               <div className="space-y-4">
@@ -871,13 +794,11 @@ export default function AISetup() {
                     <CardTitle className="text-lg">Trade Visualization</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {n8nResult ? (
-                      <div className="space-y-3">
+                    {n8nResult ? <div className="space-y-3">
                         <div className="text-sm">
                           <strong>Instrument:</strong> {n8nResult.instrument}
                         </div>
-                        {n8nResult.setups?.[0] && (
-                          <div className="space-y-2">
+                        {n8nResult.setups?.[0] && <div className="space-y-2">
                             <div className="text-sm">
                               <strong>Entry:</strong> {fmt(n8nResult.setups[0].entryPrice)}
                             </div>
@@ -887,51 +808,37 @@ export default function AISetup() {
                             <div className="text-sm">
                               <strong>Direction:</strong> {n8nResult.setups[0].direction}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
+                          </div>}
+                      </div> : <p className="text-sm text-muted-foreground">
                         Generate a trade setup to see levels on the chart
-                      </p>
-                    )}
+                      </p>}
                   </CardContent>
                 </Card>
               </div>
             </div>
 
-            {n8nResult && (
-              <Card className="border bg-background">
+            {n8nResult && <Card className="border bg-background">
                 <CardHeader>
                   <CardTitle className="text-2xl font-semibold">
                     {n8nResult.instrument || 'Instrument'} 
                     {n8nResult.asOf ? <span className="ml-2 text-sm text-muted-foreground">as of {new Date(n8nResult.asOf).toLocaleString()}</span> : null}
                   </CardTitle>
-                  {n8nResult.market_commentary_anchor?.summary ? (
-                    <p className="text-sm text-muted-foreground mt-2">{n8nResult.market_commentary_anchor.summary}</p>
-                  ) : null}
-                  {Array.isArray(n8nResult.market_commentary_anchor?.key_drivers) && n8nResult.market_commentary_anchor.key_drivers.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {n8nResult.market_commentary_anchor.key_drivers.map((d: string, i: number) => (
-                        <Badge key={i} variant="outline" className="rounded-full">{d}</Badge>
-                      ))}
-                    </div>
-                  ) : null}
+                  {n8nResult.market_commentary_anchor?.summary ? <p className="text-sm text-muted-foreground mt-2">{n8nResult.market_commentary_anchor.summary}</p> : null}
+                  {Array.isArray(n8nResult.market_commentary_anchor?.key_drivers) && n8nResult.market_commentary_anchor.key_drivers.length > 0 ? <div className="mt-3 flex flex-wrap gap-2">
+                      {n8nResult.market_commentary_anchor.key_drivers.map((d: string, i: number) => <Badge key={i} variant="outline" className="rounded-full">{d}</Badge>)}
+                    </div> : null}
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {(n8nResult.setups || []).map((s, idx) => (
-                    <Card key={idx} className="border">
+                  {(n8nResult.setups || []).map((s, idx) => <Card key={idx} className="border">
                       <CardHeader>
                         <div className="flex flex-wrap items-center gap-2">
                           {s.horizon ? <Badge variant="secondary">{s.horizon}</Badge> : null}
                           {s.timeframe ? <Badge variant="secondary">{s.timeframe}</Badge> : null}
                           {s.strategy ? <Badge variant="secondary">{s.strategy}</Badge> : null}
-                          {s.direction ? <Badge variant="secondary" className={s.direction.toLowerCase()==='buy'?'text-green-700':'text-red-700'}>
+                          {s.direction ? <Badge variant="secondary" className={s.direction.toLowerCase() === 'buy' ? 'text-green-700' : 'text-red-700'}>
                             {s.direction.toUpperCase()}
                           </Badge> : null}
-                          {s.strategyMeta?.confidence != null ? (
-                            <Badge variant="outline" className="ml-auto">Confidence: {pct(s.strategyMeta.confidence)}</Badge>
-                          ) : null}
+                          {s.strategyMeta?.confidence != null ? <Badge variant="outline" className="ml-auto">Confidence: {pct(s.strategyMeta.confidence)}</Badge> : null}
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -956,8 +863,7 @@ export default function AISetup() {
                           </div>
                         </div>
 
-                        {(s.supports && s.supports.length) || (s.resistances && s.resistances.length) ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {s.supports && s.supports.length || s.resistances && s.resistances.length ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="p-3 rounded-lg border bg-muted/30">
                               <div className="text-xs text-muted-foreground uppercase mb-2">Supports</div>
                               <div className="flex flex-wrap gap-2">
@@ -972,41 +878,28 @@ export default function AISetup() {
                                 {(!s.resistances || !s.resistances.length) && <span className="text-sm text-muted-foreground">—</span>}
                               </div>
                             </div>
-                          </div>
-                        ) : null}
+                          </div> : null}
 
-                        {s.context ? (
-                          <div className="p-4 rounded-lg border">
+                        {s.context ? <div className="p-4 rounded-lg border">
                             <h4 className="font-medium mb-1">Context</h4>
                             <p className="text-sm text-muted-foreground leading-relaxed">{s.context}</p>
-                          </div>
-                        ) : null}
+                          </div> : null}
 
-                        {s.riskNotes ? (
-                          <div className="p-4 rounded-lg border">
+                        {s.riskNotes ? <div className="p-4 rounded-lg border">
                             <h4 className="font-medium mb-1">Risk Notes</h4>
                             <p className="text-sm text-muted-foreground leading-relaxed">{s.riskNotes}</p>
-                          </div>
-                        ) : null}
+                          </div> : null}
 
-                        {s.strategyMeta?.indicators?.length ? (
-                          <div className="flex flex-wrap gap-2">
-                            {s.strategyMeta.indicators.map((ind, i) => (
-                              <Badge key={i} variant="outline" className="rounded-full">{ind}</Badge>
-                            ))}
-                          </div>
-                        ) : null}
+                        {s.strategyMeta?.indicators?.length ? <div className="flex flex-wrap gap-2">
+                            {s.strategyMeta.indicators.map((ind, i) => <Badge key={i} variant="outline" className="rounded-full">{ind}</Badge>)}
+                          </div> : null}
                       </CardContent>
-                    </Card>
-                  ))}
+                    </Card>)}
 
-                  {n8nResult.disclaimer ? (
-                    <p className="text-xs text-muted-foreground border-t pt-4">{n8nResult.disclaimer}</p>
-                  ) : null}
+                  {n8nResult.disclaimer ? <p className="text-xs text-muted-foreground border-t pt-4">{n8nResult.disclaimer}</p> : null}
 
                   {/* Structured Response Display */}
-                  {rawN8nResponse && (
-                    <Card className="mt-6 border bg-muted/30">
+                  {rawN8nResponse && <Card className="mt-6 border bg-muted/30">
                       <Collapsible defaultOpen={false}>
                         <CardHeader>
                           <CollapsibleTrigger className="w-full">
@@ -1022,46 +915,32 @@ export default function AISetup() {
                         <CollapsibleContent>
                           <CardContent className="space-y-6 pt-0">
                         {(() => {
-                          try {
-                            // Extract content from the expected structure
-                            const content = rawN8nResponse?.content || 
-                                          (Array.isArray(rawN8nResponse) && rawN8nResponse[0]?.content) ||
-                                          rawN8nResponse;
-                            
-                            if (!content || typeof content !== 'object') {
-                              return (
-                                <div className="p-4 rounded-lg border bg-background">
+                      try {
+                        // Extract content from the expected structure
+                        const content = rawN8nResponse?.content || Array.isArray(rawN8nResponse) && rawN8nResponse[0]?.content || rawN8nResponse;
+                        if (!content || typeof content !== 'object') {
+                          return <div className="p-4 rounded-lg border bg-background">
                                   <h4 className="font-medium mb-2">Raw Response</h4>
                                   <pre className="text-xs whitespace-pre-wrap text-muted-foreground">
                                     {JSON.stringify(rawN8nResponse, null, 2)}
                                   </pre>
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <>
+                                </div>;
+                        }
+                        return <>
                                 {/* Header Info */}
-                                {(content.instrument || content.asOf) && (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {content.instrument && (
-                                      <div className="p-3 rounded-lg border bg-background">
+                                {(content.instrument || content.asOf) && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {content.instrument && <div className="p-3 rounded-lg border bg-background">
                                         <Label className="text-xs text-muted-foreground uppercase">Instrument</Label>
                                         <div className="font-medium">{content.instrument}</div>
-                                      </div>
-                                    )}
-                                    {content.asOf && (
-                                      <div className="p-3 rounded-lg border bg-background">
+                                      </div>}
+                                    {content.asOf && <div className="p-3 rounded-lg border bg-background">
                                         <Label className="text-xs text-muted-foreground uppercase">As Of</Label>
                                         <div className="font-medium">{content.asOf}</div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                      </div>}
+                                  </div>}
 
                                 {/* User Inputs */}
-                                {(content.timeframe || content.riskLevel || content.strategy || content.positionSize || content.customNote) && (
-                                  <div className="p-4 rounded-lg border bg-background">
+                                {(content.timeframe || content.riskLevel || content.strategy || content.positionSize || content.customNote) && <div className="p-4 rounded-lg border bg-background">
                                     <h4 className="font-medium mb-3">User Inputs</h4>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                                       {content.timeframe && <div><span className="text-muted-foreground">Timeframe:</span> {content.timeframe}</div>}
@@ -1070,115 +949,82 @@ export default function AISetup() {
                                       {content.positionSize && <div><span className="text-muted-foreground">Position Size:</span> {content.positionSize}</div>}
                                       {content.customNote && <div className="col-span-full"><span className="text-muted-foreground">Notes:</span> {content.customNote}</div>}
                                     </div>
-                                  </div>
-                                )}
+                                  </div>}
 
                                 {/* Market Commentary */}
-                                {content.market_commentary_anchor && (
-                                  <div className="p-4 rounded-lg border bg-background">
+                                {content.market_commentary_anchor && <div className="p-4 rounded-lg border bg-background">
                                     <h4 className="font-medium mb-3">Market Commentary</h4>
-                                    {content.market_commentary_anchor.summary && (
-                                      <div className="mb-3">
+                                    {content.market_commentary_anchor.summary && <div className="mb-3">
                                         <Label className="text-xs text-muted-foreground uppercase">Summary</Label>
                                         <p className="text-sm leading-relaxed mt-1 whitespace-pre-wrap">{content.market_commentary_anchor.summary}</p>
-                                      </div>
-                                    )}
-                                    {content.market_commentary_anchor.key_drivers && Array.isArray(content.market_commentary_anchor.key_drivers) && (
-                                      <div>
+                                      </div>}
+                                    {content.market_commentary_anchor.key_drivers && Array.isArray(content.market_commentary_anchor.key_drivers) && <div>
                                         <Label className="text-xs text-muted-foreground uppercase">Key Drivers</Label>
                                         <ul className="text-sm mt-1 space-y-1">
-                                          {content.market_commentary_anchor.key_drivers.map((driver, i) => (
-                                            <li key={i} className="flex items-start gap-2">
+                                          {content.market_commentary_anchor.key_drivers.map((driver, i) => <li key={i} className="flex items-start gap-2">
                                               <span className="text-muted-foreground">•</span>
                                               <span>{driver}</span>
-                                            </li>
-                                          ))}
+                                            </li>)}
                                         </ul>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                      </div>}
+                                  </div>}
 
                                 {/* Data Fresheners */}
-                                {(content.macro_recent || content.macro_upcoming || content.cb_signals || content.positioning || content.citations_news) && (
-                                  <div className="p-4 rounded-lg border bg-background">
+                                {(content.macro_recent || content.macro_upcoming || content.cb_signals || content.positioning || content.citations_news) && <div className="p-4 rounded-lg border bg-background">
                                     <h4 className="font-medium mb-3">Data Fresheners</h4>
                                     <div className="space-y-3 text-sm">
-                                      {content.macro_recent && Array.isArray(content.macro_recent) && (
-                                        <div>
+                                      {content.macro_recent && Array.isArray(content.macro_recent) && <div>
                                           <Label className="text-xs text-muted-foreground uppercase">Macro Recent</Label>
                                           <ul className="mt-1 space-y-1">
-                                            {content.macro_recent.map((item, i) => (
-                                              <li key={i} className="flex items-start gap-2">
+                                            {content.macro_recent.map((item, i) => <li key={i} className="flex items-start gap-2">
                                                 <span className="text-muted-foreground">•</span>
                                                 <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
-                                              </li>
-                                            ))}
+                                              </li>)}
                                           </ul>
-                                        </div>
-                                      )}
-                                      {content.macro_upcoming && Array.isArray(content.macro_upcoming) && (
-                                        <div>
+                                        </div>}
+                                      {content.macro_upcoming && Array.isArray(content.macro_upcoming) && <div>
                                           <Label className="text-xs text-muted-foreground uppercase">Macro Upcoming</Label>
                                           <ul className="mt-1 space-y-1">
-                                            {content.macro_upcoming.map((item, i) => (
-                                              <li key={i} className="flex items-start gap-2">
+                                            {content.macro_upcoming.map((item, i) => <li key={i} className="flex items-start gap-2">
                                                 <span className="text-muted-foreground">•</span>
                                                 <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
-                                              </li>
-                                            ))}
+                                              </li>)}
                                           </ul>
-                                        </div>
-                                      )}
-                                      {content.cb_signals && Array.isArray(content.cb_signals) && (
-                                        <div>
+                                        </div>}
+                                      {content.cb_signals && Array.isArray(content.cb_signals) && <div>
                                           <Label className="text-xs text-muted-foreground uppercase">CB Signals</Label>
                                           <ul className="mt-1 space-y-1">
-                                            {content.cb_signals.map((item, i) => (
-                                              <li key={i} className="flex items-start gap-2">
+                                            {content.cb_signals.map((item, i) => <li key={i} className="flex items-start gap-2">
                                                 <span className="text-muted-foreground">•</span>
                                                 <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
-                                              </li>
-                                            ))}
+                                              </li>)}
                                           </ul>
-                                        </div>
-                                      )}
-                                      {content.positioning && Array.isArray(content.positioning) && (
-                                        <div>
+                                        </div>}
+                                      {content.positioning && Array.isArray(content.positioning) && <div>
                                           <Label className="text-xs text-muted-foreground uppercase">Positioning</Label>
                                           <ul className="mt-1 space-y-1">
-                                            {content.positioning.map((item, i) => (
-                                              <li key={i} className="flex items-start gap-2">
+                                            {content.positioning.map((item, i) => <li key={i} className="flex items-start gap-2">
                                                 <span className="text-muted-foreground">•</span>
                                                 <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
-                                              </li>
-                                            ))}
+                                              </li>)}
                                           </ul>
-                                        </div>
-                                      )}
-                                      {content.citations_news && Array.isArray(content.citations_news) && (
-                                        <div>
+                                        </div>}
+                                      {content.citations_news && Array.isArray(content.citations_news) && <div>
                                           <Label className="text-xs text-muted-foreground uppercase">Citations News</Label>
                                           <ul className="mt-1 space-y-1">
-                                            {content.citations_news.map((item, i) => (
-                                              <li key={i} className="flex items-start gap-2">
+                                            {content.citations_news.map((item, i) => <li key={i} className="flex items-start gap-2">
                                                 <span className="text-muted-foreground">•</span>
                                                 <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
-                                              </li>
-                                            ))}
+                                              </li>)}
                                           </ul>
-                                        </div>
-                                      )}
+                                        </div>}
                                     </div>
-                                  </div>
-                                )}
+                                  </div>}
 
                                 {/* Setups */}
-                                {content.setups && Array.isArray(content.setups) && content.setups.length > 0 && (
-                                  <div className="space-y-4">
+                                {content.setups && Array.isArray(content.setups) && content.setups.length > 0 && <div className="space-y-4">
                                     <h4 className="font-medium">Detailed Setups</h4>
-                                    {content.setups.map((setup, index) => (
-                                      <Card key={index} className="border bg-background">
+                                    {content.setups.map((setup, index) => <Card key={index} className="border bg-background">
                                         <CardContent className="p-4 space-y-4">
                                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                             {setup.horizon && <div><span className="text-muted-foreground">Horizon:</span> {setup.horizon}</div>}
@@ -1188,140 +1034,94 @@ export default function AISetup() {
                                           </div>
                                           
                                           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                            {setup.entryPrice !== undefined && (
-                                              <div className="p-2 rounded border">
+                                            {setup.entryPrice !== undefined && <div className="p-2 rounded border">
                                                 <Label className="text-xs text-muted-foreground uppercase">Entry</Label>
                                                 <div className="font-medium">{fmt(setup.entryPrice)}</div>
-                                              </div>
-                                            )}
-                                            {setup.stopLoss !== undefined && (
-                                              <div className="p-2 rounded border">
+                                              </div>}
+                                            {setup.stopLoss !== undefined && <div className="p-2 rounded border">
                                                 <Label className="text-xs text-muted-foreground uppercase">Stop Loss</Label>
                                                 <div className="font-medium">{fmt(setup.stopLoss)}</div>
-                                              </div>
-                                            )}
-                                            {setup.takeProfits && Array.isArray(setup.takeProfits) && (
-                                              <div className="p-2 rounded border">
+                                              </div>}
+                                            {setup.takeProfits && Array.isArray(setup.takeProfits) && <div className="p-2 rounded border">
                                                 <Label className="text-xs text-muted-foreground uppercase">Take Profits</Label>
                                                 <div className="text-xs space-y-1">
-                                                  {setup.takeProfits.map((tp, i) => (
-                                                    <div key={i}>{fmt(tp)}</div>
-                                                  ))}
+                                                  {setup.takeProfits.map((tp, i) => <div key={i}>{fmt(tp)}</div>)}
                                                 </div>
-                                              </div>
-                                            )}
-                                            {setup.riskRewardRatio !== undefined && (
-                                              <div className="p-2 rounded border">
+                                              </div>}
+                                            {setup.riskRewardRatio !== undefined && <div className="p-2 rounded border">
                                                 <Label className="text-xs text-muted-foreground uppercase">R/R</Label>
                                                 <div className="font-medium">{fmt(setup.riskRewardRatio, 2)}</div>
-                                              </div>
-                                            )}
-                                            {setup.positionSize !== undefined && (
-                                              <div className="p-2 rounded border">
+                                              </div>}
+                                            {setup.positionSize !== undefined && <div className="p-2 rounded border">
                                                 <Label className="text-xs text-muted-foreground uppercase">Position</Label>
                                                 <div className="font-medium">{setup.positionSize}</div>
-                                              </div>
-                                            )}
+                                              </div>}
                                           </div>
 
-                                          {(setup.supports || setup.resistances) && (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                              {setup.supports && Array.isArray(setup.supports) && (
-                                                <div className="p-3 rounded border bg-muted/30">
+                                          {(setup.supports || setup.resistances) && <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                              {setup.supports && Array.isArray(setup.supports) && <div className="p-3 rounded border bg-muted/30">
                                                   <Label className="text-xs text-muted-foreground uppercase">Supports</Label>
                                                   <div className="flex flex-wrap gap-1 mt-1">
-                                                    {setup.supports.map((s, i) => (
-                                                      <Badge key={i} variant="outline" className="text-xs">{fmt(s)}</Badge>
-                                                    ))}
+                                                    {setup.supports.map((s, i) => <Badge key={i} variant="outline" className="text-xs">{fmt(s)}</Badge>)}
                                                   </div>
-                                                </div>
-                                              )}
-                                              {setup.resistances && Array.isArray(setup.resistances) && (
-                                                <div className="p-3 rounded border bg-muted/30">
+                                                </div>}
+                                              {setup.resistances && Array.isArray(setup.resistances) && <div className="p-3 rounded border bg-muted/30">
                                                   <Label className="text-xs text-muted-foreground uppercase">Resistances</Label>
                                                   <div className="flex flex-wrap gap-1 mt-1">
-                                                    {setup.resistances.map((r, i) => (
-                                                      <Badge key={i} variant="outline" className="text-xs">{fmt(r)}</Badge>
-                                                    ))}
+                                                    {setup.resistances.map((r, i) => <Badge key={i} variant="outline" className="text-xs">{fmt(r)}</Badge>)}
                                                   </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
+                                                </div>}
+                                            </div>}
 
-                                          {setup.context && (
-                                            <div className="p-3 rounded border">
+                                          {setup.context && <div className="p-3 rounded border">
                                               <Label className="text-xs text-muted-foreground uppercase">Context</Label>
                                               <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{setup.context}</p>
-                                            </div>
-                                          )}
+                                            </div>}
 
-                                          {setup.riskNotes && (
-                                            <div className="p-3 rounded border">
+                                          {setup.riskNotes && <div className="p-3 rounded border">
                                               <Label className="text-xs text-muted-foreground uppercase">Risk Notes</Label>
                                               <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{setup.riskNotes}</p>
-                                            </div>
-                                          )}
+                                            </div>}
 
-                                          {setup.strategyMeta && (
-                                            <div className="p-3 rounded border bg-muted/30">
+                                          {setup.strategyMeta && <div className="p-3 rounded border bg-muted/30">
                                               <Label className="text-xs text-muted-foreground uppercase">Strategy Meta</Label>
                                               <div className="mt-2 space-y-2 text-sm">
-                                                {setup.strategyMeta.indicators && Array.isArray(setup.strategyMeta.indicators) && (
-                                                  <div>
+                                                {setup.strategyMeta.indicators && Array.isArray(setup.strategyMeta.indicators) && <div>
                                                     <span className="text-muted-foreground">Indicators:</span>
                                                     <div className="flex flex-wrap gap-1 mt-1">
-                                                      {setup.strategyMeta.indicators.map((ind, i) => (
-                                                        <Badge key={i} variant="outline" className="text-xs">{ind}</Badge>
-                                                      ))}
+                                                      {setup.strategyMeta.indicators.map((ind, i) => <Badge key={i} variant="outline" className="text-xs">{ind}</Badge>)}
                                                     </div>
-                                                  </div>
-                                                )}
-                                                {setup.strategyMeta.atrMultipleSL !== undefined && (
-                                                  <div><span className="text-muted-foreground">ATR Multiple:</span> {fmt(setup.strategyMeta.atrMultipleSL, 2)}</div>
-                                                )}
-                                                {setup.strategyMeta.confidence !== undefined && (
-                                                  <div><span className="text-muted-foreground">Confidence:</span> {pct(setup.strategyMeta.confidence)}</div>
-                                                )}
+                                                  </div>}
+                                                {setup.strategyMeta.atrMultipleSL !== undefined && <div><span className="text-muted-foreground">ATR Multiple:</span> {fmt(setup.strategyMeta.atrMultipleSL, 2)}</div>}
+                                                {setup.strategyMeta.confidence !== undefined && <div><span className="text-muted-foreground">Confidence:</span> {pct(setup.strategyMeta.confidence)}</div>}
                                               </div>
-                                            </div>
-                                          )}
+                                            </div>}
                                         </CardContent>
-                                      </Card>
-                                    ))}
-                                  </div>
-                                )}
+                                      </Card>)}
+                                  </div>}
 
                                 {/* Disclaimer */}
-                                {content.disclaimer && (
-                                  <div className="p-3 rounded border bg-muted/30">
+                                {content.disclaimer && <div className="p-3 rounded border bg-muted/30">
                                     <p className="text-xs text-muted-foreground">{content.disclaimer}</p>
-                                  </div>
-                                )}
-                              </>
-                            );
-                          } catch (error) {
-                            return (
-                              <div className="p-4 rounded-lg border bg-background">
+                                  </div>}
+                              </>;
+                      } catch (error) {
+                        return <div className="p-4 rounded-lg border bg-background">
                                 <h4 className="font-medium mb-2">Raw Response (Fallback)</h4>
                                 <pre className="text-xs whitespace-pre-wrap text-muted-foreground">
                                   {JSON.stringify(rawN8nResponse, null, 2)}
                                 </pre>
-                              </div>
-                            );
-                          }
-                        })()}
+                              </div>;
+                      }
+                    })()}
                           </CardContent>
                         </CollapsibleContent>
                       </Collapsible>
-                    </Card>
-                  )}
+                    </Card>}
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
-            {tradeSetup && !n8nResult && (
-              <Card className="border-green-200 bg-green-50/50">
+            {tradeSetup && !n8nResult && <Card className="border-green-200 bg-green-50/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-green-800">
                     <Target className="h-5 w-5" />
@@ -1367,8 +1167,7 @@ export default function AISetup() {
                     </Button>
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
             <div className="flex gap-3">
               <Button onClick={() => setStep("parameters")} variant="outline">
@@ -1376,9 +1175,7 @@ export default function AISetup() {
                 New Configuration
               </Button>
             </div>
-          </div>
-        )}
+          </div>}
       </div>
-    </Layout>
-  );
+    </Layout>;
 }
