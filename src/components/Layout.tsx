@@ -68,7 +68,7 @@ export default function Layout({ children, activeModule, onModuleChange, complet
               </div>
               <div className="hidden xs:block min-w-0">
                 <img 
-                  src="/lovable-uploads/3b568e3e-a3d8-47d3-b8ca-4f500781b5e4.png" 
+                  src="/lovable-uploads/Only_text_white_BG_FINAL-2.png" 
                   alt="alphaLens.ai" 
                   className="h-5 sm:h-6 w-auto"
                 />
