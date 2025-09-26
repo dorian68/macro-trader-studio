@@ -70,38 +70,7 @@ const Pricing = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div>
-                    <h4 className="text-lg font-semibold mb-4">Pricing Structure</h4>
-                    <ul className="space-y-3">
-                      <li className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>Flat $2,500 per month (billed at start of month)</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>$3 per user (billed at end of month)</span>
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-semibold mb-4">Free Access Tier</h4>
-                    <ul className="space-y-3">
-                      <li className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>Market Commentary & AI Trade Setup</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>15 queries per month</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>5 investment ideas per month</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+                
                 <div className="pt-4 border-t border-border">
                   <p className="text-sm text-muted-foreground mb-6">
                     Entry-level access to showcase Alphalens' value to all broker clients. 
