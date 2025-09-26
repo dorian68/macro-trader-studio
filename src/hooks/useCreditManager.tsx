@@ -99,8 +99,12 @@ export function useCreditManager() {
         return false;
       }
 
-      // Refresh credits after successful decrement
+      // Force immediate refresh of credits
       await fetchCredits();
+      
+      // Trigger global credit refresh event for other components
+      window.dispatchEvent(new Event('creditsUpdated'));
+      
       return true;
     } catch (err) {
       console.error('Error decrementing credit:', err);

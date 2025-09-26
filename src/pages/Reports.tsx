@@ -289,12 +289,7 @@ export default function Reports() {
                   setStep("generated");
                   setIsGenerating(false);
                   
-                  // Log successful interaction here when we have the actual response
-                  logInteraction({
-                    featureName: 'report',
-                    userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
-                    aiResponse: job.response_payload
-                  });
+                   // Credit logging handled by dual response handler to avoid duplicates
                   
                   toast({
                     title: "Report Generated",
@@ -421,14 +416,7 @@ export default function Reports() {
         setStep("generated");
       }
 
-      // Log successful interaction (moved to when report is actually completed)
-      if (currentReport) {
-        await logInteraction({
-          featureName: 'report',
-          userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
-          aiResponse: currentReport
-        });
-      }
+      // Credit logging handled by dual response handler to avoid duplicates
 
       toast({
         title: "Report Generated",

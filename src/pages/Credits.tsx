@@ -6,7 +6,7 @@ import { Zap, Brain, FileText, History, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useJobStatusManager } from '@/hooks/useJobStatusManager';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,29 +17,28 @@ interface JobUsageStats {
 }
 
 export default function Credits() {
-  const { credits, loading } = useCreditManager();
+  const { credits, loading, fetchCredits } = useCreditManager();
   const { user } = useAuth();
   const navigate = useNavigate();
   const jobManager = useJobStatusManager();
   const [usageStats, setUsageStats] = useState<JobUsageStats>({ queries: 0, ideas: 0, reports: 0 });
 
-  useEffect(() => {
+  const fetchUsageStats = useCallback(async () => {
     if (!user?.id) return;
 
-    const fetchUsageStats = async () => {
-      try {
-        // Récupérer les données des deux tables
-        const [jobsResult, interactionsResult] = await Promise.all([
-          supabase
-            .from('jobs')
-            .select('feature')
-            .eq('user_id', user.id)
-            .eq('status', 'completed'),
-          supabase
-            .from('ai_interactions')
-            .select('feature_name')
-            .eq('user_id', user.id)
-        ]);
+    try {
+      // Récupérer les données des deux tables
+      const [jobsResult, interactionsResult] = await Promise.all([
+        supabase
+          .from('jobs')
+          .select('feature')
+          .eq('user_id', user.id)
+          .eq('status', 'completed'),
+        supabase
+          .from('ai_interactions')
+          .select('feature_name')
+          .eq('user_id', user.id)
+      ]);
 
         const stats = { queries: 0, ideas: 0, reports: 0 };
 
@@ -85,14 +84,26 @@ export default function Credits() {
           });
         }
 
-        setUsageStats(stats);
-      } catch (error) {
-        console.error('Error fetching usage stats:', error);
-      }
+      setUsageStats(stats);
+    } catch (error) {
+      console.error('Error fetching usage stats:', error);
+    }
+  }, [user?.id]);
+
+  // Listen for credit updates
+  useEffect(() => {
+    const handleCreditsUpdate = () => {
+      fetchCredits();
+      fetchUsageStats(); // Also refresh usage stats when credits update
     };
 
+    window.addEventListener('creditsUpdated', handleCreditsUpdate);
+    return () => window.removeEventListener('creditsUpdated', handleCreditsUpdate);
+  }, [fetchCredits, fetchUsageStats]);
+
+  useEffect(() => {
     fetchUsageStats();
-  }, [user?.id]);
+  }, [fetchUsageStats]);
 
   if (loading) {
     return (

@@ -8,10 +8,21 @@ import {
 import { useCreditManager } from '@/hooks/useCreditManager';
 import { Zap, Brain, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import * as React from 'react';
 
 export function CreditsNavbar() {
-  const { credits, loading } = useCreditManager();
+  const { credits, loading, fetchCredits } = useCreditManager();
   const navigate = useNavigate();
+
+  // Listen for credit updates from other components
+  React.useEffect(() => {
+    const handleCreditsUpdate = () => {
+      fetchCredits();
+    };
+
+    window.addEventListener('creditsUpdated', handleCreditsUpdate);
+    return () => window.removeEventListener('creditsUpdated', handleCreditsUpdate);
+  }, [fetchCredits]);
 
   if (loading || !credits) {
     return (
