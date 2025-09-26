@@ -70,6 +70,23 @@ const Pricing = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-lg mb-3">Partnership Benefits</h4>
+                    <ul className="space-y-2 text-muted-foreground">
+                      <li>• White-label integration</li>
+                      <li>• Revenue share model</li>
+                      <li>• Dedicated support</li>
+                      <li>• Custom branding</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg mb-3">Revenue Model</h4>
+                    <p className="text-muted-foreground">
+                      Earn direct revenue from your clients who subscribe to Alphalens paid plans through our profit-sharing partnership.
+                    </p>
+                  </div>
+                </div>
                 
                 <div className="pt-4 border-t border-border">
                   <p className="text-sm text-muted-foreground mb-6">
