@@ -29,6 +29,7 @@ import { useNavigate } from "react-router-dom";
 import { useResultNotifications } from "@/hooks/useResultNotifications";
 import { ResultNotification } from "./ResultNotification";
 import { DiscreetJobStatus } from "./DiscreetJobStatus";
+import { CreditsNavbar } from "./CreditsNavbar";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -87,6 +88,7 @@ export default function Layout({ children, activeModule, onModuleChange, complet
             <div className="hidden lg:flex items-center gap-1">
               {user && (
                 <>
+                  <CreditsNavbar />
                   <Button
                     variant="ghost"
                     size="sm"

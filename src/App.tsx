@@ -25,6 +25,7 @@ import About from "./pages/About";
 import Features from "./pages/Features";
 import Contact from "./pages/Contact";
 import Pricing from "./pages/Pricing";
+import Credits from "./pages/Credits";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => {
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/email-confirmation" element={<EmailConfirmation />} />
                   <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
+                  <Route path="/credits" element={<AuthGuard requireApproval><Credits /></AuthGuard>} />
                   <Route path="/about" element={<About />} />
                   <Route path="/features" element={<Features />} />
                   <Route path="/contact" element={<Contact />} />
