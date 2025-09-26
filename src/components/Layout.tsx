@@ -6,6 +6,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronDown,
   Activity,
   Zap,
   User,
@@ -15,6 +16,12 @@ import {
   FileText,
   History
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -78,18 +85,28 @@ export default function Layout({ children, activeModule, onModuleChange, complet
 
             {/* Desktop Navigation Items */}
             <div className="hidden lg:flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/about")} className="h-8 px-3 text-sm">
-                About
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/features")} className="h-8 px-3 text-sm">
-                Features
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/pricing")} className="h-8 px-3 text-sm">
-                Pricing
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/contact")} className="h-8 px-3 text-sm">
-                Contact
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                    About Us
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48 bg-white">
+                  <DropdownMenuItem onClick={() => navigate("/about")} className="cursor-pointer">
+                    About
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/features")} className="cursor-pointer">
+                    Features
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/pricing")} className="cursor-pointer">
+                    Pricing
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/contact")} className="cursor-pointer">
+                    Contact
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Mobile Navigation + Auth + Status */}
