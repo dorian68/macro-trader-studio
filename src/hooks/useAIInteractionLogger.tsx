@@ -20,11 +20,11 @@ export function useAIInteractionLogger() {
   const getCreditTypeForFeature = (featureName: FeatureName): CreditType => {
     switch (featureName) {
       case 'trade_setup':
-        return 'queries';
+        return 'ideas'; // AI Setup → Investment Ideas
       case 'market_commentary':
-        return 'queries';
+        return 'queries'; // Macro Commentary → Queries
       case 'report':
-        return 'reports';
+        return 'reports'; // Reports → Reports
       default:
         return 'queries';
     }

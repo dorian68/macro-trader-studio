@@ -220,6 +220,17 @@ export default function Reports() {
   };
 
   const generateReport = async () => {
+    // CRITICAL: Check credits before allowing request (Reports)
+    const { checkCredits } = useAIInteractionLogger();
+    if (!checkCredits('report')) {
+      toast({
+        title: "No credits remaining",
+        description: "You have no remaining credits for Reports. Please upgrade your plan.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsGenerating(true);
     console.log('🔄 [Loader] Starting report generation');
 

@@ -633,6 +633,18 @@ export default function MacroAnalysis() {
   // Simplified workflow: single request with mode="run"
   const generateAnalysis = async () => {
     if (!queryParams.query.trim()) return;
+    
+    // CRITICAL: Check credits before allowing request (Queries)
+    const { checkCredits } = useAIInteractionLogger();
+    if (!checkCredits('market_commentary')) {
+      toast({
+        title: "No credits remaining",
+        description: "You have no remaining credits for Macro Commentary. Please upgrade your plan.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     console.log('🔄 [Loader] Starting analysis generation');
     setIsGenerating(true);
     setJobStatus("running");

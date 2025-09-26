@@ -293,6 +293,17 @@ export default function AISetup() {
     setSelectedSymbol(newSymbol);
   }, [parameters.instrument]);
   const generateTradeSetup = async () => {
+    // CRITICAL: Check credits before allowing request (Investment Ideas)
+    const { checkCredits } = useAIInteractionLogger();
+    if (!checkCredits('trade_setup')) {
+      toast({
+        title: "No credits remaining",
+        description: "You have no remaining credits for AI Setup. Please upgrade your plan.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsGenerating(true);
     setError(null);
     setN8nResult(null);
