@@ -275,14 +275,21 @@ export default function Reports() {
                
                // Set HTML content if available
                if (job.response_payload) {
-                 setHtmlContent(job.response_payload);
-                 setStep("generated");
-                 setIsGenerating(false);
-                 
-                 toast({
-                   title: "Report Generated",
-                   description: "Your report has been successfully generated."
-                 });
+                  setHtmlContent(job.response_payload);
+                  setStep("generated");
+                  setIsGenerating(false);
+                  
+                  // Log successful interaction here when we have the actual response
+                  logInteraction({
+                    featureName: 'report',
+                    userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
+                    aiResponse: job.response_payload
+                  });
+                  
+                  toast({
+                    title: "Report Generated",
+                    description: "Your report has been successfully generated."
+                  });
                } else {
                  setHtmlContent(null);
                  setIsGenerating(false);
@@ -337,6 +344,13 @@ export default function Reports() {
 
         setCurrentReport(newReport);
         setStep("generated");
+        
+        // Log successful interaction from dual response handler
+        logInteraction({
+          featureName: 'report',
+          userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
+          aiResponse: data
+        });
         
         toast({
           title: "Report Generated",
@@ -397,12 +411,14 @@ export default function Reports() {
         setStep("generated");
       }
 
-      // Log successful interaction
-      await logInteraction({
-        featureName: 'report',
-        userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
-        aiResponse: currentReport
-      });
+      // Log successful interaction (moved to when report is actually completed)
+      if (currentReport) {
+        await logInteraction({
+          featureName: 'report',
+          userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
+          aiResponse: currentReport
+        });
+      }
 
       toast({
         title: "Report Generated",

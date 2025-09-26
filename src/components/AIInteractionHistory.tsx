@@ -250,28 +250,6 @@ export function AIInteractionHistory() {
     }
   };
 
-  const clearAllHistory = async () => {
-    if (!user?.id) return;
-    
-    const { error } = await supabase
-      .from('ai_interactions')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to clear history",
-        variant: "destructive"
-      });
-    } else {
-      setInteractions([]);
-      toast({
-        title: "Cleared",
-        description: "All interaction history has been cleared"
-      });
-    }
-  };
 
   const renderFormattedResponse = (response: any) => {
     if (typeof response === 'string') {
@@ -805,17 +783,6 @@ export function AIInteractionHistory() {
             </SelectContent>
           </Select>
           
-          {interactions.length > 0 && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={clearAllHistory}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear All
-            </Button>
-          )}
         </div>
       </div>
 
