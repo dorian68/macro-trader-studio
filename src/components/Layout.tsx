@@ -83,30 +83,8 @@ export default function Layout({ children, activeModule, onModuleChange, complet
               </div>
             </button>
 
-            {/* Desktop Navigation Items */}
+            {/* Desktop Navigation Items - Empty for authenticated users */}
             <div className="hidden lg:flex items-center gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                    About Us
-                    <ChevronDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48 bg-white">
-                  <DropdownMenuItem onClick={() => navigate("/about")} className="cursor-pointer">
-                    About
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/features")} className="cursor-pointer">
-                    Features
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/pricing")} className="cursor-pointer">
-                    Pricing
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/contact")} className="cursor-pointer">
-                    Contact
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
             {/* Mobile Navigation + Auth + Status */}
@@ -147,6 +125,28 @@ export default function Layout({ children, activeModule, onModuleChange, complet
                       <span className="text-sm">Admin</span>
                     </Button>
                   )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                        About Us
+                        <ChevronDown className="ml-1 h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48 bg-white">
+                      <DropdownMenuItem onClick={() => navigate("/about")} className="cursor-pointer">
+                        About
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/features")} className="cursor-pointer">
+                        Features
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/pricing")} className="cursor-pointer">
+                        Pricing
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/contact")} className="cursor-pointer">
+                        Contact
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="ghost"
                     size="sm"
