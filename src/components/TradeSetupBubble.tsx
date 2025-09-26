@@ -168,7 +168,7 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
     
     // Log AI interaction to database
     await logInteraction({
-      featureName: 'trade_setup',
+      featureName: 'ai_trade_setup',
       userQuery: `Generate trade setup for ${parameters.instrument} with ${parameters.strategy} strategy, ${parameters.riskAppetite} risk, position size ${parameters.positionSize}. ${parameters.customNotes}`,
       aiResponse: mockSetup
     });
