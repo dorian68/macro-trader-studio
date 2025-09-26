@@ -89,8 +89,8 @@ export default function PublicNavbar() {
             ))}
           </div>
 
-          {/* Auth buttons - only show if not authenticated */}
-          {!user && (
+          {/* Auth buttons */}
+          {!user ? (
             <>
               <Button variant="ghost" onClick={() => navigate("/auth")} className="text-sm px-2 sm:px-4 min-h-[44px]">
                 Login
@@ -99,6 +99,10 @@ export default function PublicNavbar() {
                 Sign Up
               </Button>
             </>
+          ) : (
+            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-sm px-2 sm:px-4 min-h-[44px]">
+              Dashboard
+            </Button>
           )}
         </div>
       </div>
