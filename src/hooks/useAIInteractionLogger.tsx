@@ -23,7 +23,9 @@ export function useAIInteractionLogger() {
     const normalized = normalizeFeatureName(featureName);
     switch (normalized) {
       case 'ai_trade_setup':
-        return 'ideas'; // AI Setup → Investment Ideas
+        return 'ideas'; // AI Trade Setup → Investment Ideas
+      case 'trade_setup': 
+        return 'ideas'; // Legacy trade_setup → Investment Ideas
       case 'macro_commentary':
         return 'queries'; // Macro Commentary → Queries
       case 'report':
