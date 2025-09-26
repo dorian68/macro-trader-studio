@@ -170,68 +170,68 @@ export default function TradingDashboard() {
             </div>
           </div>
 
-          {/* Price widget - Affiche uniquement l'actif sélectionné */}
-          {(selectedAssetProfile || (priceData && priceData.symbol === selectedAsset)) && (
-            <Card className="gradient-card border-primary/20 shadow-glow-primary w-full">
-              <CardContent className="p-4">
-                {selectedAssetProfile ? (
-                  // Display selected asset from search (priority)
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
-                        {selectedAssetProfile.symbol?.slice(0, 2)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground text-lg">{selectedAssetProfile.symbol}</h3>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {selectedAssetProfile.short_name || selectedAssetProfile.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedAssetProfile.sector} • {selectedAssetProfile.exchange}
-                        </p>
-                      </div>
+          {/* Price widget - Affiche pour tous les assets */}
+          <Card className="gradient-card border-primary/20 shadow-glow-primary w-full">
+            <CardContent className="p-4">
+              {selectedAssetProfile ? (
+                // Display selected asset from search (priority)
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                      {selectedAssetProfile.symbol?.slice(0, 2)}
                     </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
-                        className="shrink-0"
-                      >
-                        View Details
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="secondary"
-                        onClick={() => setSelectedAssetProfile(null)}
-                        className="shrink-0"
-                      >
-                        ✕
-                      </Button>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-lg">{selectedAssetProfile.symbol}</h3>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {selectedAssetProfile.short_name || selectedAssetProfile.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedAssetProfile.sector} • {selectedAssetProfile.exchange}
+                      </p>
                     </div>
                   </div>
-                ) : (
-                  // Affichage par défaut avec données temps réel
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
-                        <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
-                      </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
+                      className="shrink-0"
+                    >
+                      View Details
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      onClick={() => setSelectedAssetProfile(null)}
+                      className="shrink-0"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // Affichage pour tous les assets
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
+                      <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
                     </div>
-                    
-                    <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
-                          ${priceData?.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
-                        </span>
-                        <div className={cn(
-                          "w-2 h-2 rounded-full animate-pulse shrink-0",
-                          isConnected ? "bg-success" : "bg-danger"
-                        )} />
-                      </div>
-                      {priceData && (
+                  </div>
+                  
+                  <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
+                    {priceData && priceData.symbol === selectedAsset ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
+                            ${priceData.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
+                          </span>
+                          <div className={cn(
+                            "w-2 h-2 rounded-full animate-pulse shrink-0",
+                            isConnected ? "bg-success" : "bg-danger"
+                          )} />
+                        </div>
                         <div className={cn(
                           "flex items-center gap-1 text-sm font-medium",
                           priceData.change24h >= 0 ? "text-success" : "text-danger"
@@ -242,13 +242,17 @@ export default function TradingDashboard() {
                           }
                           {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
                         </div>
-                      )}
-                    </div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        Données de prix indisponibles
+                      </div>
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
         </div>
 
