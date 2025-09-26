@@ -180,10 +180,15 @@ export function UserPlanDialog({
         updated_at: new Date().toISOString()
       };
 
-      // Upsert user credits
-      const { error: creditsError } = await supabase
+      // Upsert user credits with proper conflict resolution
+      const { data: updatedCredits, error: creditsError } = await supabase
         .from('user_credits')
-        .upsert([creditsUpdate]);
+        .upsert([creditsUpdate], {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        })
+        .select()
+        .single();
 
       if (creditsError) {
         console.error('Credits update error:', creditsError);
