@@ -5,6 +5,7 @@ interface UserProfile {
   id: string;
   user_id: string;
   broker_name: string | null;
+  broker_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
   role: 'user' | 'admin' | 'super_user';
   created_at: string;
@@ -51,10 +52,10 @@ Deno.serve(async (req) => {
       throw new Error('User not authenticated')
     }
 
-    // Check if user has admin or super_user role
+    // Check if user has admin or super_user role and get broker_id for scoping
     const { data: profileData, error: profileError } = await supabaseUser
       .from('profiles')
-      .select('role')
+      .select('role, broker_id')
       .eq('user_id', user.id)
       .single()
 
@@ -62,11 +63,18 @@ Deno.serve(async (req) => {
       throw new Error('Insufficient permissions')
     }
 
-    // Fetch all profiles
-    const { data: profiles, error: profilesError } = await supabaseAdmin
+    // Fetch profiles with broker scoping for admins
+    let profilesQuery = supabaseAdmin
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
+
+    // Apply broker scoping for admin users
+    if (profileData.role === 'admin' && profileData.broker_id) {
+      profilesQuery = profilesQuery.eq('broker_id', profileData.broker_id)
+    }
+
+    const { data: profiles, error: profilesError } = await profilesQuery
 
     if (profilesError) {
       throw profilesError
@@ -102,7 +110,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in fetch-users-with-emails:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,

@@ -10,6 +10,7 @@ interface CreateUserRequest {
   email: string;
   role: 'user' | 'admin' | 'super_user';
   brokerName?: string;
+  brokerId?: string;
   password?: string;
 }
 
@@ -59,22 +60,22 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if user is super_user using the admin client to bypass RLS
+    // Check if user is admin or super_user using the admin client to bypass RLS
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, broker_id')
       .eq('user_id', user.id)
       .single();
 
-    if (profileError || !profile || profile.role !== 'super_user') {
+    if (profileError || !profile || !['admin', 'super_user'].includes(profile.role)) {
       console.error('User not authorized:', profileError);
-      return new Response(JSON.stringify({ error: 'Unauthorized: super_user role required' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized: admin or super_user role required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { email, role, brokerName, password }: CreateUserRequest = await req.json();
+    const { email, role, brokerName, brokerId, password }: CreateUserRequest = await req.json();
 
     // Validate input
     if (!email || !role) {
@@ -91,12 +92,39 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Determine the actual broker_id to use
+    let actualBrokerId = brokerId;
+    let actualBrokerName = brokerName;
+
+    // If user is admin, they can only create users for their own broker
+    if (profile.role === 'admin') {
+      if (!profile.broker_id) {
+        return new Response(JSON.stringify({ error: 'Admin must have a broker assigned to create users' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      actualBrokerId = profile.broker_id;
+      
+      // Get broker name for consistency
+      const { data: brokerData } = await supabaseAdmin
+        .from('brokers')
+        .select('name')
+        .eq('id', profile.broker_id)
+        .single();
+      
+      if (brokerData) {
+        actualBrokerName = brokerData.name;
+      }
+    }
+
     // Create user with admin client
     const createUserData: any = {
       email,
       email_confirm: true,
       user_metadata: {
-        broker_name: brokerName || null
+        broker_name: actualBrokerName || null,
+        broker_id: actualBrokerId || null
       }
     };
 
@@ -123,7 +151,9 @@ const handler = async (req: Request): Promise<Response> => {
         .from('profiles')
         .update({ 
           role: role,
-          status: 'approved'
+          status: 'approved',
+          broker_id: actualBrokerId || null,
+          broker_name: actualBrokerName || null
         })
         .eq('user_id', newUser.user.id);
 

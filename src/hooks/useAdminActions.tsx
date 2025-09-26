@@ -147,33 +147,29 @@ export function useAdminActions() {
     }
   };
 
-  const createUser = async (email: string, password: string, role: 'user' | 'admin' | 'super_user', brokerName?: string) => {
+  const createUser = async (email: string, password: string, role: 'user' | 'admin' | 'super_user', brokerId?: string) => {
     setLoading(true);
     try {
-      // Use Supabase Auth Admin API to create user
-      const { data, error } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          broker_name: brokerName || null
+      // Use the edge function to create user with proper broker assignment
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const response = await supabase.functions.invoke('create-user', {
+        body: {
+          email: email.trim(),
+          role,
+          brokerId: brokerId || null,
+          password: password.trim()
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        // Update the profile with the specified role (the trigger creates it with default role 'user')
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            role,
-            status: 'approved', // Auto-approve admin-created users
-            broker_name: brokerName || null
-          })
-          .eq('user_id', data.user.id);
-
-        if (profileError) throw profileError;
+      if (response.error) {
+        throw new Error(response.error.message || 'Error during creation');
       }
 
       toast({
@@ -181,7 +177,7 @@ export function useAdminActions() {
         description: `User created successfully with ${role} role`,
       });
 
-      return { success: true, user: data.user };
+      return { success: true, user: response.data };
     } catch (error) {
       console.error('Error creating user:', error);
       toast({
