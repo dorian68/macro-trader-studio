@@ -136,16 +136,18 @@ const Pricing = () => {
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                {b2cPlans.map(plan => <Card key={plan.name} className={`relative ${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'}`}>
-                  {plan.highlight && (
-                    <Badge 
-                      variant="default" 
-                      className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs whitespace-nowrap z-10 shadow-md" 
-                      aria-label="Most Complete"
-                    >
-                      Most Complete
-                    </Badge>
-                  )}
+                {b2cPlans.map(plan => (
+                  <div key={plan.name} className="relative">
+                    {plan.highlight && (
+                      <Badge 
+                        variant="default" 
+                        className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs whitespace-nowrap z-20 shadow-lg" 
+                        aria-label="Most Complete"
+                      >
+                        Most Complete
+                      </Badge>
+                    )}
+                    <Card className={`${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'}`}>
                   <CardHeader className={`text-center ${plan.highlight ? 'pb-6 pt-2' : 'pb-6'}`}>
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
                     <div className="mt-4">
@@ -178,12 +180,14 @@ const Pricing = () => {
                       </ul>
                     </div>
                     
-                    <Button className="w-full mt-6" variant={plan.highlight ? "default" : "outline"} onClick={() => handleCTAClick(plan.name)}>
-                      Get Started
-                    </Button>
-                  </CardContent>
-                </Card>)}
-            </div>
+                     <Button className="w-full mt-6" variant={plan.highlight ? "default" : "outline"} onClick={() => handleCTAClick(plan.name)}>
+                       Get Started
+                     </Button>
+                   </CardContent>
+                 </Card>
+                   </div>
+                 ))}
+             </div>
           </div>
 
           {/* Footer Note */}
