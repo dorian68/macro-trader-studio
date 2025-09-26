@@ -5,7 +5,7 @@ export default function PublicNavbar() {
   const navigate = useNavigate();
 
   return (
-    <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <header className="border-b border-border bg-white sticky top-0 z-50 shadow-sm">
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         {/* Logo - Mobile optimized */}
         <button
