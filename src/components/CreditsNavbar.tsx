@@ -35,9 +35,8 @@ export function CreditsNavbar() {
           className="h-8 px-3 text-sm relative"
           onClick={() => navigate('/credits')}
         >
-          <Zap className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Credits:</span>
-          <Badge variant="secondary" className="ml-1 min-w-[2rem]">
+          <Zap className="h-4 w-4 mr-1" />
+          <Badge variant="secondary" className="min-w-[2rem]">
             {totalCredits}
           </Badge>
         </Button>
@@ -50,7 +49,7 @@ export function CreditsNavbar() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Brain className="h-4 w-4 text-primary" />
-                <span className="text-sm">Queries</span>
+                <span className="text-sm">Macro Commentary</span>
               </div>
               <Badge variant={credits.credits_queries_remaining > 0 ? "default" : "destructive"}>
                 {credits.credits_queries_remaining}
@@ -60,7 +59,7 @@ export function CreditsNavbar() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm">Investment Ideas</span>
+                <span className="text-sm">AI Trade</span>
               </div>
               <Badge variant={credits.credits_ideas_remaining > 0 ? "default" : "destructive"}>
                 {credits.credits_ideas_remaining}

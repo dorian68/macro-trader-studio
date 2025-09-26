@@ -162,7 +162,7 @@ export default function Credits() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Brain className="h-5 w-5 text-primary" />
-                Queries
+                Macro Commentary
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -184,7 +184,7 @@ export default function Credits() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary" />
-                Investment Ideas
+                AI Trade
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -241,7 +241,7 @@ export default function Credits() {
                     {usageStats.queries}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Total Queries Used
+                    Total Macro Commentary Used
                   </div>
                 </div>
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
@@ -249,7 +249,7 @@ export default function Credits() {
                     {usageStats.ideas}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Total Ideas Generated
+                    Total AI Trade Generated
                   </div>
                 </div>
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
