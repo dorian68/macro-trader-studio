@@ -793,11 +793,11 @@ export default function AISetup() {
 
             {/* TradingView Chart Integration */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 order-2 lg:order-1">
                 <TradingViewWidget selectedSymbol={selectedSymbol} onSymbolChange={setSelectedSymbol} className="h-[500px]" />
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-4 order-1 lg:order-2">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Trade Visualization</CardTitle>
