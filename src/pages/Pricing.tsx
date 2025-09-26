@@ -70,21 +70,44 @@ const Pricing = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-semibold text-lg mb-3">Partnership Benefits</h4>
-                    <ul className="space-y-2 text-muted-foreground">
-                      <li>• White-label integration</li>
-                      <li>• Revenue share model</li>
-                      <li>• Dedicated support</li>
-                      <li>• Custom branding</li>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-6 border border-primary/10">
+                    <h4 className="font-semibold text-xl mb-4 text-foreground flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary"></div>
+                      Partnership Benefits
+                    </h4>
+                    <ul className="space-y-3">
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span>White-label integration</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span>Revenue share model</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span>Dedicated support</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-muted-foreground">
+                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span>Custom branding</span>
+                      </li>
                     </ul>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-lg mb-3">Revenue Model</h4>
-                    <p className="text-muted-foreground">
+                  <div className="bg-gradient-to-br from-secondary/5 to-secondary/10 rounded-xl p-6 border border-secondary/10">
+                    <h4 className="font-semibold text-xl mb-4 text-foreground flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-secondary"></div>
+                      Revenue Model
+                    </h4>
+                    <p className="text-muted-foreground leading-relaxed">
                       Earn direct revenue from your clients who subscribe to Alphalens paid plans through our profit-sharing partnership.
                     </p>
+                    <div className="mt-4 pt-4 border-t border-secondary/20">
+                      <p className="text-sm font-medium text-foreground">
+                        Immediate value creation for your clients
+                      </p>
+                    </div>
                   </div>
                 </div>
                 
