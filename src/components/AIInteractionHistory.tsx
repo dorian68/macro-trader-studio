@@ -346,36 +346,139 @@ export function AIInteractionHistory() {
     return FEATURE_COLORS[normalized as keyof typeof FEATURE_COLORS] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
   };
 
-  const renderFormattedResponse = (response: any) => {
-    if (typeof response === 'string') {
-      // Try to parse JSON string to enable formatted rendering
-      try {
-        const parsed = JSON.parse(response);
-        return renderFormattedResponse(parsed);
-      } catch {
-        return (
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <div className="space-y-3">
-              <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
-                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{response}</p>
-              </div>
-            </div>
-          </div>
-        );
-      }
-    }
-    
-    if (typeof response === 'object' && response !== null) {
+  const renderFormattedResponse = (response: any, featureName: string) => {
+    if (!response || response === 'Unavailable') {
       return (
-        <div className="space-y-4">
-          <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
-            <pre className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{JSON.stringify(response, null, 2)}</pre>
-          </div>
+        <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-muted/50">
+          <p className="text-sm text-muted-foreground">Unavailable</p>
         </div>
       );
     }
-    
-    return <div>No response data available</div>;
+
+    const normalizedFeature = normalizeFeatureName(featureName);
+
+    // For reports - render HTML directly
+    if (normalizedFeature === 'report') {
+      if (typeof response === 'string') {
+        // Check if it's HTML content
+        if (response.includes('<html>') || response.includes('<!DOCTYPE') || response.includes('<body>')) {
+          return (
+            <div className="border rounded-lg overflow-hidden">
+              <div 
+                className="prose prose-sm max-w-none dark:prose-invert report-content"
+                dangerouslySetInnerHTML={{ __html: response }}
+              />
+            </div>
+          );
+        }
+        // If not HTML, try to parse as JSON first
+        try {
+          const parsed = JSON.parse(response);
+          return renderJSONResponse(parsed);
+        } catch {
+          // Plain text response
+          return (
+            <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{response}</p>
+            </div>
+          );
+        }
+      }
+      if (typeof response === 'object') {
+        return renderJSONResponse(response);
+      }
+    }
+
+    // For macro-analysis and ai-setup - render JSON in structured format
+    if (normalizedFeature === 'macro_commentary' || normalizedFeature === 'ai_trade_setup') {
+      if (typeof response === 'string') {
+        try {
+          const parsed = JSON.parse(response);
+          return renderJSONResponse(parsed);
+        } catch {
+          return (
+            <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{response}</p>
+            </div>
+          );
+        }
+      }
+      if (typeof response === 'object') {
+        return renderJSONResponse(response);
+      }
+    }
+
+    // Default fallback
+    if (typeof response === 'string') {
+      return (
+        <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-primary/30">
+          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{response}</p>
+        </div>
+      );
+    }
+
+    if (typeof response === 'object') {
+      return renderJSONResponse(response);
+    }
+
+    return (
+      <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-muted/50">
+        <p className="text-sm text-muted-foreground">Unable to display response</p>
+      </div>
+    );
+  };
+
+  const renderJSONResponse = (data: any) => {
+    if (!data || typeof data !== 'object') {
+      return (
+        <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-muted/50">
+          <p className="text-sm text-muted-foreground">No data available</p>
+        </div>
+      );
+    }
+
+    // Handle nested structures like message.content.content
+    const actualData = data.message?.content?.content || data.content || data;
+
+    return (
+      <div className="space-y-3">
+        {Object.entries(actualData).map(([key, value], index) => (
+          <div key={index} className="border rounded-lg overflow-hidden">
+            <div className="bg-muted/50 px-3 py-2 border-b">
+              <h5 className="font-medium text-sm text-foreground capitalize">
+                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+              </h5>
+            </div>
+            <div className="p-3">
+              {typeof value === 'object' && value !== null ? (
+                <div className="space-y-2">
+                  {Object.entries(value).map(([subKey, subValue]) => (
+                    <div key={subKey} className="pl-3 border-l-2 border-muted">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        {subKey.replace(/([A-Z])/g, ' $1').trim()}
+                      </div>
+                      <div className="text-sm text-foreground">
+                        {typeof subValue === 'object' ? (
+                          <pre className="text-xs bg-muted/30 p-2 rounded overflow-x-auto">
+                            {JSON.stringify(subValue, null, 2)}
+                          </pre>
+                        ) : (
+                          <p className="whitespace-pre-wrap leading-relaxed">{String(subValue)}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                  {String(value)}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -513,7 +616,7 @@ export function AIInteractionHistory() {
                           </div>
                           <div>
                             <h4 className="font-medium text-sm mb-2">Response</h4>
-                            {renderFormattedResponse(interaction.ai_response)}
+                            {renderFormattedResponse(interaction.ai_response, interaction.feature_name)}
                           </div>
                         </div>
                       </CollapsibleContent>

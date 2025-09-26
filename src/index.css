@@ -388,4 +388,61 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* History page report content styling */
+  .report-content {
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    color: hsl(var(--foreground));
+  }
+
+  .report-content h1,
+  .report-content h2,
+  .report-content h3,
+  .report-content h4,
+  .report-content h5,
+  .report-content h6 {
+    color: hsl(var(--foreground));
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+  }
+
+  .report-content p {
+    margin-bottom: 1em;
+  }
+
+  .report-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    border: 1px solid hsl(var(--border));
+  }
+
+  .report-content th,
+  .report-content td {
+    padding: 0.75rem;
+    text-align: left;
+    border: 1px solid hsl(var(--border));
+  }
+
+  .report-content th {
+    background-color: hsl(var(--muted));
+    font-weight: 600;
+  }
+
+  .report-content strong {
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+
+  .report-content ul,
+  .report-content ol {
+    margin: 1em 0;
+    padding-left: 2em;
+  }
+
+  .report-content li {
+    margin-bottom: 0.5em;
+  }
 }
