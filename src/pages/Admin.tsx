@@ -82,7 +82,45 @@ export default function Admin() {
   const loadUsers = async () => {
     setLoading(true);
     const userData = await fetchUsers();
-    setUsers(userData);
+    
+    // Fetch credit data for super users
+    if (isSuperUser && userData.length > 0) {
+      try {
+        const { data: creditsData } = await supabase
+          .from('user_credits')
+          .select('user_id, credits_queries_remaining, credits_ideas_remaining, credits_reports_remaining, plan_type, last_reset_date');
+        
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, user_plan');
+
+        // Merge credit and plan data with users
+        const enhancedUsers = userData.map(user => {
+          const userCredits = creditsData?.find(c => c.user_id === user.user_id);
+          const userProfile = profilesData?.find(p => p.user_id === user.user_id);
+          
+          return {
+            ...user,
+            user_plan: userProfile?.user_plan,
+            credits: userCredits ? {
+              queries: userCredits.credits_queries_remaining,
+              ideas: userCredits.credits_ideas_remaining,
+              reports: userCredits.credits_reports_remaining,
+              plan_type: userCredits.plan_type,
+              last_reset_date: userCredits.last_reset_date
+            } : undefined
+          };
+        });
+        
+        setUsers(enhancedUsers);
+      } catch (error) {
+        console.error('Error loading credit data:', error);
+        setUsers(userData);
+      }
+    } else {
+      setUsers(userData);
+    }
+    
     setLoading(false);
   };
 

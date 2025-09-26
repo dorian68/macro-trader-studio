@@ -24,10 +24,13 @@ import {
   User,
   Shield,
   Crown,
-  Calendar
+  Calendar,
+  CreditCard
 } from "lucide-react";
 import { UserActionsDialog } from "./UserActionsDialog";
+import { UserPlanDialog } from "./UserPlanDialog";
 import { formatDistanceToNow } from "date-fns";
+import { useProfile } from "@/hooks/useProfile";
 
 interface AdminUser {
   id: string;
@@ -38,6 +41,14 @@ interface AdminUser {
   created_at: string;
   updated_at: string;
   email?: string;
+  user_plan?: string;
+  credits?: {
+    queries: number;
+    ideas: number;
+    reports: number;
+    plan_type: string;
+    last_reset_date: string;
+  };
 }
 
 interface UsersTableProps {
@@ -77,9 +88,11 @@ export function UsersTable({
 }: UsersTableProps) {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const { isSuperUser } = useProfile();
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -99,6 +112,17 @@ export function UsersTable({
 
   const handleDialogClose = () => {
     setDialogOpen(false);
+    setSelectedUser(null);
+    onRefresh();
+  };
+
+  const handleManagePlan = (user: AdminUser) => {
+    setSelectedUser(user);
+    setPlanDialogOpen(true);
+  };
+
+  const handlePlanDialogClose = () => {
+    setPlanDialogOpen(false);
     setSelectedUser(null);
     onRefresh();
   };
@@ -163,14 +187,15 @@ export function UsersTable({
                 <TableHead className="min-w-[100px]">Broker</TableHead>
                 <TableHead className="min-w-[100px]">Status</TableHead>
                 <TableHead className="min-w-[100px]">Role</TableHead>
+                {isSuperUser && <TableHead className="min-w-[150px]">Plan & Credits</TableHead>}
                 <TableHead className="min-w-[120px]">Created</TableHead>
-                <TableHead className="text-right min-w-[100px]">Actions</TableHead>
+                <TableHead className="text-right min-w-[140px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={isSuperUser ? 8 : 7} className="text-center py-8 text-muted-foreground">
                   No users found matching your filters
                 </TableCell>
               </TableRow>
@@ -207,6 +232,22 @@ export function UsersTable({
                         </Badge>
                       </div>
                     </TableCell>
+                    {isSuperUser && (
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="text-xs">
+                            <span className="font-medium">{user.user_plan || 'free_trial'}</span>
+                          </div>
+                          {user.credits && (
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              <div>Q: {user.credits.queries}</div>
+                              <div>I: {user.credits.ideas}</div>
+                              <div>R: {user.credits.reports}</div>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Calendar className="h-3 w-3" />
@@ -214,15 +255,28 @@ export function UsersTable({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleManageUser(user)}
-                        className="h-8"
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Manage
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleManageUser(user)}
+                          className="h-8"
+                        >
+                          <Settings className="h-4 w-4 mr-1" />
+                          Manage
+                        </Button>
+                        {isSuperUser && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleManagePlan(user)}
+                            className="h-8"
+                          >
+                            <CreditCard className="h-4 w-4 mr-1" />
+                            Plan
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -234,15 +288,23 @@ export function UsersTable({
       </div>
 
       {/* User Actions Dialog */}
-            <UserActionsDialog
-              isOpen={dialogOpen}
-              onClose={handleDialogClose}
-              user={selectedUser}
-              onUpdateStatus={onUpdateStatus}
-              onUpdateRole={onUpdateRole}
-              onDeleteUser={onDeleteUser}
-              loading={loading}
-            />
+      <UserActionsDialog
+        isOpen={dialogOpen}
+        onClose={handleDialogClose}
+        user={selectedUser}
+        onUpdateStatus={onUpdateStatus}
+        onUpdateRole={onUpdateRole}
+        onDeleteUser={onDeleteUser}
+        loading={loading}
+      />
+
+      {/* User Plan Dialog */}
+      <UserPlanDialog
+        isOpen={planDialogOpen}
+        onClose={handlePlanDialogClose}
+        user={selectedUser}
+        onRefresh={onRefresh}
+      />
     </div>
   );
 }

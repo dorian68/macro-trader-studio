@@ -679,6 +679,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          user_plan: Database["public"]["Enums"]["plan_type"] | null
         }
         Insert: {
           broker_id?: string | null
@@ -689,6 +690,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          user_plan?: Database["public"]["Enums"]["plan_type"] | null
         }
         Update: {
           broker_id?: string | null
@@ -699,6 +701,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          user_plan?: Database["public"]["Enums"]["plan_type"] | null
         }
         Relationships: [
           {
