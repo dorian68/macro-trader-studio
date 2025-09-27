@@ -98,6 +98,7 @@ export default function Reports() {
       });
     }
   });
+
   const [step, setStep] = useState<"compose" | "preview" | "generated">("compose");
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentReport, setCurrentReport] = useState<GeneratedReport | null>(null);
@@ -218,6 +219,42 @@ export default function Reports() {
       });
     });
   };
+
+  // Check for pending results from persistent notifications
+  useEffect(() => {
+    const pendingResult = sessionStorage.getItem('pendingResult');
+    if (pendingResult) {
+      try {
+        const result = JSON.parse(pendingResult);
+        if (result.type.includes('report')) {
+          // Process the report data similar to the realtime injector
+          const includedSections = availableSections.filter(s => s.included);
+          const generatedSections = includedSections.map(section => ({
+            title: section.title,
+            content: result.resultData.sections?.[section.id] || result.resultData.content || `Generated content for the "${section.title}" section.`,
+            userNotes: section.userNotes || ""
+          }));
+
+          const newReport: GeneratedReport = {
+            id: result.jobId,
+            title: reportConfig.title,
+            sections: generatedSections,
+            customNotes: reportConfig.customNotes,
+            exportFormat: reportConfig.exportFormat,
+            createdAt: new Date(),
+            status: "generated"
+          };
+
+          setCurrentReport(newReport);
+          setStep("generated");
+          sessionStorage.removeItem('pendingResult');
+        }
+      } catch (error) {
+        console.error('Error parsing pending result:', error);
+        sessionStorage.removeItem('pendingResult');
+      }
+    }
+  }, [availableSections, reportConfig]);
 
   const generateReport = async () => {
     // CRITICAL: Check credits before allowing request (Reports)

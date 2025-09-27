@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { useSessionManager } from "@/hooks/useSessionManager";
 import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
+import { PersistentNotificationProvider } from "@/components/PersistentNotificationProvider";
+import { PersistentToast } from "@/components/PersistentToast";
 import { JobStatusCards } from "@/components/JobStatusCards";
 import AdminGuard from "./components/AdminGuard";
 import AuthGuard from "./components/AuthGuard";
@@ -36,33 +38,36 @@ const App = () => {
       <AuthProvider>
         <SessionManagerProvider>
           <TooltipProvider>
-            <GlobalLoadingProvider>
-              <JobStatusCards />
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Homepage />} />
-                  <Route path="/dashboard" element={<AuthGuard requireApproval><Dashboard /></AuthGuard>} />
-                  <Route path="/asset/:symbol" element={<AssetDetail />} />
-                  <Route path="/ai-setup" element={<AuthGuard requireApproval><AISetup /></AuthGuard>} />
-                  <Route path="/macro-analysis" element={<AuthGuard requireApproval><MacroAnalysis /></AuthGuard>} />
-                  <Route path="/reports" element={<AuthGuard requireApproval><Reports /></AuthGuard>} />
-                  <Route path="/portfolio" element={<Portfolio />} />
-                  <Route path="/history" element={<History />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/email-confirmation" element={<EmailConfirmation />} />
-                  <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
-                  <Route path="/credits" element={<AuthGuard requireApproval><Credits /></AuthGuard>} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/features" element={<Features />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/product" element={<ProductPresentation />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </GlobalLoadingProvider>
+            <PersistentNotificationProvider>
+              <GlobalLoadingProvider>
+                <JobStatusCards />
+                <PersistentToast />
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Homepage />} />
+                    <Route path="/dashboard" element={<AuthGuard requireApproval><Dashboard /></AuthGuard>} />
+                    <Route path="/asset/:symbol" element={<AssetDetail />} />
+                    <Route path="/ai-setup" element={<AuthGuard requireApproval><AISetup /></AuthGuard>} />
+                    <Route path="/macro-analysis" element={<AuthGuard requireApproval><MacroAnalysis /></AuthGuard>} />
+                    <Route path="/reports" element={<AuthGuard requireApproval><Reports /></AuthGuard>} />
+                    <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/history" element={<History />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/email-confirmation" element={<EmailConfirmation />} />
+                    <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
+                    <Route path="/credits" element={<AuthGuard requireApproval><Credits /></AuthGuard>} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/features" element={<Features />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/product" element={<ProductPresentation />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </GlobalLoadingProvider>
+            </PersistentNotificationProvider>
           </TooltipProvider>
         </SessionManagerProvider>
       </AuthProvider>

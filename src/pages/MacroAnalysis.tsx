@@ -84,6 +84,24 @@ export default function MacroAnalysis() {
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [timeframe, setTimeframe] = useState('1h');
 
+  // Check for pending results from persistent notifications
+  useEffect(() => {
+    const pendingResult = sessionStorage.getItem('pendingResult');
+    if (pendingResult) {
+      try {
+        const result = JSON.parse(pendingResult);
+        if (result.type.includes('macro') || result.type.includes('commentary')) {
+          // Process the result similar to handleRealtimeResponse
+          handleRealtimeResponse(result.resultData, result.jobId);
+          sessionStorage.removeItem('pendingResult');
+        }
+      } catch (error) {
+        console.error('Error parsing pending result:', error);
+        sessionStorage.removeItem('pendingResult');
+      }
+    }
+  }, []);
+
   // Handler functions for Realtime responses
   const handleRealtimeResponse = async (responsePayload: any, jobId: string) => {
     console.log('📩 [Realtime] Processing response payload:', responsePayload);
