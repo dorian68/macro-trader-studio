@@ -91,14 +91,25 @@ export function AIInteractionHistory() {
     if (requestPayload.analysis?.query) return requestPayload.analysis.query;
     if (requestPayload.analysis?.question) return requestPayload.analysis.question;
     
-    // For AI Trade Setup, try to reconstruct from instrument and other fields
+    // For AI Trade Setup, try to reconstruct a clean query from instrument and other fields
     if (requestPayload.instrument) {
       const parts = [];
-      if (requestPayload.instrument) parts.push(`Instrument: ${requestPayload.instrument}`);
-      if (requestPayload.strategy) parts.push(`Strategy: ${requestPayload.strategy}`);
-      if (requestPayload.timeframe) parts.push(`Timeframe: ${requestPayload.timeframe}`);
-      if (parts.length > 0) {
-        return parts.join(', ');
+      parts.push(`Generate AI Trade Setup for ${requestPayload.instrument}`);
+      if (requestPayload.strategy) parts.push(`using ${requestPayload.strategy} strategy`);
+      if (requestPayload.timeframe) parts.push(`on ${requestPayload.timeframe} timeframe`);
+      return parts.join(' ');
+    }
+    
+    // Try to extract meaningful text instead of raw JSON
+    if (typeof requestPayload === 'object') {
+      const keys = Object.keys(requestPayload);
+      const meaningfulKeys = keys.filter(key => 
+        typeof requestPayload[key] === 'string' && 
+        requestPayload[key].length > 5 && 
+        requestPayload[key].length < 100
+      );
+      if (meaningfulKeys.length > 0) {
+        return requestPayload[meaningfulKeys[0]];
       }
     }
     
@@ -115,9 +126,10 @@ export function AIInteractionHistory() {
       return responsePayload.message.content.content;
     }
     
-    // For AI Trade Setup, look for setups array in content
+    // For AI Trade Setup, preserve the complete response structure
     if (responsePayload.content?.setups && Array.isArray(responsePayload.content.setups)) {
-      return responsePayload.content.setups[0] || responsePayload.content;
+      // Return the full content structure to preserve all data
+      return responsePayload.content;
     }
     
     // Direct response content
@@ -589,9 +601,23 @@ export function AIInteractionHistory() {
                         <p className="ml-2 mt-1 text-sm text-muted-foreground break-words">{setup.riskNotes}</p>
                       </div>
                     )}
+                    
+                    {(setup.riskReward || setup.risk_reward_ratio || setup.risk_reward) && (
+                      <div>
+                        <span className="font-semibold">Risk/Reward Ratio:</span>
+                        <span className="ml-2 font-mono text-lg">{setup.riskReward || setup.risk_reward_ratio || setup.risk_reward}</span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+          
+          {content?.market_commentary_anchor?.summary && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">Market Commentary</h4>
+              <p className="text-sm text-blue-800 dark:text-blue-200 break-words">{content.market_commentary_anchor.summary}</p>
             </div>
           )}
           

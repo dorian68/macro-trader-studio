@@ -19,29 +19,38 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
     );
   }
 
+  // Handle both single setup and setups array
+  const setupData = data.setups ? data.setups[0] : data;
+  
   // Map both old and new field names for backward compatibility
   const {
-    instrument,
+    instrument = data.instrument, // Can come from parent content
     timeframe,
     horizon,
     strategy,
     direction,
     entry_price,
     entry, // Alternative field name
+    entryPrice, // camelCase alternative
     stop_loss,
+    stopLoss, // camelCase alternative
     targets,
+    takeProfits, // camelCase alternative
     key_levels,
+    levels, // Alternative field name
     risk_reward_ratio,
     risk_reward, // Alternative field name
+    riskReward, // camelCase alternative
     confidence,
     position_size,
     market_context,
     context, // Alternative field name
     trade_reasoning,
     reasoning, // Alternative field name
+    riskNotes, // camelCase field
     as_of,
     atr_multiple_sl
-  } = data;
+  } = setupData || data;
 
   const getDirectionIcon = (dir: string) => {
     return dir?.toLowerCase() === 'long' ? (
@@ -57,10 +66,16 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
       : "text-red-600 bg-red-50 dark:bg-red-950";
   };
 
-  const finalEntry = entry_price || entry;
-  const finalRiskReward = risk_reward_ratio || risk_reward;
+  const finalEntry = entry_price || entry || entryPrice;
+  const finalStopLoss = stop_loss || stopLoss;
+  const finalTargets = targets || takeProfits;
+  const finalKeyLevels = key_levels || levels;
+  const finalRiskReward = risk_reward_ratio || risk_reward || riskReward;
   const finalContext = market_context || context;
   const finalReasoning = trade_reasoning || reasoning;
+  
+  // Extract commentary from market_commentary_anchor if available
+  const marketCommentary = data.market_commentary_anchor?.summary;
 
   return (
     <div className="space-y-4">
@@ -147,10 +162,10 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
                 <p className="font-semibold text-lg">{finalEntry}</p>
               </div>
             )}
-            {stop_loss && (
+            {finalStopLoss && (
               <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg">
                 <span className="text-sm font-medium text-muted-foreground">Stop Loss</span>
-                <p className="font-semibold text-lg text-red-600 dark:text-red-400">{stop_loss}</p>
+                <p className="font-semibold text-lg text-red-600 dark:text-red-400">{finalStopLoss}</p>
               </div>
             )}
           </div>
@@ -158,14 +173,14 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
       </Card>
 
       {/* Price Targets */}
-      {targets && targets.length > 0 && (
+      {finalTargets && finalTargets.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Targets</CardTitle>
+            <CardTitle className="text-lg font-semibold">Take Profits</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {targets.map((target: any, index: number) => (
+              {finalTargets.map((target: any, index: number) => (
                 <div key={index} className="p-3 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
                   <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
                     TP{index + 1}
@@ -181,17 +196,17 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
       )}
 
       {/* Key Levels */}
-      {key_levels && (
+      {finalKeyLevels && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Key Levels</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {key_levels.support && key_levels.support.length > 0 && (
+            {(finalKeyLevels.support || finalKeyLevels.supports) && (finalKeyLevels.support?.length > 0 || finalKeyLevels.supports?.length > 0) && (
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Supports</h4>
                 <div className="space-y-1">
-                  {key_levels.support.map((level: any, index: number) => (
+                  {(finalKeyLevels.support || finalKeyLevels.supports || []).map((level: any, index: number) => (
                     <div key={index} className="p-2 bg-muted/50 rounded text-sm break-words">
                       {typeof level === 'object' ? level.price || level.level || level : level}
                     </div>
@@ -200,11 +215,11 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
               </div>
             )}
             
-            {key_levels.resistance && key_levels.resistance.length > 0 && (
+            {(finalKeyLevels.resistance || finalKeyLevels.resistances) && (finalKeyLevels.resistance?.length > 0 || finalKeyLevels.resistances?.length > 0) && (
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Resistances</h4>
                 <div className="space-y-1">
-                  {key_levels.resistance.map((level: any, index: number) => (
+                  {(finalKeyLevels.resistance || finalKeyLevels.resistances || []).map((level: any, index: number) => (
                     <div key={index} className="p-2 bg-muted/50 rounded text-sm break-words">
                       {typeof level === 'object' ? level.price || level.level || level : level}
                     </div>
@@ -251,11 +266,11 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
         </CardContent>
       </Card>
 
-      {/* Context */}
-      {(finalContext || finalReasoning) && (
+      {/* Context & Commentary */}
+      {(finalContext || finalReasoning || marketCommentary || riskNotes) && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Context</CardTitle>
+            <CardTitle className="text-lg font-semibold">Context & Commentary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {finalContext && (
@@ -268,6 +283,18 @@ export function TradeSetupDisplay({ data, originalQuery }: TradeSetupDisplayProp
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Trade Reasoning</h4>
                 <p className="text-foreground leading-relaxed break-words">{finalReasoning}</p>
+              </div>
+            )}
+            {marketCommentary && (
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-2">Market Commentary</h4>
+                <p className="text-foreground leading-relaxed break-words">{marketCommentary}</p>
+              </div>
+            )}
+            {riskNotes && (
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-2">Risk Notes</h4>
+                <p className="text-foreground leading-relaxed break-words">{riskNotes}</p>
               </div>
             )}
           </CardContent>
