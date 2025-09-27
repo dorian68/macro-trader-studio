@@ -11,19 +11,19 @@
     --background: 0 0% 99%; /* #fcfcfc */
     --background-secondary: 0 0% 96%;
     --background-tertiary: 0 0% 93%;
-    --foreground: 211 85% 26%; /* #0b387b - Bleu principal */
+    --foreground: 208 100% 14%; /* RGB(0, 39, 73) - Bleu exact du logo */
 
     --card: 0 0% 100%;
     --card-secondary: 0 0% 98%;
-    --card-foreground: 211 85% 26%; /* #0b387b */
+    --card-foreground: 208 100% 14%; /* RGB(0, 39, 73) */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 211 85% 26%; /* #0b387b */
+    --popover-foreground: 208 100% 14%; /* RGB(0, 39, 73) */
 
     /* AlphaLens Theme Colors */
-    --primary: 211 85% 26%; /* #0b387b - Bleu principal */
-    --primary-dark: 211 85% 20%;
-    --primary-light: 211 85% 35%;
+    --primary: 208 100% 14%; /* RGB(0, 39, 73) - Bleu exact du logo */
+    --primary-dark: 208 100% 10%; /* Version plus foncée */
+    --primary-light: 208 100% 20%; /* Version plus claire */
     --primary-foreground: 0 0% 99%; /* #fcfcfc */
 
     --success: 142 78% 55%; /* Conservé pour P&L */
@@ -56,7 +56,7 @@
     --border: 0 0% 90%;
     --border-light: 0 0% 93%;
     --input: 0 0% 96%;
-    --ring: 211 85% 26%; /* #0b387b */
+    --ring: 208 100% 14%; /* RGB(0, 39, 73) */
 
     --radius: 0.75rem;
 
@@ -98,15 +98,15 @@
   .dark {
     /* AlphaLens Light Theme maintenu pour le mode dark */
     --background: 0 0% 99%; /* #fcfcfc */
-    --foreground: 211 85% 26%; /* #0b387b */
+    --foreground: 208 100% 14%; /* RGB(0, 39, 73) */
 
     --card: 0 0% 100%;
-    --card-foreground: 211 85% 26%;
+    --card-foreground: 208 100% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 211 85% 26%;
+    --popover-foreground: 208 100% 14%;
 
-    --primary: 211 85% 26%; /* #0b387b */
+    --primary: 208 100% 14%; /* RGB(0, 39, 73) */
     --primary-foreground: 0 0% 99%;
 
     --secondary: 0 0% 33%; /* #545454 */
@@ -123,17 +123,17 @@
 
     --border: 0 0% 90%;
     --input: 0 0% 96%;
-    --ring: 211 85% 26%;
+    --ring: 208 100% 14%;
     
     /* Sidebar */
     --sidebar-background: 0 0% 99%;
-    --sidebar-foreground: 211 85% 26%;
-    --sidebar-primary: 211 85% 26%;
+    --sidebar-foreground: 208 100% 14%;
+    --sidebar-primary: 208 100% 14%;
     --sidebar-primary-foreground: 0 0% 99%;
     --sidebar-accent: 17 88% 58%;
     --sidebar-accent-foreground: 0 0% 99%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 211 85% 26%;
+    --sidebar-ring: 208 100% 14%;
   }
 
   /* Mobile optimizations */
