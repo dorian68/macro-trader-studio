@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, User, LogIn } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import PublicNavbar from '@/components/PublicNavbar';
+import AuthPromptBanner from '@/components/AuthPromptBanner';
+import GuestPaymentModal from '@/components/GuestPaymentModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 interface PlanData {
   name: string;
   price: string;
@@ -19,9 +22,22 @@ interface PlanData {
 const Pricing = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [b2cPlans, setB2cPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [showAuthBanner, setShowAuthBanner] = useState(true);
+  const [guestPaymentModal, setGuestPaymentModal] = useState<{
+    isOpen: boolean;
+    plan: string;
+    planName: string;
+    planPrice: string;
+  }>({
+    isOpen: false,
+    plan: '',
+    planName: '',
+    planPrice: ''
+  });
 
   useEffect(() => {
     console.log('📊 [Pricing] Alphalens pricing page initialized');
@@ -128,6 +144,23 @@ const Pricing = () => {
       return;
     }
 
+    // If user is not authenticated, show guest payment modal
+    if (!user) {
+      const selectedPlan = b2cPlans.find(p => p.name.toLowerCase() === planType);
+      setGuestPaymentModal({
+        isOpen: true,
+        plan: planType,
+        planName: selectedPlan?.name || plan,
+        planPrice: selectedPlan?.price || '$--'
+      });
+      return;
+    }
+
+    // User is authenticated, proceed with normal checkout
+    await proceedWithCheckout(planType);
+  };
+
+  const proceedWithCheckout = async (planType: string) => {
     setCheckoutLoading(planType);
 
     try {
@@ -167,6 +200,11 @@ const Pricing = () => {
       setCheckoutLoading(null);
     }
   };
+
+  const handleGuestContinue = () => {
+    setGuestPaymentModal(prev => ({ ...prev, isOpen: false }));
+    proceedWithCheckout(guestPaymentModal.plan);
+  };
   
   const isCheckoutLoading = (planName: string) => {
     return checkoutLoading === planName.toLowerCase();
@@ -185,6 +223,11 @@ const Pricing = () => {
               Professional AI-powered market analysis for every level.
             </p>
           </div>
+
+          {/* Auth Prompt Banner for unauthenticated users */}
+          {!user && showAuthBanner && (
+            <AuthPromptBanner onDismiss={() => setShowAuthBanner(false)} />
+          )}
 
           {/* B2B Model Section */}
           <div className="mb-20">
@@ -320,14 +363,27 @@ const Pricing = () => {
                       </ul>
                     </div>
                     
-                     <Button 
-                       className="w-full mt-6" 
-                       variant={plan.highlight ? "default" : "outline"} 
-                       onClick={() => handleCTAClick(plan.name)}
-                       disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}
-                     >
-                       {isCheckoutLoading(plan.name) ? "Processing..." : "Get Started"}
-                     </Button>
+                     <div className="space-y-3 mt-6">
+                       {!user && (
+                         <Button 
+                           variant="secondary"
+                           className="w-full"
+                           onClick={() => navigate('/auth')}
+                         >
+                           <LogIn className="mr-2 h-4 w-4" />
+                           Se connecter d'abord (recommandé)
+                         </Button>
+                       )}
+                       
+                       <Button 
+                         className="w-full" 
+                         variant={plan.highlight ? "default" : "outline"} 
+                         onClick={() => handleCTAClick(plan.name)}
+                         disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}
+                       >
+                         {isCheckoutLoading(plan.name) ? "Processing..." : user ? "Get Started" : "Payer en tant qu'invité"}
+                       </Button>
+                     </div>
                    </CardContent>
                  </Card>
                    </div>
@@ -345,6 +401,15 @@ const Pricing = () => {
           </div>
         </div>
       </div>
+
+      {/* Guest Payment Modal */}
+      <GuestPaymentModal
+        isOpen={guestPaymentModal.isOpen}
+        onClose={() => setGuestPaymentModal(prev => ({ ...prev, isOpen: false }))}
+        onContinueGuest={handleGuestContinue}
+        planName={guestPaymentModal.planName}
+        planPrice={guestPaymentModal.planPrice}
+      />
 
       {/* Footer */}
       <footer className="bg-background border-t border-border py-12 px-4">

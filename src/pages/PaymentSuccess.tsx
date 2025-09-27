@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, CreditCard, Calendar, ArrowRight } from 'lucide-react';
+import { CheckCircle, CreditCard, Calendar, ArrowRight, AlertTriangle, User } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import PublicNavbar from '@/components/PublicNavbar';
+import GuestSignupForm from '@/components/GuestSignupForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -14,6 +16,8 @@ const PaymentSuccess = () => {
   const { user } = useAuth();
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showSignupForm, setShowSignupForm] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   
   const sessionId = searchParams.get('session_id');
 
@@ -21,9 +25,25 @@ const PaymentSuccess = () => {
     if (user) {
       checkSubscriptionStatus();
     } else {
+      // For unauthenticated users, try to get session email if available
+      if (sessionId) {
+        fetchSessionEmail();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [user, sessionId]);
+
+  const fetchSessionEmail = async () => {
+    try {
+      // Note: In a real scenario, you'd need a backend endpoint to safely retrieve session details
+      // For now, we'll just set loading to false
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching session email:', error);
       setLoading(false);
     }
-  }, [user]);
+  };
 
   const checkSubscriptionStatus = async () => {
     try {
@@ -77,8 +97,34 @@ const PaymentSuccess = () => {
               </p>
             </div>
 
+            {/* Unauthenticated User Warning */}
+            {!loading && !user && (
+              <Alert className="mb-8 border-amber-200 bg-amber-50/50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <strong>Action requise :</strong> Votre paiement a été traité avec succès, mais vous devez créer un compte pour accéder à vos services.
+                  {sessionEmail && (
+                    <span> Utilisez l'email <strong>{sessionEmail}</strong> pour récupérer votre abonnement.</span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Signup Form for Unauthenticated Users */}
+            {!loading && !user && showSignupForm && (
+              <div className="mb-8">
+                <GuestSignupForm 
+                  suggestedEmail={sessionEmail || undefined}
+                  onSuccess={() => {
+                    setShowSignupForm(false);
+                    // Optionally redirect to dashboard or refresh page
+                  }}
+                />
+              </div>
+            )}
+
             {/* Subscription Details Card */}
-            {!loading && subscriptionData?.subscribed && (
+            {!loading && user && subscriptionData?.subscribed && (
               <Card className="mb-8 border-green-200 bg-green-50/20">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -121,74 +167,131 @@ const PaymentSuccess = () => {
             {/* What's Next Section */}
             <Card className="mb-8">
               <CardHeader>
-                <CardTitle>What's Next?</CardTitle>
+                <CardTitle>
+                  {user ? "What's Next?" : "Prochaines étapes"}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
-                      <span className="text-xs font-semibold text-primary">1</span>
-                    </div>
-                    <div>
-                      <p className="font-medium">Access Your Dashboard</p>
-                      <p className="text-sm text-muted-foreground">
-                        Start exploring AI-powered market analysis and trading insights
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
-                      <span className="text-xs font-semibold text-primary">2</span>
-                    </div>
-                    <div>
-                      <p className="font-medium">Select Your Broker</p>
-                      <p className="text-sm text-muted-foreground">
-                        Link your trading account for personalized recommendations
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
-                      <span className="text-xs font-semibold text-primary">3</span>
-                    </div>
-                    <div>
-                      <p className="font-medium">Start Trading</p>
-                      <p className="text-sm text-muted-foreground">
-                        Get AI trade setups, market commentary, and research reports
-                      </p>
-                    </div>
-                  </div>
+                  {!user ? (
+                    <>
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
+                          <span className="text-xs font-semibold text-primary">1</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">Créer votre compte</p>
+                          <p className="text-sm text-muted-foreground">
+                            Créez un compte pour accéder à votre abonnement payé
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
+                          <span className="text-xs font-semibold text-primary">2</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">Accéder au tableau de bord</p>
+                          <p className="text-sm text-muted-foreground">
+                            Une fois connecté, accédez immédiatement à vos services
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
+                          <span className="text-xs font-semibold text-primary">1</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">Access Your Dashboard</p>
+                          <p className="text-sm text-muted-foreground">
+                            Start exploring AI-powered market analysis and trading insights
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
+                          <span className="text-xs font-semibold text-primary">2</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">Select Your Broker</p>
+                          <p className="text-sm text-muted-foreground">
+                            Link your trading account for personalized recommendations
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-1">
+                          <span className="text-xs font-semibold text-primary">3</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">Start Trading</p>
+                          <p className="text-sm text-muted-foreground">
+                            Get AI trade setups, market commentary, and research reports
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button 
-                size="lg" 
-                className="flex-1"
-                onClick={() => navigate('/dashboard')}
-              >
-                Go to Dashboard
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={() => navigate('/contact')}
-              >
-                Contact Support
-              </Button>
+              {!user ? (
+                <>
+                  <Button 
+                    size="lg" 
+                    className="flex-1"
+                    onClick={() => setShowSignupForm(!showSignupForm)}
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    {showSignupForm ? 'Masquer le formulaire' : 'Créer mon compte'}
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    onClick={() => navigate('/auth')}
+                  >
+                    J'ai déjà un compte
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    size="lg" 
+                    className="flex-1"
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    Go to Dashboard
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    onClick={() => navigate('/contact')}
+                  >
+                    Contact Support
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Footer Note */}
             <div className="text-center mt-8 p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground">
-                You'll receive a confirmation email shortly. If you have any questions, 
-                our support team is here to help.
+                {user 
+                  ? "You'll receive a confirmation email shortly. If you have any questions, our support team is here to help."
+                  : "Important : Votre paiement est sécurisé. Créez votre compte pour accéder immédiatement à vos services. Notre équipe de support est disponible pour vous aider."
+                }
               </p>
             </div>
           </div>

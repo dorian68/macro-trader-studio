@@ -107,7 +107,10 @@ serve(async (req) => {
       billing_address_collection: "required",
       metadata: {
         plan_type: plan,
-        origin: origin
+        origin: origin,
+        user_authenticated: userEmail ? 'true' : 'false',
+        timestamp: new Date().toISOString(),
+        checkout_type: userEmail ? 'authenticated' : 'guest'
       }
     };
 
