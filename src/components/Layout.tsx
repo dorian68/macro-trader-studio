@@ -68,7 +68,7 @@ export default function Layout({
               </div>
               <div className="hidden xs:flex flex-col items-center shrink-0">
                 <img src="/lovable-uploads/Only_text_white_BG_FINAL-2.png" alt="alphaLens.ai" className="h-5 sm:h-8 w-auto object-contain max-w-none" />
-                <p className="text-xs text-muted-foreground whitespace-nowrap">AI Trading Intelligence</p>
+                <p className="hidden sm:block text-xs text-muted-foreground whitespace-nowrap">AI Trading Intelligence</p>
               </div>
             </button>
 
