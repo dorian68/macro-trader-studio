@@ -105,7 +105,6 @@ serve(async (req) => {
       cancel_url: cancel_url || `${origin}/payment-canceled`,
       allow_promotion_codes: true,
       billing_address_collection: "required",
-      customer_creation: customerId ? undefined : "always",
       metadata: {
         plan_type: plan,
         origin: origin
