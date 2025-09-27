@@ -371,7 +371,7 @@ const Pricing = () => {
                            onClick={() => navigate('/auth')}
                          >
                            <LogIn className="mr-2 h-4 w-4" />
-                           Se connecter d'abord (recommandé)
+                           Sign in first (recommended)
                          </Button>
                        )}
                        
@@ -381,7 +381,7 @@ const Pricing = () => {
                          onClick={() => handleCTAClick(plan.name)}
                          disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}
                        >
-                         {isCheckoutLoading(plan.name) ? "Processing..." : user ? "Get Started" : "Payer en tant qu'invité"}
+                         {isCheckoutLoading(plan.name) ? "Processing..." : user ? "Get Started" : "Pay as guest"}
                        </Button>
                      </div>
                    </CardContent>

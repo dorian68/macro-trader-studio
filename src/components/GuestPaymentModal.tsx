@@ -39,10 +39,10 @@ const GuestPaymentModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            Sécurisez votre abonnement
+            Secure your subscription
           </DialogTitle>
           <DialogDescription>
-            Vous êtes sur le point de souscrire au plan <strong>{planName}</strong> ({planPrice}/mois)
+            You are about to subscribe to the <strong>{planName}</strong> plan ({planPrice}/month)
           </DialogDescription>
         </DialogHeader>
 
@@ -50,7 +50,7 @@ const GuestPaymentModal = ({
           <Alert className="border-amber-200 bg-amber-50/50">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800">
-              <strong>Important :</strong> Vous n'êtes pas connecté. Pour accéder immédiatement à votre abonnement après paiement, nous recommandons de vous connecter d'abord.
+              <strong>Important:</strong> You are not signed in. To access your subscription immediately after payment, we recommend signing in first.
             </AlertDescription>
           </Alert>
 
@@ -58,21 +58,21 @@ const GuestPaymentModal = ({
             <div className="bg-primary/5 rounded-lg p-4">
               <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" />
-                Recommandé : Se connecter d'abord
+                Recommended: Sign in first
               </h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Accès immédiat après paiement</li>
-                <li>• Compte automatiquement crédité</li>
-                <li>• Gestion simplifiée de l'abonnement</li>
+                <li>• Immediate access after payment</li>
+                <li>• Account automatically credited</li>
+                <li>• Simplified subscription management</li>
               </ul>
             </div>
 
             <div className="bg-muted/50 rounded-lg p-4">
               <h4 className="font-medium text-foreground mb-2">
-                Alternative : Paiement invité
+                Alternative: Guest payment
               </h4>
               <p className="text-sm text-muted-foreground">
-                Vous devrez créer un compte avec le <strong>même email</strong> que lors du paiement pour accéder à vos services.
+                You will need to create an account with the <strong>same email</strong> used during payment to access your services.
               </p>
             </div>
           </div>
@@ -80,7 +80,7 @@ const GuestPaymentModal = ({
           <div className="flex flex-col gap-3 pt-4">
             <Button onClick={handleLogin} className="w-full">
               <User className="mr-2 h-4 w-4" />
-              Se connecter / S'inscrire d'abord
+              Sign In / Sign Up First
             </Button>
             
             <Button 
@@ -88,7 +88,7 @@ const GuestPaymentModal = ({
               onClick={onContinueGuest}
               className="w-full"
             >
-              Continuer en tant qu'invité
+              Continue as guest
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             
@@ -97,7 +97,7 @@ const GuestPaymentModal = ({
               onClick={onClose}
               className="w-full text-muted-foreground"
             >
-              Annuler
+              Cancel
             </Button>
           </div>
         </div>

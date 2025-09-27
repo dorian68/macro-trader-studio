@@ -102,9 +102,9 @@ const PaymentSuccess = () => {
               <Alert className="mb-8 border-amber-200 bg-amber-50/50">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800">
-                  <strong>Action requise :</strong> Votre paiement a été traité avec succès, mais vous devez créer un compte pour accéder à vos services.
+                  <strong>Action required:</strong> Your payment has been processed successfully, but you need to create an account to access your services.
                   {sessionEmail && (
-                    <span> Utilisez l'email <strong>{sessionEmail}</strong> pour récupérer votre abonnement.</span>
+                    <span> Use the email <strong>{sessionEmail}</strong> to recover your subscription.</span>
                   )}
                 </AlertDescription>
               </Alert>
@@ -168,7 +168,7 @@ const PaymentSuccess = () => {
             <Card className="mb-8">
               <CardHeader>
                 <CardTitle>
-                  {user ? "What's Next?" : "Prochaines étapes"}
+                  What's Next?
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -180,9 +180,9 @@ const PaymentSuccess = () => {
                           <span className="text-xs font-semibold text-primary">1</span>
                         </div>
                         <div>
-                          <p className="font-medium">Créer votre compte</p>
+                          <p className="font-medium">Create your account</p>
                           <p className="text-sm text-muted-foreground">
-                            Créez un compte pour accéder à votre abonnement payé
+                            Create an account to access your paid subscription
                           </p>
                         </div>
                       </div>
@@ -192,9 +192,9 @@ const PaymentSuccess = () => {
                           <span className="text-xs font-semibold text-primary">2</span>
                         </div>
                         <div>
-                          <p className="font-medium">Accéder au tableau de bord</p>
+                          <p className="font-medium">Access your dashboard</p>
                           <p className="text-sm text-muted-foreground">
-                            Une fois connecté, accédez immédiatement à vos services
+                            Once logged in, immediately access your services
                           </p>
                         </div>
                       </div>
@@ -252,7 +252,7 @@ const PaymentSuccess = () => {
                     onClick={() => setShowSignupForm(!showSignupForm)}
                   >
                     <User className="mr-2 h-4 w-4" />
-                    {showSignupForm ? 'Masquer le formulaire' : 'Créer mon compte'}
+                    {showSignupForm ? 'Hide form' : 'Create my account'}
                   </Button>
                   
                   <Button 
@@ -260,7 +260,7 @@ const PaymentSuccess = () => {
                     size="lg"
                     onClick={() => navigate('/auth')}
                   >
-                    J'ai déjà un compte
+                    I already have an account
                   </Button>
                 </>
               ) : (
@@ -290,7 +290,7 @@ const PaymentSuccess = () => {
               <p className="text-sm text-muted-foreground">
                 {user 
                   ? "You'll receive a confirmation email shortly. If you have any questions, our support team is here to help."
-                  : "Important : Votre paiement est sécurisé. Créez votre compte pour accéder immédiatement à vos services. Notre équipe de support est disponible pour vous aider."
+                  : "Important: Your payment is secure. Create your account to immediately access your services. Our support team is available to help you."
                 }
               </p>
             </div>

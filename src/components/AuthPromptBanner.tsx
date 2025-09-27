@@ -23,24 +23,24 @@ const AuthPromptBanner = ({ onDismiss }: AuthPromptBannerProps) => {
           
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              💡 Connectez-vous d'abord pour un accès immédiat
+              Sign in first for immediate access
             </h3>
             <p className="text-muted-foreground text-sm mb-4">
-              En vous connectant avant le paiement, votre abonnement sera automatiquement activé sur votre compte.
+              By signing in before payment, your subscription will be automatically activated on your account.
             </p>
             
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground mb-4">
               <div className="flex items-center gap-1">
                 <Zap className="h-3 w-3 text-primary" />
-                <span>Accès immédiat après paiement</span>
+                <span>Immediate access after payment</span>
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3 text-primary" />
-                <span>Pas d'attente de création de compte</span>
+                <span>No account creation wait</span>
               </div>
               <div className="flex items-center gap-1">
                 <Shield className="h-3 w-3 text-primary" />
-                <span>Compte sécurisé garanti</span>
+                <span>Guaranteed secure account</span>
               </div>
             </div>
             
@@ -50,7 +50,7 @@ const AuthPromptBanner = ({ onDismiss }: AuthPromptBannerProps) => {
                 onClick={() => navigate('/auth')}
                 className="bg-primary hover:bg-primary/90"
               >
-                Se connecter / S'inscrire
+                Sign In / Sign Up
               </Button>
               
               {onDismiss && (
@@ -60,7 +60,7 @@ const AuthPromptBanner = ({ onDismiss }: AuthPromptBannerProps) => {
                   onClick={onDismiss}
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Continuer sans compte
+                  Continue without account
                 </Button>
               )}
             </div>
