@@ -38,13 +38,13 @@ const App = () => {
       <AuthProvider>
         <SessionManagerProvider>
           <TooltipProvider>
-            <PersistentNotificationProvider>
-              <GlobalLoadingProvider>
-                <JobStatusCards />
-                <PersistentToast />
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
+            <GlobalLoadingProvider>
+              <BrowserRouter>
+                <PersistentNotificationProvider>
+                  <JobStatusCards />
+                  <PersistentToast />
+                  <Toaster />
+                  <Sonner />
                   <Routes>
                     <Route path="/" element={<Homepage />} />
                     <Route path="/dashboard" element={<AuthGuard requireApproval><Dashboard /></AuthGuard>} />
@@ -65,9 +65,9 @@ const App = () => {
                     <Route path="/product" element={<ProductPresentation />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                </BrowserRouter>
-              </GlobalLoadingProvider>
-            </PersistentNotificationProvider>
+                </PersistentNotificationProvider>
+              </BrowserRouter>
+            </GlobalLoadingProvider>
           </TooltipProvider>
         </SessionManagerProvider>
       </AuthProvider>
