@@ -6,13 +6,17 @@ import { usePersistentNotifications } from './PersistentNotificationProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export function PersistentToast() {
-  const { completedJobs, markJobAsViewed, navigateToResult } = usePersistentNotifications();
+  const { activeJobs, completedJobs, markJobAsViewed, navigateToResult } = usePersistentNotifications();
   const isMobile = useIsMobile();
 
-  if (completedJobs.length === 0) return null;
+  const totalJobs = activeJobs.length + completedJobs.length;
+  if (totalJobs === 0) return null;
 
-  // Show the most recent completed job
-  const mostRecentJob = completedJobs[completedJobs.length - 1];
+  // Show the most recent job (prioritize completed over active)
+  const isCompleted = completedJobs.length > 0;
+  const mostRecentJob = isCompleted 
+    ? completedJobs[completedJobs.length - 1]
+    : activeJobs[activeJobs.length - 1];
 
   return (
     <Card className={`
@@ -26,33 +30,42 @@ export function PersistentToast() {
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 mt-0.5">
-            <CheckCircle className="h-5 w-5 text-success" />
+            {isCompleted ? (
+              <CheckCircle className="h-5 w-5 text-success" />
+            ) : (
+              <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            )}
           </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h4 className="text-sm font-medium text-foreground">
-                Result Ready
+                {isCompleted ? 'Result Ready' : 'Processing...'}
               </h4>
-              {completedJobs.length > 1 && (
+              {totalJobs > 1 && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
-                  +{completedJobs.length - 1} more
+                  +{totalJobs - 1} more
                 </span>
               )}
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              {mostRecentJob.instrument} analysis completed — click to view result
+              {isCompleted 
+                ? `${mostRecentJob.instrument} analysis completed — click to view result`
+                : `${mostRecentJob.instrument} analysis in progress`
+              }
             </p>
             
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                onClick={() => navigateToResult(mostRecentJob)}
-                className="text-xs h-7 bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
-              >
-                View Result
-              </Button>
-            </div>
+            {isCompleted && (
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  onClick={() => navigateToResult(completedJobs[completedJobs.length - 1])}
+                  className="text-xs h-7 bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
+                >
+                  View Result
+                </Button>
+              </div>
+            )}
           </div>
 
           <Button

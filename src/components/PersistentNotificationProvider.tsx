@@ -3,6 +3,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
+interface ActiveJob {
+  id: string;
+  type: string;
+  instrument: string;
+  status: 'pending' | 'running';
+  createdAt: Date;
+  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports';
+}
+
 interface CompletedJob {
   id: string;
   type: string;
@@ -13,6 +22,7 @@ interface CompletedJob {
 }
 
 interface PersistentNotificationContextType {
+  activeJobs: ActiveJob[];
   completedJobs: CompletedJob[];
   markJobAsViewed: (jobId: string) => void;
   navigateToResult: (job: CompletedJob) => void;
@@ -33,6 +43,7 @@ interface PersistentNotificationProviderProps {
 }
 
 export function PersistentNotificationProvider({ children }: PersistentNotificationProviderProps) {
+  const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
   const [completedJobs, setCompletedJobs] = useState<CompletedJob[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -63,6 +74,34 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
       .on(
         'postgres_changes',
         {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'jobs',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newJob = payload.new as any;
+          
+          const activeJob: ActiveJob = {
+            id: newJob.id,
+            type: newJob.type || 'Unknown',
+            instrument: newJob.instrument || 'Unknown',
+            status: 'pending',
+            createdAt: new Date(),
+            originatingFeature: mapTypeToFeature(newJob.type || '')
+          };
+
+          setActiveJobs(prev => {
+            // Avoid duplicates
+            const exists = prev.some(job => job.id === activeJob.id);
+            if (exists) return prev;
+            return [...prev, activeJob];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'UPDATE',
           schema: 'public',
           table: 'jobs',
@@ -71,14 +110,24 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
         (payload) => {
           const updatedJob = payload.new as any;
           
-          if (updatedJob.status === 'completed' && updatedJob.response_payload) {
+          if (updatedJob.status === 'running') {
+            // Update active job status
+            setActiveJobs(prev => prev.map(job => 
+              job.id === updatedJob.id 
+                ? { ...job, status: 'running' }
+                : job
+            ));
+          } else if (updatedJob.status === 'completed' && updatedJob.response_payload) {
+            // Move from active to completed
+            setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
+            
             const completedJob: CompletedJob = {
               id: updatedJob.id,
-              type: updatedJob.type,
+              type: updatedJob.type || 'Unknown',
               instrument: updatedJob.instrument || 'Unknown',
               resultData: updatedJob.response_payload,
               completedAt: new Date(),
-              originatingFeature: mapTypeToFeature(updatedJob.type)
+              originatingFeature: mapTypeToFeature(updatedJob.type || '')
             };
 
             setCompletedJobs(prev => {
@@ -87,6 +136,9 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               if (exists) return prev;
               return [...prev, completedJob];
             });
+          } else if (updatedJob.status === 'error') {
+            // Remove failed jobs from active
+            setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
           }
         }
       )
@@ -99,6 +151,7 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
 
   const markJobAsViewed = (jobId: string) => {
     setCompletedJobs(prev => prev.filter(job => job.id !== jobId));
+    setActiveJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
   const navigateToResult = (job: CompletedJob) => {
@@ -120,6 +173,7 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
   return (
     <PersistentNotificationContext.Provider 
       value={{ 
+        activeJobs,
         completedJobs, 
         markJobAsViewed, 
         navigateToResult 
