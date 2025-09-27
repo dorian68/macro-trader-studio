@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import PublicNavbar from '@/components/PublicNavbar';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 interface PlanData {
   name: string;
   price: string;
@@ -17,8 +18,10 @@ interface PlanData {
 
 const Pricing = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [b2cPlans, setB2cPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('📊 [Pricing] Alphalens pricing page initialized');
@@ -105,9 +108,68 @@ const Pricing = () => {
     return usage;
   };
 
-  const handleCTAClick = (plan: string) => {
+  const handleCTAClick = async (plan: string) => {
     console.log(`📊 [Pricing] CTA clicked: ${plan}`);
-    // TODO: Implement actual subscription logic
+    
+    if (plan === 'B2B Contact Sales') {
+      navigate('/contact');
+      return;
+    }
+
+    // Handle individual plan checkout
+    const planType = plan.toLowerCase();
+    
+    if (!['basic', 'standard', 'premium'].includes(planType)) {
+      toast({
+        title: "Invalid Plan",
+        description: "Please select a valid plan.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCheckoutLoading(planType);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { 
+          plan: planType,
+          success_url: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${window.location.origin}/payment-canceled`
+        }
+      });
+
+      if (error) {
+        console.error('Checkout error:', error);
+        toast({
+          title: "Payment Error",
+          description: error.message || "Failed to create checkout session. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (data?.url) {
+        // Open Stripe checkout in new tab
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error('No checkout URL received');
+      }
+
+    } catch (err) {
+      console.error('Failed to create checkout session:', err);
+      toast({
+        title: "Payment Error", 
+        description: "Unable to process payment. Please try again or contact support.",
+        variant: "destructive"
+      });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+  
+  const isCheckoutLoading = (planName: string) => {
+    return checkoutLoading === planName.toLowerCase();
   };
   return <>
       <PublicNavbar />
@@ -258,8 +320,13 @@ const Pricing = () => {
                       </ul>
                     </div>
                     
-                     <Button className="w-full mt-6" variant={plan.highlight ? "default" : "outline"} onClick={() => handleCTAClick(plan.name)}>
-                       Get Started
+                     <Button 
+                       className="w-full mt-6" 
+                       variant={plan.highlight ? "default" : "outline"} 
+                       onClick={() => handleCTAClick(plan.name)}
+                       disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}
+                     >
+                       {isCheckoutLoading(plan.name) ? "Processing..." : "Get Started"}
                      </Button>
                    </CardContent>
                  </Card>

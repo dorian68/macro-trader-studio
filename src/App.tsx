@@ -22,6 +22,8 @@ import Portfolio from "./pages/Portfolio";
 import History from "./pages/History";
 import Auth from "./pages/Auth";
 import EmailConfirmation from "./pages/EmailConfirmation";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCanceled from "./pages/PaymentCanceled";
 import Admin from "./pages/Admin";
 import About from "./pages/About";
 import Features from "./pages/Features";
@@ -56,6 +58,8 @@ const App = () => {
                     <Route path="/history" element={<History />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/email-confirmation" element={<EmailConfirmation />} />
+                    <Route path="/payment-success" element={<PaymentSuccess />} />
+                    <Route path="/payment-canceled" element={<PaymentCanceled />} />
                     <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
                     <Route path="/credits" element={<AuthGuard requireApproval><Credits /></AuthGuard>} />
                     <Route path="/about" element={<About />} />
