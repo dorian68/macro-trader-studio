@@ -99,6 +99,11 @@ export function AIInteractionHistory() {
       return responsePayload.message.content.content;
     }
     
+    // For AI Trade Setup, look for setups array in content
+    if (responsePayload.content?.setups && Array.isArray(responsePayload.content.setups)) {
+      return responsePayload.content.setups[0] || responsePayload.content;
+    }
+    
     // Direct response content
     if (responsePayload.content) return responsePayload.content;
     if (responsePayload.response) return responsePayload.response;
@@ -370,17 +375,27 @@ export function AIInteractionHistory() {
     
     if (feature === 'AI Trade Setup') {
       try {
-        const parsedResponse = typeof interaction.ai_response === 'string' 
-          ? JSON.parse(interaction.ai_response) 
-          : interaction.ai_response;
-        return <TradeSetupDisplay data={parsedResponse} originalQuery={interaction.user_query} />;
+        let tradeSetupData = interaction.ai_response;
+        
+        // Parse if string
+        if (typeof tradeSetupData === 'string') {
+          tradeSetupData = JSON.parse(tradeSetupData);
+        }
+        
+        // Handle nested response structures from response_payload
+        if (interaction.response_payload?.content?.setups && Array.isArray(interaction.response_payload.content.setups)) {
+          tradeSetupData = interaction.response_payload.content.setups[0];
+        } else if (interaction.response_payload?.message?.content?.content?.setups) {
+          tradeSetupData = interaction.response_payload.message.content.content.setups[0];
+        } else if (interaction.response_payload?.content) {
+          tradeSetupData = interaction.response_payload.content;
+        }
+        
+        return <TradeSetupDisplay data={tradeSetupData} originalQuery={interaction.user_query} />;
       } catch (error) {
         console.error('Error parsing AI Trade Setup response:', error);
-        return (
-          <pre className="text-xs bg-muted p-3 rounded whitespace-pre-wrap overflow-x-auto break-words">
-            {typeof interaction.ai_response === 'string' ? interaction.ai_response : JSON.stringify(interaction.ai_response, null, 2)}
-          </pre>
-        );
+        // Render structured fallback instead of raw JSON
+        return renderStructuredFallback(interaction.ai_response, 'AI Trade Setup');
       }
     }
 
@@ -392,11 +407,7 @@ export function AIInteractionHistory() {
         return <MacroCommentaryDisplay data={parsedResponse} originalQuery={interaction.user_query} />;
       } catch (error) {
         console.error('Error parsing Macro Commentary response:', error);
-        return (
-          <pre className="text-xs bg-muted p-3 rounded whitespace-pre-wrap overflow-x-auto break-words">
-            {typeof interaction.ai_response === 'string' ? interaction.ai_response : JSON.stringify(interaction.ai_response, null, 2)}
-          </pre>
-        );
+        return renderStructuredFallback(interaction.ai_response, 'Macro Commentary');
       }
     }
 
@@ -424,38 +435,67 @@ export function AIInteractionHistory() {
         );
       } catch (error) {
         console.error('Error rendering report:', error);
-        return (
-          <pre className="text-xs bg-muted p-3 rounded whitespace-pre-wrap overflow-x-auto break-words">
-            {typeof interaction.ai_response === 'string' ? interaction.ai_response : JSON.stringify(interaction.ai_response, null, 2)}
-          </pre>
-        );
+        return renderStructuredFallback(interaction.ai_response, 'Report');
       }
     }
 
-    // For other features, try to parse JSON first, then fall back to plain text
+    // For other features, try to parse JSON first, then fall back to structured display
     try {
       const parsedResponse = typeof interaction.ai_response === 'string' 
         ? JSON.parse(interaction.ai_response) 
         : interaction.ai_response;
-      return <div className="break-words">{renderJSONResponse(parsedResponse)}</div>;
+      return <div className="break-words">{renderStructuredResponse(parsedResponse)}</div>;
     } catch {
       const responseContent = typeof interaction.ai_response === 'string' 
         ? interaction.ai_response 
         : JSON.stringify(interaction.ai_response, null, 2);
       return (
-        <div className="text-sm space-y-2">
-          <p className="leading-relaxed whitespace-pre-wrap break-words">{responseContent}</p>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm space-y-2">
+              <p className="leading-relaxed whitespace-pre-wrap break-words">{responseContent}</p>
+            </div>
+          </CardContent>
+        </Card>
       );
     }
   };
 
-  const renderJSONResponse = (data: any) => {
+  // Structured fallback for parsing errors
+  const renderStructuredFallback = (data: any, featureType: string) => {
+    const responseContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            {getFeatureIcon(featureType)}
+            {featureType} Response
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="bg-muted/30 p-4 rounded-lg border-l-4 border-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Raw Response Data:</p>
+            <pre className="text-xs whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+              {responseContent}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Enhanced structured response renderer with proper card layout
+  const renderStructuredResponse = (data: any) => {
     if (!data || typeof data !== 'object') {
       return (
-        <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-muted/50">
-          <p className="text-sm text-muted-foreground">No data available</p>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="bg-muted/30 rounded-lg border-l-4 border-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">No data available</p>
+            </div>
+          </CardContent>
+        </Card>
       );
     }
 
@@ -463,43 +503,61 @@ export function AIInteractionHistory() {
     const actualData = data.message?.content?.content || data.content || data;
 
     return (
-      <div className="space-y-3">
-        {Object.entries(actualData).map(([key, value], index) => (
-          <div key={index} className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-3 py-2 border-b">
-              <h5 className="font-medium text-sm text-foreground capitalize">
-                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-              </h5>
-            </div>
-            <div className="p-3">
-              {typeof value === 'object' && value !== null ? (
-                <div className="space-y-2">
-                  {Object.entries(value).map(([subKey, subValue]) => (
-                    <div key={subKey} className="pl-3 border-l-2 border-muted">
-                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                        {subKey.replace(/([A-Z])/g, ' $1').trim()}
-                      </div>
-                      <div className="text-sm text-foreground">
-                        {typeof subValue === 'object' ? (
-                          <pre className="text-xs bg-muted/30 p-2 rounded overflow-x-auto">
-                            {JSON.stringify(subValue, null, 2)}
-                          </pre>
-                        ) : (
-                          <p className="whitespace-pre-wrap leading-relaxed">{String(subValue)}</p>
-                        )}
-                      </div>
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          {Object.entries(actualData).map(([key, value], index) => (
+            <div key={index} className="border rounded-lg overflow-hidden bg-card">
+              <div className="bg-muted/50 px-4 py-3 border-b">
+                <h5 className="font-semibold text-sm text-foreground">
+                  {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).replace(/_/g, ' ')}
+                </h5>
+              </div>
+              <div className="p-4">
+                {typeof value === 'object' && value !== null ? (
+                  Array.isArray(value) ? (
+                    <div className="space-y-2">
+                      {value.map((item, idx) => (
+                        <div key={idx} className="bg-muted/20 p-3 rounded-md border-l-2 border-primary/20">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                  {String(value)}
-                </p>
-              )}
+                  ) : (
+                    <div className="space-y-3">
+                      {Object.entries(value).map(([subKey, subValue]) => (
+                        <div key={subKey} className="border-l-2 border-muted pl-3">
+                          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                            {subKey.replace(/([A-Z])/g, ' $1').trim().replace(/_/g, ' ')}
+                          </div>
+                          <div className="text-sm text-foreground">
+                            {typeof subValue === 'object' && subValue !== null ? (
+                              <div className="bg-muted/20 p-3 rounded-md max-h-40 overflow-y-auto">
+                                <pre className="text-xs whitespace-pre-wrap break-words">
+                                  {JSON.stringify(subValue, null, 2)}
+                                </pre>
+                              </div>
+                            ) : (
+                              <p className="whitespace-pre-wrap leading-relaxed break-words">
+                                {String(subValue)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">
+                    {String(value)}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </CardContent>
+      </Card>
     );
   };
 
