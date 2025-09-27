@@ -1,27 +1,11 @@
 import * as React from "react";
-const { useState, useEffect } = React;
+const {
+  useState,
+  useEffect
+} = React;
 import { Button } from "@/components/ui/button";
-import { 
-  TrendingUp, 
-  Menu,
-  X,
-  ChevronRight,
-  ChevronDown,
-  Activity,
-  Zap,
-  User,
-  LogOut,
-  Building2,
-  Shield,
-  FileText,
-  History
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { TrendingUp, Menu, X, ChevronRight, ChevronDown, Activity, Zap, User, LogOut, Building2, Shield, FileText, History } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -30,7 +14,6 @@ import { useResultNotifications } from "@/hooks/useResultNotifications";
 import { ResultNotification } from "./ResultNotification";
 import { DiscreetJobStatus } from "./DiscreetJobStatus";
 import { CreditsNavbar } from "./CreditsNavbar";
-
 interface LayoutProps {
   children: React.ReactNode;
   activeModule?: string;
@@ -39,47 +22,52 @@ interface LayoutProps {
   onResetJobsCount?: () => void;
   activeJobsCount?: number;
 }
-
-export default function Layout({ children, activeModule, onModuleChange, completedJobsCount = 0, onResetJobsCount, activeJobsCount = 0 }: LayoutProps) {
+export default function Layout({
+  children,
+  activeModule,
+  onModuleChange,
+  completedJobsCount = 0,
+  onResetJobsCount,
+  activeJobsCount = 0
+}: LayoutProps) {
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("4h");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
-  const { isAdmin, isSuperUser } = useProfile();
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    isAdmin,
+    isSuperUser
+  } = useProfile();
   const navigate = useNavigate();
-  
-  // Result notification system
-  const { hasNewResults, notificationCount, markResultsAsSeen } = useResultNotifications();
 
+  // Result notification system
+  const {
+    hasNewResults,
+    notificationCount,
+    markResultsAsSeen
+  } = useResultNotifications();
   const handleViewResult = () => {
     markResultsAsSeen();
     navigate('/history');
   };
-
   const handleDismissNotification = () => {
     markResultsAsSeen();
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/20 overflow-x-hidden">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/20 overflow-x-hidden">
       {/* Mobile-First Responsive Header */}
       <header className="sticky top-[calc(env(safe-area-inset-top))] z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 h-14 sm:h-16 border-b border-border/50 bg-card/80 backdrop-blur-xl shadow-sm">
         <div className="h-full px-4 sm:px-6 max-w-screen-lg mx-auto">
           <div className="flex items-center h-full">
             {/* Logo - Mobile optimized */}
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-all duration-200 group"
-            >
+            <button onClick={() => navigate('/dashboard')} className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-all duration-200 group">
               <div className="w-7 h-7 sm:w-10 sm:h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200 shrink-0 p-1">
                 <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
               </div>
               <div className="hidden xs:flex items-center shrink-0">
-                <img 
-                  src="/lovable-uploads/Only_text_white_BG_FINAL-2.png" 
-                  alt="alphaLens.ai" 
-                  className="h-5 sm:h-8 w-auto object-contain max-w-none"
-                />
+                <img src="/lovable-uploads/Only_text_white_BG_FINAL-2.png" alt="alphaLens.ai" className="h-5 sm:h-8 w-auto object-contain max-w-none" />
               </div>
               <div className="hidden sm:block shrink-0">
                 <p className="text-xs text-muted-foreground whitespace-nowrap">AI Trading Intelligence</p>
@@ -87,81 +75,48 @@ export default function Layout({ children, activeModule, onModuleChange, complet
             </button>
 
             {/* Credits Display - Rapproché des logos */}
-            {user && (
-              <div className="ml-1">
+            {user && <div className="ml-1">
                 <CreditsNavbar />
-              </div>
-            )}
+              </div>}
 
             {/* Spacer pour pousser les éléments à droite */}
             <div className="flex-1" />
 
             {/* Desktop Navigation Items */}
             <div className="hidden lg:flex items-center gap-1">
-              {user && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/dashboard')}
-                    className="h-8 px-3 text-sm"
-                  >
+              {user && <>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="h-8 px-3 text-sm">
                     <Activity className="h-4 w-4 mr-2" />
                     Trading Dashboard
                   </Button>
-                  {(isAdmin || isSuperUser) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/admin')}
-                      className="h-8 px-3 text-sm"
-                    >
+                  {(isAdmin || isSuperUser) && <Button variant="ghost" size="sm" onClick={() => navigate('/admin')} className="h-8 px-3 text-sm">
                       <Shield className="h-4 w-4 mr-2" />
                       Admin
-                    </Button>
-                  )}
-                </>
-              )}
+                    </Button>}
+                </>}
             </div>
 
             {/* Mobile Navigation + Auth + Status */}
             <div className="flex items-center gap-2">
               {/* AI History Button with Notification Counter */}
-              {user && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      navigate('/history');
-                      onResetJobsCount?.();
-                      markResultsAsSeen();
-                    }}
-                    className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 hidden md:inline-flex"
-                  >
+              {user && <Button variant="ghost" size="sm" onClick={() => {
+              navigate('/history');
+              onResetJobsCount?.();
+              markResultsAsSeen();
+            }} className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 hidden md:inline-flex">
                     <History className="h-4 w-4" />
                     <span className="hidden sm:inline ml-2">History</span>
-                    {(completedJobsCount > 0 || notificationCount > 0) && (
-                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
+                    {(completedJobsCount > 0 || notificationCount > 0) && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
                         {Math.max(completedJobsCount, notificationCount) > 9 ? '9+' : Math.max(completedJobsCount, notificationCount)}
-                      </span>
-                    )}
-                  </Button>
-              )}
+                      </span>}
+                  </Button>}
 
               {/* Auth Section */}
-              {user ? (
-                <div className="flex items-center gap-2">
-                  {(isAdmin || isSuperUser) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/admin')}
-                      className="hidden sm:flex items-center gap-2 h-8 px-3"
-                    >
+              {user ? <div className="flex items-center gap-2">
+                  {(isAdmin || isSuperUser) && <Button variant="ghost" size="sm" onClick={() => navigate('/admin')} className="hidden sm:flex items-center gap-2 h-8 px-3">
                       <Shield className="h-4 w-4" />
                       <span className="text-sm">Admin</span>
-                    </Button>
-                  )}
+                    </Button>}
                   <div className="hidden sm:block">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -186,40 +141,18 @@ export default function Layout({ children, activeModule, onModuleChange, complet
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={signOut}
-                    className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
-                  >
+                  <Button variant="ghost" size="sm" onClick={signOut} className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2">
                     <LogOut className="h-4 w-4" />
                     <span className="hidden sm:inline ml-2">Sign Out</span>
                   </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/auth')}
-                  className="h-8 px-3"
-                >
+                </div> : <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="h-8 px-3">
                   <User className="h-4 w-4 mr-2" />
                   <span className="text-sm">Sign In</span>
-                </Button>
-              )}
+                </Button>}
 
               {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden h-8 w-8 sm:h-10 sm:w-10 p-0"
-              >
-                {isMobileMenuOpen ? (
-                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                ) : (
-                  <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-                )}
+              <Button variant="ghost" size="sm" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden h-8 w-8 sm:h-10 sm:w-10 p-0">
+                {isMobileMenuOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
               </Button>
 
               {/* Status Indicator - Always visible but adapted */}
@@ -232,152 +165,94 @@ export default function Layout({ children, activeModule, onModuleChange, complet
           </div>
 
           {/* Mobile Navigation Menu */}
-          {isMobileMenuOpen && (
-            <div className="absolute top-full left-0 right-0 bg-card/95 backdrop-blur-xl border-b border-border/50 shadow-xl md:hidden z-40">
+          {isMobileMenuOpen && <div className="absolute top-full left-0 right-0 bg-card/95 backdrop-blur-xl border-b border-border/50 shadow-xl md:hidden z-40">
               <div className="p-3 space-y-3">
                 <div className="grid grid-cols-1 gap-2">
                   {/* Public navigation items */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      navigate('/about');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="justify-start text-sm"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => {
+                navigate('/about');
+                setIsMobileMenuOpen(false);
+              }} className="justify-start text-sm">
                     <Building2 className="h-4 w-4 mr-2" />
                     About
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      navigate('/features');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="justify-start text-sm"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => {
+                navigate('/features');
+                setIsMobileMenuOpen(false);
+              }} className="justify-start text-sm">
                     <Zap className="h-4 w-4 mr-2" />
                     Features
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      navigate('/pricing');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="justify-start text-sm"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => {
+                navigate('/pricing');
+                setIsMobileMenuOpen(false);
+              }} className="justify-start text-sm">
                     <TrendingUp className="h-4 w-4 mr-2" />
                     Pricing
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      navigate('/contact');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="justify-start text-sm"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => {
+                navigate('/contact');
+                setIsMobileMenuOpen(false);
+              }} className="justify-start text-sm">
                     <FileText className="h-4 w-4 mr-2" />
                     Contact
                   </Button>
                   
                   {/* App navigation items for authenticated users */}
-                  {user && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          navigate('/dashboard');
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="justify-start text-sm"
-                      >
+                  {user && <>
+                      <Button variant="outline" size="sm" onClick={() => {
+                  navigate('/dashboard');
+                  setIsMobileMenuOpen(false);
+                }} className="justify-start text-sm">
                         <Activity className="h-4 w-4 mr-2" />
                         Trading Dashboard
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          navigate('/history');
-                          markResultsAsSeen();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="justify-start text-sm relative"
-                      >
+                      <Button variant="outline" size="sm" onClick={() => {
+                  navigate('/history');
+                  markResultsAsSeen();
+                  setIsMobileMenuOpen(false);
+                }} className="justify-start text-sm relative">
                         <History className="h-4 w-4 mr-2" />
                         History
-                        {(notificationCount > 0) && (
-                          <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center min-w-[1rem]">
+                        {notificationCount > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center min-w-[1rem]">
                             {notificationCount > 9 ? '9+' : notificationCount}
-                          </span>
-                        )}
+                          </span>}
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          navigate('/macro-analysis');
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="justify-start text-sm"
-                      >
+                      <Button variant="outline" size="sm" onClick={() => {
+                  navigate('/macro-analysis');
+                  setIsMobileMenuOpen(false);
+                }} className="justify-start text-sm">
                         <TrendingUp className="h-4 w-4 mr-2" />
                         Macro Analysis
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          navigate('/reports');
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="justify-start text-sm"
-                      >
+                      <Button variant="outline" size="sm" onClick={() => {
+                  navigate('/reports');
+                  setIsMobileMenuOpen(false);
+                }} className="justify-start text-sm">
                         <Activity className="h-4 w-4 mr-2" />
                         Reports
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          onModuleChange?.("ai-setup");
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="justify-start text-sm"
-                      >
+                      <Button variant="outline" size="sm" onClick={() => {
+                  onModuleChange?.("ai-setup");
+                  setIsMobileMenuOpen(false);
+                }} className="justify-start text-sm">
                         <Zap className="h-4 w-4 mr-2" />
                         AI Setup
                       </Button>
-                      {(isAdmin || isSuperUser) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            navigate('/admin');
-                            setIsMobileMenuOpen(false);
-                          }}
-                          className="justify-start text-sm"
-                        >
+                      {(isAdmin || isSuperUser) && <Button variant="outline" size="sm" onClick={() => {
+                  navigate('/admin');
+                  setIsMobileMenuOpen(false);
+                }} className="justify-start text-sm">
                           <Shield className="h-4 w-4 mr-2" />
                           Admin Panel
-                        </Button>
-                      )}
-                    </>
-                  )}
+                        </Button>}
+                    </>}
                 </div>
                 <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/30 truncate">
                   {selectedAsset} • {timeframe}
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
         </div>
       </header>
 
@@ -385,11 +260,7 @@ export default function Layout({ children, activeModule, onModuleChange, complet
       <DiscreetJobStatus activeJobsCount={activeJobsCount} />
 
       {/* Result Notification - shows when new results are available */}
-      <ResultNotification 
-        show={hasNewResults}
-        onDismiss={handleDismissNotification}
-        onViewResult={handleViewResult}
-      />
+      <ResultNotification show={hasNewResults} onDismiss={handleDismissNotification} onViewResult={handleViewResult} />
 
       {/* Main Content - Mobile responsive */}
       <main className="flex-1 overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
@@ -406,7 +277,6 @@ export default function Layout({ children, activeModule, onModuleChange, complet
         instrument={selectedAsset} 
         timeframe={timeframe} 
         onTradeSetupClick={() => onModuleChange?.("trading")}
-      /> */}
-    </div>
-  );
+       /> */}
+    </div>;
 }
