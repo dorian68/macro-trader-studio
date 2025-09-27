@@ -1,20 +1,67 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import PublicNavbar from '@/components/PublicNavbar';
+import { supabase } from '@/integrations/supabase/client';
+interface PlanData {
+  name: string;
+  price: string;
+  description: string;
+  features: string[];
+  usage: string[];
+  highlight: boolean;
+}
+
 const Pricing = () => {
   const navigate = useNavigate();
+  const [b2cPlans, setB2cPlans] = useState<PlanData[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     console.log('📊 [Pricing] Alphalens pricing page initialized');
+    fetchPlanData();
   }, []);
-  const handleCTAClick = (plan: string) => {
-    console.log(`📊 [Pricing] CTA clicked: ${plan}`);
-    // TODO: Implement actual subscription logic
+
+  const fetchPlanData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('plan_parameters')
+        .select('*')
+        .in('plan_type', ['basic', 'standard', 'premium'])
+        .order('monthly_price_usd');
+
+      if (error) {
+        console.error('Error fetching plan data:', error);
+        // Fallback to static data if fetch fails
+        setB2cPlans(getStaticPlans());
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const dynamicPlans = data.map((plan) => ({
+          name: plan.plan_type.charAt(0).toUpperCase() + plan.plan_type.slice(1),
+          price: plan.monthly_price_usd > 0 ? `$${plan.monthly_price_usd}` : 'Unavailable',
+          description: getPlanDescription(plan.plan_type),
+          features: ['Market Commentary', 'AI Trade Setup', 'Research Reports'],
+          usage: getPlanUsage(plan),
+          highlight: plan.plan_type === 'premium'
+        }));
+        setB2cPlans(dynamicPlans);
+      } else {
+        setB2cPlans(getStaticPlans());
+      }
+    } catch (err) {
+      console.error('Error fetching plan data:', err);
+      setB2cPlans(getStaticPlans());
+    } finally {
+      setLoading(false);
+    }
   };
-  const b2cPlans = [{
+
+  const getStaticPlans = (): PlanData[] => [{
     name: 'Basic',
     price: '$25',
     description: 'Perfect for individual traders getting started',
@@ -36,6 +83,32 @@ const Pricing = () => {
     usage: ['Unlimited queries', '50 investment ideas per month', '16 reports per month'],
     highlight: true
   }];
+
+  const getPlanDescription = (planType: string): string => {
+    const descriptions = {
+      basic: 'Perfect for individual traders getting started',
+      standard: 'Ideal for active traders and investors',
+      premium: 'Complete solution for professional traders'
+    };
+    return descriptions[planType as keyof typeof descriptions] || 'Professional trading solution';
+  };
+
+  const getPlanUsage = (plan: any): string[] => {
+    const usage = [];
+    if (plan.max_queries === 0) {
+      usage.push('Unlimited queries');
+    } else {
+      usage.push(`${plan.max_queries} queries per month`);
+    }
+    usage.push(`${plan.max_ideas} investment ideas per month`);
+    usage.push(`${plan.max_reports} reports per month`);
+    return usage;
+  };
+
+  const handleCTAClick = (plan: string) => {
+    console.log(`📊 [Pricing] CTA clicked: ${plan}`);
+    // TODO: Implement actual subscription logic
+  };
   return <>
       <PublicNavbar />
       <div className="min-h-screen bg-background">
@@ -135,7 +208,12 @@ const Pricing = () => {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="text-muted-foreground">Loading plans...</div>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
                 {b2cPlans.map(plan => (
                   <div key={plan.name} className="relative">
                     {plan.highlight && (
@@ -187,7 +265,8 @@ const Pricing = () => {
                  </Card>
                    </div>
                  ))}
-             </div>
+              </div>
+            )}
           </div>
 
           {/* Footer Note */}

@@ -500,6 +500,7 @@ export type Database = {
           max_ideas: number
           max_queries: number
           max_reports: number
+          monthly_price_usd: number | null
           plan_type: Database["public"]["Enums"]["plan_type"]
           renewal_cycle_days: number | null
           trial_duration_days: number | null
@@ -511,6 +512,7 @@ export type Database = {
           max_ideas?: number
           max_queries?: number
           max_reports?: number
+          monthly_price_usd?: number | null
           plan_type: Database["public"]["Enums"]["plan_type"]
           renewal_cycle_days?: number | null
           trial_duration_days?: number | null
@@ -522,6 +524,7 @@ export type Database = {
           max_ideas?: number
           max_queries?: number
           max_reports?: number
+          monthly_price_usd?: number | null
           plan_type?: Database["public"]["Enums"]["plan_type"]
           renewal_cycle_days?: number | null
           trial_duration_days?: number | null

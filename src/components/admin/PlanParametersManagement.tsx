@@ -15,6 +15,7 @@ interface PlanParameter {
   max_reports: number;
   trial_duration_days: number | null;
   renewal_cycle_days: number | null;
+  monthly_price_usd: number;
 }
 
 export function PlanParametersManagement() {
@@ -80,7 +81,7 @@ export function PlanParametersManagement() {
   };
 
   const handleFieldChange = (planId: string, field: keyof PlanParameter, value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = field === 'monthly_price_usd' ? parseFloat(value) || 0 : parseInt(value) || 0;
     setPlans(prev => prev.map(plan => 
       plan.id === planId 
         ? { ...plan, [field]: numValue }
@@ -138,7 +139,19 @@ export function PlanParametersManagement() {
             <CardTitle>{planDisplayNames[plan.plan_type] || plan.plan_type}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor={`${plan.id}-price`}>Monthly Price (USD)</Label>
+                <Input
+                  id={`${plan.id}-price`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={plan.monthly_price_usd}
+                  onChange={(e) => handleFieldChange(plan.id, 'monthly_price_usd', e.target.value)}
+                />
+              </div>
+              
               <div>
                 <Label htmlFor={`${plan.id}-queries`}>Max Queries</Label>
                 <Input
