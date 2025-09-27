@@ -2,10 +2,12 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { FlashMessage, FlashMessageData } from './FlashMessage';
 
 interface ActiveJob {
   id: string;
   type: string;
+  feature: string;
   instrument: string;
   status: 'pending' | 'running';
   createdAt: Date;
@@ -15,6 +17,7 @@ interface ActiveJob {
 interface CompletedJob {
   id: string;
   type: string;
+  feature: string;
   instrument: string;
   resultData: any;
   completedAt: Date;
@@ -26,6 +29,9 @@ interface PersistentNotificationContextType {
   completedJobs: CompletedJob[];
   markJobAsViewed: (jobId: string) => void;
   navigateToResult: (job: CompletedJob) => void;
+  flashMessages: FlashMessageData[];
+  addFlashMessage: (message: Omit<FlashMessageData, 'id'>) => void;
+  removeFlashMessage: (id: string) => void;
 }
 
 const PersistentNotificationContext = createContext<PersistentNotificationContextType | undefined>(undefined);
@@ -45,8 +51,18 @@ interface PersistentNotificationProviderProps {
 export function PersistentNotificationProvider({ children }: PersistentNotificationProviderProps) {
   const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
   const [completedJobs, setCompletedJobs] = useState<CompletedJob[]>([]);
+  const [flashMessages, setFlashMessages] = useState<FlashMessageData[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const addFlashMessage = (message: Omit<FlashMessageData, 'id'>) => {
+    const id = `flash-${Date.now()}-${Math.random()}`;
+    setFlashMessages(prev => [...prev, { ...message, id }]);
+  };
+
+  const removeFlashMessage = (id: string) => {
+    setFlashMessages(prev => prev.filter(msg => msg.id !== id));
+  };
 
   // Map job types to originating features
   const mapTypeToFeature = (type: string): 'ai-setup' | 'macro-analysis' | 'reports' => {
@@ -85,11 +101,20 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
           const activeJob: ActiveJob = {
             id: newJob.id,
             type: newJob.type || 'Unknown',
+            feature: newJob.feature || newJob.type || 'analysis',
             instrument: newJob.instrument || 'Unknown',
             status: 'pending',
             createdAt: new Date(),
             originatingFeature: mapTypeToFeature(newJob.type || '')
           };
+
+          // Add flash message for job start
+          addFlashMessage({
+            type: 'info',
+            title: 'Analysis Started',
+            description: `${activeJob.instrument} analysis has begun`,
+            duration: 3000
+          });
 
           setActiveJobs(prev => {
             // Avoid duplicates
@@ -124,11 +149,20 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             const completedJob: CompletedJob = {
               id: updatedJob.id,
               type: updatedJob.type || 'Unknown',
+              feature: updatedJob.feature || updatedJob.type || 'analysis',
               instrument: updatedJob.instrument || 'Unknown',
               resultData: updatedJob.response_payload,
               completedAt: new Date(),
               originatingFeature: mapTypeToFeature(updatedJob.type || '')
             };
+
+            // Add flash message for completion
+            addFlashMessage({
+              type: 'success',
+              title: 'Analysis Complete',
+              description: `${completedJob.instrument} analysis finished`,
+              duration: 3000
+            });
 
             setCompletedJobs(prev => {
               // Avoid duplicates
@@ -139,6 +173,14 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
           } else if (updatedJob.status === 'error') {
             // Remove failed jobs from active
             setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
+            
+            // Add flash message for failure
+            addFlashMessage({
+              type: 'error',
+              title: 'Analysis Failed',
+              description: `${updatedJob.instrument || 'Unknown'} analysis encountered an error`,
+              duration: 5000
+            });
           }
         }
       )
@@ -173,13 +215,26 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
   return (
     <PersistentNotificationContext.Provider 
       value={{ 
-        activeJobs,
+        activeJobs, 
         completedJobs, 
         markJobAsViewed, 
-        navigateToResult 
+        navigateToResult,
+        flashMessages,
+        addFlashMessage,
+        removeFlashMessage
       }}
     >
       {children}
+      
+      {/* Render flash messages */}
+      {flashMessages.map((message, index) => (
+        <FlashMessage
+          key={message.id}
+          message={message}
+          onRemove={removeFlashMessage}
+          index={index}
+        />
+      ))}
     </PersistentNotificationContext.Provider>
   );
 }

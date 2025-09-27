@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, X } from 'lucide-react';
 import { usePersistentNotifications } from './PersistentNotificationProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getFeatureDisplayName } from '@/lib/feature-mapper';
 
 export function PersistentToast() {
   const { activeJobs, completedJobs, markJobAsViewed, navigateToResult } = usePersistentNotifications();
@@ -22,10 +23,10 @@ export function PersistentToast() {
     <Card className={`
       fixed z-50 shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm
       ${isMobile 
-        ? 'bottom-4 left-4 right-4 mx-auto max-w-sm' 
-        : 'bottom-6 right-6 w-80'
+        ? 'top-20 left-4 right-4 mx-auto max-w-sm' 
+        : 'top-6 right-6 w-80'
       }
-      animate-in slide-in-from-bottom-4 duration-300
+      animate-in slide-in-from-top-4 duration-300
     `}>
       <div className="p-4">
         <div className="flex items-start gap-3">
@@ -50,8 +51,8 @@ export function PersistentToast() {
             </div>
             <p className="text-sm text-muted-foreground mb-3">
               {isCompleted 
-                ? `${mostRecentJob.instrument} analysis completed — click to view result`
-                : `${mostRecentJob.instrument} analysis in progress`
+                ? `${mostRecentJob.instrument} ${getFeatureDisplayName(mostRecentJob.feature)} completed — click to view result`
+                : `${mostRecentJob.instrument} ${getFeatureDisplayName(mostRecentJob.feature)} in progress`
               }
             </p>
             
@@ -60,7 +61,7 @@ export function PersistentToast() {
                 <Button 
                   size="sm" 
                   onClick={() => navigateToResult(completedJobs[completedJobs.length - 1])}
-                  className="text-xs h-7 bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
+                  className="text-xs h-7 bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-sm"
                 >
                   View Result
                 </Button>
