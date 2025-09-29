@@ -224,11 +224,6 @@ const Pricing = () => {
             </p>
           </div>
 
-          {/* Auth Prompt Banner for unauthenticated users */}
-          {!user && showAuthBanner && (
-            <AuthPromptBanner onDismiss={() => setShowAuthBanner(false)} />
-          )}
-
           {/* B2B Model Section */}
           <div className="mb-20">
             <div className="text-center mb-12">
@@ -391,6 +386,11 @@ const Pricing = () => {
               </div>
             )}
           </div>
+
+          {/* Auth Prompt Banner for unauthenticated users */}
+          {!user && showAuthBanner && (
+            <AuthPromptBanner onDismiss={() => setShowAuthBanner(false)} />
+          )}
 
           {/* Footer Note */}
           <div className="text-center mt-16 max-w-2xl mx-auto">
