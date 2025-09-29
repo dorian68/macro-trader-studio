@@ -265,7 +265,7 @@ export function UsersTable({
                           <Settings className="h-4 w-4 mr-1" />
                           Manage
                         </Button>
-                        {(isSuperUser || isAdmin) && (
+                        {isSuperUser && (
                           <Button
                             size="sm"
                             variant="outline"
