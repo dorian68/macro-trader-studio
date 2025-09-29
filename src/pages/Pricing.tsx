@@ -315,7 +315,7 @@ const Pricing = () => {
             ) : (
               <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
                 {b2cPlans.map(plan => (
-                  <div key={plan.name} className="relative">
+                  <div key={plan.name} className="relative flex">
                     {plan.highlight && (
                       <Badge 
                         variant="default" 
@@ -325,7 +325,7 @@ const Pricing = () => {
                         Most Complete
                       </Badge>
                     )}
-                    <Card className={`${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'}`}>
+                    <Card className={`${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'} flex flex-col h-full w-full`}>
                   <CardHeader className={`text-center ${plan.highlight ? 'pb-6 pt-2' : 'pb-6'}`}>
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
                     <div className="mt-4">
@@ -337,7 +337,7 @@ const Pricing = () => {
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-6 flex-1 flex flex-col">
                     <div>
                       <h4 className="font-semibold mb-3">Features</h4>
                       <ul className="space-y-2">
@@ -348,7 +348,7 @@ const Pricing = () => {
                       </ul>
                     </div>
                     
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-semibold mb-3">Usage Limits</h4>
                       <ul className="space-y-2">
                         {plan.usage.map((usage, index) => <li key={index} className="flex items-center gap-3">
@@ -358,7 +358,7 @@ const Pricing = () => {
                       </ul>
                     </div>
                     
-                     <div className="space-y-3 mt-6">
+                     <div className="space-y-3 mt-auto">
                        {!user && (
                          <Button 
                            variant="secondary"
@@ -381,15 +381,17 @@ const Pricing = () => {
                      </div>
                    </CardContent>
                  </Card>
-                   </div>
-                 ))}
+                    </div>
+                  ))}
               </div>
             )}
           </div>
 
           {/* Auth Prompt Banner for unauthenticated users */}
           {!user && showAuthBanner && (
-            <AuthPromptBanner onDismiss={() => setShowAuthBanner(false)} />
+            <div className="mt-12">
+              <AuthPromptBanner onDismiss={() => setShowAuthBanner(false)} />
+            </div>
           )}
 
           {/* Footer Note */}
