@@ -27,6 +27,8 @@ import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
 import { JobsMonitoring } from "@/components/admin/JobsMonitoring";
 import { BrokersManagement } from "@/components/admin/BrokersManagement";
 import { PlanParametersManagement } from "@/components/admin/PlanParametersManagement";
+import { SubscriptionPlanOverview } from "@/components/admin/SubscriptionPlanOverview";
+import { UserCreditsOverview } from "@/components/admin/UserCreditsOverview";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -83,8 +85,8 @@ export default function Admin() {
     setLoading(true);
     const userData = await fetchUsers();
     
-    // Fetch credit data for super users
-    if (isSuperUser && userData.length > 0) {
+    // Fetch credit data for super users and admins
+    if ((isSuperUser || isAdmin) && userData.length > 0) {
       try {
         const { data: creditsData } = await supabase
           .from('user_credits')
@@ -427,6 +429,12 @@ export default function Admin() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Subscription Plan Overview - Admins and Super Users */}
+        {(isAdmin || isSuperUser) && <SubscriptionPlanOverview />}
+
+        {/* User Credits Overview - Admins and Super Users */}
+        {(isAdmin || isSuperUser) && <UserCreditsOverview />}
 
         {/* Cost Tracking Section - Super Users Only */}
         {isSuperUser && (

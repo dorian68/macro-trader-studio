@@ -92,7 +92,7 @@ export function UsersTable({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const { isSuperUser } = useProfile();
+  const { isSuperUser, isAdmin } = useProfile();
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -187,7 +187,7 @@ export function UsersTable({
                 <TableHead className="min-w-[100px]">Broker</TableHead>
                 <TableHead className="min-w-[100px]">Status</TableHead>
                 <TableHead className="min-w-[100px]">Role</TableHead>
-                {isSuperUser && <TableHead className="min-w-[150px]">Plan & Credits</TableHead>}
+                {(isSuperUser || isAdmin) && <TableHead className="min-w-[150px]">Plan & Credits</TableHead>}
                 <TableHead className="min-w-[120px]">Created</TableHead>
                 <TableHead className="text-right min-w-[140px]">Actions</TableHead>
               </TableRow>
@@ -195,7 +195,7 @@ export function UsersTable({
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isSuperUser ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={(isSuperUser || isAdmin) ? 8 : 7} className="text-center py-8 text-muted-foreground">
                   No users found matching your filters
                 </TableCell>
               </TableRow>
@@ -232,7 +232,7 @@ export function UsersTable({
                         </Badge>
                       </div>
                     </TableCell>
-                    {isSuperUser && (
+                    {(isSuperUser || isAdmin) && (
                       <TableCell>
                         <div className="space-y-1">
                           <div className="text-xs">
@@ -265,7 +265,7 @@ export function UsersTable({
                           <Settings className="h-4 w-4 mr-1" />
                           Manage
                         </Button>
-                        {isSuperUser && (
+                        {(isSuperUser || isAdmin) && (
                           <Button
                             size="sm"
                             variant="outline"
