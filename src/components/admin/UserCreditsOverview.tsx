@@ -32,6 +32,15 @@ export function UserCreditsOverview() {
     
     setLoading(true);
     try {
+      // Get current user's profile to determine broker filtering
+      const { data: currentUserProfile, error: currentUserError } = await supabase
+        .from('profiles')
+        .select('broker_id, broker_name')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (currentUserError) throw currentUserError;
+
       // Get user credits data
       const { data: creditsData, error: creditsError } = await supabase
         .from('user_credits')
@@ -39,10 +48,17 @@ export function UserCreditsOverview() {
 
       if (creditsError) throw creditsError;
 
-      // Get user profiles for broker info
-      const { data: profilesData, error: profilesError } = await supabase
+      // Get user profiles for broker info - filter by broker for admin users
+      let profilesQuery = supabase
         .from('profiles')
-        .select('user_id, broker_name');
+        .select('user_id, broker_name, broker_id');
+      
+      // If user is admin (not super_user), filter by their broker
+      if (isAdmin && !isSuperUser && currentUserProfile?.broker_id) {
+        profilesQuery = profilesQuery.eq('broker_id', currentUserProfile.broker_id);
+      }
+
+      const { data: profilesData, error: profilesError } = await profilesQuery;
 
       if (profilesError) throw profilesError;
 
@@ -128,9 +144,12 @@ export function UserCreditsOverview() {
 
   // Filter and search logic
   const filteredUsers = userCredits.filter(user => {
-    const matchesSearch = 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.broker_name && user.broker_name.toLowerCase().includes(searchTerm.toLowerCase()));
+    // For admin users (not super_user), only search by email
+    // For super_user, search by email and broker
+    const matchesSearch = isSuperUser 
+      ? (user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         (user.broker_name && user.broker_name.toLowerCase().includes(searchTerm.toLowerCase())))
+      : user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesPlan = planFilter === 'all' || user.plan_type === planFilter;
     
@@ -203,7 +222,7 @@ export function UserCreditsOverview() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by email or broker..."
+                  placeholder={isSuperUser ? "Search by email or broker..." : "Search by email..."}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
