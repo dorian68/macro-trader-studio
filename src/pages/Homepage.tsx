@@ -14,7 +14,7 @@ export default function Homepage() {
           <div className="mb-3">
             <img src="/lovable-uploads/Full_logi_white_BG_FINAL.png" alt="alphaLens.ai logo" loading="lazy" className="w-full h-auto mx-auto mb-4 max-w-[227px] sm:max-w-[292px] md:max-w-[389px] lg:max-w-[518px] object-contain" />
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-primary mb-4 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4 leading-tight">
             Intelligent Financial Research
             <span className="text-primary"> Powered by AI</span>
           </h1>
