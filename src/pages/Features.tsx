@@ -101,7 +101,7 @@ export default function Features() {
                   <p className="text-muted-foreground">
                     {feature.description}
                   </p>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 flex-1">
                     {feature.details.map((detail, idx) => (
                       <li key={idx} className="text-sm text-muted-foreground flex items-start">
                         <span className="w-1 h-1 bg-primary rounded-full mt-2 mr-2 flex-shrink-0"></span>
