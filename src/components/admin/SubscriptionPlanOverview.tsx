@@ -21,19 +21,47 @@ export function SubscriptionPlanOverview() {
     
     setLoading(true);
     try {
+      // Get current user's profile to determine broker filtering
+      const { data: currentUserProfile, error: currentUserError } = await supabase
+        .from('profiles')
+        .select('broker_id, broker_name')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (currentUserError) throw currentUserError;
+
+      // Get user profiles for broker filtering
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('user_id, broker_id');
+      
+      // If user is admin (not super_user), filter by their broker
+      if (isAdmin && !isSuperUser && currentUserProfile?.broker_id) {
+        profilesQuery = profilesQuery.eq('broker_id', currentUserProfile.broker_id);
+      }
+
+      const { data: profilesData, error: profilesError } = await profilesQuery;
+      if (profilesError) throw profilesError;
+
+      // Get valid user IDs from filtered profiles
+      const validUserIds = new Set(profilesData?.map(p => p.user_id) || []);
+
       // Fetch user plan distribution from user_credits table
       const { data: creditsData, error } = await supabase
         .from('user_credits')
-        .select('plan_type');
+        .select('user_id, plan_type');
 
       if (error) throw error;
 
+      // Filter credits data to only include users from valid broker
+      const filteredCreditsData = creditsData?.filter(user => validUserIds.has(user.user_id)) || [];
+
       // Count users by plan type
-      const planCounts = creditsData?.reduce((acc: Record<string, number>, user) => {
+      const planCounts = filteredCreditsData.reduce((acc: Record<string, number>, user) => {
         const planType = user.plan_type || 'free_trial';
         acc[planType] = (acc[planType] || 0) + 1;
         return acc;
-      }, {}) || {};
+      }, {});
 
       // Calculate total users and percentages
       const totalUsers = Object.values(planCounts).reduce((sum: number, count) => sum + count, 0);
