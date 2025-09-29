@@ -25,12 +25,12 @@ export default function About() {
         {/* Company Cards */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* OptiQuant IA Card */}
-          <Card className="gradient-card border-primary/20 shadow-glow-primary">
+          <Card className="gradient-card border-primary/20 shadow-glow-primary flex flex-col h-full">
             <CardHeader className="text-center pb-4">
               <img src="/lovable-uploads/optiquant-logo.png" alt="OptiQuant IA" className="h-14 w-auto mx-auto mb-4" />
               <CardTitle className="text-xl text-foreground">OptiQuant IA</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 flex-1 flex flex-col">
               <p className="text-muted-foreground">
                 OptiQuant IA is a leading company specializing in quantitative finance, artificial intelligence, 
                 and intelligent decision-making tools for businesses. We develop cutting-edge AI solutions that 
@@ -42,7 +42,7 @@ export default function About() {
               </p>
               <Button 
                 variant="outline" 
-                className="w-full"
+                className="w-full mt-auto"
                 onClick={() => window.open('https://www.optiquant-ia.com/', '_blank')}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
@@ -52,12 +52,12 @@ export default function About() {
           </Card>
 
           {/* ABCG Research Card */}
-          <Card className="gradient-card border-primary/20 shadow-glow-primary">
+          <Card className="gradient-card border-primary/20 shadow-glow-primary flex flex-col h-full">
             <CardHeader className="text-center pb-4">
-              <img src="/lovable-uploads/abcg-research-logo.png" alt="ABCG Research" className="h-10 w-auto mx-auto mb-4" />
+              <img src="/lovable-uploads/abcg-research-logo.png" alt="ABCG Research" className="h-14 w-auto mx-auto mb-4" />
               <CardTitle className="text-xl text-foreground">ABCG Research</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 flex-1 flex flex-col">
               <p className="text-muted-foreground">
                 ABCG Research is a leading macroeconomic research and financial insights firm, providing 
                 institutional-grade analysis to professional investors, corporations, and financial institutions 
@@ -69,7 +69,7 @@ export default function About() {
               </p>
               <Button 
                 variant="outline" 
-                className="w-full"
+                className="w-full mt-auto"
                 onClick={() => window.open('https://research.albaricg.com/', '_blank')}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
