@@ -687,7 +687,8 @@ export default function MacroAnalysis() {
         assetType: queryParams.assetType,
         analysisDepth: queryParams.analysisDepth,
         period: queryParams.period,
-        adresse: queryParams.adresse
+        adresse: queryParams.adresse,
+        isTradeQuery: false
       };
       
       // 2. Create job with payload using createJob hook (like Reports page)

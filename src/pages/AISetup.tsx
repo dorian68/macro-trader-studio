@@ -339,7 +339,7 @@ export default function AISetup() {
     try {
       // SINGLE JOB: Merged macro commentary + trade setup request
       
-      // 1. Build merged payload with macro structure as base
+      // 1. Build merged payload with all fields at root level
       const mergedPayload = {
         // Macro commentary structure (base)
         type: "RAG",
@@ -350,17 +350,12 @@ export default function AISetup() {
         // Trade query flag
         isTradeQuery: true,
         
-        // Trade setup request data
-        tradeSetupRequest: {
-          instrument: parameters.instrument,
-          timeframe: parameters.timeframe,
-          riskLevel: parameters.riskLevel,
-          positionSize: parameters.positionSize,
-          strategy: parameters.strategy,
-          customNotes: parameters.customNotes,
-          mode: "run",
-          type: "trade"
-        }
+        // Trade setup data at root level (flattened)
+        timeframe: parameters.timeframe,
+        riskLevel: parameters.riskLevel,
+        positionSize: parameters.positionSize,
+        strategy: parameters.strategy,
+        customNotes: parameters.customNotes
       };
 
       // 2. Create single job with macro_commentary type
