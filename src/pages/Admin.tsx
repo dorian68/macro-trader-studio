@@ -450,60 +450,60 @@ export default function Admin() {
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
               {/* Global Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 <Card className="rounded-xl border">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Calculator className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Total Requests</span>
+                      <span className="text-xs sm:text-sm font-medium">Total Requests</span>
                     </div>
-                    <div className="text-xl font-bold">{globalCostStats.totalRequests}</div>
+                    <div className="text-lg sm:text-xl font-bold">{globalCostStats.totalRequests}</div>
                   </CardContent>
                 </Card>
                 <Card className="rounded-xl border">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Euro className="h-4 w-4 text-success" />
-                  <span className="text-sm font-medium">Total Cost</span>
-                </div>
-                <div className="text-xl font-bold">${globalCostStats.totalCost.toFixed(2)}</div>
+                      <span className="text-xs sm:text-sm font-medium">Total Cost</span>
+                    </div>
+                    <div className="text-lg sm:text-xl font-bold">${globalCostStats.totalCost.toFixed(2)}</div>
                   </CardContent>
                 </Card>
                 <Card className="rounded-xl border">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <BarChart3 className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-medium">AI Trade</span>
+                      <span className="text-xs sm:text-sm font-medium">AI Trade</span>
                     </div>
-                <div className="text-xl font-bold">{globalCostStats.aiTradeSetupTotal}</div>
-                <div className="text-xs text-muted-foreground">${(globalCostStats.aiTradeSetupTotal * 0.06).toFixed(2)}</div>
+                    <div className="text-lg sm:text-xl font-bold">{globalCostStats.aiTradeSetupTotal}</div>
+                    <div className="text-xs text-muted-foreground">${(globalCostStats.aiTradeSetupTotal * 0.06).toFixed(2)}</div>
                   </CardContent>
                 </Card>
                 <Card className="rounded-xl border">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <BarChart3 className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm font-medium">Reports</span>
+                      <span className="text-xs sm:text-sm font-medium">Reports</span>
                     </div>
-                <div className="text-xl font-bold">{globalCostStats.reportTotal}</div>
-                <div className="text-xs text-muted-foreground">${(globalCostStats.reportTotal * 0.14).toFixed(2)}</div>
+                    <div className="text-lg sm:text-xl font-bold">{globalCostStats.reportTotal}</div>
+                    <div className="text-xs text-muted-foreground">${(globalCostStats.reportTotal * 0.14).toFixed(2)}</div>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Daily Cost Chart */}
               <div className="rounded-xl border mb-6">
-                <div className="p-4 border-b flex items-center justify-between">
-                  <h3 className="font-semibold flex items-center gap-2">
+                <div className="p-3 sm:p-4 border-b flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                  <h3 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
                     <BarChart3 className="h-4 w-4" />
                     Daily Costs (Last {selectedPeriod} Days)
                   </h3>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-muted-foreground">Period:</label>
+                    <label className="text-xs sm:text-sm text-muted-foreground">Period:</label>
                     <select 
                       value={selectedPeriod} 
                       onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-                      className="px-3 py-1 text-sm border border-border rounded-md bg-background"
+                      className="px-2 sm:px-3 py-1 text-xs sm:text-sm border border-border rounded-md bg-background"
                     >
                       <option value={7}>7 days</option>
                       <option value={14}>14 days</option>
@@ -513,18 +513,18 @@ export default function Admin() {
                     </select>
                   </div>
                 </div>
-                <div className="p-4">
-                  <div className="h-64">
+                <div className="p-2 sm:p-4">
+                  <div className="h-48 sm:h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={dailyCostStats}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
                           dataKey="date" 
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 10 }}
                           tickFormatter={(value) => format(parseISO(value), 'MM/dd')}
                         />
                         <YAxis 
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 10 }}
                           tickFormatter={(value) => `$${value.toFixed(2)}`}
                         />
                         <Tooltip 
@@ -549,34 +549,34 @@ export default function Admin() {
 
               {/* User Costs Table */}
               <div className="rounded-xl border">
-                <div className="p-4 border-b">
-                  <h3 className="font-semibold flex items-center gap-2">
+                <div className="p-3 sm:p-4 border-b">
+                  <h3 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
                     <Users className="h-4 w-4" />
                     Cost by User
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[600px]">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-3 font-medium text-sm">User</th>
-                        <th className="text-right p-3 font-medium text-sm">AI Trade</th>
-                        <th className="text-right p-3 font-medium text-sm">Macro</th>
-                        <th className="text-right p-3 font-medium text-sm">Reports</th>
-                        <th className="text-right p-3 font-medium text-sm">Total Cost</th>
+                      <tr className="border-b bg-muted/30">
+                        <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm whitespace-nowrap">User</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm whitespace-nowrap">AI Trade</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm whitespace-nowrap">Macro</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm whitespace-nowrap">Reports</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm whitespace-nowrap">Total Cost</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loadingCosts ? (
                         <tr>
-                          <td colSpan={5} className="text-center p-8">
-                            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                            Loading cost data...
+                          <td colSpan={5} className="text-center p-6 sm:p-8">
+                            <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mx-auto mb-2" />
+                            <div className="text-xs sm:text-sm">Loading cost data...</div>
                           </td>
                         </tr>
                       ) : costStats.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="text-center p-8 text-muted-foreground">
+                          <td colSpan={5} className="text-center p-6 sm:p-8 text-muted-foreground text-xs sm:text-sm">
                             No cost data available
                           </td>
                         </tr>
@@ -585,23 +585,23 @@ export default function Admin() {
                           .sort((a, b) => b.totalCost - a.totalCost)
                           .map((userStat) => (
                             <tr key={userStat.user_id} className="border-b hover:bg-muted/50">
-                              <td className="p-3">
-                                <div className="font-medium text-sm">{userStat.email}</div>
+                              <td className="p-2 sm:p-3">
+                                <div className="font-medium text-xs sm:text-sm truncate max-w-[150px] sm:max-w-none">{userStat.email}</div>
                               </td>
-                              <td className="text-right p-3">
-                                <div className="text-sm">{userStat.aiTradeSetupCount}</div>
-                                <div className="text-xs text-muted-foreground">${(userStat.aiTradeSetupCount * 0.06).toFixed(2)}</div>
+                              <td className="text-right p-2 sm:p-3">
+                                <div className="text-xs sm:text-sm">{userStat.aiTradeSetupCount}</div>
+                                <div className="text-[10px] sm:text-xs text-muted-foreground">${(userStat.aiTradeSetupCount * 0.06).toFixed(2)}</div>
                               </td>
-                              <td className="text-right p-3">
-                                <div className="text-sm">{userStat.macroCommentaryCount}</div>
-                                <div className="text-xs text-muted-foreground">${(userStat.macroCommentaryCount * 0.07).toFixed(2)}</div>
+                              <td className="text-right p-2 sm:p-3">
+                                <div className="text-xs sm:text-sm">{userStat.macroCommentaryCount}</div>
+                                <div className="text-[10px] sm:text-xs text-muted-foreground">${(userStat.macroCommentaryCount * 0.07).toFixed(2)}</div>
                               </td>
-                              <td className="text-right p-3">
-                                <div className="text-sm">{userStat.reportCount}</div>
-                                <div className="text-xs text-muted-foreground">${(userStat.reportCount * 0.14).toFixed(2)}</div>
+                              <td className="text-right p-2 sm:p-3">
+                                <div className="text-xs sm:text-sm">{userStat.reportCount}</div>
+                                <div className="text-[10px] sm:text-xs text-muted-foreground">${(userStat.reportCount * 0.14).toFixed(2)}</div>
                               </td>
-                              <td className="text-right p-3">
-                                <div className="font-semibold text-sm">${userStat.totalCost.toFixed(2)}</div>
+                              <td className="text-right p-2 sm:p-3">
+                                <div className="font-semibold text-xs sm:text-sm">${userStat.totalCost.toFixed(2)}</div>
                               </td>
                             </tr>
                           ))
@@ -616,33 +616,40 @@ export default function Admin() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className={`grid w-full ${isSuperUser ? 'grid-cols-5' : 'grid-cols-2'}`}>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              User Management
-            </TabsTrigger>
-            <TabsTrigger value="monitoring" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Jobs Monitoring
-            </TabsTrigger>
-            {isSuperUser && (
-              <TabsTrigger value="brokers" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Brokers
+          <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+            <TabsList className={`grid w-full ${isSuperUser ? 'grid-cols-5 min-w-[800px]' : 'grid-cols-2'} sm:min-w-full`}>
+              <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">User Management</span>
+                <span className="sm:hidden">Users</span>
               </TabsTrigger>
-            )}
-            {isSuperUser && (
-              <TabsTrigger value="plan-parameters" className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                Plan Parameters
+              <TabsTrigger value="monitoring" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Jobs Monitoring</span>
+                <span className="sm:hidden">Jobs</span>
               </TabsTrigger>
-            )}
-            {isSuperUser && (
-              <TabsTrigger value="realtime-diagnostic" className="flex items-center gap-2">
-                🔍 Realtime Diagnostic
-              </TabsTrigger>
-            )}
-          </TabsList>
+              {isSuperUser && (
+                <TabsTrigger value="brokers" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                  <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Brokers</span>
+                </TabsTrigger>
+              )}
+              {isSuperUser && (
+                <TabsTrigger value="plan-parameters" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                  <Calculator className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Plan Parameters</span>
+                  <span className="sm:hidden">Plans</span>
+                </TabsTrigger>
+              )}
+              {isSuperUser && (
+                <TabsTrigger value="realtime-diagnostic" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                  <span className="text-base">🔍</span>
+                  <span className="hidden sm:inline">Realtime Diagnostic</span>
+                  <span className="sm:hidden">Diagnostic</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
 
           <TabsContent value="users">
             {/* Users Management */}

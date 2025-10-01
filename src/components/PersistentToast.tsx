@@ -145,7 +145,7 @@ export function PersistentToast() {
     >
       {isMinimized ? (
         // Minimized bubble view (Messenger-style)
-        <div className="w-full h-full flex items-center justify-center relative">
+        <div className="w-full h-full flex items-center justify-center relative group">
           {isCompleted ? (
             <CheckCircle className="h-6 w-6 text-success" />
           ) : (
@@ -167,6 +167,44 @@ export function PersistentToast() {
           >
             <Maximize2 className="h-3 w-3" />
           </Button>
+          
+          {/* Desktop hover preview */}
+          {!isMobile && (
+            <div className="absolute left-full ml-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50">
+              <Card className="w-60 shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm">
+                <div className="p-3">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {isCompleted ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : (
+                        <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-medium text-foreground mb-1">
+                        {isCompleted ? 'Result Ready' : 'Processing...'}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {isCompleted 
+                          ? `${getFeatureDisplayName(mostRecentJob.feature)} completed`
+                          : `${getFeatureDisplayName(mostRecentJob.feature)} in progress`
+                        }
+                      </p>
+                      {!isCompleted && (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                            <span>Elapsed time</span>
+                            <span className="font-mono">{formatTime(elapsedTime)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
         </div>
       ) : (
         // Expanded view
