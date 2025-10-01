@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, X, Minimize2, Maximize2 } from 'lucide-react';
+import { CheckCircle, X, Minimize2 } from 'lucide-react';
 import { usePersistentNotifications } from './PersistentNotificationProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getFeatureDisplayName } from '@/lib/feature-mapper';
@@ -145,7 +145,15 @@ export function PersistentToast() {
     >
       {isMinimized ? (
         // Minimized bubble view (Messenger-style)
-        <div className="w-full h-full flex items-center justify-center relative group">
+        <div 
+          className="w-full h-full flex items-center justify-center relative group"
+          onClick={(e) => {
+            if (!isDragging) {
+              e.stopPropagation();
+              setIsMinimized(false);
+            }
+          }}
+        >
           {isCompleted ? (
             <CheckCircle className="h-6 w-6 text-success" />
           ) : (
@@ -156,17 +164,6 @@ export function PersistentToast() {
               {totalJobs}
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute -top-1 -left-1 h-5 w-5 p-0 rounded-full bg-background hover:bg-muted"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsMinimized(false);
-            }}
-          >
-            <Maximize2 className="h-3 w-3" />
-          </Button>
           
           {/* Desktop hover preview */}
           {!isMobile && (
@@ -239,15 +236,9 @@ export function PersistentToast() {
               {/* Timer for active jobs */}
               {!isCompleted && (
                 <div className="mb-2">
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>Elapsed time</span>
                     <span className="font-mono">{formatTime(elapsedTime)}</span>
-                  </div>
-                  <div className="h-1 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary animate-pulse"
-                      style={{ width: '100%' }}
-                    />
                   </div>
                 </div>
               )}
