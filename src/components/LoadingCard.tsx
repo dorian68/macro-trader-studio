@@ -140,7 +140,105 @@ export function LoadingCard({
     };
     return titles[request.type];
   };
-  return;
+  
+  return (
+    <Card className={cn(
+      "w-72 shadow-lg border-l-4 transition-all",
+      className,
+      {
+        "border-l-yellow-500": request.status === 'pending',
+        "border-l-blue-500": request.status === 'processing',
+        "border-l-green-500": request.status === 'completed',
+        "border-l-red-500": request.status === 'failed'
+      }
+    )}>
+      <CardHeader className="p-4 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <IconComponent className="h-5 w-5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm font-medium truncate">
+                {request.status === 'completed' ? getCompletionTitle() : REQUEST_LABELS[request.type]}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {request.instrument}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsMinimized(true)}
+              className="h-6 w-6 p-0"
+            >
+              <Minimize2 className="h-3 w-3" />
+            </Button>
+            {request.onRemove && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => request.onRemove?.(request.id)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="p-4 pt-0 space-y-3">
+        {/* Status Badge */}
+        <Badge className={cn("text-xs", STATUS_COLORS[request.status])}>
+          <span className="flex items-center gap-1.5">
+            {getStatusIcon()}
+            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+          </span>
+        </Badge>
+
+        {/* Progress Bar (only for pending/processing) */}
+        {(request.status === 'pending' || request.status === 'processing') && (
+          <div className="space-y-2">
+            <Progress value={request.progress} className="h-2" />
+            <p className="text-xs text-muted-foreground">
+              {getProgressMessage()}
+            </p>
+          </div>
+        )}
+
+        {/* Time Info */}
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>{formatTime(timeElapsed)}</span>
+          </div>
+          {request.estimatedCompletion && request.status === 'processing' && (
+            <span>~{Math.ceil((request.estimatedCompletion.getTime() - Date.now()) / 60000)}m left</span>
+          )}
+        </div>
+
+        {/* View Result Button (only for completed) */}
+        {request.status === 'completed' && request.onViewResult && (
+          <Button 
+            onClick={() => request.onViewResult?.(request.resultData)}
+            className="w-full"
+            size="sm"
+          >
+            <Eye className="h-3.5 w-3.5 mr-1.5" />
+            View Result
+          </Button>
+        )}
+
+        {/* Error Message (only for failed) */}
+        {request.status === 'failed' && (
+          <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+            Analysis failed. Please try again.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 // Global Loading Cards Manager Component

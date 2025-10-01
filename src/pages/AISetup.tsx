@@ -21,7 +21,8 @@ import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 const {
-  useState
+  useState,
+  useEffect
 } = React;
 async function safeFetchJson(url, options) {
   console.log('🌐 safeFetchJson→', url, options?.method || 'GET');
@@ -492,6 +493,41 @@ export default function AISetup() {
       setIsGenerating(false);
     }
   };
+  // Check for pending results from View Result navigation
+  useEffect(() => {
+    const pendingResult = sessionStorage.getItem('pendingResult');
+    if (pendingResult) {
+      try {
+        const result = JSON.parse(pendingResult);
+        if (result.type === 'ai_trade_setup') {
+          console.log('📍 [AISetup] Processing pending result from View Result:', result);
+          
+          // Inject the result data directly
+          const parsedPayload = result.resultData;
+          const normalized = normalizeN8n(parsedPayload);
+
+          if (normalized && normalized.setups && normalized.setups.length > 0) {
+            setRawN8nResponse(parsedPayload);
+            setN8nResult(normalized);
+            setTradeSetup(null);
+            setStep("generated");
+            
+            toast({
+              title: "Trade Setup Loaded",
+              description: "Your AI trade setup has been loaded."
+            });
+          }
+          
+          // Clear the pending result
+          sessionStorage.removeItem('pendingResult');
+        }
+      } catch (error) {
+        console.error('❌ [AISetup] Error parsing pending result:', error);
+        sessionStorage.removeItem('pendingResult');
+      }
+    }
+  }, [toast]);
+
   const saveSetup = () => {
     toast({
       title: "Setup Saved",
