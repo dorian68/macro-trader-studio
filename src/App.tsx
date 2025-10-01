@@ -41,8 +41,8 @@ const App = () => {
       <AuthProvider>
         <SessionManagerProvider>
           <TooltipProvider>
-            <GlobalLoadingProvider>
-              <BrowserRouter>
+            <BrowserRouter>
+              <GlobalLoadingProvider>
                 <PersistentNotificationProvider>
                   <JobStatusCards />
                   <PersistentToast />
@@ -72,8 +72,8 @@ const App = () => {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </PersistentNotificationProvider>
-              </BrowserRouter>
-            </GlobalLoadingProvider>
+              </GlobalLoadingProvider>
+            </BrowserRouter>
           </TooltipProvider>
         </SessionManagerProvider>
       </AuthProvider>
