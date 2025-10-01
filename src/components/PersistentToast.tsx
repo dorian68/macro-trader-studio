@@ -126,8 +126,8 @@ export function PersistentToast() {
         ${isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab'}
         ${isMinimized 
           ? isMobile 
-            ? 'w-14 h-14 rounded-full shadow-lg border-0 bg-card p-0 overflow-hidden' 
-            : 'w-16 h-16 rounded-full shadow-lg border-0 bg-card p-0 overflow-hidden'
+            ? 'w-14 h-14 rounded-full shadow-lg border-0 bg-card p-0 overflow-visible' 
+            : 'w-16 h-16 rounded-full shadow-lg border-0 bg-card p-0 overflow-visible'
           : isMobile 
             ? 'w-[calc(100vw-2rem)] max-w-sm shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm' 
             : 'w-80 shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm'
@@ -159,7 +159,7 @@ export function PersistentToast() {
             <div className="h-7 w-7 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
           )}
           {totalJobs > 1 && (
-            <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-md">
+            <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-md z-10">
               {totalJobs}
             </span>
           )}
