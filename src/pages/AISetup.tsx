@@ -210,24 +210,6 @@ export default function AISetup() {
     customNotes: ""
   });
 
-  // Check for pending results from persistent notifications
-  React.useEffect(() => {
-    const pendingResult = sessionStorage.getItem('pendingResult');
-    if (pendingResult) {
-      try {
-        const result = JSON.parse(pendingResult);
-        if (result.type.includes('trade_setup') || result.type.includes('ai_trade_setup')) {
-          setTradeSetup(result.resultData);
-          setN8nResult(result.resultData);
-          setStep("generated");
-          sessionStorage.removeItem('pendingResult');
-        }
-      } catch (error) {
-        console.error('Error parsing pending result:', error);
-        sessionStorage.removeItem('pendingResult');
-      }
-    }
-  }, []);
 
   // Map instrument to TradingView symbol
   const mapInstrumentToSymbol = (instrument: string): string => {
