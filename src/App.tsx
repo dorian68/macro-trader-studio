@@ -9,6 +9,7 @@ import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
 import { PersistentNotificationProvider } from "@/components/PersistentNotificationProvider";
 import { PersistentToast } from "@/components/PersistentToast";
 import { JobStatusCards } from "@/components/JobStatusCards";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import AdminGuard from "./components/AdminGuard";
 import AuthGuard from "./components/AuthGuard";
 import Homepage from "./pages/Homepage";
@@ -42,6 +43,7 @@ const App = () => {
         <SessionManagerProvider>
           <TooltipProvider>
             <BrowserRouter>
+              <ScrollToTop />
               <GlobalLoadingProvider>
                 <PersistentNotificationProvider>
                   <JobStatusCards />
