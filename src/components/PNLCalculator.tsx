@@ -38,6 +38,7 @@ export default function PNLCalculator({
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(defaultExpanded);
+  const [quoteToUSD, setQuoteToUSD] = useState(1);
 
   const instrumentType = getInstrumentType(instrument);
   const isFX = instrumentType === 'fx';
@@ -45,6 +46,10 @@ export default function PNLCalculator({
   useEffect(() => {
     fetchPrice();
   }, [instrument]);
+
+  useEffect(() => {
+    fetchQuoteConversion();
+  }, [instrument, instrumentType]);
 
   const fetchPrice = async () => {
     setLoading(true);
@@ -62,6 +67,22 @@ export default function PNLCalculator({
     }
   };
 
+  const fetchQuoteConversion = async () => {
+    if (!isFX) { setQuoteToUSD(1); return; }
+    const quote = instrument.split('/')[1] || 'USD';
+    if (quote === 'USD') { setQuoteToUSD(1); return; }
+    try {
+      try {
+        const p1 = await getInstrumentPrice(`${quote}/USD`);
+        setQuoteToUSD(p1);
+      } catch {
+        const p2 = await getInstrumentPrice(`USD/${quote}`);
+        setQuoteToUSD(p2 > 0 ? 1 / p2 : 1);
+      }
+    } catch {
+      setQuoteToUSD(1);
+    }
+  };
   const calculatePNL = (change: number): { pnl: number; pnlPercent: number } => {
     if (!currentPrice) return { pnl: 0, pnlPercent: 0 };
 
@@ -72,8 +93,8 @@ export default function PNLCalculator({
       // JPY pairs: 1 pip = 0.01, others: 1 pip = 0.0001
       const isJPYPair = instrument.includes('JPY');
       const pipSize = isJPYPair ? 0.01 : 0.0001;
-      const pipValue = (positionSize * 100000 * pipSize);
-      pnl = change * pipValue;
+      const pipValueUSD = (positionSize * 100000 * pipSize) * quoteToUSD;
+      pnl = change * pipValueUSD;
     } else {
       // Crypto/Commodities: use points (1 point = 1 USD)
       pnl = positionSize * change;
@@ -82,9 +103,8 @@ export default function PNLCalculator({
     // Calculate margin correctly based on instrument type
     let margin = 0;
     if (isFX) {
-      // FX: 1 lot = 100,000 units of base currency
-      // Margin = (lot size * contract size) / leverage
-      margin = (positionSize * 100000) / leverage;
+      // Notional in USD = contract size * current price (in quote) * quote->USD conversion
+      margin = (positionSize * 100000 * currentPrice * quoteToUSD) / leverage;
     } else {
       // Crypto/Commodities: margin based on notional value
       margin = (positionSize * currentPrice) / leverage;
@@ -101,8 +121,8 @@ export default function PNLCalculator({
     if (isFX) {
       const isJPYPair = instrument.includes('JPY');
       const pipSize = isJPYPair ? 0.01 : 0.0001;
-      const pipValue = (positionSize * 100000 * pipSize);
-      pnl = change * pipValue;
+      const pipValueUSD = (positionSize * 100000 * pipSize) * quoteToUSD;
+      pnl = change * pipValueUSD;
     } else {
       pnl = positionSize * change;
     }
@@ -110,7 +130,8 @@ export default function PNLCalculator({
     // Calculate margin using entry price
     let margin = 0;
     if (isFX) {
-      margin = (positionSize * 100000) / leverage;
+      // Notional in USD based on entry price
+      margin = (positionSize * 100000 * entryPrice * quoteToUSD) / leverage;
     } else {
       margin = (positionSize * entryPrice) / leverage;
     }
