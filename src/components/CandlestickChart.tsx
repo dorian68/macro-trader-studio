@@ -137,11 +137,12 @@ export function CandlestickChart({
     setTimeframe(newTimeframe);
   };
   return <>
-      {/* Header Section - Constrained Width */}
-      {showHeader && (
-        <div className="max-w-screen-lg mx-auto px-4 sm:px-6 mb-4">
-          <Card className="gradient-card border-border-light shadow-medium">
-            <CardHeader className="pb-4">
+      {/* Chart Section - Full Width with integrated header */}
+      <div className="w-full">
+        <Card className="gradient-card border-border-light shadow-medium lg:rounded-none lg:border-0">
+          {/* Header Section - Now inside the chart card */}
+          {showHeader && (
+            <CardHeader className="pb-4 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -177,13 +178,8 @@ export function CandlestickChart({
                 </div>
               </div>
             </CardHeader>
-          </Card>
-        </div>
-      )}
-
-      {/* Chart Section - Full Width */}
-      <div className="w-full">
-        <Card className="gradient-card border-border-light shadow-medium lg:rounded-none lg:border-0">
+          )}
+          
           <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6">
             <div className="relative overflow-hidden isolate z-0">
               <TradingViewWidget selectedSymbol={binanceSymbol} timeframe={timeframe} onPriceUpdate={price => setCurrentPrice(price)} className="border-0 shadow-none" />
