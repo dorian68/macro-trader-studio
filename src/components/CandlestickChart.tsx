@@ -136,114 +136,127 @@ export function CandlestickChart({
   const handleTimeframeChange = (newTimeframe: string) => {
     setTimeframe(newTimeframe);
   };
-  return <Card className="w-full gradient-card border-border-light shadow-medium lg:rounded-none lg:border-0">
-      {showHeader && <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <BarChart3 className="h-5 w-5" />
-              </div>
-              <div>
-                <span className="text-xl font-bold">{title || `${asset} Live Chart`}</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="border-primary/20 text-primary">
-                    {asset}
-                  </Badge>
-                  <Badge variant="outline" className={`border-${isConnected && hasRealTimeData ? 'success' : 'warning'}/20 text-${isConnected && hasRealTimeData ? 'success' : 'warning'}`}>
-                    {isConnected && hasRealTimeData ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
-                    {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
-                  </Badge>
-              </div>
-            </div>
-          </CardTitle>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              
-            </div>
-            <Select value={timeframe} onValueChange={handleTimeframeChange}>
-              <SelectTrigger className="w-32 bg-background/50 border-border-light">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {timeframes.map(tf => <SelectItem key={tf.value} value={tf.value}>
-                    {tf.label}
-                  </SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </CardHeader>}
-      <CardContent className="pb-4 sm:pb-6">
-        <div className="relative overflow-hidden isolate z-0">
-          <TradingViewWidget selectedSymbol={binanceSymbol} timeframe={timeframe} onPriceUpdate={price => setCurrentPrice(price)} className="border-0 shadow-none" />
-          
-          {/* Mobile-responsive Trade Levels Overlay */}
-          {tradeLevels && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-lg sm:rounded-xl p-2 sm:p-3 shadow-xl w-[calc(100%-1rem)] max-w-[280px] sm:min-w-[240px] sm:max-w-[300px] sm:w-auto z-10">
-              <div className="flex items-center gap-2 mb-3">
-                <div className={cn("w-3 h-3 rounded-full animate-pulse", tradeLevels.direction === "BUY" ? "bg-success" : "bg-destructive")}></div>
-                <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                  {tradeLevels.direction} Setup
-                </span>
-              </div>
-              
-              <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-                    <div className="text-[10px] text-muted-foreground mb-1">ENTRY</div>
-                    <div className="font-mono font-bold text-primary text-[11px]">
-                      ${tradeLevels.entry.toFixed(4)}
+  return <>
+      {/* Header Section - Constrained Width */}
+      {showHeader && (
+        <div className="max-w-screen-lg mx-auto px-4 sm:px-6 mb-4">
+          <Card className="gradient-card border-border-light shadow-medium">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <BarChart3 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-xl font-bold">{title || `${asset} Live Chart`}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="border-primary/20 text-primary">
+                        {asset}
+                      </Badge>
+                      <Badge variant="outline" className={`border-${isConnected && hasRealTimeData ? 'success' : 'warning'}/20 text-${isConnected && hasRealTimeData ? 'success' : 'warning'}`}>
+                        {isConnected && hasRealTimeData ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+                        {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
+                      </Badge>
                     </div>
+                  </div>
+                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    
+                  </div>
+                  <Select value={timeframe} onValueChange={handleTimeframeChange}>
+                    <SelectTrigger className="w-32 bg-background/50 border-border-light">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeframes.map(tf => <SelectItem key={tf.value} value={tf.value}>
+                          {tf.label}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+        </div>
+      )}
+
+      {/* Chart Section - Full Width */}
+      <div className="w-full">
+        <Card className="gradient-card border-border-light shadow-medium lg:rounded-none lg:border-0">
+          <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6">
+            <div className="relative overflow-hidden isolate z-0">
+              <TradingViewWidget selectedSymbol={binanceSymbol} timeframe={timeframe} onPriceUpdate={price => setCurrentPrice(price)} className="border-0 shadow-none" />
+              
+              {/* Mobile-responsive Trade Levels Overlay */}
+              {tradeLevels && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-lg sm:rounded-xl p-2 sm:p-3 shadow-xl w-[calc(100%-1rem)] max-w-[280px] sm:min-w-[240px] sm:max-w-[300px] sm:w-auto z-10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={cn("w-3 h-3 rounded-full animate-pulse", tradeLevels.direction === "BUY" ? "bg-success" : "bg-destructive")}></div>
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      {tradeLevels.direction} Setup
+                    </span>
                   </div>
                   
-                  <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <div className="text-[10px] text-muted-foreground mb-1">STOP</div>
-                    <div className="font-mono font-bold text-destructive text-[11px]">
-                      ${tradeLevels.stopLoss.toFixed(4)}
+                  <div className="space-y-3 text-xs">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                        <div className="text-[10px] text-muted-foreground mb-1">ENTRY</div>
+                        <div className="font-mono font-bold text-primary text-[11px]">
+                          ${tradeLevels.entry.toFixed(4)}
+                        </div>
+                      </div>
+                      
+                      <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                        <div className="text-[10px] text-muted-foreground mb-1">STOP</div>
+                        <div className="font-mono font-bold text-destructive text-[11px]">
+                          ${tradeLevels.stopLoss.toFixed(4)}
+                        </div>
+                      </div>
+                      
+                      <div className="p-2 rounded-lg bg-success/10 border border-success/20">
+                        <div className="text-[10px] text-muted-foreground mb-1">TARGET</div>
+                        <div className="font-mono font-bold text-success text-[11px]">
+                          ${tradeLevels.takeProfit.toFixed(4)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                      <span className="text-muted-foreground font-medium">Risk/Reward</span>
+                      <span className="font-bold text-primary">
+                        1:{tradeLevels.riskReward.toFixed(1)}
+                      </span>
+                    </div>
+
+                    {tradeLevels.technicalAnalysis && <div className="pt-2 border-t border-border/30">
+                        <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">
+                          Technical Confirmation
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-foreground">
+                          {tradeLevels.technicalAnalysis.summary.substring(0, 80)}...
+                        </p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {tradeLevels.technicalAnalysis.indicators.slice(0, 2).map((indicator, index) => <span key={index} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-medium">
+                              {indicator}
+                            </span>)}
+                        </div>
+                      </div>}
+
+                    <div className="pt-2 border-t border-border/30">
+                      <div className="text-[10px] text-muted-foreground mb-1">
+                        Risk: ${Math.abs(tradeLevels.entry - tradeLevels.stopLoss).toFixed(2)} • 
+                        Reward: ${Math.abs(tradeLevels.takeProfit - tradeLevels.entry).toFixed(2)}
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="p-2 rounded-lg bg-success/10 border border-success/20">
-                    <div className="text-[10px] text-muted-foreground mb-1">TARGET</div>
-                    <div className="font-mono font-bold text-success text-[11px]">
-                      ${tradeLevels.takeProfit.toFixed(4)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                  <span className="text-muted-foreground font-medium">Risk/Reward</span>
-                  <span className="font-bold text-primary">
-                    1:{tradeLevels.riskReward.toFixed(1)}
-                  </span>
-                </div>
-
-                {tradeLevels.technicalAnalysis && <div className="pt-2 border-t border-border/30">
-                    <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide">
-                      Technical Confirmation
-                    </div>
-                    <p className="text-[11px] leading-relaxed text-foreground">
-                      {tradeLevels.technicalAnalysis.summary.substring(0, 80)}...
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {tradeLevels.technicalAnalysis.indicators.slice(0, 2).map((indicator, index) => <span key={index} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-medium">
-                          {indicator}
-                        </span>)}
-                    </div>
-                  </div>}
-
-                <div className="pt-2 border-t border-border/30">
-                  <div className="text-[10px] text-muted-foreground mb-1">
-                    Risk: ${Math.abs(tradeLevels.entry - tradeLevels.stopLoss).toFixed(2)} • 
-                    Reward: ${Math.abs(tradeLevels.takeProfit - tradeLevels.entry).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </div>}
-        </div>
-        
-        {showHeader && <div className="mt-3 text-xs text-muted-foreground text-center">
-            {hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`}
-          </div>}
-      </CardContent>
-    </Card>;
+                </div>}
+            </div>
+            
+            {showHeader && <div className="mt-3 text-xs text-muted-foreground text-center">
+                {hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`}
+              </div>}
+          </CardContent>
+        </Card>
+      </div>
+    </>;
 }
