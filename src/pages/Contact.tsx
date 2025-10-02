@@ -34,11 +34,22 @@ export default function Contact() {
     }
     setLoading(true);
     try {
-      // TODO: Implement backend integration
-      console.warn("TODO: Implement contact form backend integration", formData);
+      const response = await fetch(
+        `https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/send-contact-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4'}`
+          },
+          body: JSON.stringify(formData)
+        }
+      );
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        throw new Error('Failed to send email');
+      }
+
       toast.success("Message sent successfully! We'll get back to you soon.");
 
       // Reset form
@@ -49,6 +60,7 @@ export default function Contact() {
         message: ""
       });
     } catch (error) {
+      console.error("Error sending contact form:", error);
       toast.error("Failed to send message. Please try again.");
     } finally {
       setLoading(false);
