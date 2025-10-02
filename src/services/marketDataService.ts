@@ -56,7 +56,7 @@ export async function getInstrumentPrice(symbol: string): Promise<number> {
     recordRequest();
     
     const response = await fetch(
-      `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=demo`
+      `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=e40fcead02054731aef55d2dfe01cf47`
     );
 
     if (!response.ok) {
