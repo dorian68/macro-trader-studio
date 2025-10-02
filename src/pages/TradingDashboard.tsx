@@ -289,26 +289,27 @@ export default function TradingDashboard() {
           symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset} 
           className="w-full" 
         />
+      </div>
 
-        {/* Market Chart */}
-        <section aria-label="Market chart" className="w-full">
-          <CandlestickChart 
-            asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-            showHeader={true}
-            height={500}
-            tradeLevels={activeTradeLevels}
-            onLevelUpdate={(type, value) => {
-              if (activeTradeLevels) {
-                setActiveTradeLevels({
-                  ...activeTradeLevels,
-                  [type === 'stopLoss' ? 'stopLoss' : type]: value
-                });
-              }
-            }}
-          />
-        </section>
+      {/* Market Chart - Full Width Section - Outside constrained container */}
+      <section aria-label="Market chart" className="w-full -mx-4 sm:-mx-6 px-4 sm:px-6 my-6">
+        <CandlestickChart 
+          asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
+          showHeader={true}
+          height={500}
+          tradeLevels={activeTradeLevels}
+          onLevelUpdate={(type, value) => {
+            if (activeTradeLevels) {
+              setActiveTradeLevels({
+                ...activeTradeLevels,
+                [type === 'stopLoss' ? 'stopLoss' : type]: value
+              });
+            }
+          }}
+        />
+      </section>
 
-
+      <div className="space-y-4 sm:space-y-6">
 
 
         {/* Navigation Cards */}
@@ -375,7 +376,6 @@ export default function TradingDashboard() {
             </Card>
           </div>
         </section>
-
       </div>
 
       {/* Job Status Card */}
