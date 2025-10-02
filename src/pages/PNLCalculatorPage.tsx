@@ -7,20 +7,12 @@ import { mockTrades } from '@/data/mockPortfolio';
 import { Calculator } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-
 export default function PNLCalculatorPage() {
   const [isCoPilotExpanded, setIsCoPilotExpanded] = useState(false);
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="flex h-full relative">
         {/* Main Content */}
-        <div
-          className={cn(
-            'flex-1 transition-all duration-300',
-            isCoPilotExpanded ? 'md:mr-[33.333%]' : 'mr-0'
-          )}
-        >
+        <div className={cn('flex-1 transition-all duration-300', isCoPilotExpanded ? 'md:mr-[33.333%]' : 'mr-0')}>
           <div className="container-wrapper space-y-6">
             {/* Page Header */}
             <header className="space-y-2">
@@ -47,43 +39,11 @@ export default function PNLCalculatorPage() {
               <TabsContent value="calculator" className="space-y-6">
                 {/* Calculator Component */}
                 <div className="max-w-2xl">
-                  <PNLCalculator
-                    defaultInstrument="EUR/USD"
-                    showInstrumentPicker={true}
-                  />
+                  <PNLCalculator defaultInstrument="EUR/USD" showInstrumentPicker={true} />
                 </div>
 
                 {/* Educational Info */}
-                <div className="max-w-2xl space-y-4 p-6 bg-muted/20 rounded-lg border border-border">
-                  <h3 className="font-semibold text-lg">How to use this calculator</h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>
-                        Select your instrument from the dropdown (major FX pairs, crypto, or
-                        commodities)
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Adjust position size in lots (0.01 - 10)</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Set your leverage (1x - 500x)</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>
-                        Enter price change in pips (for FX) or percentage (for crypto/commodities)
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>View projected PNL in USD and as a percentage of your margin</span>
-                    </li>
-                  </ul>
-                </div>
+                
               </TabsContent>
 
               <TabsContent value="portfolio">
@@ -94,12 +54,7 @@ export default function PNLCalculatorPage() {
         </div>
 
         {/* AI Co-Pilot Panel */}
-        <AICoPilot
-          trades={mockTrades}
-          isExpanded={isCoPilotExpanded}
-          onToggle={() => setIsCoPilotExpanded(!isCoPilotExpanded)}
-        />
+        <AICoPilot trades={mockTrades} isExpanded={isCoPilotExpanded} onToggle={() => setIsCoPilotExpanded(!isCoPilotExpanded)} />
       </div>
-    </Layout>
-  );
+    </Layout>;
 }
