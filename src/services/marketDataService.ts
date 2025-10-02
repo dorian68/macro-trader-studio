@@ -28,7 +28,7 @@ export const INSTRUMENTS = {
     'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 
     'NZD/USD', 'USD/CHF', 'EUR/GBP', 'EUR/JPY'
   ],
-  crypto: ['BTC/USD', 'ETH/USD', 'BNB/USD', 'SOL/USD', 'XRP/USD'],
+  crypto: ['BTC/USD', 'ETH/USD', 'BNB/USD', 'SOL/USD', 'XRP/USD', 'XLM/USD'],
   commodities: ['XAU/USD', 'XAG/USD', 'WTI/USD', 'NG']
 };
 

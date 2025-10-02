@@ -20,6 +20,7 @@ import { enhancedPostRequest } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import PNLCalculator from "@/components/PNLCalculator";
 const {
   useState,
   useEffect
@@ -841,6 +842,21 @@ export default function AISetup() {
                           </div> : null}
                       </CardContent>
                     </Card>)}
+                  
+                  {/* PNL Calculator Integration */}
+                  {n8nResult.setups && n8nResult.setups.length > 0 && n8nResult.setups[0] && (
+                    <div className="mt-6">
+                      <PNLCalculator
+                        defaultInstrument={n8nResult.instrument || parameters.instrument}
+                        prefilledEntry={n8nResult.setups[0].entryPrice}
+                        prefilledStopLoss={n8nResult.setups[0].stopLoss}
+                        prefilledTargets={n8nResult.setups[0].takeProfits || []}
+                        showInstrumentPicker={false}
+                        isCollapsible={true}
+                        defaultExpanded={true}
+                      />
+                    </div>
+                  )}
 
                   {n8nResult.disclaimer ? <p className="text-xs text-muted-foreground border-t pt-4">{n8nResult.disclaimer}</p> : null}
 
