@@ -1,9 +1,34 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, TrendingUp, Building, Globe } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+// Hardcoded list of target assets - same as HybridSearchBar
+const TARGET_ASSETS = [
+  // G10 Forex (principales paires)
+  { symbol: "EUR/USD", name: "Euro / US Dollar", icon: "💱", sector: "Forex", exchange: "FX" },
+  { symbol: "GBP/USD", name: "British Pound / US Dollar", icon: "💱", sector: "Forex", exchange: "FX" },
+  { symbol: "USD/JPY", name: "US Dollar / Japanese Yen", icon: "💱", sector: "Forex", exchange: "FX" },
+  { symbol: "AUD/USD", name: "Australian Dollar / US Dollar", icon: "💱", sector: "Forex", exchange: "FX" },
+  { symbol: "USD/CAD", name: "US Dollar / Canadian Dollar", icon: "💱", sector: "Forex", exchange: "FX" },
+  { symbol: "USD/CHF", name: "US Dollar / Swiss Franc", icon: "💱", sector: "Forex", exchange: "FX" },
+  
+  // Crypto majeures
+  { symbol: "Bitcoin", name: "Bitcoin", icon: "₿", sector: "Cryptocurrency", exchange: "CRYPTO" },
+  { symbol: "Ethereum", name: "Ethereum", icon: "Ξ", sector: "Cryptocurrency", exchange: "CRYPTO" },
+  { symbol: "ADA-USD", name: "Cardano", icon: "🔷", sector: "Cryptocurrency", exchange: "CRYPTO" },
+  { symbol: "SOL-USD", name: "Solana", icon: "🌞", sector: "Cryptocurrency", exchange: "CRYPTO" },
+  { symbol: "DOGE-USD", name: "Dogecoin", icon: "🐕", sector: "Cryptocurrency", exchange: "CRYPTO" },
+  
+  // Commodités principales
+  { symbol: "GOLD", name: "Gold", icon: "🥇", sector: "Commodity", exchange: "COMEX" },
+  { symbol: "SILVER", name: "Silver", icon: "🥈", sector: "Commodity", exchange: "COMEX" },
+  { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️", sector: "Commodity", exchange: "NYMEX" },
+  { symbol: "NATGAS", name: "Natural Gas", icon: "🔥", sector: "Commodity", exchange: "NYMEX" },
+  { symbol: "COPPER", name: "Copper", icon: "🟤", sector: "Commodity", exchange: "COMEX" },
+  { symbol: "PLATINUM", name: "Platinum", icon: "⚪", sector: "Commodity", exchange: "NYMEX" }
+];
 
 interface AssetProfile {
   id: number;
@@ -39,35 +64,35 @@ export function AssetSearchBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Real-time search with debouncing
+  // Filter from hardcoded list instead of Supabase
   useEffect(() => {
-    const searchAssets = async () => {
-      if (searchTerm.trim().length < 2) {
-        setSuggestions([]);
-        return;
-      }
+    if (searchTerm.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
 
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('asset_profiles' as any)
-          .select('id, symbol, name, sector, industry, country, market_cap, currency, exchange')
-          .or(`symbol.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%`)
-          .order('market_cap', { ascending: false, nullsFirst: false })
-          .limit(8);
+    setIsLoading(true);
+    
+    // Filter TARGET_ASSETS based on search term
+    const filtered = TARGET_ASSETS
+      .filter(asset => 
+        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        asset.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .map((asset, index) => ({
+        id: index,
+        symbol: asset.symbol,
+        name: asset.name,
+        sector: asset.sector,
+        industry: null,
+        country: null,
+        market_cap: null,
+        currency: null,
+        exchange: asset.exchange
+      }));
 
-        if (error) throw error;
-        setSuggestions((data as unknown as AssetProfile[]) || []);
-      } catch (error) {
-        console.error('Search error:', error);
-        setSuggestions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const timeoutId = setTimeout(searchAssets, 300);
-    return () => clearTimeout(timeoutId);
+    setSuggestions(filtered);
+    setIsLoading(false);
   }, [searchTerm]);
 
   // Close dropdown when clicking outside
