@@ -3,12 +3,9 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Building2, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PublicNavbar from "@/components/PublicNavbar";
-
 export default function About() {
   const navigate = useNavigate();
-  
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <PublicNavbar />
       <div className="max-w-4xl mx-auto space-y-6 px-4 py-6">
         {/* Header */}
@@ -40,11 +37,7 @@ export default function About() {
                 Our expertise lies in creating sophisticated algorithms and machine learning models that provide 
                 actionable insights for trading, risk management, and portfolio optimization.
               </p>
-              <Button 
-                variant="outline" 
-                className="w-full mt-auto"
-                onClick={() => window.open('https://www.optiquant-ia.com/', '_blank')}
-              >
+              <Button variant="outline" className="w-full mt-auto" onClick={() => window.open('https://www.optiquant-ia.com/', '_blank')}>
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Visit OptiQuant IA
               </Button>
@@ -67,11 +60,7 @@ export default function About() {
                 With deep expertise in global macroeconomic trends, market dynamics, and fundamental analysis, 
                 ABCG Research delivers comprehensive research that drives informed investment decisions.
               </p>
-              <Button 
-                variant="outline" 
-                className="w-full mt-auto"
-                onClick={() => window.open('https://research.albaricg.com/', '_blank')}
-              >
+              <Button variant="outline" className="w-full mt-auto" onClick={() => window.open('https://research.albaricg.com/', '_blank')}>
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Visit ABCG Research
               </Button>
@@ -145,10 +134,9 @@ export default function About() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-            <p>© 2025 alphaLens.ai. All rights reserved.</p>
+            <p>© 2025 alphaLens AI. All rights reserved.</p>
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 }
