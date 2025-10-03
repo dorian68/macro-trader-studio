@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.get-stripe-mode]
 verify_jwt = false
+
+[functions.update-stripe-mode]
+verify_jwt = false

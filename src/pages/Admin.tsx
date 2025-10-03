@@ -5,6 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Users, 
   Shield, 
@@ -20,7 +31,9 @@ import {
   Calculator,
   BarChart3,
   Building2,
-  CreditCard
+  CreditCard,
+  ArrowRightLeft,
+  AlertCircle
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
 import { useProfile } from "@/hooks/useProfile";
@@ -76,6 +89,10 @@ export default function Admin() {
   const [costTableItemsPerPage] = useState(5);
   const [userBroker, setUserBroker] = useState<any>(null);
   const [stripeMode, setStripeMode] = useState<'test' | 'live'>('test');
+  const [updatingStripeMode, setUpdatingStripeMode] = useState(false);
+  const [showStripeModeDialog, setShowStripeModeDialog] = useState(false);
+  const [pendingStripeMode, setPendingStripeMode] = useState<'test' | 'live'>('test');
+  const { toast } = useToast();
   const { profile, isSuperUser, isAdmin } = useProfile();
   const { 
     fetchUsers, 
@@ -96,6 +113,48 @@ export default function Admin() {
       } catch (err) {
         console.error('Failed to fetch Stripe mode:', err);
       }
+    }
+  };
+
+  const handleToggleStripeMode = async () => {
+    const newMode: 'test' | 'live' = stripeMode === 'test' ? 'live' : 'test';
+    setPendingStripeMode(newMode);
+    setShowStripeModeDialog(true);
+  };
+
+  const confirmStripeModeChange = async () => {
+    setUpdatingStripeMode(true);
+    setShowStripeModeDialog(false);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('update-stripe-mode', {
+        body: { mode: pendingStripeMode },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      // Reload the mode after successful update
+      await loadStripeMode();
+      
+      toast({
+        title: "Stripe Mode Updated",
+        description: `Stripe payment processing is now in ${pendingStripeMode.toUpperCase()} mode.`,
+        variant: pendingStripeMode === 'live' ? 'default' : 'default',
+      });
+    } catch (err: any) {
+      console.error('Failed to update Stripe mode:', err);
+      toast({
+        title: "Update Failed",
+        description: err.message || "Failed to update Stripe mode. Please try again or update manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStripeMode(false);
     }
   };
 
@@ -424,18 +483,34 @@ export default function Admin() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
-              <div className="flex items-center gap-3">
-                <Badge 
-                  variant={stripeMode === 'live' ? 'default' : 'secondary'}
-                  className="text-sm px-3 py-1"
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Badge 
+                    variant={stripeMode === 'live' ? 'default' : 'secondary'}
+                    className="text-sm px-3 py-1"
+                  >
+                    {stripeMode === 'live' ? '🟢 LIVE MODE' : '🔵 TEST MODE'}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {stripeMode === 'live' 
+                      ? 'Production payments are active' 
+                      : 'Using test data and keys'}
+                  </span>
+                </div>
+                <Button
+                  onClick={handleToggleStripeMode}
+                  disabled={updatingStripeMode}
+                  variant={stripeMode === 'live' ? 'outline' : 'default'}
+                  size="sm"
+                  className="gap-2"
                 >
-                  {stripeMode === 'live' ? '🟢 LIVE MODE' : '🔵 TEST MODE'}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  {stripeMode === 'live' 
-                    ? 'Production payments are active - Real money processing' 
-                    : 'Using test data and keys - No real money'}
-                </span>
+                  {updatingStripeMode ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowRightLeft className="h-4 w-4" />
+                  )}
+                  Switch to {stripeMode === 'test' ? 'LIVE' : 'TEST'}
+                </Button>
               </div>
               {stripeMode === 'live' && (
                 <div className="mt-3 p-3 bg-warning/10 border border-warning/20 rounded-lg">
@@ -448,6 +523,53 @@ export default function Admin() {
             </CardContent>
           </Card>
         )}
+
+        {/* Stripe Mode Confirmation Dialog */}
+        <AlertDialog open={showStripeModeDialog} onOpenChange={setShowStripeModeDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-warning" />
+                Switch Stripe to {pendingStripeMode.toUpperCase()} Mode?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                {pendingStripeMode === 'live' ? (
+                  <>
+                    <p className="font-semibold text-warning">⚠️ You are about to enable LIVE payment processing</p>
+                    <p>This will:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li>Process real payments with real money</li>
+                      <li>Use production Stripe API keys</li>
+                      <li>Charge actual customer credit cards</li>
+                      <li>Send real payment confirmation emails</li>
+                    </ul>
+                    <p className="font-semibold mt-3">Make sure your production webhooks and keys are properly configured.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">Switching back to TEST mode</p>
+                    <p>This will:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li>Use test Stripe API keys</li>
+                      <li>Only accept test card numbers</li>
+                      <li>Not charge real money</li>
+                      <li>Switch to development environment</li>
+                    </ul>
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmStripeModeChange}
+                className={pendingStripeMode === 'live' ? 'bg-warning hover:bg-warning/90' : ''}
+              >
+                Confirm Switch to {pendingStripeMode.toUpperCase()}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Role Distribution */}
         <Card className="rounded-2xl shadow-sm border">
