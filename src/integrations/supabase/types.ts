@@ -506,6 +506,7 @@ export type Database = {
           monthly_price_usd: number | null
           plan_type: Database["public"]["Enums"]["plan_type"]
           renewal_cycle_days: number | null
+          stripe_price_id: string | null
           trial_duration_days: number | null
           updated_at: string
         }
@@ -518,6 +519,7 @@ export type Database = {
           monthly_price_usd?: number | null
           plan_type: Database["public"]["Enums"]["plan_type"]
           renewal_cycle_days?: number | null
+          stripe_price_id?: string | null
           trial_duration_days?: number | null
           updated_at?: string
         }
@@ -530,6 +532,7 @@ export type Database = {
           monthly_price_usd?: number | null
           plan_type?: Database["public"]["Enums"]["plan_type"]
           renewal_cycle_days?: number | null
+          stripe_price_id?: string | null
           trial_duration_days?: number | null
           updated_at?: string
         }
