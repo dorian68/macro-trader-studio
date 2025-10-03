@@ -237,7 +237,7 @@ export default function Contact() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><button onClick={() => navigate("/features")} className="hover:text-foreground transition-colors">Features</button></li>
                 <li><button onClick={() => navigate("/pricing")} className="hover:text-foreground transition-colors">Pricing</button></li>
-                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">API</button></li>
+                <li><button onClick={() => navigate("/api")} className="hover:text-foreground transition-colors">API</button></li>
               </ul>
             </div>
             <div>
@@ -245,15 +245,15 @@ export default function Contact() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">About</button></li>
                 <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Contact</button></li>
-                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Privacy</button></li>
+                <li><button onClick={() => navigate("/privacy")} className="hover:text-foreground transition-colors">Privacy</button></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-foreground">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Documentation</button></li>
-                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Help Center</button></li>
-                <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Terms of Service</button></li>
+                <li><button onClick={() => navigate("/documentation")} className="hover:text-foreground transition-colors">Documentation</button></li>
+                <li><button onClick={() => navigate("/help-center")} className="hover:text-foreground transition-colors">Help Center</button></li>
+                <li><button onClick={() => navigate("/terms")} className="hover:text-foreground transition-colors">Terms of Service</button></li>
               </ul>
             </div>
           </div>

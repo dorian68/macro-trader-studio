@@ -33,6 +33,11 @@ import Contact from "./pages/Contact";
 import Pricing from "./pages/Pricing";
 import Credits from "./pages/Credits";
 import PNLCalculatorPage from "./pages/PNLCalculatorPage";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Documentation from "./pages/Documentation";
+import HelpCenter from "./pages/HelpCenter";
+import API from "./pages/API";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +76,11 @@ const App = () => {
                     <Route path="/features" element={<Features />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/documentation" element={<Documentation />} />
+                    <Route path="/help-center" element={<HelpCenter />} />
+                    <Route path="/api" element={<API />} />
                     <Route path="/pnl-calculator" element={<PNLCalculatorPage />} />
                     <Route path="/product" element={<ProductPresentation />} />
                     <Route path="*" element={<NotFound />} />
