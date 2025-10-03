@@ -3,6 +3,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { FlashMessage, FlashMessageData } from './FlashMessage';
+import { useCreditManager, CreditType } from '@/hooks/useCreditManager';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 interface ActiveJob {
   id: string;
@@ -55,6 +58,8 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
   const [flashMessages, setFlashMessages] = useState<FlashMessageData[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { decrementCredit } = useCreditManager();
+  const { toast } = useToast();
 
   const addFlashMessage = (message: Omit<FlashMessageData, 'id'>) => {
     const id = `flash-${Date.now()}-${Math.random()}`;
@@ -71,6 +76,15 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
     if (feature === 'Macro Commentary') return 'macro-analysis';
     if (feature === 'Report') return 'reports';
     return 'ai-setup'; // fallback
+  };
+
+  // Map feature to credit type
+  const getCreditTypeForFeature = (feature: string): CreditType => {
+    const f = feature.toLowerCase();
+    if (f.includes('trade') || f.includes('ai_trade_setup')) return 'ideas';
+    if (f.includes('macro') || f.includes('commentary')) return 'queries';
+    if (f.includes('report')) return 'reports';
+    return 'queries';
   };
 
   // Map features to routes
@@ -167,6 +181,14 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               originatingFeature: mapFeatureToOriginatingFeature(updatedJob.feature || '')
             };
 
+            // Debit credits on successful completion
+            const creditType = getCreditTypeForFeature(updatedJob.feature || '');
+            decrementCredit(creditType).then(debited => {
+              if (debited) {
+                console.log('✅ [PersistentNotifications] Credit debited on completion:', creditType);
+              }
+            });
+
             // Add flash message for completion
             addFlashMessage({
               type: 'success',
@@ -185,12 +207,30 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             // Remove failed jobs from active
             setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
             
-            // Add flash message for failure
-            addFlashMessage({
-              type: 'error',
-              title: 'Analysis Failed',
+            // Show error toast with retry button
+            const originatingFeature = mapFeatureToOriginatingFeature(updatedJob.feature || '');
+            const routeMap = {
+              'ai-setup': '/ai-setup',
+              'macro-analysis': '/macro-analysis',
+              'reports': '/reports'
+            };
+            
+            toast({
+              title: "Analysis Failed",
               description: `${updatedJob.instrument || 'Unknown'} analysis encountered an error`,
-              duration: 5000
+              variant: "destructive",
+              duration: Infinity,
+              action: (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(routeMap[originatingFeature])}
+                  className="border-destructive/30 hover:bg-destructive/10"
+                >
+                  Retry
+                </Button>
+              ),
+              className: "fixed bottom-4 right-4 z-[100] max-w-sm"
             });
           }
         }

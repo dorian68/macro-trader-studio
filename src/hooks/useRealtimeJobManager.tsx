@@ -205,34 +205,6 @@ export function useRealtimeJobManager() {
 
     // Map type to feature if not explicitly provided
     const jobFeature = feature || mapTypeToFeature(type);
-    
-    // Debit credits BEFORE creating the job
-    const creditType = getCreditTypeForFeature(jobFeature);
-    
-    console.log('💳 [RealtimeJobManager] Checking credits:', { feature: jobFeature, creditType });
-    
-    if (!checkCredits(creditType)) {
-      toast({
-        title: "No credits remaining",
-        description: "Please upgrade your plan to continue using this feature.",
-        variant: "destructive",
-        duration: 5000
-      });
-      throw new Error('Insufficient credits');
-    }
-    
-    const debited = await decrementCredit(creditType);
-    if (!debited) {
-      toast({
-        title: "Credit error",
-        description: "Unable to process credit. Please try again.",
-        variant: "destructive",
-        duration: 5000
-      });
-      throw new Error('Unable to process credits');
-    }
-    
-    console.log('✅ [RealtimeJobManager] Credit debited:', { creditType, jobId });
 
     // Create job in database with feature field
     const { error } = await supabase
@@ -262,7 +234,7 @@ export function useRealtimeJobManager() {
     setActiveJobs(prev => [...prev, newJob]);
 
     return jobId;
-  }, [user?.id, checkCredits, decrementCredit, toast]);
+  }, [user?.id, toast]);
 
   const removeJob = useCallback((jobId: string) => {
     setActiveJobs(prev => prev.filter(job => job.id !== jobId));
