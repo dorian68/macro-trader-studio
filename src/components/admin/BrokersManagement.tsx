@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Edit, Building2 } from "lucide-react";
+import { Plus, Edit, Building2, DollarSign } from "lucide-react";
 import { useBrokerActions } from "@/hooks/useBrokerActions";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/hooks/useProfile";
 
 interface Broker {
   id: string;
@@ -22,6 +24,8 @@ interface Broker {
   metadata?: any;
   created_at: string;
   updated_at: string;
+  user_count?: number;
+  estimated_revenue?: number;
 }
 
 export function BrokersManagement() {
@@ -43,11 +47,69 @@ export function BrokersManagement() {
 
   const { fetchBrokers, createBroker, updateBroker, loading: actionLoading } = useBrokerActions();
   const { toast } = useToast();
+  const { isSuperUser } = useProfile();
 
   const loadBrokers = async () => {
     setLoading(true);
     const brokersData = await fetchBrokers();
-    setBrokers(brokersData);
+    
+    // Si super user, enrichir avec les données de revenus
+    if (isSuperUser) {
+      const enrichedBrokers = await Promise.all(
+        brokersData.map(async (broker) => {
+          try {
+            // Récupérer les users du broker
+            const { data: profiles, error: profilesError } = await supabase
+              .from('profiles')
+              .select('user_id, user_plan')
+              .eq('broker_id', broker.id);
+
+            if (profilesError) throw profilesError;
+
+            // Récupérer les paramètres de plans pour calculer les revenus
+            const { data: planParams, error: planError } = await supabase
+              .from('plan_parameters')
+              .select('plan_type, monthly_price_usd');
+
+            if (planError) throw planError;
+
+            // Créer un map des prix par plan
+            const planPrices = planParams?.reduce((acc, plan) => {
+              acc[plan.plan_type] = plan.monthly_price_usd || 0;
+              return acc;
+            }, {} as Record<string, number>) || {};
+
+            // Calculer le revenu estimé
+            let totalRevenue = 0;
+            profiles?.forEach((profile) => {
+              const planType = profile.user_plan || 'free_trial';
+              if (planType === 'free_trial') {
+                totalRevenue += 3; // 3 USD par user free_trial
+              } else {
+                totalRevenue += planPrices[planType] || 0;
+              }
+            });
+
+            return {
+              ...broker,
+              user_count: profiles?.length || 0,
+              estimated_revenue: totalRevenue
+            };
+          } catch (error) {
+            console.error(`Error loading revenue data for broker ${broker.id}:`, error);
+            return {
+              ...broker,
+              user_count: 0,
+              estimated_revenue: 0
+            };
+          }
+        })
+      );
+      setBrokers(enrichedBrokers);
+    } else {
+      setBrokers(brokersData);
+    }
+    
     setLoading(false);
   };
 
@@ -255,6 +317,8 @@ export function BrokersManagement() {
                       <TableHead>Code</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Contact</TableHead>
+                      {isSuperUser && <TableHead className="text-center">Users</TableHead>}
+                      {isSuperUser && <TableHead className="text-center">Est. Revenue</TableHead>}
                       <TableHead>Created</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -278,6 +342,21 @@ export function BrokersManagement() {
                         <TableCell>
                           {broker.contact_email || <span className="text-muted-foreground">-</span>}
                         </TableCell>
+                        {isSuperUser && (
+                          <TableCell className="text-center">
+                            <Badge variant="outline">{broker.user_count || 0}</Badge>
+                          </TableCell>
+                        )}
+                        {isSuperUser && (
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <DollarSign className="h-3 w-3 text-green-600" />
+                              <span className="font-semibold text-green-600">
+                                {(broker.estimated_revenue || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell className="text-sm text-muted-foreground">
                           {formatDate(broker.created_at)}
                         </TableCell>
