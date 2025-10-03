@@ -238,7 +238,7 @@ export default function Documentation() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-2">What markets do you support?</h3>
                     <p>
-                      We support global equities, forex, cryptocurrencies, commodities, and indices.
+                      We support forex, cryptocurrencies, and commodities.
                       Coverage is continuously expanding.
                     </p>
                   </div>
