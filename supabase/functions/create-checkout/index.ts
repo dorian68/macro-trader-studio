@@ -8,13 +8,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Plan mapping to Stripe price IDs
-const PLAN_PRICE_MAP = {
-  basic: "price_1SC398Bbyt0kGZ1fmyLGVmWa",
-  standard: "price_1SC39lBbyt0kGZ1fUhOBloBb", 
-  premium: "price_1SC39zBbyt0kGZ1fvhRYyA0x"
-};
-
 interface CheckoutRequest {
   plan: 'basic' | 'standard' | 'premium';
   success_url?: string;
@@ -52,12 +45,27 @@ serve(async (req) => {
     const { plan, success_url, cancel_url }: CheckoutRequest = await req.json();
     logStep("Request parsed", { plan });
 
-    if (!plan || !PLAN_PRICE_MAP[plan]) {
-      throw new Error(`Invalid plan: ${plan}`);
+    if (!plan) {
+      throw new Error(`Plan type is required`);
     }
 
-    const priceId = PLAN_PRICE_MAP[plan];
-    logStep("Price ID retrieved", { priceId });
+    // Get plan parameters from Supabase
+    const { data: planParams, error: planError } = await supabaseClient
+      .from('plan_parameters')
+      .select('monthly_price_usd, stripe_price_id')
+      .eq('plan_type', plan)
+      .single();
+
+    if (planError || !planParams) {
+      logStep("Plan not found in database", { plan, error: planError });
+      throw new Error(`Plan ${plan} not found`);
+    }
+
+    logStep("Plan parameters retrieved", { 
+      plan, 
+      price: planParams.monthly_price_usd,
+      stripe_price_id: planParams.stripe_price_id 
+    });
 
     // Get origin for success/cancel URLs
     const origin = req.headers.get("origin") || "https://22f2a47e-97ad-4d12-9369-04abd2bd2d8c.lovableproject.com";
@@ -92,11 +100,21 @@ serve(async (req) => {
       logStep("Authentication failed, proceeding with guest checkout", { error: authError?.message || authError });
     }
 
-    // Create checkout session
+    // Create checkout session with dynamic price_data
     const sessionData: any = {
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: `AlphaLens ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
+              description: `AlphaLens AI Subscription - ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
+            },
+            unit_amount: Math.round(planParams.monthly_price_usd * 100), // Convert to cents
+            recurring: {
+              interval: 'month',
+            },
+          },
           quantity: 1,
         },
       ],
@@ -111,7 +129,8 @@ serve(async (req) => {
         user_authenticated: userEmail ? 'true' : 'false',
         user_id: customerId || 'guest',
         timestamp: new Date().toISOString(),
-        checkout_type: userEmail ? 'authenticated' : 'guest'
+        checkout_type: userEmail ? 'authenticated' : 'guest',
+        price_eur: planParams.monthly_price_usd.toString()
       }
     };
 
