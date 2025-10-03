@@ -99,6 +99,8 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
         (payload) => {
           const newJob = payload.new as any;
           
+          console.log('📥 [PersistentNotifications] New job INSERT:', newJob);
+          
           const activeJob: ActiveJob = {
             id: newJob.id,
             type: newJob.feature || 'Unknown',
@@ -112,7 +114,11 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
           setActiveJobs(prev => {
             // Avoid duplicates
             const exists = prev.some(job => job.id === activeJob.id);
-            if (exists) return prev;
+            if (exists) {
+              console.log('📥 [PersistentNotifications] Job already exists, skipping');
+              return prev;
+            }
+            console.log('📥 [PersistentNotifications] Adding new active job:', activeJob);
             return [...prev, activeJob];
           });
         }
@@ -128,6 +134,8 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
         (payload) => {
           const updatedJob = payload.new as any;
           
+          console.log('🔄 [PersistentNotifications] Job UPDATE:', updatedJob);
+          
           if (updatedJob.status === 'running') {
             // Update active job status and progress message
             setActiveJobs(prev => prev.map(job => 
@@ -135,6 +143,7 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
                 ? { ...job, status: 'running', progressMessage: updatedJob.progress_message }
                 : job
             ));
+            console.log('🔄 [PersistentNotifications] Job set to running with progress:', updatedJob.progress_message);
           } else if (updatedJob.progress_message) {
             // Update progress message for pending/running jobs
             setActiveJobs(prev => prev.map(job => 
@@ -142,8 +151,10 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
                 ? { ...job, progressMessage: updatedJob.progress_message }
                 : job
             ));
+            console.log('🔄 [PersistentNotifications] Progress message updated:', updatedJob.progress_message);
           } else if (updatedJob.status === 'completed' && updatedJob.response_payload) {
             // Move from active to completed
+            console.log('✅ [PersistentNotifications] Job completed, moving to completed list');
             setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
             
             const completedJob: CompletedJob = {

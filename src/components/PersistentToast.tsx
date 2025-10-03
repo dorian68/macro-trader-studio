@@ -20,6 +20,14 @@ export function PersistentToast() {
 
   const totalJobs = activeJobs.length + completedJobs.length;
   
+  console.log('🍞 [PersistentToast] Render check:', {
+    activeJobsCount: activeJobs.length,
+    completedJobsCount: completedJobs.length,
+    totalJobs,
+    activeJobs,
+    completedJobs
+  });
+  
   // Show the most recent job (prioritize completed over active)
   const isCompleted = completedJobs.length > 0;
   const mostRecentJob = isCompleted 
