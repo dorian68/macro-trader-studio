@@ -18,11 +18,14 @@ interface PlanData {
   usage: string[];
   highlight: boolean;
 }
-
 const Pricing = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user
+  } = useAuth();
   const [b2cPlans, setB2cPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -38,29 +41,24 @@ const Pricing = () => {
     planName: '',
     planPrice: ''
   });
-
   useEffect(() => {
     console.log('📊 [Pricing] Alphalens pricing page initialized');
     fetchPlanData();
   }, []);
-
   const fetchPlanData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('plan_parameters')
-        .select('*')
-        .in('plan_type', ['basic', 'standard', 'premium'])
-        .order('monthly_price_usd');
-
+      const {
+        data,
+        error
+      } = await supabase.from('plan_parameters').select('*').in('plan_type', ['basic', 'standard', 'premium']).order('monthly_price_usd');
       if (error) {
         console.error('Error fetching plan data:', error);
         // Fallback to static data if fetch fails
         setB2cPlans(getStaticPlans());
         return;
       }
-
       if (data && data.length > 0) {
-        const dynamicPlans = data.map((plan) => ({
+        const dynamicPlans = data.map(plan => ({
           name: plan.plan_type.charAt(0).toUpperCase() + plan.plan_type.slice(1),
           price: plan.monthly_price_usd > 0 ? `$${plan.monthly_price_usd}` : 'Unavailable',
           description: getPlanDescription(plan.plan_type),
@@ -79,7 +77,6 @@ const Pricing = () => {
       setLoading(false);
     }
   };
-
   const getStaticPlans = (): PlanData[] => [{
     name: 'Basic',
     price: '$25',
@@ -102,7 +99,6 @@ const Pricing = () => {
     usage: ['Unlimited queries', '50 investment ideas per month', '16 reports per month'],
     highlight: true
   }];
-
   const getPlanDescription = (planType: string): string => {
     const descriptions = {
       basic: 'Perfect for individual traders getting started',
@@ -111,7 +107,6 @@ const Pricing = () => {
     };
     return descriptions[planType as keyof typeof descriptions] || 'Professional trading solution';
   };
-
   const getPlanUsage = (plan: any): string[] => {
     const usage = [];
     if (plan.max_queries === 0) {
@@ -123,10 +118,8 @@ const Pricing = () => {
     usage.push(`${plan.max_reports} reports per month`);
     return usage;
   };
-
   const handleCTAClick = async (plan: string) => {
     console.log(`📊 [Pricing] CTA clicked: ${plan}`);
-    
     if (plan === 'B2B Contact Sales') {
       navigate('/contact');
       return;
@@ -134,7 +127,6 @@ const Pricing = () => {
 
     // Handle individual plan checkout
     const planType = plan.toLowerCase();
-    
     if (!['basic', 'standard', 'premium'].includes(planType)) {
       toast({
         title: "Invalid Plan",
@@ -159,19 +151,19 @@ const Pricing = () => {
     // User is authenticated, proceed with normal checkout
     await proceedWithCheckout(planType);
   };
-
   const proceedWithCheckout = async (planType: string) => {
     setCheckoutLoading(planType);
-
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('create-checkout', {
+        body: {
           plan: planType,
           success_url: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${window.location.origin}/payment-canceled`
         }
       });
-
       if (error) {
         console.error('Checkout error:', error);
         toast({
@@ -181,18 +173,16 @@ const Pricing = () => {
         });
         return;
       }
-
       if (data?.url) {
         // Open Stripe checkout in new tab
         window.open(data.url, '_blank');
       } else {
         throw new Error('No checkout URL received');
       }
-
     } catch (err) {
       console.error('Failed to create checkout session:', err);
       toast({
-        title: "Payment Error", 
+        title: "Payment Error",
         description: "Unable to process payment. Please try again or contact support.",
         variant: "destructive"
       });
@@ -200,12 +190,13 @@ const Pricing = () => {
       setCheckoutLoading(null);
     }
   };
-
   const handleGuestContinue = () => {
-    setGuestPaymentModal(prev => ({ ...prev, isOpen: false }));
+    setGuestPaymentModal(prev => ({
+      ...prev,
+      isOpen: false
+    }));
     proceedWithCheckout(guestPaymentModal.plan);
   };
-  
   const isCheckoutLoading = (planName: string) => {
     return checkoutLoading === planName.toLowerCase();
   };
@@ -308,23 +299,13 @@ const Pricing = () => {
               </p>
             </div>
 
-            {loading ? (
-              <div className="flex justify-center py-8">
+            {loading ? <div className="flex justify-center py-8">
                 <div className="text-muted-foreground">Loading plans...</div>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                {b2cPlans.map(plan => (
-                  <div key={plan.name} className="relative flex">
-                    {plan.highlight && (
-                      <Badge 
-                        variant="default" 
-                        className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs whitespace-nowrap z-20 shadow-lg" 
-                        aria-label="Most Complete"
-                      >
+              </div> : <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                {b2cPlans.map(plan => <div key={plan.name} className="relative flex">
+                    {plan.highlight && <Badge variant="default" className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs whitespace-nowrap z-20 shadow-lg" aria-label="Most Complete">
                         Most Complete
-                      </Badge>
-                    )}
+                      </Badge>}
                     <Card className={`${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'} flex flex-col h-full w-full`}>
                   <CardHeader className={`text-center ${plan.highlight ? 'pb-6 pt-2' : 'pb-6'}`}>
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
@@ -359,40 +340,25 @@ const Pricing = () => {
                     </div>
                     
                      <div className="space-y-3 mt-auto">
-                       {!user && (
-                         <Button 
-                           variant="secondary"
-                           className="w-full"
-                           onClick={() => navigate('/auth')}
-                         >
+                       {!user && <Button variant="secondary" className="w-full" onClick={() => navigate('/auth')}>
                            <LogIn className="mr-2 h-4 w-4" />
                            Sign in first (recommended)
-                         </Button>
-                       )}
+                         </Button>}
                        
-                       <Button 
-                         className="w-full" 
-                         variant={plan.highlight ? "default" : "outline"} 
-                         onClick={() => handleCTAClick(plan.name)}
-                         disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}
-                       >
+                       <Button className="w-full" variant={plan.highlight ? "default" : "outline"} onClick={() => handleCTAClick(plan.name)} disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}>
                          {isCheckoutLoading(plan.name) ? "Processing..." : user ? "Get Started" : "Pay as guest"}
                        </Button>
                      </div>
                    </CardContent>
                  </Card>
-                    </div>
-                  ))}
-              </div>
-            )}
+                    </div>)}
+              </div>}
           </div>
 
           {/* Auth Prompt Banner for unauthenticated users */}
-          {!user && showAuthBanner && (
-            <div className="mt-12">
+          {!user && showAuthBanner && <div className="mt-12">
               <AuthPromptBanner onDismiss={() => setShowAuthBanner(false)} />
-            </div>
-          )}
+            </div>}
 
           {/* Footer Note */}
           <div className="text-center mt-16 max-w-2xl mx-auto">
@@ -405,13 +371,10 @@ const Pricing = () => {
       </div>
 
       {/* Guest Payment Modal */}
-      <GuestPaymentModal
-        isOpen={guestPaymentModal.isOpen}
-        onClose={() => setGuestPaymentModal(prev => ({ ...prev, isOpen: false }))}
-        onContinueGuest={handleGuestContinue}
-        planName={guestPaymentModal.planName}
-        planPrice={guestPaymentModal.planPrice}
-      />
+      <GuestPaymentModal isOpen={guestPaymentModal.isOpen} onClose={() => setGuestPaymentModal(prev => ({
+      ...prev,
+      isOpen: false
+    }))} onContinueGuest={handleGuestContinue} planName={guestPaymentModal.planName} planPrice={guestPaymentModal.planPrice} />
 
       {/* Footer */}
       <footer className="bg-background border-t border-border py-12 px-4">
@@ -451,7 +414,7 @@ const Pricing = () => {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-            <p>© 2025 alphaLens.ai. All rights reserved.</p>
+            <p>© 2025 alphaLens AI. All rights reserved.</p>
           </div>
         </div>
       </footer>
