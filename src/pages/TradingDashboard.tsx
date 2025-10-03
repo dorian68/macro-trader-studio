@@ -40,8 +40,6 @@ export default function TradingDashboard() {
     // Crypto majeures
     { symbol: "Bitcoin", name: "Bitcoin", icon: "₿" },
     { symbol: "Ethereum", name: "Ethereum", icon: "Ξ" },
-    { symbol: "BNB-USD", name: "Binance Coin", icon: "🔶" },
-    { symbol: "XRP-USD", name: "Ripple", icon: "💧" },
     { symbol: "ADA-USD", name: "Cardano", icon: "🔷" },
     { symbol: "SOL-USD", name: "Solana", icon: "🌞" },
     { symbol: "DOGE-USD", name: "Dogecoin", icon: "🐕" },
@@ -49,7 +47,10 @@ export default function TradingDashboard() {
     // Commodités principales
     { symbol: "GOLD", name: "Gold", icon: "🥇" },
     { symbol: "SILVER", name: "Silver", icon: "🥈" },
-    { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️" }
+    { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️" },
+    { symbol: "NATGAS", name: "Natural Gas", icon: "🔥" },
+    { symbol: "COPPER", name: "Copper", icon: "🟤" },
+    { symbol: "PLATINUM", name: "Platinum", icon: "⚪" }
   ];
   
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
