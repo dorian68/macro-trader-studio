@@ -25,6 +25,8 @@ export function UserCreditsOverview() {
   const [searchTerm, setSearchTerm] = useState('');
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
   const { isSuperUser, isAdmin } = useProfile();
 
   const loadUserCredits = async () => {
@@ -197,6 +199,12 @@ export function UserCreditsOverview() {
 
   const uniquePlans = [...new Set(userCredits.map(user => user.plan_type))];
 
+  // Pagination
+  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = sortedUsers.slice(startIndex, endIndex);
+
   return (
     <Card className="rounded-2xl shadow-sm border">
       <CardHeader className="p-4 sm:p-6">
@@ -322,7 +330,7 @@ export function UserCreditsOverview() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedUsers.slice(0, 20).map((user) => ( // Show top 20 users
+                    {paginatedUsers.map((user) => (
                     <tr key={user.user_id} className="border-b hover:bg-muted/50">
                       <td className="p-3">
                         <div className="font-medium text-sm">{user.email}</div>
@@ -372,12 +380,37 @@ export function UserCreditsOverview() {
                 </tbody>
               </table>
             </div>
-              {sortedUsers.length > 20 && (
-                <div className="p-3 text-center text-sm text-muted-foreground border-t">
-                  Showing top 20 users. Found {sortedUsers.length} matching users.
-                </div>
-              )}
             </div>
+            
+            {/* Pagination Controls */}
+            {sortedUsers.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Showing {startIndex + 1} to {Math.min(endIndex, sortedUsers.length)} of {sortedUsers.length} users
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="text-sm">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
