@@ -136,6 +136,28 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
           
           console.log('🔄 [PersistentNotifications] Job UPDATE:', updatedJob);
           
+          // If we missed the INSERT (common when subscribing slightly after job creation),
+          // ensure the job exists in activeJobs on first UPDATE (pending/running)
+          setActiveJobs(prev => {
+            const exists = prev.some(job => job.id === updatedJob.id);
+            const isTerminal = updatedJob.status === 'completed' || updatedJob.status === 'error';
+            if (!exists && !isTerminal) {
+              const activeJob: ActiveJob = {
+                id: updatedJob.id,
+                type: updatedJob.feature || 'Unknown',
+                feature: updatedJob.feature || 'analysis',
+                instrument: updatedJob.instrument || 'Unknown',
+                status: updatedJob.status === 'running' ? 'running' : 'pending',
+                createdAt: updatedJob.created_at ? new Date(updatedJob.created_at) : new Date(),
+                originatingFeature: mapFeatureToOriginatingFeature(updatedJob.feature || ''),
+                progressMessage: updatedJob.progress_message || undefined,
+              };
+              console.log('🆕 [PersistentNotifications] Adding job on UPDATE (missed INSERT):', activeJob);
+              return [...prev, activeJob];
+            }
+            return prev;
+          });
+          
           if (updatedJob.status === 'running') {
             // Update active job status and progress message
             setActiveJobs(prev => prev.map(job => 
