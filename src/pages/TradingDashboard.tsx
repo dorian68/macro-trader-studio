@@ -11,7 +11,7 @@ import { BubbleSystem } from "@/components/BubbleSystem";
 import Layout from "@/components/Layout";
 import { HybridSearchBar } from "@/components/HybridSearchBar";
 import { AssetSummaryBanner } from "@/components/AssetSummaryBanner";
-import { getSymbolForAsset } from "@/lib/assetMapping";
+import { getSymbolForAsset, getNormalizedSymbol } from "@/lib/assetMapping";
 import AssetInfoCard from "@/components/AssetInfoCard";
 import { JobStatusCard } from "@/components/JobStatusCard";
 import { useJobStatusManager } from "@/hooks/useJobStatusManager";
@@ -47,6 +47,14 @@ export default function TradingDashboard() {
   
   // Selected asset from search bar
   const [selectedAssetProfile, setSelectedAssetProfile] = useState<any>(null);
+
+  // Handle asset profile selection and synchronize with chart
+  const handleAssetProfileSelect = (asset: any) => {
+    setSelectedAssetProfile(asset);
+    // Normalize the symbol for chart and WebSocket
+    const normalizedSymbol = getNormalizedSymbol(asset.symbol);
+    setSelectedAsset(normalizedSymbol);
+  };
 
   // WebSocket for real-time prices - Fixed synchronization
   useEffect(() => {
@@ -242,7 +250,7 @@ export default function TradingDashboard() {
           assets={allAssets}
           selectedAsset={selectedAsset}
           onAssetSelect={setSelectedAsset}
-          onAssetProfileSelect={setSelectedAssetProfile}
+          onAssetProfileSelect={handleAssetProfileSelect}
           instrument={selectedAsset}
           timeframe={timeframe}
         />

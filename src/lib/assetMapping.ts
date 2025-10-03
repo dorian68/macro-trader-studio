@@ -42,15 +42,47 @@ export const assetToBinanceSymbol: Record<string, string> = {
   'ETHUSD': 'ETHUSDT'
 };
 
-// Mapping des symboles incorrects vers les corrects
+// Mapping des symboles incorrects vers les corrects (Yahoo Finance -> format app)
 const symbolCorrections: Record<string, string> = {
-  'AUDUSD=X': 'AUDUSD',
-  'NZDUSD=X': 'NZDUSD', 
-  'EURGBP=X': 'EURGBP',
-  'EURJPY=X': 'EURJPY',
-  'USDCHF=X': 'USDCHF',
-  'ADA-USD': 'ADAUSDT',
-  'SOL-USD': 'SOLUSDT'
+  // Forex Yahoo Finance format -> App format
+  'EURUSD=X': 'EUR/USD',
+  'GBPUSD=X': 'GBP/USD',
+  'USDJPY=X': 'USD/JPY',
+  'AUDUSD=X': 'AUD/USD',
+  'NZDUSD=X': 'NZD/USD', 
+  'USDCHF=X': 'USD/CHF',
+  'EURGBP=X': 'EUR/GBP',
+  'EURJPY=X': 'EUR/JPY',
+  'EURCHF=X': 'EUR/CHF',
+  'GBPJPY=X': 'GBP/JPY',
+  'AUDJPY=X': 'AUD/JPY',
+  'NZDJPY=X': 'NZD/JPY',
+  'CADJPY=X': 'CAD/JPY',
+  'CHFJPY=X': 'CHF/JPY',
+  'USDCAD=X': 'USD/CAD',
+  'AUDCAD=X': 'AUD/CAD',
+  'EURAUD=X': 'EUR/AUD',
+  'EURNZD=X': 'EUR/NZD',
+  'EURCAD=X': 'EUR/CAD',
+  
+  // Crypto Yahoo Finance format -> App format
+  'BTC-USD': 'Bitcoin',
+  'ETH-USD': 'Ethereum',
+  'ADA-USD': 'ADA-USD',
+  'SOL-USD': 'SOL-USD',
+  'DOT-USD': 'DOT-USD',
+  'DOGE-USD': 'DOGE-USD',
+  'XRP-USD': 'XRP-USD',
+  'BNB-USD': 'BNB-USD',
+  'LINK-USD': 'LINK-USD',
+  'MATIC-USD': 'MATIC-USD',
+  'AVAX-USD': 'AVAX-USD',
+  'UNI-USD': 'UNI-USD',
+  
+  // Commodities Yahoo Finance format -> App format
+  'GC=F': 'GOLD',
+  'SI=F': 'SILVER',
+  'CL=F': 'CRUDE'
 };
 
 export const getSymbolForAsset = (asset: string): string => {
@@ -64,4 +96,9 @@ export const getSymbolForAsset = (asset: string): string => {
 export const supportsRealTimeData = (asset: string): boolean => {
   const correctedAsset = symbolCorrections[asset] || asset;
   return !!assetToBinanceSymbol[correctedAsset];
+};
+
+// Normalise n'importe quel format de symbole vers le format de l'app
+export const getNormalizedSymbol = (symbol: string): string => {
+  return symbolCorrections[symbol] || symbol;
 };
