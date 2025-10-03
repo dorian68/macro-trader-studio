@@ -96,7 +96,7 @@ const Pricing = () => {
     price: '$49',
     description: 'Complete solution for professional traders',
     features: ['Market Commentary', 'AI Trade Setup', 'Research Reports'],
-    usage: ['Unlimited queries', '50 investment ideas per month', '16 reports per month'],
+    usage: ['200 queries per month', '50 investment ideas per month', '16 reports per month'],
     highlight: true
   }];
   const getPlanDescription = (planType: string): string => {
