@@ -33,7 +33,8 @@ import {
   Building2,
   CreditCard,
   ArrowRightLeft,
-  AlertCircle
+  AlertCircle,
+  Upload
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
 import { useProfile } from "@/hooks/useProfile";
@@ -44,6 +45,7 @@ import { BrokersManagement } from "@/components/admin/BrokersManagement";
 import { PlanParametersManagement } from "@/components/admin/PlanParametersManagement";
 import { SubscriptionPlanOverview } from "@/components/admin/SubscriptionPlanOverview";
 import { UserCreditsOverview } from "@/components/admin/UserCreditsOverview";
+import ImportABCGPortfolio from "@/components/admin/ImportABCGPortfolio";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -864,6 +866,13 @@ export default function Admin() {
                 </TabsTrigger>
               )}
               {isSuperUser && (
+                <TabsTrigger value="portfolio-import" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                  <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Portfolio Import</span>
+                  <span className="sm:hidden">Import</span>
+                </TabsTrigger>
+              )}
+              {isSuperUser && (
                 <TabsTrigger value="realtime-diagnostic" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
                   <span className="text-base">🔍</span>
                   <span className="hidden sm:inline">Realtime Diagnostic</span>
@@ -960,6 +969,12 @@ export default function Admin() {
           {isSuperUser && (
             <TabsContent value="brokers">
               <BrokersManagement />
+            </TabsContent>
+          )}
+
+          {isSuperUser && (
+            <TabsContent value="portfolio-import">
+              <ImportABCGPortfolio />
             </TabsContent>
           )}
 
