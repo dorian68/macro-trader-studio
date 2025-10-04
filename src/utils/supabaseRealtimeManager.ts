@@ -7,13 +7,44 @@ const activeChannels = new Map<string, RealtimeChannel>();
 // Track auth listener to prevent duplicates
 let authListenerSetup = false;
 
+// Track channel metrics for diagnostics
+const channelMetrics = new Map<string, {
+  createdAt: number;
+  lastActivity: number;
+  reconnectCount: number;
+  closeReason?: string;
+  subscriptionCount: number;
+}>();
+
 interface ChannelOptions {
   config?: any;
   subscriptionOptions?: any;
 }
 
 export function subscribeChannel(channelName: string, options: ChannelOptions = {}): RealtimeChannel {
-  console.log(`🔄 [RealtimeManager] Subscribing to channel: ${channelName}`);
+  const now = Date.now();
+  const existingMetrics = channelMetrics.get(channelName);
+  
+  console.log(`🔄 [RealtimeManager] Subscribing to channel: ${channelName}`, {
+    timestamp: new Date(now).toISOString(),
+    config: options.config,
+    isReconnect: !!existingMetrics,
+    previousMetrics: existingMetrics
+  });
+  
+  // Initialize or update metrics
+  if (!existingMetrics) {
+    channelMetrics.set(channelName, {
+      createdAt: now,
+      lastActivity: now,
+      reconnectCount: 0,
+      subscriptionCount: 1
+    });
+  } else {
+    existingMetrics.reconnectCount++;
+    existingMetrics.lastActivity = now;
+    existingMetrics.subscriptionCount++;
+  }
   
   const channel = supabase.channel(channelName, options.config);
 
@@ -21,15 +52,36 @@ export function subscribeChannel(channelName: string, options: ChannelOptions = 
   (channel as any)._subscriptionOptions = options.subscriptionOptions;
 
   const subscribePromise = channel.subscribe((status) => {
+    const metrics = channelMetrics.get(channelName);
+    const age = metrics ? Date.now() - metrics.createdAt : 0;
+    
     if (status === "SUBSCRIBED") {
-      console.log(`✅ [RealtimeManager] Subscribed to channel: ${channelName}`);
+      console.log(`✅ [RealtimeManager] Subscribed to channel: ${channelName}`, {
+        timestamp: new Date().toISOString(),
+        channelAge: `${Math.round(age / 1000)}s`,
+        metrics: channelMetrics.get(channelName)
+      });
       activeChannels.set(channelName, channel);
+      if (metrics) metrics.lastActivity = Date.now();
     }
     if (status === "CHANNEL_ERROR") {
-      console.error(`❌ [RealtimeManager] Error on channel: ${channelName}`);
+      console.error(`❌ [RealtimeManager] Error on channel: ${channelName}`, {
+        timestamp: new Date().toISOString(),
+        channelAge: `${Math.round(age / 1000)}s`,
+        metrics: channelMetrics.get(channelName)
+      });
+      if (metrics) {
+        metrics.closeReason = 'CHANNEL_ERROR';
+        metrics.lastActivity = Date.now();
+      }
     }
     if (status === "CLOSED") {
-      console.log(`🔒 [RealtimeManager] Channel closed: ${channelName}`);
+      console.log(`🔒 [RealtimeManager] Channel closed: ${channelName}`, {
+        timestamp: new Date().toISOString(),
+        channelAge: `${Math.round(age / 1000)}s`,
+        closeReason: metrics?.closeReason || 'UNKNOWN',
+        metrics: channelMetrics.get(channelName)
+      });
       activeChannels.delete(channelName);
     }
   });
@@ -37,12 +89,28 @@ export function subscribeChannel(channelName: string, options: ChannelOptions = 
   return channel;
 }
 
-export function unsubscribeChannel(channelName: string): void {
+export function unsubscribeChannel(channelName: string, reason: string = 'MANUAL'): void {
   const channel = activeChannels.get(channelName);
+  const metrics = channelMetrics.get(channelName);
+  
   if (channel) {
-    console.log(`🔄 [RealtimeManager] Unsubscribing from channel: ${channelName}`);
+    const age = metrics ? Date.now() - metrics.createdAt : 0;
+    console.log(`🔄 [RealtimeManager] Unsubscribing from channel: ${channelName}`, {
+      reason,
+      timestamp: new Date().toISOString(),
+      channelAge: `${Math.round(age / 1000)}s`,
+      lifetime: metrics
+    });
+    
+    if (metrics) {
+      metrics.closeReason = reason;
+      metrics.lastActivity = Date.now();
+    }
+    
     channel.unsubscribe();
     activeChannels.delete(channelName);
+  } else {
+    console.warn(`⚠️ [RealtimeManager] Attempted to unsubscribe from non-existent channel: ${channelName}`);
   }
 }
 
@@ -51,11 +119,20 @@ export function getActiveChannels(): Map<string, RealtimeChannel> {
 }
 
 async function resubscribeAllChannels(): Promise<void> {
-  console.log(`🔄 [RealtimeManager] Re-subscribing to ${activeChannels.size} channels`);
+  const startTime = Date.now();
+  const channelCount = activeChannels.size;
+  
+  console.log(`🔄 [RealtimeManager] Re-subscribing to ${channelCount} channels`, {
+    timestamp: new Date(startTime).toISOString(),
+    channels: Array.from(activeChannels.keys())
+  });
   
   const channelsToResubscribe = Array.from(activeChannels.entries());
+  let successCount = 0;
+  let failureCount = 0;
   
   for (const [channelName, oldChannel] of channelsToResubscribe) {
+    const channelStartTime = Date.now();
     try {
       console.log(`🔄 [RealtimeManager] Re-subscribing channel: ${channelName}`);
       
@@ -78,10 +155,24 @@ async function resubscribeAllChannels(): Promise<void> {
         }
       }
       
+      const duration = Date.now() - channelStartTime;
+      console.log(`✅ [RealtimeManager] Successfully re-subscribed ${channelName} in ${duration}ms`);
+      successCount++;
+      
     } catch (err) {
-      console.warn(`⚠️ [RealtimeManager] Failed to re-subscribe to ${channelName}:`, err);
+      const duration = Date.now() - channelStartTime;
+      console.warn(`⚠️ [RealtimeManager] Failed to re-subscribe to ${channelName} after ${duration}ms:`, err);
+      failureCount++;
     }
   }
+  
+  const totalDuration = Date.now() - startTime;
+  console.log(`✅ [RealtimeManager] Re-subscription complete`, {
+    duration: `${totalDuration}ms`,
+    total: channelCount,
+    success: successCount,
+    failed: failureCount
+  });
 }
 
 async function refreshRealtimeAuth(accessToken: string, retryCount = 0): Promise<void> {

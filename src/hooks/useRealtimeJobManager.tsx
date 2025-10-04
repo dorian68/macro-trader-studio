@@ -5,8 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useCreditManager, CreditType } from "@/hooks/useCreditManager";
 import { subscribeToPostgresChanges, initializeRealtimeAuthManager, unsubscribeChannel } from "@/utils/supabaseRealtimeManager";
+import { useMockProgressSimulator } from "@/hooks/useMockProgressSimulator";
 
-const { useState, useCallback, useEffect } = React;
+const { useState, useCallback, useEffect, useRef } = React;
 
 interface JobStatus {
   id: string;
@@ -28,6 +29,7 @@ interface ActiveJob {
   startTime: Date;
   resultData?: any;
   progressMessage?: string;
+  feature?: string;
 }
 
 // Map job types to features for backward compatibility
@@ -63,6 +65,9 @@ export function useRealtimeJobManager() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { checkCredits, decrementCredit } = useCreditManager();
+  
+  // Track mock simulators state for each job
+  const mockSimulatorsActive = useRef<Map<string, boolean>>(new Map());
 
   // Initialize realtime auth manager once
   useEffect(() => {
@@ -89,22 +94,37 @@ export function useRealtimeJobManager() {
         filter: `user_id=eq.${user.id}`
       },
       (payload) => {
+        const job = payload.new as JobStatus;
+        
         console.log('🔍 [RealtimeJobManager] Received realtime event:', {
           eventType: payload.eventType,
+          jobId: job.id,
+          channelName,
           old: payload.old,
           new: payload.new,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          jobCorrelation: {
+            jobId: job.id,
+            status: job.status,
+            feature: job.feature,
+            hasProgressMessage: !!job.progress_message
+          }
         });
-
-        const job = payload.new as JobStatus;
         
         // Handle progress message updates
         if (job.progress_message) {
-          console.log('📝 [RealtimeJobManager] Progress update:', {
+          console.log('📝 [RealtimeJobManager] Real progress message from backend:', {
             jobId: job.id,
             progressMessage: job.progress_message,
             status: job.status
           });
+
+          // STOP mock simulator when real message arrives
+          const wasActive = mockSimulatorsActive.current.get(job.id);
+          if (wasActive) {
+            console.log(`🛑 [RealtimeJobManager] Stopping mock simulator for job ${job.id} - real backend message received`);
+            mockSimulatorsActive.current.set(job.id, false);
+          }
 
           setActiveJobs(prev => prev.map(activeJob => 
             activeJob.id === job.id 
@@ -116,7 +136,7 @@ export function useRealtimeJobManager() {
           toast({
             title: "Processing...",
             description: job.progress_message,
-            duration: 3000,
+            duration: 4000,
             className: "fixed top-4 left-4 z-[100] max-w-sm animate-fade-in"
           });
         }
@@ -127,6 +147,9 @@ export function useRealtimeJobManager() {
             feature: job.feature,
             hasResponse: !!job.response_payload
           });
+
+          // Stop mock simulator on completion
+          mockSimulatorsActive.current.set(job.id, false);
 
           // Update the active job with results
           setActiveJobs(prev => prev.map(activeJob => 
@@ -150,6 +173,9 @@ export function useRealtimeJobManager() {
             jobId: job.id,
             feature: job.feature
           });
+
+          // Stop mock simulator on error
+          mockSimulatorsActive.current.set(job.id, false);
 
           setActiveJobs(prev => prev.map(activeJob => 
             activeJob.id === job.id 
@@ -186,10 +212,45 @@ export function useRealtimeJobManager() {
     );
 
     return () => {
-      console.log('🔍 [RealtimeJobManager] Cleaning up subscription');
-      unsubscribeChannel(channelName);
+      console.log('🔍 [RealtimeJobManager] Cleaning up subscription', { channelName });
+      unsubscribeChannel(channelName, 'COMPONENT_UNMOUNT');
+      
+      // Clean up all mock simulators
+      mockSimulatorsActive.current.forEach((_, jobId) => {
+        mockSimulatorsActive.current.set(jobId, false);
+      });
+      mockSimulatorsActive.current.clear();
     };
   }, [user?.id, toast]);
+
+  // Mock Progress Simulator for all active jobs
+  activeJobs.forEach((job) => {
+    const isSimulatorActive = mockSimulatorsActive.current.get(job.id) || false;
+    const shouldSimulate = job.status === 'pending' || job.status === 'running';
+    
+    useMockProgressSimulator({
+      jobId: job.id,
+      feature: job.feature || mapTypeToFeature(job.type),
+      onProgressUpdate: (message: string) => {
+        console.log(`📬 [RealtimeJobManager] Mock progress update for ${job.id}: "${message}"`);
+        
+        setActiveJobs(prev => prev.map(activeJob => 
+          activeJob.id === job.id 
+            ? { ...activeJob, progressMessage: message }
+            : activeJob
+        ));
+
+        // Show ephemeral toast for mock progress
+        toast({
+          title: "Processing...",
+          description: message,
+          duration: 4000,
+          className: "fixed top-4 left-4 z-[100] max-w-sm animate-fade-in"
+        });
+      },
+      isActive: isSimulatorActive && shouldSimulate
+    });
+  });
 
   const createJob = useCallback(async (
     type: string,
@@ -228,15 +289,23 @@ export function useRealtimeJobManager() {
       type,
       instrument,
       status: 'pending',
-      startTime: new Date()
+      startTime: new Date(),
+      feature: jobFeature
     };
 
     setActiveJobs(prev => [...prev, newJob]);
+
+    // Start mock progress simulator for pending job
+    console.log(`🎬 [RealtimeJobManager] Starting mock simulator for feature: ${jobFeature}, jobId: ${jobId}`);
+    mockSimulatorsActive.current.set(jobId, true);
 
     return jobId;
   }, [user?.id, toast]);
 
   const removeJob = useCallback((jobId: string) => {
+    console.log(`🗑️ [RealtimeJobManager] Removing job: ${jobId}`);
+    mockSimulatorsActive.current.set(jobId, false);
+    mockSimulatorsActive.current.delete(jobId);
     setActiveJobs(prev => prev.filter(job => job.id !== jobId));
   }, []);
 

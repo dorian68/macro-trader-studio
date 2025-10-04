@@ -5,6 +5,7 @@ import { CheckCircle, X, Minimize2 } from 'lucide-react';
 import { usePersistentNotifications } from './PersistentNotificationProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getFeatureDisplayName } from '@/lib/feature-mapper';
+import { MiniProgressBubble } from './MiniProgressBubble';
 
 export function PersistentToast() {
   const { activeJobs, completedJobs, markJobAsViewed, navigateToResult } = usePersistentNotifications();
@@ -17,6 +18,10 @@ export function PersistentToast() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [elapsedTime, setElapsedTime] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showMiniBubble, setShowMiniBubble] = useState<{
+    feature: string;
+    message: string;
+  } | null>(null);
 
   const totalJobs = activeJobs.length + completedJobs.length;
   
@@ -44,6 +49,21 @@ export function PersistentToast() {
       return () => clearInterval(interval);
     }
   }, [isCompleted, activeJobs]);
+
+  // Show mini bubble when minimized and progress message updates
+  useEffect(() => {
+    if (isMinimized && !isCompleted && mostRecentJob && 'progressMessage' in mostRecentJob && mostRecentJob.progressMessage) {
+      console.log(`💬 [PersistentToast] Showing mini bubble for minimized toast:`, {
+        feature: mostRecentJob.feature,
+        message: mostRecentJob.progressMessage
+      });
+      
+      setShowMiniBubble({
+        feature: mostRecentJob.feature || 'unknown',
+        message: mostRecentJob.progressMessage
+      });
+    }
+  }, [isMinimized, isCompleted, mostRecentJob?.progressMessage]);
 
   // Format elapsed time
   const formatTime = (ms: number) => {
@@ -127,7 +147,18 @@ export function PersistentToast() {
   if (totalJobs === 0) return null;
 
   return (
-    <Card 
+    <>
+      {/* Mini Progress Bubble (when minimized) */}
+      {showMiniBubble && isMinimized && (
+        <MiniProgressBubble
+          feature={showMiniBubble.feature}
+          message={showMiniBubble.message}
+          onDismiss={() => setShowMiniBubble(null)}
+        />
+      )}
+
+      {/* Main Toast Card */}
+      <Card
       ref={cardRef}
       className={`
         fixed z-50 transition-all duration-300
@@ -303,6 +334,7 @@ export function PersistentToast() {
           </div>
         </div>
       )}
-    </Card>
+      </Card>
+    </>
   );
 }

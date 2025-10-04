@@ -26,6 +26,7 @@ interface CompletedJob {
   resultData: any;
   completedAt: Date;
   originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports';
+  progressMessage?: string;
 }
 
 interface PersistentNotificationContextType {
