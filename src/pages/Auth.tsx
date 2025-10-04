@@ -38,23 +38,25 @@ export default function Auth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        if (session?.user && event === 'SIGNED_IN') {
-          navigate('/dashboard');
+        if (session?.user && event === 'SIGNED_IN' && window.location.pathname === '/auth') {
+          // Don't redirect if we're in free trial flow
+          if (intent !== 'free_trial') {
+            navigate('/dashboard');
+          }
         }
       }
     );
 
-    // Check for existing session
+    // Check for existing session - redirect if already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user) {
-        // Don't auto-navigate, let AuthGuard handle approval status
-        setSession(session);
+      if (session?.user && window.location.pathname === '/auth' && intent !== 'free_trial') {
+        navigate('/dashboard');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, intent]);
 
   // Separate effect for loading brokers
   useEffect(() => {
