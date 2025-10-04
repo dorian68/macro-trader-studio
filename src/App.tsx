@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { useSessionManager } from "@/hooks/useSessionManager";
 import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
 import { PersistentNotificationProvider } from "@/components/PersistentNotificationProvider";
+import { PersistentToast } from "@/components/PersistentToast";
 import { JobStatusCards } from "@/components/JobStatusCards";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import AdminGuard from "./components/AdminGuard";
@@ -53,6 +54,7 @@ const App = () => {
               <GlobalLoadingProvider>
                 <PersistentNotificationProvider>
                   <JobStatusCards />
+                  <PersistentToast />
                   <Toaster />
                   <Sonner />
                   <Routes>
