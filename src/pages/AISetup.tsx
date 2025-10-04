@@ -21,6 +21,7 @@ import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import PNLCalculator from "@/components/PNLCalculator";
+import { AssetSearchBar } from "@/components/AssetSearchBar";
 const {
   useState,
   useEffect
@@ -552,6 +553,21 @@ export default function AISetup() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="instrument">Instrument</Label>
+                  
+                  {/* Asset Search Bar */}
+                  <AssetSearchBar
+                    placeholder="Search instrument (EUR/USD, Bitcoin, Gold...)"
+                    onAssetSelect={(asset) => {
+                      console.log(`📊 [AISetup] Asset selected from search:`, asset);
+                      setParameters({
+                        ...parameters,
+                        instrument: asset.symbol
+                      });
+                    }}
+                    className="mb-2"
+                  />
+                  
+                  {/* Existing Select Dropdown */}
                   <Select value={parameters.instrument} onValueChange={value => setParameters({
                 ...parameters,
                 instrument: value
