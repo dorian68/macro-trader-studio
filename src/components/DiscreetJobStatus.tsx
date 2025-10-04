@@ -1,15 +1,19 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePersistentNotifications } from './PersistentNotificationProvider';
 
 interface DiscreetJobStatusProps {
   activeJobsCount: number;
-  latestMessage?: string;
   className?: string;
 }
 
-export function DiscreetJobStatus({ activeJobsCount, latestMessage, className }: DiscreetJobStatusProps) {
+export function DiscreetJobStatus({ activeJobsCount, className }: DiscreetJobStatusProps) {
+  // Get latest progress message from active jobs using the provider
+  const { activeJobs } = usePersistentNotifications();
+  const latestMessage = activeJobs[activeJobs.length - 1]?.progressMessage;
+  
   if (activeJobsCount === 0) return null;
 
   return (

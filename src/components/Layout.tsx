@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useResultNotifications } from "@/hooks/useResultNotifications";
 import { DiscreetJobStatus } from "./DiscreetJobStatus";
 import { CreditsNavbar } from "./CreditsNavbar";
-import { usePersistentNotifications } from "./PersistentNotificationProvider";
+
 interface LayoutProps {
   children: React.ReactNode;
   activeModule?: string;
@@ -45,10 +45,6 @@ export default function Layout({
 
   // Result notification system
   const { markResultsAsSeen } = useResultNotifications();
-  
-  // Get latest progress message from active jobs
-  const { activeJobs } = usePersistentNotifications();
-  const latestMessage = activeJobs[activeJobs.length - 1]?.progressMessage;
   return <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/20 overflow-x-hidden">
       {/* Mobile-First Responsive Header */}
       <header className="sticky top-[calc(env(safe-area-inset-top))] z-40 backdrop-blur supports-[backdrop-filter]:bg-background/70 h-14 sm:h-16 border-b border-border/50 bg-card/80 backdrop-blur-xl shadow-sm">
@@ -252,8 +248,7 @@ export default function Layout({
 
       {/* Discreet Job Status - shows when jobs are running */}
       <DiscreetJobStatus 
-        activeJobsCount={activeJobsCount} 
-        latestMessage={latestMessage}
+        activeJobsCount={activeJobsCount}
       />
 
       {/* Main Content - Mobile responsive */}
