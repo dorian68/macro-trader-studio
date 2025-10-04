@@ -1,7 +1,18 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { MockTrade } from '@/data/mockPortfolio';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Clock, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, BarChart3, Filter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import {
   LineChart,
   Line,
@@ -34,6 +45,12 @@ interface PortfolioAnalysisProps {
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
 export default function PortfolioAnalysis({ trades, className }: PortfolioAnalysisProps) {
+  // Risk table filters and pagination
+  const [leverageThreshold, setLeverageThreshold] = useState(50);
+  const [pnlThreshold, setPnlThreshold] = useState(300);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const stats = useMemo(() => {
     const winningTrades = trades.filter(t => t.pnl > 0);
     const losingTrades = trades.filter(t => t.pnl < 0);
@@ -118,13 +135,24 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
     }));
   }, [trades]);
 
-  // Risk concentration
-  const riskConcentration = useMemo(() => {
+  // Risk concentration with filters
+  const filteredRiskTrades = useMemo(() => {
     return trades
-      .filter(t => t.leverage > 50 || Math.abs(t.pnl) > 300)
-      .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
-      .slice(0, 10);
-  }, [trades]);
+      .filter(t => t.leverage > leverageThreshold || Math.abs(t.pnl) > pnlThreshold)
+      .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl));
+  }, [trades, leverageThreshold, pnlThreshold]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredRiskTrades.length / itemsPerPage);
+  const paginatedRiskTrades = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredRiskTrades.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredRiskTrades, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [leverageThreshold, pnlThreshold, itemsPerPage]);
 
   return (
     <div className={className}>
@@ -284,10 +312,60 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
       {/* Risk Concentration Table */}
       <Card className="gradient-card border-primary/20">
         <CardHeader>
-          <CardTitle className="text-lg">Risk Concentration Analysis</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Risk Concentration Analysis
+          </CardTitle>
           <p className="text-sm text-muted-foreground">
-            High-leverage or high-impact trades (leverage &gt; 50x or |PNL| &gt; $300)
+            Configurable filters for high-risk trades
           </p>
+          
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+            <div className="space-y-2">
+              <Label htmlFor="leverage-filter">Leverage minimum</Label>
+              <Input
+                id="leverage-filter"
+                type="number"
+                value={leverageThreshold}
+                onChange={(e) => setLeverageThreshold(Number(e.target.value))}
+                min="1"
+                className="w-full"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="pnl-filter">|PNL| minimum ($)</Label>
+              <Input
+                id="pnl-filter"
+                type="number"
+                value={pnlThreshold}
+                onChange={(e) => setPnlThreshold(Number(e.target.value))}
+                min="0"
+                className="w-full"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="items-per-page">Items per page</Label>
+              <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(Number(v))}>
+                <SelectTrigger id="items-per-page">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="text-sm text-muted-foreground mt-2">
+            Showing {paginatedRiskTrades.length} of {filteredRiskTrades.length} trades
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -303,25 +381,68 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
               </TableRow>
             </TableHeader>
             <TableBody>
-              {riskConcentration.map((trade) => (
-                <TableRow key={trade.id}>
-                  <TableCell className="font-medium">{trade.instrument}</TableCell>
-                  <TableCell>{trade.size}</TableCell>
-                  <TableCell>
-                    <span className={trade.leverage > 75 ? 'text-red-500 font-semibold' : ''}>
-                      {trade.leverage}x
-                    </span>
-                  </TableCell>
-                  <TableCell>{trade.entry.toFixed(2)}</TableCell>
-                  <TableCell>{trade.exit.toFixed(2)}</TableCell>
-                  <TableCell>{trade.duration}</TableCell>
-                  <TableCell className={`text-right font-semibold ${trade.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    ${trade.pnl.toFixed(2)}
+              {paginatedRiskTrades.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    No trades match the current filters
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                paginatedRiskTrades.map((trade) => (
+                  <TableRow key={trade.id}>
+                    <TableCell className="font-medium">{trade.instrument}</TableCell>
+                    <TableCell>{trade.size}</TableCell>
+                    <TableCell>
+                      <span className={trade.leverage > 75 ? 'text-red-500 font-semibold' : ''}>
+                        {trade.leverage}x
+                      </span>
+                    </TableCell>
+                    <TableCell>{trade.entry.toFixed(2)}</TableCell>
+                    <TableCell>{trade.exit.toFixed(2)}</TableCell>
+                    <TableCell>{trade.duration}</TableCell>
+                    <TableCell className={`text-right font-semibold ${trade.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      ${trade.pnl.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
