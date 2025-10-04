@@ -48,8 +48,9 @@ export default function Auth() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        // Don't auto-navigate, let AuthGuard handle approval status
-        setSession(session);
+        // Redirect authenticated users to dashboard
+        // AuthGuard will handle approval status checks
+        navigate('/dashboard');
       }
     });
 
