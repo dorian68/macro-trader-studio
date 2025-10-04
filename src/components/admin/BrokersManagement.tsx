@@ -55,8 +55,12 @@ export function BrokersManagement() {
     
     // Si super user, enrichir avec les données de revenus
     if (isSuperUser) {
+      console.log(`📊 [BrokersManagement] Enriching ${brokersData.length} brokers with revenue data...`);
+      
       const enrichedBrokers = await Promise.all(
         brokersData.map(async (broker) => {
+          console.log(`📊 [BrokersManagement] Processing broker: ${broker.name} (${broker.id})`);
+          
           try {
             // Récupérer les users du broker
             const { data: profiles, error: profilesError } = await supabase
@@ -64,31 +68,52 @@ export function BrokersManagement() {
               .select('user_id, user_plan')
               .eq('broker_id', broker.id);
 
-            if (profilesError) throw profilesError;
+            console.log(`📊 [BrokersManagement] Broker ${broker.name}: found ${profiles?.length || 0} profiles`, profiles);
+
+            if (profilesError) {
+              console.error(`❌ [BrokersManagement] Error fetching profiles for ${broker.name}:`, profilesError);
+              throw profilesError;
+            }
 
             // Récupérer les paramètres de plans pour calculer les revenus
             const { data: planParams, error: planError } = await supabase
               .from('plan_parameters')
               .select('plan_type, monthly_price_usd');
 
-            if (planError) throw planError;
+            console.log(`📊 [BrokersManagement] Plan parameters fetched:`, planParams);
 
-            // Créer un map des prix par plan
+            if (planError) {
+              console.error(`❌ [BrokersManagement] Error fetching plan params:`, planError);
+              throw planError;
+            }
+
+            // Créer un map des prix par plan avec conversion Number()
             const planPrices = planParams?.reduce((acc, plan) => {
-              acc[plan.plan_type] = plan.monthly_price_usd || 0;
+              const price = Number(plan.monthly_price_usd) || 0;
+              console.log(`📊 [BrokersManagement] Mapping plan ${plan.plan_type} → $${price} (raw: ${plan.monthly_price_usd}, type: ${typeof plan.monthly_price_usd})`);
+              acc[plan.plan_type] = price;
               return acc;
             }, {} as Record<string, number>) || {};
+
+            console.log(`📊 [BrokersManagement] Plan prices map:`, planPrices);
 
             // Calculer le revenu estimé
             let totalRevenue = 0;
             profiles?.forEach((profile) => {
               const planType = profile.user_plan || 'free_trial';
+              let price = 0;
+              
               if (planType === 'free_trial') {
-                totalRevenue += 3; // 3 USD par user free_trial
+                price = 3;
               } else {
-                totalRevenue += planPrices[planType] || 0;
+                price = planPrices[planType] || 0;
               }
+              
+              console.log(`📊 [BrokersManagement] Profile ${profile.user_id}: plan=${planType}, price=$${price}`);
+              totalRevenue += price;
             });
+
+            console.log(`✅ [BrokersManagement] Broker ${broker.name}: ${profiles?.length || 0} users, total revenue = $${totalRevenue}`);
 
             return {
               ...broker,
@@ -96,7 +121,7 @@ export function BrokersManagement() {
               estimated_revenue: totalRevenue
             };
           } catch (error) {
-            console.error(`Error loading revenue data for broker ${broker.id}:`, error);
+            console.error(`❌ [BrokersManagement] Error loading revenue for ${broker.name}:`, error);
             return {
               ...broker,
               user_count: 0,
@@ -105,6 +130,13 @@ export function BrokersManagement() {
           }
         })
       );
+      
+      console.log(`✅ [BrokersManagement] All brokers enriched:`, enrichedBrokers.map(b => ({
+        name: b.name,
+        users: b.user_count,
+        revenue: b.estimated_revenue
+      })));
+      
       setBrokers(enrichedBrokers);
     } else {
       setBrokers(brokersData);

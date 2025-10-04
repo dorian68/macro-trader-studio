@@ -229,9 +229,13 @@ export function useRealtimeJobManager() {
 
   // Mock Progress Simulator Effect - runs for all active jobs
   useEffect(() => {
+    console.log(`🔄 [MockProgress] useEffect triggered, ${activeJobs.length} active jobs`);
+    
     activeJobs.forEach((job) => {
       const isSimulatorActive = mockSimulatorsActive.current.get(job.id) || false;
       const shouldSimulate = (job.status === 'pending' || job.status === 'running') && isSimulatorActive;
+      
+      console.log(`🔍 [MockProgress] Checking job ${job.id}: status=${job.status}, simulatorActive=${isSimulatorActive}, shouldSimulate=${shouldSimulate}`);
       
       if (!shouldSimulate) {
         // Clean up timeouts if simulator is inactive
@@ -354,11 +358,13 @@ export function useRealtimeJobManager() {
       feature: jobFeature
     };
 
+    // CRITICAL: Activate simulator BEFORE adding to state to ensure useEffect sees the flag
+    console.log(`🎬 [RealtimeJobManager] Activating mock simulator for feature: ${jobFeature}, jobId: ${jobId}`);
+    mockSimulatorsActive.current.set(jobId, true);
+
     setActiveJobs(prev => [...prev, newJob]);
 
-    // Start mock progress simulator for pending job
-    console.log(`🎬 [RealtimeJobManager] Starting mock simulator for feature: ${jobFeature}, jobId: ${jobId}`);
-    mockSimulatorsActive.current.set(jobId, true);
+    console.log(`✅ [RealtimeJobManager] Job added to activeJobs, simulator is active:`, mockSimulatorsActive.current.get(jobId));
 
     return jobId;
   }, [user?.id, toast]);
