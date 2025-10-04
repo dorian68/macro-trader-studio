@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { FlashMessage, FlashMessageData } from './FlashMessage';
 import { useCreditManager, CreditType } from '@/hooks/useCreditManager';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { MOCK_PROGRESS_SEQUENCES } from '@/utils/mockProgressMessages';
 
 interface ActiveJob {
   id: string;
@@ -61,6 +62,10 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
   const navigate = useNavigate();
   const { decrementCredit } = useCreditManager();
   const { toast } = useToast();
+  
+  // Mock progress simulator refs
+  const mockSimulatorsActive = useRef<Map<string, boolean>>(new Map());
+  const mockTimeouts = useRef<Map<string, NodeJS.Timeout[]>>(new Map());
 
   const addFlashMessage = (message: Omit<FlashMessageData, 'id'>) => {
     const id = `flash-${Date.now()}-${Math.random()}`;
@@ -134,6 +139,11 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               return prev;
             }
             console.log('📥 [PersistentNotifications] Adding new active job:', activeJob);
+            
+            // Activate mock simulator for this job
+            console.log(`🎬 [PersistentNotifications] Activating mock simulator for job ${activeJob.id}, feature: ${activeJob.feature}`);
+            mockSimulatorsActive.current.set(activeJob.id, true);
+            
             return [...prev, activeJob];
           });
         }
@@ -160,6 +170,13 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             ));
             console.log('🔄 [PersistentNotifications] Job set to running with progress:', updatedJob.progress_message);
           } else if (updatedJob.progress_message) {
+            // Stop mock simulator when real backend message arrives
+            const wasActive = mockSimulatorsActive.current.get(updatedJob.id);
+            if (wasActive) {
+              console.log(`🛑 [PersistentNotifications] Stopping mock simulator for job ${updatedJob.id} - real backend message received`);
+              mockSimulatorsActive.current.set(updatedJob.id, false);
+            }
+            
             // Update progress message for pending/running jobs
             setActiveJobs(prev => prev.map(job => 
               job.id === updatedJob.id 
@@ -168,6 +185,9 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             ));
             console.log('🔄 [PersistentNotifications] Progress message updated:', updatedJob.progress_message);
           } else if (updatedJob.status === 'completed' && updatedJob.response_payload) {
+            // Stop mock simulator on completion
+            mockSimulatorsActive.current.set(updatedJob.id, false);
+            
             // Move from active to completed
             console.log('✅ [PersistentNotifications] Job completed, moving to completed list');
             setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
@@ -205,6 +225,9 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               return [...prev, completedJob];
             });
           } else if (updatedJob.status === 'error') {
+            // Stop mock simulator on error
+            mockSimulatorsActive.current.set(updatedJob.id, false);
+            
             // Remove failed jobs from active
             setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
             
@@ -240,8 +263,116 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
 
     return () => {
       channel.unsubscribe();
+      
+      // Clean up all mock simulators and timeouts
+      mockSimulatorsActive.current.forEach((_, jobId) => {
+        const timeouts = mockTimeouts.current.get(jobId) || [];
+        timeouts.forEach(id => clearTimeout(id));
+        mockTimeouts.current.delete(jobId);
+        mockSimulatorsActive.current.set(jobId, false);
+      });
+      mockSimulatorsActive.current.clear();
     };
   }, [user]);
+
+  // Mock Progress Simulator Effect
+  useEffect(() => {
+    console.log(`🔄 [MockProgress] useEffect triggered, ${activeJobs.length} active jobs`);
+    
+    activeJobs.forEach((job) => {
+      const isSimulatorActive = mockSimulatorsActive.current.get(job.id) || false;
+      const shouldSimulate = (job.status === 'pending' || job.status === 'running') && isSimulatorActive;
+      
+      console.log(`🔍 [MockProgress] Checking job ${job.id}: status=${job.status}, simulatorActive=${isSimulatorActive}, shouldSimulate=${shouldSimulate}`);
+      
+      if (!shouldSimulate) {
+        // Clean up timeouts if simulator is inactive
+        const existingTimeouts = mockTimeouts.current.get(job.id) || [];
+        existingTimeouts.forEach(id => clearTimeout(id));
+        mockTimeouts.current.delete(job.id);
+        return;
+      }
+
+      // Check if already running
+      if (mockTimeouts.current.has(job.id)) {
+        return; // Already running
+      }
+
+      // Map feature to mock sequence key
+      const featureMap: Record<string, string> = {
+        'AI Trade Setup': 'ai_trade_setup',
+        'Macro Commentary': 'macro_commentary',
+        'Report': 'reports'
+      };
+      
+      const sequenceKey = featureMap[job.feature] || job.feature;
+      const sequence = MOCK_PROGRESS_SEQUENCES[sequenceKey];
+      
+      if (!sequence) {
+        console.warn(`⚠️ [MockProgress] No sequence found for feature: ${job.feature} (key: ${sequenceKey})`);
+        return;
+      }
+
+      console.log(`🎬 [MockProgress] Starting simulator for ${job.feature} (job: ${job.id})`);
+      
+      const timeouts: NodeJS.Timeout[] = [];
+      let messageIndex = 0;
+      
+      const scheduleNextMessage = () => {
+        if (messageIndex >= sequence.messages.length) {
+          console.log(`✅ [MockProgress] Sequence completed for job ${job.id}`);
+          mockTimeouts.current.delete(job.id);
+          return;
+        }
+        
+        const msg = sequence.messages[messageIndex];
+        const delay = Math.random() * (msg.maxDelay - msg.minDelay) + msg.minDelay;
+        
+        console.log(`⏱️ [MockProgress] Scheduling message ${messageIndex + 1}/${sequence.messages.length} in ${Math.round(delay)}ms`);
+        
+        const timeoutId = setTimeout(() => {
+          // Check if simulator is still active
+          if (!mockSimulatorsActive.current.get(job.id)) {
+            console.log(`🛑 [MockProgress] Simulator stopped for job ${job.id}`);
+            return;
+          }
+          
+          console.log(`🔔 [MockProgress] ${job.feature} (${job.id}) - "${msg.text}"`);
+          
+          // Update progress message in state
+          setActiveJobs(prev => prev.map(activeJob => 
+            activeJob.id === job.id 
+              ? { ...activeJob, progressMessage: msg.text }
+              : activeJob
+          ));
+
+          // Show flash message
+          addFlashMessage({
+            type: 'info',
+            title: 'Processing...',
+            description: msg.text,
+            duration: 4000
+          });
+          
+          messageIndex++;
+          scheduleNextMessage();
+        }, delay);
+        
+        timeouts.push(timeoutId);
+      };
+      
+      scheduleNextMessage();
+      mockTimeouts.current.set(job.id, timeouts);
+    });
+
+    // Cleanup function
+    return () => {
+      activeJobs.forEach(job => {
+        const timeouts = mockTimeouts.current.get(job.id) || [];
+        timeouts.forEach(id => clearTimeout(id));
+      });
+    };
+  }, [activeJobs]);
 
   const markJobAsViewed = (jobId: string) => {
     setCompletedJobs(prev => prev.filter(job => job.id !== jobId));
