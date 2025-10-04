@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, X, Minimize2 } from 'lucide-react';
+import { CheckCircle, X, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePersistentNotifications } from './PersistentNotificationProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getFeatureDisplayName } from '@/lib/feature-mapper';
 import { MiniProgressBubble } from './MiniProgressBubble';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function PersistentToast() {
   const { activeJobs, completedJobs, flashMessages, removeFlashMessage, markJobAsViewed, navigateToResult } = usePersistentNotifications();
@@ -17,55 +18,64 @@ export function PersistentToast() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [selectedJobIndex, setSelectedJobIndex] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
   const [showMiniBubble, setShowMiniBubble] = useState<{
     feature: string;
     message: string;
     titleOverride?: string;
   } | null>(null);
+  const [jobTimers, setJobTimers] = useState<Record<string, number>>({});
 
   const totalCount = activeJobs.length + completedJobs.length + flashMessages.length;
+  const allJobs = [...activeJobs, ...completedJobs];
   
-  console.log('🍞 [PersistentToast] Render check:', {
-    activeJobsCount: activeJobs.length,
-    completedJobsCount: completedJobs.length,
-    flashMessagesCount: flashMessages.length,
-    totalCount,
-    activeJobs,
-    completedJobs
-  });
-  
-  // Show the most recent job (prioritize completed over active)
-  const isCompleted = completedJobs.length > 0;
-  const mostRecentJob = isCompleted 
-    ? completedJobs[completedJobs.length - 1]
-    : activeJobs[activeJobs.length - 1];
-  const latestFlash = flashMessages.length > 0 ? flashMessages[flashMessages.length - 1] : null;
-  // Timer for active jobs
+  // Auto-select most recent job when jobs change
   useEffect(() => {
-    if (!isCompleted && activeJobs.length > 0) {
-      const startTime = activeJobs[activeJobs.length - 1].createdAt.getTime();
-      const interval = setInterval(() => {
-        setElapsedTime(Date.now() - startTime);
-      }, 1000);
-      return () => clearInterval(interval);
+    if (allJobs.length > 0 && selectedJobIndex >= allJobs.length) {
+      setSelectedJobIndex(allJobs.length - 1);
     }
-  }, [isCompleted, activeJobs]);
+  }, [allJobs.length]);
+  
+  const currentJob = allJobs[selectedJobIndex];
+  const isCompleted = currentJob && 'result' in currentJob;
+  const latestFlash = flashMessages.length > 0 ? flashMessages[flashMessages.length - 1] : null;
+  
+  // Navigation functions
+  const goToNextJob = () => {
+    setSelectedJobIndex((prev) => (prev + 1) % allJobs.length);
+  };
+  
+  const goToPreviousJob = () => {
+    setSelectedJobIndex((prev) => (prev - 1 + allJobs.length) % allJobs.length);
+  };
+  // Individual timers for all active jobs
+  useEffect(() => {
+    const intervals: NodeJS.Timeout[] = [];
+    
+    activeJobs.forEach((job) => {
+      const startTime = job.createdAt.getTime();
+      const interval = setInterval(() => {
+        setJobTimers(prev => ({
+          ...prev,
+          [job.id]: Date.now() - startTime
+        }));
+      }, 1000);
+      intervals.push(interval);
+    });
+    
+    return () => intervals.forEach(clearInterval);
+  }, [activeJobs]);
 
   // Show mini bubble when minimized and progress message updates
   useEffect(() => {
-    if (isMinimized && !isCompleted && mostRecentJob && 'progressMessage' in mostRecentJob && mostRecentJob.progressMessage) {
-      console.log(`💬 [PersistentToast] Showing mini bubble for minimized toast:`, {
-        feature: mostRecentJob.feature,
-        message: mostRecentJob.progressMessage
-      });
-      
+    if (isMinimized && currentJob && !isCompleted && 'progressMessage' in currentJob && currentJob.progressMessage) {
       setShowMiniBubble({
-        feature: mostRecentJob.feature || 'unknown',
-        message: mostRecentJob.progressMessage
+        feature: currentJob.feature || 'unknown',
+        message: currentJob.progressMessage
       });
     }
-  }, [isMinimized, isCompleted, mostRecentJob?.progressMessage]);
+  }, [isMinimized, isCompleted, currentJob?.progressMessage]);
 
   // Show mini bubble for flash messages when minimized
   useEffect(() => {
@@ -89,6 +99,12 @@ export function PersistentToast() {
       });
     }
   }, [isMinimized, completedJobs.length]);
+  
+  // Get elapsed time for a specific job
+  const getJobElapsedTime = (job: typeof currentJob) => {
+    if (!job) return 0;
+    return jobTimers[job.id] || 0;
+  };
   
   // Format elapsed time
   const formatTime = (ms: number) => {
@@ -229,52 +245,90 @@ export function PersistentToast() {
             </span>
           )}
           
-          {/* Desktop hover preview */}
-          {!isMobile && (
+          {/* Desktop hover preview - Jobs list */}
+          {!isMobile && allJobs.length > 0 && (
             <div className="absolute right-full mr-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50">
-              <Card className="w-60 shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm">
-                <div className="p-3">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {isCompleted ? (
-                        <CheckCircle className="h-4 w-4 text-success" />
-                      ) : (
-                        <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-medium text-foreground mb-1">
-                        {isCompleted ? 'Result Ready' : 'Processing...'}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        {isCompleted 
-                          ? `${getFeatureDisplayName(mostRecentJob.feature)} completed`
-                          : `${getFeatureDisplayName(mostRecentJob.feature)} in progress`
-                        }
-                      </p>
-                      {!isCompleted && (
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                            <span>Elapsed time</span>
-                            <span className="font-mono">{formatTime(elapsedTime)}</span>
+              <Card className="w-64 shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm">
+                <ScrollArea className="max-h-64">
+                  <div className="p-2">
+                    {allJobs.map((job, index) => {
+                      const jobCompleted = 'result' in job;
+                      const isSelected = index === selectedJobIndex;
+                      return (
+                        <div 
+                          key={job.id}
+                          className={`
+                            p-2 rounded-md mb-1 last:mb-0 transition-colors
+                            ${isSelected ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted/50'}
+                          `}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {jobCompleted ? (
+                                <CheckCircle className="h-3.5 w-3.5 text-success" />
+                              ) : (
+                                <div className="h-3.5 w-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-medium text-foreground truncate">
+                                {getFeatureDisplayName(job.feature)}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                {job.instrument || 'Processing...'}
+                              </p>
+                              {!jobCompleted && (
+                                <p className="text-[9px] text-muted-foreground font-mono mt-0.5">
+                                  {formatTime(getJobElapsedTime(job))}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          {'progressMessage' in mostRecentJob && mostRecentJob.progressMessage && (
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                              {mostRecentJob.progressMessage}
-                            </p>
-                          )}
                         </div>
-                      )}
-                    </div>
+                      );
+                    })}
                   </div>
-                </div>
+                </ScrollArea>
               </Card>
             </div>
           )}
         </div>
       ) : (
-        // Expanded view
+        // Expanded view with navigation
         <div className="p-3">
+          {/* Navigation header */}
+          {allJobs.length > 1 && (
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-border/50">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPreviousJob();
+                }}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              
+              <span className="text-[10px] text-muted-foreground font-medium">
+                Job {selectedJobIndex + 1} / {allJobs.length}
+              </span>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNextJob();
+                }}
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+          
           <div className="flex items-start gap-2">
             <div className="flex-shrink-0 mt-0.5">
               {isCompleted ? (
@@ -289,33 +343,26 @@ export function PersistentToast() {
                 <h4 className="text-xs font-medium text-foreground">
                   {isCompleted ? 'Result Ready' : 'Processing...'}
                 </h4>
-                {totalCount > 1 && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary">
-                    +{totalCount - 1}
-                  </span>
-                )}
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                {isCompleted 
-                  ? `${getFeatureDisplayName(mostRecentJob.feature)} completed`
-                  : `${getFeatureDisplayName(mostRecentJob.feature)} in progress`
-                }
+                {currentJob && getFeatureDisplayName(currentJob.feature)}
+                {currentJob?.instrument && ` - ${currentJob.instrument}`}
               </p>
               
               {/* Timer for active jobs */}
-              {!isCompleted && (
+              {!isCompleted && currentJob && (
                 <div className="mb-2">
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>Elapsed time</span>
-                    <span className="font-mono">{formatTime(elapsedTime)}</span>
+                    <span className="font-mono">{formatTime(getJobElapsedTime(currentJob))}</span>
                   </div>
                 </div>
               )}
               
               {/* Progress message for active jobs */}
-              {!isCompleted && 'progressMessage' in mostRecentJob && mostRecentJob.progressMessage && (
-                <p key={mostRecentJob.progressMessage} className="text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200 mb-2">
-                  {mostRecentJob.progressMessage}
+              {!isCompleted && currentJob && 'progressMessage' in currentJob && currentJob.progressMessage && (
+                <p key={currentJob.progressMessage} className="text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200 mb-2">
+                  {currentJob.progressMessage}
                 </p>
               )}
               
@@ -342,12 +389,12 @@ export function PersistentToast() {
                 </div>
               )}
 
-              {isCompleted && (
+              {isCompleted && currentJob && (
                 <Button 
                   size="sm" 
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigateToResult(completedJobs[completedJobs.length - 1]);
+                    navigateToResult(currentJob as any);
                   }}
                   className="text-xs h-6 w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
                 >
@@ -374,7 +421,12 @@ export function PersistentToast() {
                 className="h-5 w-5 p-0 hover:bg-muted"
                 onClick={(e) => {
                   e.stopPropagation();
-                  markJobAsViewed(mostRecentJob.id);
+                  if (currentJob) {
+                    markJobAsViewed(currentJob.id);
+                    if (allJobs.length > 1 && selectedJobIndex > 0) {
+                      setSelectedJobIndex(selectedJobIndex - 1);
+                    }
+                  }
                 }}
               >
                 <X className="h-3 w-3" />
