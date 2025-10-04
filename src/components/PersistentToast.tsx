@@ -317,7 +317,10 @@ export function PersistentToast() {
                                 {getFeatureDisplayName(job.feature)}
                               </p>
                               <p className="text-[10px] text-muted-foreground truncate">
-                                {job.instrument || 'Processing...'}
+                                {job.userQuery 
+                                  ? (job.userQuery.length > 40 ? job.userQuery.substring(0, 40) + '...' : job.userQuery)
+                                  : (job.instrument || 'Processing...')
+                                }
                               </p>
                               {!jobCompleted && (
                                 <p className="text-[9px] text-muted-foreground font-mono mt-0.5">
@@ -388,7 +391,10 @@ export function PersistentToast() {
               </div>
               <p className="text-xs text-muted-foreground mb-2">
                 {currentJob && getFeatureDisplayName(currentJob.feature)}
-                {currentJob?.instrument && ` - ${currentJob.instrument}`}
+                {currentJob?.userQuery 
+                  ? ` - ${currentJob.userQuery.length > 50 ? currentJob.userQuery.substring(0, 50) + '...' : currentJob.userQuery}`
+                  : currentJob?.instrument && ` - ${currentJob.instrument}`
+                }
               </p>
               
               {/* Timer for active jobs */}

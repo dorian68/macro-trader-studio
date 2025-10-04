@@ -17,6 +17,7 @@ interface ActiveJob {
   createdAt: Date;
   originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports';
   progressMessage?: string;
+  userQuery?: string;
 }
 
 interface CompletedJob {
@@ -28,6 +29,7 @@ interface CompletedJob {
   completedAt: Date;
   originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports';
   progressMessage?: string;
+  userQuery?: string;
 }
 
 interface PersistentNotificationContextType {
@@ -144,6 +146,17 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             return typeMap[payload.type] || payload.type;
           };
           
+          const extractUserQuery = (job: any): string | undefined => {
+            const payload = job.request_payload;
+            if (!payload) return undefined;
+            
+            return payload.userQuery || 
+                   payload.query || 
+                   payload.question || 
+                   payload.analysis?.query ||
+                   undefined;
+          };
+          
           const activeJob: ActiveJob = {
             id: newJob.id,
             type: extractFeature(newJob),
@@ -151,7 +164,8 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             instrument: extractInstrument(newJob),
             status: 'pending',
             createdAt: new Date(),
-            originatingFeature: mapFeatureToOriginatingFeature(extractFeature(newJob))
+            originatingFeature: mapFeatureToOriginatingFeature(extractFeature(newJob)),
+            userQuery: extractUserQuery(newJob)
           };
 
           setActiveJobs(prev => {
@@ -236,6 +250,17 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               return typeMap[payload.type] || payload.type;
             };
             
+            const extractUserQuery = (job: any): string | undefined => {
+              const payload = job.request_payload;
+              if (!payload) return undefined;
+              
+              return payload.userQuery || 
+                     payload.query || 
+                     payload.question || 
+                     payload.analysis?.query ||
+                     undefined;
+            };
+            
             setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
             
             const completedJob: CompletedJob = {
@@ -245,7 +270,8 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               instrument: extractInstrument(updatedJob),
               resultData: updatedJob.response_payload,
               completedAt: new Date(),
-              originatingFeature: mapFeatureToOriginatingFeature(extractFeature(updatedJob))
+              originatingFeature: mapFeatureToOriginatingFeature(extractFeature(updatedJob)),
+              userQuery: extractUserQuery(updatedJob)
             };
 
             // Debit credits on successful completion
