@@ -60,9 +60,13 @@ export function AssetSearchBar({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Display selected asset or search term
+  const displayValue = isSearchMode ? searchTerm : (selectedAsset?.symbol || "");
 
   // Filter from hardcoded list instead of Supabase
   useEffect(() => {
@@ -114,6 +118,24 @@ export function AssetSearchBar({
     setSearchTerm("");
     setShowDropdown(false);
     setSelectedIndex(-1);
+    setIsSearchMode(false);
+  };
+
+  const handleClearSelection = () => {
+    onAssetSelect({
+      id: 0,
+      symbol: "",
+      name: null,
+      sector: null,
+      industry: null,
+      country: null,
+      market_cap: null,
+      currency: null,
+      exchange: null
+    });
+    setSearchTerm("");
+    setIsSearchMode(true);
+    inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -162,20 +184,49 @@ export function AssetSearchBar({
     <div className={cn("relative", className)}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+        
+        {/* Input avec affichage de la sélection */}
         <input
           ref={inputRef}
           type="text"
-          placeholder={placeholder}
-          value={searchTerm}
+          placeholder={selectedAsset?.symbol ? "" : placeholder}
+          value={displayValue}
           onChange={(e) => {
             setSearchTerm(e.target.value);
             setShowDropdown(e.target.value.trim().length >= 2);
             setSelectedIndex(-1);
+            setIsSearchMode(true);
           }}
           onKeyDown={handleKeyDown}
-          onFocus={() => searchTerm.trim().length >= 2 && setShowDropdown(true)}
-          className="w-full pl-10 pr-4 py-3 bg-input/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth"
+          onFocus={() => {
+            if (selectedAsset?.symbol && !isSearchMode) {
+              setIsSearchMode(true);
+              setSearchTerm("");
+            } else if (searchTerm.trim().length >= 2) {
+              setShowDropdown(true);
+            }
+          }}
+          className={cn(
+            "w-full pl-10 py-3 bg-input/50 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth",
+            selectedAsset?.symbol && !isSearchMode ? "pr-24" : "pr-4"
+          )}
         />
+
+        {/* Badge de sélection visible */}
+        {selectedAsset?.symbol && !isSearchMode && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+            <Badge variant="default" className="font-semibold">
+              {selectedAsset.symbol}
+            </Badge>
+            <button
+              onClick={handleClearSelection}
+              className="h-5 w-5 rounded-full bg-muted hover:bg-destructive/20 flex items-center justify-center transition-colors"
+              type="button"
+            >
+              <span className="text-xs">✕</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Dropdown avec suggestions */}
