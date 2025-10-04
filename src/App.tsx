@@ -42,6 +42,7 @@ import TestWebhook from "./pages/TestWebhook";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+// Force rebuild after PersistentNotificationProvider interface update
 
 const App = () => {
   return (
