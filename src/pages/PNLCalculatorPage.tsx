@@ -67,45 +67,51 @@ export default function PNLCalculatorPage() {
       <div className="flex h-full relative">
         {/* Main Content */}
         <div className={cn('flex-1 transition-all duration-300', isCoPilotExpanded ? 'md:mr-[33.333%]' : 'mr-0')}>
-          <div className="container-wrapper space-y-6 flex flex-col items-center justify-center min-h-screen py-8">
-            {/* Page Header */}
-            <header className="space-y-4 w-full max-w-4xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Calculator className="h-6 w-6 text-primary" />
+          <div className="container-wrapper space-y-4 sm:space-y-6 flex flex-col items-center justify-center min-h-screen py-4 sm:py-8 px-4">
+            {/* Page Header - PATCH: Improved mobile responsive */}
+            <header className="space-y-3 sm:space-y-4 w-full max-w-4xl">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                  <Calculator className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
-                <div>
-                  <h1 className="text-3xl font-bold">Risk Management & Portfolio Analysis</h1>
-                  <p className="text-muted-foreground">
+                <div className="flex-1">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Risk Management & Portfolio Analysis</h1>
+                  <p className="text-sm sm:text-base text-muted-foreground mt-1">
                     Calculate position size, analyze your portfolio, and get AI-powered insights
                   </p>
                 </div>
               </div>
               
-              {/* Portfolio Selector */}
-              <div className="flex items-center justify-between p-4 bg-card border rounded-lg">
-                <div>
-                  <h3 className="font-medium">Select Portfolio</h3>
-                  <p className="text-sm text-muted-foreground">
+              {/* Portfolio Selector - PATCH: Mobile optimized */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-card border rounded-lg">
+                <div className="flex-1">
+                  <h3 className="font-medium text-sm sm:text-base">Select Portfolio</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                     Choose a portfolio to analyze or use the demo data
                   </p>
                 </div>
-                <PortfolioSelector
-                  selectedId={selectedPortfolioId}
-                  onSelect={setSelectedPortfolioId}
-                />
+                <div className="w-full sm:w-auto">
+                  <PortfolioSelector
+                    selectedId={selectedPortfolioId}
+                    onSelect={setSelectedPortfolioId}
+                  />
+                </div>
               </div>
             </header>
 
-            {/* Tabs: Calculator vs Portfolio Analysis */}
-            <Tabs defaultValue="calculator" className="space-y-6 w-full max-w-4xl">
-              <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-                <TabsTrigger value="calculator">PNL Calculator</TabsTrigger>
-                <TabsTrigger value="portfolio">Portfolio Analysis</TabsTrigger>
+            {/* Tabs: Calculator vs Portfolio Analysis - PATCH: Mobile optimized */}
+            <Tabs defaultValue="calculator" className="space-y-4 sm:space-y-6 w-full max-w-4xl">
+              <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 h-auto">
+                <TabsTrigger value="calculator" className="text-xs sm:text-sm py-2 sm:py-2.5">
+                  PNL Calculator
+                </TabsTrigger>
+                <TabsTrigger value="portfolio" className="text-xs sm:text-sm py-2 sm:py-2.5">
+                  Portfolio Analysis
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="calculator" className="space-y-6">
-                {/* Calculator Component */}
+              <TabsContent value="calculator" className="space-y-4 sm:space-y-6">
+                {/* Calculator Component - PATCH: Full width on mobile */}
                 <div className="w-full max-w-2xl mx-auto">
                   <PNLCalculator defaultInstrument="EUR/USD" showInstrumentPicker={true} />
                 </div>

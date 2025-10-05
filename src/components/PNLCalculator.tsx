@@ -226,19 +226,19 @@ export default function PNLCalculator({
           </div>
         )}
 
-        {/* Current Price Display */}
+        {/* Current Price Display - PATCH: Mobile optimized */}
         {currentPrice && (
-          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-            <span className="text-sm text-muted-foreground">Current Price</span>
-            <span className="font-mono text-lg font-semibold">{currentPrice.toFixed(5)}</span>
+          <div className="flex items-center justify-between p-2.5 sm:p-3 bg-muted/30 rounded-lg">
+            <span className="text-xs sm:text-sm text-muted-foreground">Current Price</span>
+            <span className="font-mono text-base sm:text-lg font-semibold">{currentPrice.toFixed(5)}</span>
           </div>
         )}
 
-        {/* Position Size */}
+        {/* Position Size - PATCH: Mobile optimized */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Position Size (lots)</Label>
-            <span className="text-sm font-mono">{positionSize.toFixed(2)}</span>
+            <Label className="text-xs sm:text-sm">Position Size (lots)</Label>
+            <span className="text-xs sm:text-sm font-mono">{positionSize.toFixed(2)}</span>
           </div>
           <Slider
             value={[positionSize]}
@@ -246,14 +246,15 @@ export default function PNLCalculator({
             min={0.01}
             max={10}
             step={0.01}
+            className="touch-manipulation"
           />
         </div>
 
-        {/* Leverage */}
+        {/* Leverage - PATCH: Mobile optimized */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Leverage</Label>
-            <span className="text-sm font-mono">{leverage}x</span>
+            <Label className="text-xs sm:text-sm">Leverage</Label>
+            <span className="text-xs sm:text-sm font-mono">{leverage}x</span>
           </div>
           <Slider
             value={[leverage]}
@@ -261,65 +262,66 @@ export default function PNLCalculator({
             min={1}
             max={500}
             step={1}
+            className="touch-manipulation"
           />
         </div>
 
-        {/* Price Change Input */}
+        {/* Price Change Input - PATCH: Mobile optimized */}
         <div className="space-y-2">
-          <Label>Price Change ({isFX ? 'pips' : 'points'})</Label>
+          <Label className="text-xs sm:text-sm">Price Change ({isFX ? 'pips' : 'points'})</Label>
           <Input
             type="number"
             value={priceChange}
             onChange={(e) => setPriceChange(parseFloat(e.target.value) || 0)}
             placeholder="Enter price change"
-            className="font-mono"
+            className="font-mono text-sm sm:text-base"
           />
         </div>
 
-        {/* PNL Results */}
-        <div className="space-y-3 p-4 bg-muted/20 rounded-lg border border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Projected PNL</span>
-            <div className="flex items-center gap-2">
+        {/* PNL Results - PATCH: Mobile optimized */}
+        <div className="space-y-3 p-3 sm:p-4 bg-muted/20 rounded-lg border border-border">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs sm:text-sm text-muted-foreground">Projected PNL</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {pnl >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-success" />
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-success shrink-0" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-danger" />
+                <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-danger shrink-0" />
               )}
-              <span className={`font-mono text-lg font-bold ${pnl >= 0 ? 'text-success' : 'text-danger'}`}>
+              <span className={`font-mono text-base sm:text-lg font-bold ${pnl >= 0 ? 'text-success' : 'text-danger'}`}>
                 ${pnl.toFixed(2)}
               </span>
             </div>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">PNL %</span>
-            <span className={`font-mono font-semibold ${pnlPercent >= 0 ? 'text-success' : 'text-danger'}`}>
+            <span className="text-xs sm:text-sm text-muted-foreground">PNL %</span>
+            <span className={`font-mono text-sm sm:text-base font-semibold ${pnlPercent >= 0 ? 'text-success' : 'text-danger'}`}>
               {pnlPercent.toFixed(2)}%
             </span>
           </div>
         </div>
 
-        {/* TP/SL Projections */}
+        {/* TP/SL Projections - PATCH: Mobile optimized */}
         {projections.length > 0 && (
           <div className="space-y-2">
-            <Label>Trade Setup Projections</Label>
+            <Label className="text-xs sm:text-sm">Trade Setup Projections</Label>
             <div className="space-y-2">
               {projections.map((proj, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-muted/10 rounded-lg border border-border/50"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2.5 sm:p-3 bg-muted/10 rounded-lg border border-border/50"
                 >
-                  <div className="flex items-center gap-2">
-                    <Badge variant={proj.label.includes('SL') ? 'destructive' : 'default'}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={proj.label.includes('SL') ? 'destructive' : 'default'} className="text-xs">
                       {proj.label}
                     </Badge>
-                    <span className="text-sm font-mono text-muted-foreground">
+                    <span className="text-xs sm:text-sm font-mono text-muted-foreground">
                       @ {proj.level.toFixed(5)}
                     </span>
                   </div>
-                  <div className="text-right">
-                    <div className={`font-mono font-semibold ${proj.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
+                  <div className="flex items-center justify-between sm:justify-end sm:text-right gap-3">
+                    <div className={`font-mono text-sm sm:text-base font-semibold ${proj.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
                       ${proj.pnl.toFixed(2)}
                     </div>
                     <div className="text-xs text-muted-foreground">

@@ -231,6 +231,10 @@ export function BrokersManagement() {
     ? brokers 
     : brokers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  // PATCH: Calculer le total des revenues estimés
+  const totalEstimatedRevenue = brokers.reduce((sum, broker) => sum + (broker.estimated_revenue || 0), 0);
+  const totalUsers = brokers.reduce((sum, broker) => sum + (broker.user_count || 0), 0);
+
   if (loading) {
     return (
       <Card className="rounded-2xl shadow-sm border">
@@ -343,6 +347,38 @@ export function BrokersManagement() {
           </Dialog>
         </div>
       </CardHeader>
+      
+      {/* PATCH: Total Revenue Summary - Only for super users */}
+      {isSuperUser && brokers.length > 0 && (
+        <div className="px-6 pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total Users</p>
+                  <p className="text-2xl font-bold text-foreground">{totalUsers}</p>
+                </div>
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Building2 className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg border border-green-500/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total Est. Revenue</p>
+                  <p className="text-2xl font-bold text-green-600">${totalEstimatedRevenue.toFixed(2)}</p>
+                </div>
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <CardContent className="p-6 pt-0">
         {brokers.length === 0 ? (
           <div className="text-center py-8">
