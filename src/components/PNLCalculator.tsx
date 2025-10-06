@@ -57,10 +57,21 @@ export default function PNLCalculator({
     return price.toFixed(5);
   };
 
-  // Helper to map GOLD to XAU/USD for price fetching
+  // Helper to normalize instrument symbols for price fetching
   const mapInstrumentForPrice = (inst: string): string => {
     const upper = inst.toUpperCase();
+    
+    // Handle GOLD variations
     if (upper.includes('GOLD') || upper === 'XAUUSD') return 'XAU/USD';
+    
+    // Normalize crypto symbols: convert dashes to slashes (XLM-USD -> XLM/USD)
+    if (inst.includes('-')) {
+      const parts = inst.split('-');
+      if (parts.length === 2) {
+        return `${parts[0].toUpperCase()}/${parts[1].toUpperCase()}`;
+      }
+    }
+    
     return inst;
   };
 
