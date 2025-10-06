@@ -70,7 +70,7 @@ export default function Auth() {
     };
 
     loadBrokers();
-  }, []);
+  }, [fetchActiveBrokers]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();

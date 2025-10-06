@@ -78,9 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(session);
             setUser(session.user);
             previousSession = session;
-          } else {
-            // On transient null session, verify before clearing user
-            console.log('[Auth] Null session received, verifying...');
+        } else {
+          // On transient null session, verify before clearing user
+          console.log('[Auth] Null session received, verifying...');
+          
+          // CRITICAL: Defer Supabase call with setTimeout to avoid blocking the auth callback
+          setTimeout(async () => {
             const { data: { session: current } } = await supabase.auth.getSession();
             if (current) {
               console.log('[Auth] Verified session exists, restoring');
@@ -89,9 +92,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               previousSession = current;
             } else {
               console.log('[Auth] No session found after verification');
+              // Clean up invalid session
+              setSession(null);
+              setUser(null);
+              previousSession = null;
             }
-            // Avoid flipping to null during token refresh
-          }
+          }, 0);
+        }
         }, 200); // 200ms debounce
       }
     );
