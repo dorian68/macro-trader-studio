@@ -274,14 +274,6 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               userQuery: extractUserQuery(updatedJob)
             };
 
-            // Debit credits on successful completion
-            const creditType = getCreditTypeForFeature(updatedJob.feature || '');
-            decrementCredit(creditType).then(debited => {
-              if (debited) {
-                console.log('✅ [PersistentNotifications] Credit debited on completion:', creditType);
-              }
-            });
-
             // Add flash message for completion
             addFlashMessage({
               type: 'success',
