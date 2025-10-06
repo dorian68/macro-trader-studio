@@ -60,7 +60,7 @@ export default function Layout({
                 <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
               </div>
               <div className="hidden xs:flex flex-col items-center shrink-0">
-                <img src="/lovable-uploads/Only_text_no_BG_2.png" alt="alphaLens.ai" className="h-5 sm:h-8 w-auto object-contain max-w-none" />
+                <img src="/lovable-uploads/Only_text_white_BG_FINAL-2.png" alt="alphaLens.ai" className="h-5 sm:h-8 w-auto object-contain max-w-none" />
                 <p className="hidden sm:block text-xs text-muted-foreground whitespace-nowrap">AI Trading Intelligence</p>
               </div>
             </button>
