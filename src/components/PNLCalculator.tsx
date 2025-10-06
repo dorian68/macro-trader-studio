@@ -41,7 +41,11 @@ export default function PNLCalculator({
   const [quoteToUSD, setQuoteToUSD] = useState(1);
 
   const instrumentType = getInstrumentType(instrument);
-  const isFX = instrumentType === 'fx';
+  // GOLD doit être traité comme une commodité, pas du FX
+  const isGoldInstrument = instrument.toUpperCase().includes('GOLD') || 
+                           instrument.toUpperCase() === 'XAUUSD' || 
+                           instrument.toUpperCase() === 'XAU/USD';
+  const isFX = !isGoldInstrument && instrumentType === 'fx';
 
   // Helper function to format prices with appropriate decimals
   const formatPrice = (price: number, instrument: string): string => {
