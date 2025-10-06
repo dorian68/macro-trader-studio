@@ -884,17 +884,25 @@ export default function AISetup() {
                         <div className="text-sm">
                           <strong>Instrument:</strong> {n8nResult.instrument}
                         </div>
-                        {n8nResult.setups?.[0] && <div className="space-y-2">
+                        {n8nResult.setups?.[0] && (() => {
+                          // Détection GOLD pour formatage 2 décimales
+                          const isGold = n8nResult.instrument?.toUpperCase().includes('GOLD') || 
+                                         n8nResult.instrument?.toUpperCase() === 'XAUUSD' ||
+                                         n8nResult.instrument?.toUpperCase() === 'XAU/USD';
+                          const priceDecimals = isGold ? 2 : 4;
+                          
+                          return <div className="space-y-2">
                             <div className="text-sm">
-                              <strong>Entry:</strong> {fmt(n8nResult.setups[0].entryPrice)}
+                              <strong>Entry:</strong> {fmt(n8nResult.setups[0].entryPrice, priceDecimals)}
                             </div>
                             <div className="text-sm">
-                              <strong>Stop Loss:</strong> {fmt(n8nResult.setups[0].stopLoss)}
+                              <strong>Stop Loss:</strong> {fmt(n8nResult.setups[0].stopLoss, priceDecimals)}
                             </div>
                             <div className="text-sm">
                               <strong>Direction:</strong> {n8nResult.setups[0].direction}
                             </div>
-                          </div>}
+                          </div>;
+                        })()}
                       </div> : <p className="text-sm text-muted-foreground">
                         Generate a trade setup to see levels on the chart
                       </p>}
