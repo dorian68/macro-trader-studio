@@ -146,9 +146,11 @@ function normalizeN8n(raw: any): N8nTradeResult | null {
     return null;
   }
 }
-function fmt(n?: number, dp = 4) {
+function fmt(n?: number, dp?: number) {
   if (typeof n !== 'number' || isNaN(n)) return '—';
-  return n.toFixed(dp);
+  // Pour GOLD: toujours 2 décimales par défaut, sinon 4
+  const decimals = dp ?? 4;
+  return n.toFixed(decimals);
 }
 function pct(x?: number) {
   if (typeof x !== 'number' || isNaN(x)) return '—';
@@ -913,7 +915,12 @@ export default function AISetup() {
                     </div> : null}
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {(n8nResult.setups || []).map((s, idx) => <Card key={idx} className="border">
+                  {(n8nResult.setups || []).map((s, idx) => {
+                    // Détection GOLD pour formatage 2 décimales
+                    const isGold = n8nResult.instrument?.toUpperCase().includes('GOLD') || n8nResult.instrument?.toUpperCase() === 'XAUUSD';
+                    const priceDecimals = isGold ? 2 : 4;
+                    
+                    return <Card key={idx} className="border">
                       <CardHeader>
                         <div className="flex flex-wrap items-center gap-2">
                           {s.horizon ? <Badge variant="secondary">{s.horizon}</Badge> : null}
@@ -929,16 +936,16 @@ export default function AISetup() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div>
                             <Label className="text-xs text-muted-foreground uppercase">Entry</Label>
-                            <div className="text-xl font-semibold">{fmt(s.entryPrice)}</div>
+                            <div className="text-xl font-semibold">{fmt(s.entryPrice, priceDecimals)}</div>
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground uppercase">Stop Loss</Label>
-                            <div className="text-xl font-semibold">{fmt(s.stopLoss)}</div>
+                            <div className="text-xl font-semibold">{fmt(s.stopLoss, priceDecimals)}</div>
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground uppercase">Take Profits</Label>
                             <div className="text-sm">
-                              {(s.takeProfits || []).length ? s.takeProfits.map((tp, i) => <span key={i} className="mr-2">{fmt(tp)}</span>) : '—'}
+                              {(s.takeProfits || []).length ? s.takeProfits.map((tp, i) => <span key={i} className="mr-2">{fmt(tp, priceDecimals)}</span>) : '—'}
                             </div>
                           </div>
                           <div>
@@ -951,14 +958,14 @@ export default function AISetup() {
                             <div className="p-3 rounded-lg border bg-muted/30">
                               <div className="text-xs text-muted-foreground uppercase mb-2">Supports</div>
                               <div className="flex flex-wrap gap-2">
-                                {(s.supports || []).map((sp, i) => <Badge key={i} variant="outline">{fmt(sp)}</Badge>)}
+                                {(s.supports || []).map((sp, i) => <Badge key={i} variant="outline">{fmt(sp, priceDecimals)}</Badge>)}
                                 {(!s.supports || !s.supports.length) && <span className="text-sm text-muted-foreground">—</span>}
                               </div>
                             </div>
                             <div className="p-3 rounded-lg border bg-muted/30">
                               <div className="text-xs text-muted-foreground uppercase mb-2">Resistances</div>
                               <div className="flex flex-wrap gap-2">
-                                {(s.resistances || []).map((rs, i) => <Badge key={i} variant="outline">{fmt(rs)}</Badge>)}
+                                {(s.resistances || []).map((rs, i) => <Badge key={i} variant="outline">{fmt(rs, priceDecimals)}</Badge>)}
                                 {(!s.resistances || !s.resistances.length) && <span className="text-sm text-muted-foreground">—</span>}
                               </div>
                             </div>
@@ -978,27 +985,30 @@ export default function AISetup() {
                             {s.strategyMeta.indicators.map((ind, i) => <Badge key={i} variant="outline" className="rounded-full">{ind}</Badge>)}
                           </div> : null}
                       </CardContent>
-                    </Card>)}
+                    </Card>;
+                  })}
                   
                   {/* PNL Calculator Integration */}
                   {n8nResult.setups && n8nResult.setups.length > 0 && n8nResult.setups[0] && (
                     <div className="mt-6">
-              <PNLCalculator
-                defaultInstrument={n8nResult.instrument || parameters.instrument}
-                prefilledEntry={n8nResult.setups[0].entryPrice}
-                prefilledStopLoss={n8nResult.setups[0].stopLoss}
-                prefilledTargets={n8nResult.setups[0].takeProfits || []}
-                showInstrumentPicker={false}
-                isCollapsible={true}
-                defaultExpanded={false}
-              />
+                      <PNLCalculator
+                        defaultInstrument={n8nResult.instrument || parameters.instrument}
+                        prefilledEntry={n8nResult.setups[0].entryPrice}
+                        prefilledStopLoss={n8nResult.setups[0].stopLoss}
+                        prefilledTargets={n8nResult.setups[0].takeProfits || []}
+                        showInstrumentPicker={false}
+                        isCollapsible={true}
+                        defaultExpanded={false}
+                      />
                     </div>
                   )}
 
                   {n8nResult.disclaimer ? <p className="text-xs text-muted-foreground border-t pt-4">{n8nResult.disclaimer}</p> : null}
+                </CardContent>
+              </Card>}
 
-                  {/* Structured Response Display */}
-                  {rawN8nResponse && <Card className="mt-6 border bg-muted/30">
+            {/* Structured Response Display */}
+            {rawN8nResponse && <Card className="mt-6 border bg-muted/30">
                       <Collapsible defaultOpen={false}>
                         <CardHeader>
                           <CollapsibleTrigger className="w-full">
@@ -1211,14 +1221,12 @@ export default function AISetup() {
                                   {JSON.stringify(rawN8nResponse, null, 2)}
                                 </pre>
                               </div>;
-                      }
+                       }
                     })()}
                           </CardContent>
                         </CollapsibleContent>
                       </Collapsible>
                     </Card>}
-                </CardContent>
-              </Card>}
 
             {tradeSetup && !n8nResult && <Card className="border-green-200 bg-green-50/50">
                 <CardHeader>

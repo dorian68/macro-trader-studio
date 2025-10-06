@@ -53,6 +53,13 @@ export default function PNLCalculator({
     return price.toFixed(5);
   };
 
+  // Helper to map GOLD to XAU/USD for price fetching
+  const mapInstrumentForPrice = (inst: string): string => {
+    const upper = inst.toUpperCase();
+    if (upper.includes('GOLD') || upper === 'XAUUSD') return 'XAU/USD';
+    return inst;
+  };
+
   useEffect(() => {
     fetchPrice();
   }, [instrument]);
@@ -64,7 +71,8 @@ export default function PNLCalculator({
   const fetchPrice = async () => {
     setLoading(true);
     try {
-      const price = await getInstrumentPrice(instrument);
+      const mappedInstrument = mapInstrumentForPrice(instrument);
+      const price = await getInstrumentPrice(mappedInstrument);
       setCurrentPrice(price);
     } catch (error) {
       toast({
