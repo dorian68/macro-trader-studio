@@ -43,6 +43,16 @@ export default function PNLCalculator({
   const instrumentType = getInstrumentType(instrument);
   const isFX = instrumentType === 'fx';
 
+  // Helper function to format prices with appropriate decimals
+  const formatPrice = (price: number, instrument: string): string => {
+    // GOLD uniquement : 2 décimales
+    if (instrument.toUpperCase().includes('GOLD') || instrument.toUpperCase() === 'XAUUSD') {
+      return price.toFixed(2);
+    }
+    // Tous les autres : 5 décimales (comportement actuel)
+    return price.toFixed(5);
+  };
+
   useEffect(() => {
     fetchPrice();
   }, [instrument]);
@@ -154,7 +164,7 @@ export default function PNLCalculator({
       const slChange = isFX 
         ? (prefilledStopLoss - prefilledEntry) * (isJPYPair ? 100 : 10000) // pips from entry price
         : (prefilledStopLoss - prefilledEntry); // points from entry price
-      const slPNL = calculatePNL(slChange);
+      const slPNL = calculatePNLForProjection(slChange, prefilledEntry);
       results.push({ label: 'Stop Loss', level: prefilledStopLoss, ...slPNL });
     }
 
@@ -162,7 +172,7 @@ export default function PNLCalculator({
       const tpChange = isFX
         ? (target - prefilledEntry) * (isJPYPair ? 100 : 10000) // pips from entry price
         : (target - prefilledEntry); // points from entry price
-      const tpPNL = calculatePNL(tpChange);
+      const tpPNL = calculatePNLForProjection(tpChange, prefilledEntry);
       results.push({ label: `TP${idx + 1}`, level: target, ...tpPNL });
     });
 
@@ -230,7 +240,7 @@ export default function PNLCalculator({
         {currentPrice && (
           <div className="flex items-center justify-between p-2.5 sm:p-3 bg-muted/30 rounded-lg">
             <span className="text-xs sm:text-sm text-muted-foreground">Current Price</span>
-            <span className="font-mono text-base sm:text-lg font-semibold">{currentPrice.toFixed(5)}</span>
+            <span className="font-mono text-base sm:text-lg font-semibold">{formatPrice(currentPrice, instrument)}</span>
           </div>
         )}
 
@@ -317,7 +327,7 @@ export default function PNLCalculator({
                       {proj.label}
                     </Badge>
                     <span className="text-xs sm:text-sm font-mono text-muted-foreground">
-                      @ {proj.level.toFixed(5)}
+                      @ {formatPrice(proj.level, instrument)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between sm:justify-end sm:text-right gap-3">
@@ -359,7 +369,7 @@ export default function PNLCalculator({
             {currentPrice && (
               <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                 <span className="text-sm text-muted-foreground">Current Price</span>
-                <span className="font-mono text-lg font-semibold">{currentPrice.toFixed(5)}</span>
+                <span className="font-mono text-lg font-semibold">{formatPrice(currentPrice, instrument)}</span>
               </div>
             )}
 
@@ -439,7 +449,7 @@ export default function PNLCalculator({
                           {proj.label}
                         </Badge>
                         <span className="text-sm font-mono text-muted-foreground">
-                          @ {proj.level.toFixed(5)}
+                          @ {formatPrice(proj.level, instrument)}
                         </span>
                       </div>
                       <div className="text-right">
