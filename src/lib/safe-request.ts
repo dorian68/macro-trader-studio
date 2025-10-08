@@ -37,11 +37,6 @@ export function safeEncodeURIComponent(value: string | number | boolean): string
   return encodeURIComponent(String(value));
 }
 
-// Constants for n8n proxy
-const N8N_WEBHOOK_URL = 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1';
-const SUPABASE_PROJECT_URL = 'https://jqrlegdulnnrpiixiecf.supabase.co';
-const N8N_PROXY_URL = `${SUPABASE_PROJECT_URL}/functions/v1/n8n-proxy`;
-
 /**
  * Safe fetch wrapper for POST requests with JSON validation
  */
@@ -52,14 +47,8 @@ export async function safePostRequest(url: string, payload: any, headers: Record
     throw new Error('Invalid JSON payload');
   }
 
-  // Redirect n8n webhook calls to our CORS proxy
-  if (url === N8N_WEBHOOK_URL) {
-    console.log('[safe-request] Redirecting n8n call to CORS proxy');
-    url = N8N_PROXY_URL;
-  }
-
   // Check if this is an n8n endpoint that needs extended timeout
-  const isN8nEndpoint = url.includes('/webhook/') || url.includes('/n8n/') || url.includes('/api/flow/') || url.includes('n8n.cloud') || url.includes('/n8n-proxy');
+  const isN8nEndpoint = url.includes('/webhook/') || url.includes('/n8n/') || url.includes('/api/flow/') || url.includes('n8n.cloud');
   
   if (isN8nEndpoint) {
     const controller = new AbortController();
