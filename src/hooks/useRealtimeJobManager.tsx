@@ -220,7 +220,14 @@ export function useRealtimeJobManager() {
 
     setActiveJobs(prev => [...prev, newJob]);
 
+    // 🚨 PATCH: Dispatch immediate event to guarantee toast display
+    // This bypasses Realtime dependency and ensures instant feedback
+    window.dispatchEvent(new CustomEvent('job-created-immediate', {
+      detail: { job: newJob }
+    }));
+
     console.log(`✅ [RealtimeJobManager] Job created: ${jobId}, feature: ${jobFeature}`);
+    console.log(`🚨 [RealtimeJobManager] Immediate display event dispatched for job: ${jobId}`);
 
     return jobId;
   }, [user?.id]);
