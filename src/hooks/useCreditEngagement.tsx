@@ -40,14 +40,12 @@ export function useCreditEngagement() {
 
       const totalCredits = credits?.[FEATURE_TO_CREDIT_COLUMN[feature]] || 0;
 
-      // 2. Get engaged credits for this feature (only recent ones - last 10 minutes)
-      const TEN_MINUTES_AGO = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      // 2. Get engaged credits for this feature
       const { data: engaged, error: engagedError } = await supabase
         .from('credits_engaged')
         .select('id')
         .eq('user_id', user.id)
-        .eq('feature', feature)
-        .gte('engaged_at', TEN_MINUTES_AGO); // 🔧 PATCH: Ignore stale engaged credits
+        .eq('feature', feature);
 
       if (engagedError) {
         console.error('[CreditEngagement] Error fetching engaged credits:', engagedError);

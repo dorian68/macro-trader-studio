@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { subscribeToPostgresChanges, initializeRealtimeAuthManager, unsubscribeChannel } from "@/utils/supabaseRealtimeManager";
-// 🔧 PATCH: Removed useCreditEngagement import - cleanup handled by DB trigger only
+import { useCreditEngagement } from "@/hooks/useCreditEngagement";
 
 const { useState, useCallback, useEffect, useRef } = React;
 
@@ -52,7 +52,7 @@ const mapTypeToFeature = (type: string): string => {
 export function useRealtimeJobManager() {
   const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
   const { user } = useAuth();
-  // 🔧 PATCH: Removed useCreditEngagement - cleanup handled by DB trigger only
+  const { releaseCredit } = useCreditEngagement();
 
   // Initialize realtime auth manager once
   useEffect(() => {
@@ -158,8 +158,15 @@ export function useRealtimeJobManager() {
             });
           }
         } finally {
-          // 🔧 PATCH: Credit cleanup handled by DB trigger only (auto_manage_credits)
-          // Removed redundant frontend cleanup to eliminate race conditions
+          // ALWAYS release engaged credit when job completes or errors, even if there was an error updating state
+          if (job.status === 'completed' || job.status === 'error') {
+            console.log(`[RealtimeJobManager] Job ${job.status}, releasing engaged credit for job ${job.id}`);
+            // Fire-and-forget: release credit without blocking the handler
+            releaseCredit(job.id).catch(err => {
+              console.error('[RealtimeJobManager] Error releasing credit (non-critical):', err);
+              // Don't throw - we don't want to break the realtime handler if credit release fails
+            });
+          }
         }
       }
     );
@@ -212,11 +219,6 @@ export function useRealtimeJobManager() {
     };
 
     setActiveJobs(prev => [...prev, newJob]);
-
-    // 🔥 LAYER 1: Dispatch immediate event to guarantee toast display
-    window.dispatchEvent(new CustomEvent('job-created-immediate', {
-      detail: { job: newJob }
-    }));
 
     console.log(`✅ [RealtimeJobManager] Job created: ${jobId}, feature: ${jobFeature}`);
 

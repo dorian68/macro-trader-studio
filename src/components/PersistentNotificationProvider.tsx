@@ -105,49 +105,6 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
     }
   };
 
-  // 🔥 LAYER 2: Emergency listener for immediate job creation events
-  useEffect(() => {
-    const handleImmediateJobCreation = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { job } = customEvent.detail;
-      
-      console.log('🚨 [PersistentNotifications] Immediate job creation event received:', job);
-      
-      setActiveJobs(prev => {
-        // Protection contre les doublons
-        const exists = prev.some(j => j.id === job.id);
-        if (exists) {
-          console.log('🚨 [PersistentNotifications] Job already exists, skipping duplicate');
-          return prev;
-        }
-        
-        const immediateJob: ActiveJob = {
-          id: job.id,
-          type: job.type,
-          feature: job.feature,
-          instrument: job.instrument,
-          status: 'pending',
-          createdAt: job.startTime || new Date(),
-          originatingFeature: mapFeatureToOriginatingFeature(job.feature),
-          userQuery: job.userQuery
-        };
-        
-        console.log('🚨 [PersistentNotifications] Adding immediate job to active list:', immediateJob);
-        
-        // Activer le simulateur de progression immédiatement
-        mockSimulatorsActive.current.set(job.id, true);
-        
-        return [...prev, immediateJob];
-      });
-    };
-    
-    window.addEventListener('job-created-immediate', handleImmediateJobCreation);
-    
-    return () => {
-      window.removeEventListener('job-created-immediate', handleImmediateJobCreation);
-    };
-  }, []);
-
   useEffect(() => {
     if (!user) return;
 
