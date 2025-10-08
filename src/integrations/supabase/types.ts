@@ -887,10 +887,6 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
-      cleanup_stale_engaged_credits: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
       decrement_credit: {
         Args: { credit_type: string; target_user_id: string }
         Returns: boolean
