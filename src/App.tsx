@@ -33,6 +33,7 @@ import Contact from "./pages/Contact";
 import Pricing from "./pages/Pricing";
 import Credits from "./pages/Credits";
 import AlphaLensLabs from "./pages/AlphaLensLabs";
+import PortfolioAnalytics from "./pages/PortfolioAnalytics";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Documentation from "./pages/Documentation";
@@ -84,6 +85,7 @@ const App = () => {
                     <Route path="/help-center" element={<HelpCenter />} />
                     <Route path="/api" element={<API />} />
                     <Route path="/alphalens-labs" element={<AlphaLensLabs />} />
+                    <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
                     <Route path="/product" element={<ProductPresentation />} />
                     <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />
                     <Route path="*" element={<NotFound />} />

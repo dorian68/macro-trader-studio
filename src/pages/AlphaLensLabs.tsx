@@ -1,73 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import PNLCalculator from '@/components/PNLCalculator';
-import PortfolioAnalysis from '@/components/PortfolioAnalysis';
 import AICoPilot from '@/components/AICoPilot';
-import PortfolioSelector from '@/components/PortfolioSelector';
-import { mockTrades, MockTrade } from '@/data/mockPortfolio';
-import { supabase } from '@/integrations/supabase/client';
-import { Beaker, Target, Sparkles, Globe, TrendingUp, ChevronDown } from 'lucide-react';
+import { Beaker, Target, Sparkles, Globe, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { mockTrades, MockTrade } from '@/data/mockPortfolio';
 import { cn } from '@/lib/utils';
 
 export default function AlphaLensLabs() {
+  const navigate = useNavigate();
   const [isCoPilotExpanded, setIsCoPilotExpanded] = useState(false);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
-  const [trades, setTrades] = useState<MockTrade[]>(mockTrades);
-  const [loading, setLoading] = useState(false);
-  const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
+  const [trades] = useState<MockTrade[]>(mockTrades);
 
-  useEffect(() => {
-    if (selectedPortfolioId) {
-      fetchPortfolioPositions(selectedPortfolioId);
-    } else {
-      setTrades(mockTrades);
-    }
-  }, [selectedPortfolioId]);
-
-  const fetchPortfolioPositions = async (portfolioId: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('positions')
-        .select('*')
-        .eq('portfolio_id', portfolioId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const mappedTrades: MockTrade[] = (data || []).map((position) => {
-        const pnl = position.market_value || 0;
-        const entry = position.average_price || 0;
-        const exit = position.current_price || entry;
-        const direction = pnl >= 0 ? 'long' : 'short';
-
-        return {
-          id: position.id,
-          instrument: position.symbol,
-          size: position.quantity || 1,
-          direction: direction as 'long' | 'short',
-          entry,
-          exit,
-          pnl,
-          duration: '1d',
-          timestamp: new Date(position.created_at).toISOString(),
-          leverage: 1,
-        };
-      });
-
-      setTrades(mappedTrades);
-    } catch (error) {
-      console.error('Error fetching portfolio positions:', error);
-      setTrades(mockTrades);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const upcomingTools = [
     {
@@ -139,45 +85,13 @@ export default function AlphaLensLabs() {
                 </CardHeader>
                 
                 <CardContent>
-                  <Collapsible open={isPortfolioOpen} onOpenChange={setIsPortfolioOpen}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="outline" className="w-full gap-2">
-                        {isPortfolioOpen ? 'Hide Tools' : 'View Tools'}
-                        <ChevronDown className={cn('h-4 w-4 transition-transform', isPortfolioOpen && 'rotate-180')} />
-                      </Button>
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent className="space-y-4 mt-4">
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-sm font-medium">Portfolio:</span>
-                        <PortfolioSelector
-                          selectedId={selectedPortfolioId}
-                          onSelect={setSelectedPortfolioId}
-                        />
-                      </div>
-                      
-                      <Tabs defaultValue="calculator" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="calculator">PNL Calculator</TabsTrigger>
-                          <TabsTrigger value="analysis">Portfolio Analysis</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="calculator" className="space-y-4 mt-4">
-                          <PNLCalculator defaultInstrument="EUR/USD" showInstrumentPicker={true} />
-                        </TabsContent>
-
-                        <TabsContent value="analysis" className="mt-4">
-                          {loading ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              Loading portfolio data...
-                            </div>
-                          ) : (
-                            <PortfolioAnalysis trades={trades} />
-                          )}
-                        </TabsContent>
-                      </Tabs>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2"
+                    onClick={() => navigate('/portfolio-analytics')}
+                  >
+                    View Tools
+                  </Button>
                 </CardContent>
               </Card>
 
