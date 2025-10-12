@@ -15,30 +15,34 @@ export default function AlphaLensLabs() {
   const [trades] = useState<MockTrade[]>(mockTrades);
 
 
-  const upcomingTools = [
+  const labsTools = [
     {
-      id: 'risk-profiler',
-      name: 'Smart Risk Profiler',
-      description: 'AI-powered portfolio risk assessment with real-time adjustments',
-      icon: Target,
-      status: 'Coming Soon',
-      estimatedLaunch: 'Q1 2025'
+      id: 'portfolio-analytics',
+      name: 'Portfolio Analytics Suite',
+      description: 'Comprehensive portfolio analysis and PNL calculation tools with AI-powered insights',
+      icon: TrendingUp,
+      status: 'active' as const,
+      badge: '🧠 AI-Powered',
+      action: () => navigate('/portfolio-analytics')
     },
     {
-      id: 'alpha-generator',
-      name: 'Alpha Generator',
-      description: 'Machine learning models to identify trading opportunities',
-      icon: Sparkles,
-      status: 'Beta 2025',
-      estimatedLaunch: 'Q2 2025'
-    },
-    {
-      id: 'macro-simulator',
-      name: 'Macro Scenario Simulator',
-      description: 'Test portfolio resilience under various economic scenarios',
+      id: 'alpha-scenario-simulator',
+      name: 'Alpha Scenario Simulator',
+      description: 'Simulate macroeconomic scenarios such as rate hikes, recessions, or oil shocks, and visualize their impact on your portfolio. Powered by AI-driven sensitivity analysis.',
       icon: Globe,
-      status: 'Under Development',
-      estimatedLaunch: 'Q3 2025'
+      status: 'coming-soon' as const,
+      badge: '🧠 AI-Powered',
+      action: () => navigate(`/coming-soon?tool=${encodeURIComponent('Alpha Scenario Simulator')}&description=${encodeURIComponent('Simulate macroeconomic scenarios such as rate hikes, recessions, or oil shocks, and visualize their impact on your portfolio. Powered by AI-driven sensitivity analysis.')}`)
+    },
+    {
+      id: 'alphalens-backtester',
+      name: 'AlphaLens Backtester',
+      description: 'Backtest AI-generated trade setups across any chosen period. Analyze all AlphaLens trade ideas historically produced across the entire user base, or focus on your own setups.',
+      icon: Sparkles,
+      status: 'coming-soon' as const,
+      badge: '🧠 AI-Powered',
+      modes: ['My Trade Setups', 'Global AlphaLens Data'],
+      action: () => navigate(`/coming-soon?tool=${encodeURIComponent('AlphaLens Backtester')}&description=${encodeURIComponent('Backtest AI-generated trade setups across any chosen period. Analyze all AlphaLens trade ideas historically produced across the entire user base, or focus on your own setups.')}`)
     }
   ];
 
@@ -60,7 +64,7 @@ export default function AlphaLensLabs() {
                     AlphaLens Labs
                   </h1>
                   <p className="text-sm sm:text-base text-muted-foreground mt-2">
-                    Welcome to AlphaLens Labs — your AI workspace for market intelligence, portfolio analytics, and experimental tools.
+                    Experiment, Analyze, and Evolve Your Market Intelligence — Your AI workspace for portfolio analytics, scenario simulation, and backtesting.
                   </p>
                 </div>
               </div>
@@ -68,55 +72,55 @@ export default function AlphaLensLabs() {
 
             {/* AI Tools Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-              
-              {/* Active Tool 1: Portfolio Analytics Suite */}
-              <Card className="group hover:shadow-lg transition-all">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-primary" />
-                      Portfolio Analytics Suite
-                    </CardTitle>
-                    <Badge variant="default">Active</Badge>
-                  </div>
-                  <CardDescription>
-                    Comprehensive portfolio analysis and PNL calculation tools with AI-powered insights
-                  </CardDescription>
-                </CardHeader>
+              {labsTools.map((tool) => {
+                const isActive = tool.status === 'active';
                 
-                <CardContent>
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2"
-                    onClick={() => navigate('/portfolio-analytics')}
+                return (
+                  <Card 
+                    key={tool.id} 
+                    className={`group transition-all ${isActive ? 'hover:shadow-lg cursor-pointer' : 'hover:shadow-md cursor-pointer opacity-90 hover:opacity-100'}`}
+                    onClick={tool.action}
                   >
-                    View Tools
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Upcoming Tools */}
-              {upcomingTools.map((tool) => (
-                <Card 
-                  key={tool.id} 
-                  className="relative overflow-hidden opacity-60 cursor-not-allowed"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-muted/50 to-transparent pointer-events-none" />
-                  <CardHeader>
-                    <Badge variant="outline" className="w-fit mb-2">{tool.status}</Badge>
-                    <CardTitle className="flex items-center gap-2 text-muted-foreground">
-                      <tool.icon className="h-5 w-5" />
-                      {tool.name}
-                    </CardTitle>
-                    <CardDescription>{tool.description}</CardDescription>
-                  </CardHeader>
-                  <CardFooter>
-                    <p className="text-xs text-muted-foreground">
-                      Estimated: {tool.estimatedLaunch}
-                    </p>
-                  </CardFooter>
-                </Card>
-              ))}
+                    <CardHeader>
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant={isActive ? "default" : "secondary"}>
+                          {tool.badge}
+                        </Badge>
+                        {isActive && <Badge variant="outline">Active</Badge>}
+                      </div>
+                      <CardTitle className="flex items-center gap-2">
+                        <tool.icon className="h-5 w-5 text-primary" />
+                        {tool.name}
+                      </CardTitle>
+                      <CardDescription className="line-clamp-3">
+                        {tool.description}
+                      </CardDescription>
+                    </CardHeader>
+                    
+                    {tool.modes && (
+                      <CardContent className="pt-0">
+                        <div className="flex flex-wrap gap-2">
+                          {tool.modes.map(mode => (
+                            <Badge key={mode} variant="outline" className="text-xs">
+                              {mode}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    )}
+                    
+                    <CardFooter>
+                      <Button 
+                        variant={isActive ? "default" : "outline"} 
+                        className="w-full gap-2"
+                      >
+                        {isActive ? 'Launch Tool' : 'Coming Soon'}
+                        {!isActive && <Sparkles className="h-4 w-4" />}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -34,6 +34,7 @@ import Pricing from "./pages/Pricing";
 import Credits from "./pages/Credits";
 import AlphaLensLabs from "./pages/AlphaLensLabs";
 import PortfolioAnalytics from "./pages/PortfolioAnalytics";
+import ComingSoon from "./pages/ComingSoon";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Documentation from "./pages/Documentation";
@@ -86,6 +87,7 @@ const App = () => {
                     <Route path="/api" element={<API />} />
                     <Route path="/alphalens-labs" element={<AlphaLensLabs />} />
                     <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
+                    <Route path="/coming-soon" element={<ComingSoon />} />
                     <Route path="/product" element={<ProductPresentation />} />
                     <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />
                     <Route path="*" element={<NotFound />} />
