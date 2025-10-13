@@ -153,14 +153,13 @@ export function JobsMonitoring() {
       }
 
       // Check current user role for super_user permissions
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: userRoles } = await supabase
+        .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
 
-      const isSuperUser = profile?.role === 'super_user';
-      console.log('Current user role:', profile?.role, 'isSuperUser:', isSuperUser);
+      const isSuperUser = userRoles?.some(r => r.role === 'super_user') || false;
+      console.log('Current user roles:', userRoles, 'isSuperUser:', isSuperUser);
 
       // Build base jobs query without profile join (avoid join issues)
       let query = supabase

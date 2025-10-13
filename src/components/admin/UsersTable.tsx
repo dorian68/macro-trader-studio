@@ -31,18 +31,19 @@ import {
 import { UserActionsDialog } from "./UserActionsDialog";
 import { UserPlanDialog } from "./UserPlanDialog";
 import { formatDistanceToNow } from "date-fns";
-import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface AdminUser {
   id: string;
   user_id: string;
   broker_name: string | null;
   status: 'pending' | 'approved' | 'rejected';
-  role: 'user' | 'admin' | 'super_user';
+  role?: 'user' | 'admin' | 'super_user';
   created_at: string;
   updated_at: string;
   email?: string;
   user_plan?: string;
+  roles?: string[];
   credits?: {
     queries: number;
     ideas: number;
@@ -95,7 +96,7 @@ export function UsersTable({
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number | 'all'>(10);
-  const { isSuperUser, isAdmin } = useProfile();
+  const { isSuperUser, isAdmin } = useUserRole();
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||

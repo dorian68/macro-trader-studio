@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useProfile } from "@/hooks/useProfile";
 
 interface UserActionsDialogProps {
@@ -38,7 +39,7 @@ interface UserActionsDialogProps {
     email?: string;
     broker_name: string | null;
     status: 'pending' | 'approved' | 'rejected';
-    role: 'user' | 'admin' | 'super_user';
+    role?: 'user' | 'admin' | 'super_user';
   } | null;
   onUpdateStatus: (userId: string, status: 'pending' | 'approved' | 'rejected') => Promise<{ success: boolean }>;
   onUpdateRole: (userId: string, role: 'user' | 'admin' | 'super_user') => Promise<{ success: boolean }>;
@@ -75,14 +76,15 @@ export function UserActionsDialog({
 }: UserActionsDialogProps) {
   const [selectedStatus, setSelectedStatus] = useState<'pending' | 'approved' | 'rejected'>();
   const [selectedRole, setSelectedRole] = useState<'user' | 'admin' | 'super_user'>();
-  const { isSuperUser, profile } = useProfile();
+  const { isSuperUser } = useUserRole();
+  const { profile } = useProfile();
 
   if (!user) return null;
 
   // Check if current user is editing their own account
   const isEditingSelf = profile?.user_id === user.user_id;
   // Check if admin is trying to edit roles (only superUsers can assign superUser role)
-  const canEditRoles = isSuperUser || (profile?.role === 'admin' && !isEditingSelf);
+  const canEditRoles = isSuperUser || (!isEditingSelf);
   // Available roles based on permissions
   const availableRoles = isSuperUser 
     ? ['user', 'admin', 'super_user'] 
@@ -178,7 +180,7 @@ export function UserActionsDialog({
           {/* Role Update */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Update Role</label>
-            {isEditingSelf && profile?.role === 'admin' ? (
+            {isEditingSelf ? (
               <div className="p-3 border border-muted rounded-md bg-muted/20">
                 <p className="text-sm text-muted-foreground">
                   You cannot modify your own role. Contact a Super User to change your role.

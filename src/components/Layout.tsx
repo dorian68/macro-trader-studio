@@ -8,7 +8,7 @@ import { TrendingUp, Menu, X, ChevronRight, ChevronDown, Activity, Zap, User, Lo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
 import { useResultNotifications } from "@/hooks/useResultNotifications";
 import { DiscreetJobStatus } from "./DiscreetJobStatus";
@@ -40,7 +40,7 @@ export default function Layout({
   const {
     isAdmin,
     isSuperUser
-  } = useProfile();
+  } = useUserRole();
   const navigate = useNavigate();
 
   // Result notification system

@@ -37,6 +37,7 @@ import {
   Upload
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useProfile } from "@/hooks/useProfile";
 import { UsersTable } from "@/components/admin/UsersTable";
 import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
@@ -58,10 +59,11 @@ interface AdminUser {
   broker_name: string | null;
   broker_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
-  role: 'user' | 'admin' | 'super_user';
+  role?: 'user' | 'admin' | 'super_user'; // Optional, derived from roles array
   created_at: string;
   updated_at: string;
   email?: string;
+  roles?: string[]; // New: roles from user_roles table
 }
 
 interface UserCostStats {
@@ -95,9 +97,10 @@ export default function Admin() {
   const [showStripeModeDialog, setShowStripeModeDialog] = useState(false);
   const [pendingStripeMode, setPendingStripeMode] = useState<'test' | 'live'>('test');
   const { toast } = useToast();
-  const { profile, isSuperUser, isAdmin } = useProfile();
+  const { isSuperUser, isAdmin } = useUserRole();
+  const { profile } = useProfile();
   const { 
-    fetchUsers, 
+    fetchUsers,
     updateUserStatus, 
     updateUserRole,
     deleteUser,
@@ -180,8 +183,13 @@ export default function Admin() {
           const userCredits = creditsData?.find(c => c.user_id === user.user_id);
           const userProfile = profilesData?.find(p => p.user_id === user.user_id);
           
+          // Derive role from roles array for backward compatibility
+          const primaryRole = user.roles?.includes('super_user') ? 'super_user' as const :
+                             user.roles?.includes('admin') ? 'admin' as const : 'user' as const;
+          
           return {
             ...user,
+            role: primaryRole,
             user_plan: userProfile?.user_plan,
             credits: userCredits ? {
               queries: userCredits.credits_queries_remaining,

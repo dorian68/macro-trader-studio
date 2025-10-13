@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, Loader2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useProfile } from '@/hooks/useProfile';
 import { useBrokerActions } from '@/hooks/useBrokerActions';
 
@@ -23,7 +24,8 @@ export function CreateUserDialog({ onCreateUser, loading, onSuccess }: CreateUse
   const [selectedBrokerId, setSelectedBrokerId] = useState('');
   const [brokers, setBrokers] = useState<any[]>([]);
   const { toast } = useToast();
-  const { isSuperUser, profile } = useProfile();
+  const { isSuperUser } = useUserRole();
+  const { profile } = useProfile();
   const { fetchBrokers } = useBrokerActions();
 
   useEffect(() => {

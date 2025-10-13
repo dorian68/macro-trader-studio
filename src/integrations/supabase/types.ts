@@ -708,7 +708,6 @@ export type Database = {
           broker_name: string | null
           created_at: string
           id: string
-          role: string
           status: string
           updated_at: string
           user_id: string
@@ -719,7 +718,6 @@ export type Database = {
           broker_name?: string | null
           created_at?: string
           id?: string
-          role?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -730,7 +728,6 @@ export type Database = {
           broker_name?: string | null
           created_at?: string
           id?: string
-          role?: string
           status?: string
           updated_at?: string
           user_id?: string
@@ -963,7 +960,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
+        Returns: unknown
       }
       search_chunks_cosine: {
         Args: { match_count: number; query_embedding: string }

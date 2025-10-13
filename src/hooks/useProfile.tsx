@@ -10,7 +10,6 @@ interface Profile {
   broker_name: string | null;
   broker_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
-  role: 'user' | 'admin' | 'super_user';
   created_at: string;
   updated_at: string;
 }
@@ -108,7 +107,5 @@ export function useProfile() {
     isApproved: profile?.status === 'approved',
     isPending: profile?.status === 'pending',
     isRejected: profile?.status === 'rejected',
-    isAdmin: profile?.role === 'admin' || profile?.role === 'super_user',
-    isSuperUser: profile?.role === 'super_user'
   };
 }

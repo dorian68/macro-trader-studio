@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface UserCreditData {
   user_id: string;
@@ -27,7 +27,7 @@ export function UserCreditsOverview() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
-  const { isSuperUser, isAdmin } = useProfile();
+  const { isSuperUser, isAdmin } = useUserRole();
 
   const loadUserCredits = async () => {
     if (!isSuperUser && !isAdmin) return;

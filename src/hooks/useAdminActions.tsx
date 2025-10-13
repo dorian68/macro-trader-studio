@@ -8,10 +8,10 @@ interface AdminUser {
   broker_name: string | null;
   broker_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
-  role: 'user' | 'admin' | 'super_user';
   created_at: string;
   updated_at: string;
   email?: string;
+  roles?: string[]; // roles from user_roles table
 }
 
 export function useAdminActions() {
@@ -76,38 +76,44 @@ export function useAdminActions() {
   const updateUserRole = async (userId: string, role: 'user' | 'admin' | 'super_user') => {
     setLoading(true);
     try {
-      // Get current user's profile to check permissions
+      // Get current user's roles to check permissions
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('No authenticated user');
       }
 
-      const { data: currentUserProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role, user_id')
-        .eq('user_id', user.id)
-        .single();
+      const { data: currentUserRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
 
-      if (profileError) {
-        throw new Error('Failed to fetch current user profile');
+      if (rolesError) {
+        throw new Error('Failed to fetch current user roles');
       }
 
-      // Security check: Prevent admin self-escalation to super_user
-      if (currentUserProfile.role === 'admin' && 
-          currentUserProfile.user_id === userId && 
-          role === 'super_user') {
+      const isSuperUser = currentUserRoles?.some(r => r.role === 'super_user');
+      const isAdmin = currentUserRoles?.some(r => r.role === 'admin');
+
+      // Security check: Prevent self-escalation to super_user
+      if (user.id === userId && role === 'super_user' && !isSuperUser) {
         throw new Error('Forbidden: self-escalation to superUser is not allowed.');
       }
 
       // Security check: Only super_users can assign super_user role
-      if (role === 'super_user' && currentUserProfile.role !== 'super_user') {
+      if (role === 'super_user' && !isSuperUser) {
         throw new Error('Forbidden: only Super Users can assign the Super User role.');
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role, updated_at: new Date().toISOString() })
+      // Delete existing role for this user
+      await supabase
+        .from('user_roles')
+        .delete()
         .eq('user_id', userId);
+
+      // Insert new role
+      const { error } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role });
 
       if (error) throw error;
 

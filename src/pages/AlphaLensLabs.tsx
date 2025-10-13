@@ -32,7 +32,8 @@ export default function AlphaLensLabs() {
       icon: Globe,
       status: 'coming-soon' as const,
       badge: '🧠 AI-Powered',
-      action: () => navigate(`/coming-soon?tool=${encodeURIComponent('Alpha Scenario Simulator')}&description=${encodeURIComponent('Simulate macroeconomic scenarios such as rate hikes, recessions, or oil shocks, and visualize their impact on your portfolio. Powered by AI-driven sensitivity analysis.')}`)
+      requiresSuperUser: true,
+      action: () => navigate('/labs/scenario-simulator')
     },
     {
       id: 'alphalens-backtester',
@@ -42,7 +43,8 @@ export default function AlphaLensLabs() {
       status: 'coming-soon' as const,
       badge: '🧠 AI-Powered',
       modes: ['My Trade Setups', 'Global AlphaLens Data'],
-      action: () => navigate(`/coming-soon?tool=${encodeURIComponent('AlphaLens Backtester')}&description=${encodeURIComponent('Backtest AI-generated trade setups across any chosen period. Analyze all AlphaLens trade ideas historically produced across the entire user base, or focus on your own setups.')}`)
+      requiresSuperUser: true,
+      action: () => navigate('/labs/backtester')
     }
   ];
 

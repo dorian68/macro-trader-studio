@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,10 @@ interface AdminGuardProps {
 
 export default function AdminGuard({ children }: AdminGuardProps) {
   const { user, loading: authLoading } = useAuth();
-  const { isAdmin, isSuperUser, loading: profileLoading } = useProfile();
+  const { isAdmin, isSuperUser, loading: rolesLoading } = useUserRole();
 
   // Show loading state
-  if (authLoading || profileLoading) {
+  if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

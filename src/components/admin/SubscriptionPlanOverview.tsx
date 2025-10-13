@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Users, TrendingUp, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface PlanStats {
   plan_type: string;
@@ -21,7 +21,7 @@ export function SubscriptionPlanOverview() {
   const [planPrices, setPlanPrices] = useState<Record<string, number>>({});
   const [estimatedRevenue, setEstimatedRevenue] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const { isSuperUser, isAdmin } = useProfile();
+  const { isSuperUser, isAdmin } = useUserRole();
 
   const loadPlanStats = async () => {
     if (!isSuperUser && !isAdmin) return;

@@ -12,7 +12,7 @@ import { Plus, Edit, Building2, DollarSign } from "lucide-react";
 import { useBrokerActions } from "@/hooks/useBrokerActions";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Broker {
   id: string;
@@ -47,7 +47,7 @@ export function BrokersManagement() {
 
   const { fetchBrokers, createBroker, updateBroker, loading: actionLoading } = useBrokerActions();
   const { toast } = useToast();
-  const { isSuperUser } = useProfile();
+  const { isSuperUser } = useUserRole();
 
   const loadBrokers = async () => {
     setLoading(true);
