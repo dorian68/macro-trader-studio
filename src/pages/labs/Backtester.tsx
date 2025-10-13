@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
+import { useAURAContext } from '@/contexts/AURAContextProvider';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BacktesterSummary } from '@/components/backtester/BacktesterSummary';
@@ -25,6 +26,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 function BacktesterContent() {
   const { toast } = useToast();
+  const { setContextData } = useAURAContext();
   const [isAURAExpanded, setIsAURAExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('my-setups');
   const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null);
@@ -150,23 +152,35 @@ function BacktesterContent() {
     endDate: dateRange.end,
   });
 
-  // Context data for AURA based on active tab
-  const contextData = useMemo(() => {
-    const isMySetups = activeTab === 'my-setups';
-    const stats = isMySetups ? myStats : globalStats;
-    const data = isMySetups ? displayMyTrades : displayGlobalTrades;
-
-    return {
+  // Inject context data into AURA when data changes
+  useEffect(() => {
+    const stats = activeTab === 'my-setups' ? myStats : globalStats;
+    const data = activeTab === 'my-setups' ? displayMyTrades : displayGlobalTrades;
+    
+    setContextData({
       page: 'Backtester',
       stats: {
         totalTrades: stats.totalTrades,
         winRate: stats.winRate,
+        avgPnL: stats.avgPnL,
         totalValue: stats.cumulativePnL,
+        activeTrades: stats.activeTrades,
+        simulatedTotalPnL: stats.simulatedTotalPnL,
+        profitFactor: stats.profitFactor,
+        maxDrawdown: stats.maxDrawdown,
       },
-      recentData: data.slice(0, 10),
-      filters: { mode: activeTab },
-    };
-  }, [activeTab, myStats, globalStats, displayMyTrades, displayGlobalTrades]);
+      recentData: filteredTrades.slice(0, 10),
+      filters: {
+        instrument: selectedInstrument,
+        tab: activeTab,
+      }
+    });
+  }, [activeTab, myStats, globalStats, displayMyTrades, displayGlobalTrades, filteredTrades, selectedInstrument, setContextData]);
+
+  // Cleanup context data on unmount
+  useEffect(() => {
+    return () => setContextData(undefined);
+  }, [setContextData]);
 
   return (
     <Layout>

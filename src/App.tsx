@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { useSessionManager } from "@/hooks/useSessionManager";
 import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
 import { PersistentNotificationProvider } from "@/components/PersistentNotificationProvider";
+import { AURAContextProvider } from "@/contexts/AURAContextProvider";
 import { PersistentToast } from "@/components/PersistentToast";
 import { JobStatusCards } from "@/components/JobStatusCards";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -53,8 +54,9 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SessionManagerProvider>
-          <TooltipProvider>
-            <BrowserRouter>
+          <AURAContextProvider>
+            <TooltipProvider>
+              <BrowserRouter>
               <ScrollToTop />
               <GlobalLoadingProvider>
                 <PersistentNotificationProvider>
@@ -100,6 +102,7 @@ const App = () => {
               </GlobalLoadingProvider>
             </BrowserRouter>
           </TooltipProvider>
+          </AURAContextProvider>
         </SessionManagerProvider>
       </AuthProvider>
     </QueryClientProvider>

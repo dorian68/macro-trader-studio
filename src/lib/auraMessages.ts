@@ -6,6 +6,9 @@ export interface AURAContextData {
     avgPnL?: number;
     totalValue?: number;
     activeTrades?: number;
+    simulatedTotalPnL?: number;
+    profitFactor?: number;
+    maxDrawdown?: number;
   };
   recentData?: any[];
   filters?: Record<string, any>;

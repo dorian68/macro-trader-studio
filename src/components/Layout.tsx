@@ -17,6 +17,7 @@ import { usePersistentNotifications } from "./PersistentNotificationProvider";
 import AURA from "./AURA";
 import { useLocation } from "react-router-dom";
 import { useMemo } from "react";
+import { useAURAContext } from "@/contexts/AURAContextProvider";
 interface LayoutProps {
   children: React.ReactNode;
   activeModule?: string;
@@ -47,6 +48,7 @@ export default function Layout({
   } = useUserRole();
   const navigate = useNavigate();
   const location = useLocation();
+  const { contextData } = useAURAContext();
 
   // Result notification system
   const { markResultsAsSeen } = useResultNotifications();
@@ -291,11 +293,12 @@ export default function Layout({
 
       {/* Global AURA Assistant */}
       {user && (
-        <AURA 
-          context={auraContext}
-          isExpanded={isAURAExpanded}
-          onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
-        />
+      <AURA 
+        context={auraContext}
+        contextData={contextData}
+        isExpanded={isAURAExpanded}
+        onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
+      />
       )}
     </div>;
 }

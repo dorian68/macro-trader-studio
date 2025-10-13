@@ -25,6 +25,8 @@ export interface BacktestStats {
   winRate: number;
   avgRiskReward: number;
   cumulativePnL: number;
+  avgPnL: number;
+  activeTrades: number;
   // Simulation stats
   simulatedTotalPnL?: number;
   profitFactor?: number;
@@ -87,11 +89,15 @@ export function calculateStats(trades: BacktestTradeSetup[]): BacktestStats {
   const avgRiskReward = totalTrades > 0 ? totalRR / totalTrades : 0;
   
   const cumulativePnL = trades.reduce((sum, trade) => sum + trade.pnl_percent, 0);
+  const avgPnL = totalTrades > 0 ? cumulativePnL / totalTrades : 0;
+  const activeTrades = trades.filter(t => t.status === 'Open').length;
   
   return {
     totalTrades,
     winRate,
     avgRiskReward,
     cumulativePnL,
+    avgPnL,
+    activeTrades,
   };
 }

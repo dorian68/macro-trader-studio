@@ -29,25 +29,25 @@ serve(async (req) => {
       );
     }
 
-    let systemPrompt = `You are AURA (AlphaLens Unified Research Assistant), an AI assistant specialized in financial markets, portfolio analysis, and trading intelligence.
+    let systemPrompt = `You are AURA (AlphaLens Unified Research Assistant), an AI assistant specialized in financial markets.
 
-You are a global assistant available across the AlphaLens platform. You can:
-1. Answer questions about data and insights on the current page
-2. Launch features like AI Trade Setups, Macro Commentary, and Reports
-3. Help users navigate the platform and understand their trading performance
+CRITICAL CAPABILITIES:
+1. **Answer questions** about current page data (stats, trades, portfolios)
+2. **Launch features** using your tools:
+   - AI Trade Setup: Call launch_ai_trade_setup(instrument, timeframe, direction)
+   - Macro Commentary: Call launch_macro_commentary(focus)
+   - Reports: Call launch_report(report_type, instruments)
 
-Context: ${contextPage}
+INTERACTION GUIDELINES:
+- If a user says "lance un trade setup sur EUR/USD H1", immediately call launch_ai_trade_setup
+- If missing parameters, ask conversationally: "Sur quelle timeframe ?" (not "Please specify timeframe")
+- After launching, confirm with: "✅ Trade setup lancé ! Vous recevrez les résultats dans votre dashboard."
+- Be concise (2-3 paragraphs max)
+- Focus on actionable insights, risk management, and trading psychology
+- For Backtester: analyze win rates, R/R ratios, recurring patterns
+- For Portfolio: emphasize position sizing and diversification
 
-Instructions:
-- Provide clear, actionable insights based on the data
-- Be professional but conversational
-- Focus on risk management and trading psychology
-- When users want to launch features, ask for missing parameters naturally
-- Keep responses concise (2-4 paragraphs max unless asked for deep analysis)
-- Use bullet points for clarity when listing multiple items
-- For Backtester context, focus on win rates, R/R ratios, and recurring patterns
-- For Portfolio context, emphasize position sizing and diversification
-- For Trading Dashboard, suggest actionable trade ideas`;
+Context: ${contextPage}`;
 
     // Enrich with contextual data
     if (contextData) {
@@ -96,8 +96,53 @@ Instructions:
           { role: "system", content: systemPrompt },
           { role: "user", content: question }
         ],
-        stream: true,
-        // Tool calling will be added in future iteration
+        stream: false, // Tool calling requires non-streaming
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "launch_ai_trade_setup",
+              description: "Launch an AI Trade Setup analysis for a specific instrument and timeframe",
+              parameters: {
+                type: "object",
+                properties: {
+                  instrument: { type: "string", description: "Trading pair (e.g., EUR/USD, BTC/USD, Gold)" },
+                  timeframe: { type: "string", enum: ["M1", "M5", "M15", "M30", "H1", "H4", "D1"], description: "Chart timeframe" },
+                  direction: { type: "string", enum: ["Long", "Short", "Both"], description: "Trade direction (default: Both)" }
+                },
+                required: ["instrument", "timeframe"]
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "launch_macro_commentary",
+              description: "Generate a comprehensive macro market commentary",
+              parameters: {
+                type: "object",
+                properties: {
+                  focus: { type: "string", description: "Market sector focus (e.g., FX, Commodities, Crypto)" }
+                }
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "launch_report",
+              description: "Generate a detailed market analysis report",
+              parameters: {
+                type: "object",
+                properties: {
+                  report_type: { type: "string", enum: ["daily", "weekly", "custom"], description: "Type of report" },
+                  instruments: { type: "array", items: { type: "string" }, description: "List of instruments" }
+                }
+              }
+            }
+          }
+        ],
+        tool_choice: "auto"
       }),
     });
 
@@ -134,9 +179,27 @@ Instructions:
       );
     }
 
-    // Stream the response back to the client
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    const data = await response.json();
+    const message = data.choices?.[0]?.message;
+    
+    // Handle tool calls
+    const toolCalls = message?.tool_calls;
+    
+    if (toolCalls && toolCalls.length > 0) {
+      console.log("Tool calls detected:", JSON.stringify(toolCalls));
+      
+      // Return the tool call information to the client
+      return new Response(JSON.stringify({ 
+        toolCalls: toolCalls,
+        message: message?.content || "Processing your request..."
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // No tool calls - return the response normally
+    return new Response(JSON.stringify({ message: message?.content }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("aura error:", e);

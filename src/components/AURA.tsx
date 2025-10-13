@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { AURATeaser } from '@/components/aura/AURATeaser';
 import { getRandomTeaser, AURATeaser as TeaserType } from '@/lib/auraMessages';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface AURAProps {
   context: string; // e.g., "Portfolio Analytics", "Backtester", "Scenario Simulator"
@@ -50,6 +52,8 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const [teaserDismissed, setTeaserDismissed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -105,6 +109,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4`,
+            'user-id': user?.id || '',
           },
           body: JSON.stringify({ 
             question, 
@@ -138,48 +143,27 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
         throw new Error('Failed to get response');
       }
 
-      if (!resp.body) throw new Error('No response body');
+      const data = await resp.json();
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      // Create empty assistant message
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantContent += content;
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1].content = assistantContent;
-                return updated;
-              });
-            }
-          } catch {
-            // Ignore partial JSON
-          }
-        }
+      // Handle tool calls
+      if (data.toolCalls) {
+        console.log("Tool calls received:", data.toolCalls);
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message || "Feature launched successfully!" }]);
+        
+        toast({
+          title: '✅ Feature Launched',
+          description: 'Check your dashboard for results',
+          action: (
+            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
+              View Dashboard
+            </Button>
+          ),
+        });
+      } else if (data.message) {
+        // Normal response
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      } else {
+        throw new Error('Invalid response format');
       }
     } catch (error) {
       console.error('AURA error:', error);
