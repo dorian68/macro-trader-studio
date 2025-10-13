@@ -6,6 +6,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, X, ChevronRight, Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { AURATeaser } from '@/components/aura/AURATeaser';
+import { getRandomTeaser, AURATeaser as TeaserType } from '@/lib/auraMessages';
 
 interface AURAProps {
   context: string; // e.g., "Portfolio Analytics", "Backtester", "Scenario Simulator"
@@ -42,6 +44,9 @@ export default function AURA({ context, isExpanded, onToggle }: AURAProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showTeaser, setShowTeaser] = useState(false);
+  const [currentTeaser, setCurrentTeaser] = useState<TeaserType | null>(null);
+  const [teaserDismissed, setTeaserDismissed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -50,6 +55,36 @@ export default function AURA({ context, isExpanded, onToggle }: AURAProps) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Reset teaser state when chat opens
+  useEffect(() => {
+    if (isExpanded) {
+      setShowTeaser(false);
+      setTeaserDismissed(true);
+    } else {
+      setTeaserDismissed(false);
+    }
+  }, [isExpanded]);
+
+  // Teaser timer logic
+  useEffect(() => {
+    if (!isExpanded && !teaserDismissed) {
+      const randomInterval = 25000 + Math.random() * 20000;
+      
+      const timer = setTimeout(() => {
+        setCurrentTeaser(getRandomTeaser(context));
+        setShowTeaser(true);
+        
+        setTimeout(() => {
+          setShowTeaser(false);
+        }, 8000);
+        
+        setTeaserDismissed(false);
+      }, randomInterval);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded, teaserDismissed, context]);
 
   const sendMessage = async (question: string) => {
     if (!question.trim()) return;
@@ -161,16 +196,37 @@ export default function AURA({ context, isExpanded, onToggle }: AURAProps) {
     sendMessage(input);
   };
 
+  const handleCTAClick = (query: string) => {
+    setInput(query);
+    setShowTeaser(false);
+    onToggle();
+    setTimeout(() => sendMessage(query), 300);
+  };
+
   if (!isExpanded) {
     // Collapsed floating bubble with glow
     return (
-      <button
-        onClick={onToggle}
-        className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-full shadow-[0_0_20px_rgba(6,182,212,0.6)] hover:shadow-[0_0_30px_rgba(6,182,212,0.8)] hover:scale-110 transition-all duration-300"
-        aria-label="Open AURA"
-      >
-        <MessageCircle className="h-6 w-6" />
-      </button>
+      <>
+        <button
+          onClick={onToggle}
+          className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-full animate-pulse-glow hover:scale-110 transition-all duration-300"
+          aria-label="Open AURA"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </button>
+        
+        {currentTeaser && (
+          <AURATeaser
+            teaser={currentTeaser}
+            onCTAClick={handleCTAClick}
+            onDismiss={() => {
+              setShowTeaser(false);
+              setTeaserDismissed(true);
+            }}
+            isVisible={showTeaser}
+          />
+        )}
+      </>
     );
   }
 
