@@ -1,13 +1,20 @@
+import { useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Play } from 'lucide-react';
+import { BacktesterSummary } from '@/components/backtester/BacktesterSummary';
+import { BacktesterChartPanel } from '@/components/backtester/BacktesterChartPanel';
+import { BacktesterTable } from '@/components/backtester/BacktesterTable';
+import { BacktesterInsights } from '@/components/backtester/BacktesterInsights';
+import { myTradeSetups, globalTradeSetups, calculateStats } from '@/data/mockBacktesterData';
 
 function BacktesterContent() {
+  // Calculate stats for both datasets
+  const myStats = useMemo(() => calculateStats(myTradeSetups), []);
+  const globalStats = useMemo(() => calculateStats(globalTradeSetups), []);
+
   return (
     <Layout>
       <div className="container-wrapper py-8 px-4 space-y-6">
@@ -33,44 +40,18 @@ function BacktesterContent() {
             <TabsTrigger value="global">Global AlphaLens Data</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="my-setups" className="space-y-4 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cumulative PnL Simulation (Mock Data)</CardTitle>
-                <CardDescription>
-                  Historical performance of your AI-generated trade setups
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted rounded-lg p-12 flex items-center justify-center">
-                  <BarChart3 className="h-24 w-24 text-muted-foreground" />
-                </div>
-                <Button className="w-full gap-2" disabled>
-                  <Play className="h-4 w-4" />
-                  Run Historical Simulation (coming soon)
-                </Button>
-              </CardContent>
-            </Card>
+          <TabsContent value="my-setups" className="space-y-6 mt-6">
+            <BacktesterSummary stats={myStats} />
+            <BacktesterChartPanel data={myTradeSetups} />
+            <BacktesterTable trades={myTradeSetups} />
+            <BacktesterInsights data={myTradeSetups} />
           </TabsContent>
           
-          <TabsContent value="global" className="space-y-4 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Global AlphaLens Performance</CardTitle>
-                <CardDescription>
-                  Aggregate performance across all users' trade setups
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted rounded-lg p-12 flex items-center justify-center">
-                  <BarChart3 className="h-24 w-24 text-muted-foreground" />
-                </div>
-                <Button className="w-full gap-2" disabled>
-                  <Play className="h-4 w-4" />
-                  Run Global Simulation (coming soon)
-                </Button>
-              </CardContent>
-            </Card>
+          <TabsContent value="global" className="space-y-6 mt-6">
+            <BacktesterSummary stats={globalStats} />
+            <BacktesterChartPanel data={globalTradeSetups} />
+            <BacktesterTable trades={globalTradeSetups} />
+            <BacktesterInsights data={globalTradeSetups} />
           </TabsContent>
         </Tabs>
       </div>
