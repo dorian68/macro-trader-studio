@@ -1,11 +1,12 @@
+import { useState } from 'react';
 import Layout from '@/components/Layout';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
+import AURA from '@/components/AURA';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
-import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -43,10 +44,12 @@ const scenarios = [
 
 function ScenarioSimulatorContent() {
   const [selectedScenario, setSelectedScenario] = useState<typeof scenarios[0] | null>(null);
+  const [isAURAExpanded, setIsAURAExpanded] = useState(false);
 
   return (
     <Layout>
-      <div className="container-wrapper py-8 px-4 space-y-6">
+      <div className={`flex h-full relative transition-all ${isAURAExpanded ? 'md:mr-[33.333%]' : ''}`}>
+        <div className="flex-1 container-wrapper py-8 px-4 space-y-6">
         {/* Header */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -108,6 +111,14 @@ function ScenarioSimulatorContent() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
+        
+        {/* AURA Assistant */}
+        <AURA
+          context="Scenario Simulator"
+          isExpanded={isAURAExpanded}
+          onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
+        />
       </div>
     </Layout>
   );

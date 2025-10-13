@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import AICoPilot from '@/components/AICoPilot';
+import AURA from '@/components/AURA';
 import { Beaker, Target, Sparkles, Globe, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,8 +11,7 @@ import { cn } from '@/lib/utils';
 
 export default function AlphaLensLabs() {
   const navigate = useNavigate();
-  const [isCoPilotExpanded, setIsCoPilotExpanded] = useState(false);
-  const [trades] = useState<MockTrade[]>(mockTrades);
+  const [isAURAExpanded, setIsAURAExpanded] = useState(false);
 
 
   const labsTools = [
@@ -52,7 +51,7 @@ export default function AlphaLensLabs() {
     <Layout>
       <div className="flex h-full relative">
         {/* Main Content */}
-        <div className={`flex-1 transition-all duration-300 ${isCoPilotExpanded ? 'md:mr-[33.333%]' : 'mr-0'}`}>
+        <div className={`flex-1 transition-all duration-300 ${isAURAExpanded ? 'md:mr-[33.333%]' : 'mr-0'}`}>
           <div className="container-wrapper space-y-6 sm:space-y-8 flex flex-col items-center min-h-screen py-6 sm:py-8 px-4">
             
             {/* Hero Section */}
@@ -127,11 +126,11 @@ export default function AlphaLensLabs() {
           </div>
         </div>
 
-        {/* AI Co-Pilot Panel */}
-        <AICoPilot 
-          trades={trades} 
-          isExpanded={isCoPilotExpanded} 
-          onToggle={() => setIsCoPilotExpanded(!isCoPilotExpanded)} 
+        {/* AURA Assistant */}
+        <AURA
+          context="AlphaLens Labs"
+          isExpanded={isAURAExpanded}
+          onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
         />
       </div>
     </Layout>
