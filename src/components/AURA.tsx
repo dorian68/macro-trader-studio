@@ -564,40 +564,44 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   // Expanded panel
   return (
     <div className="fixed right-0 top-0 h-full w-full md:w-1/3 z-40 bg-background border-l border-border shadow-2xl flex flex-col">
-      {/* Professional corporate header */}
-      <CardHeader className="border-b">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <MessageCircle className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle className="text-lg">AURA</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                AlphaLens Unified Research Assistant
-              </p>
+        {/* Professional corporate header with AlphaLens brand colors */}
+        <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                <MessageCircle className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  AURA
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  AlphaLens Unified Research Assistant
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggle}
+                className="hidden md:flex hover:bg-primary/10"
+                aria-label="Collapse to side"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggle}
+                className="md:hidden hover:bg-primary/10"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggle}
-              className="hidden md:flex"
-              aria-label="Collapse to side"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggle}
-              className="md:hidden"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
