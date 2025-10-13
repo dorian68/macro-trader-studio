@@ -15,6 +15,7 @@ import AURA from '@/components/AURA';
 
 function BacktesterContent() {
   const [isAURAExpanded, setIsAURAExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState('my-setups');
   
   // Fetch real data
   const { data: myTradeSetups, loading: myLoading } = useBacktesterData({ mode: 'my-setups' });
@@ -23,6 +24,24 @@ function BacktesterContent() {
   // Calculate stats for both datasets
   const myStats = useMemo(() => calculateStats(myTradeSetups), [myTradeSetups]);
   const globalStats = useMemo(() => calculateStats(globalTradeSetups), [globalTradeSetups]);
+
+  // Context data for AURA based on active tab
+  const contextData = useMemo(() => {
+    const isMySetups = activeTab === 'my-setups';
+    const stats = isMySetups ? myStats : globalStats;
+    const data = isMySetups ? myTradeSetups : globalTradeSetups;
+
+    return {
+      page: 'Backtester',
+      stats: {
+        totalTrades: stats.totalTrades,
+        winRate: stats.winRate,
+        totalValue: stats.cumulativePnL,
+      },
+      recentData: data.slice(0, 10),
+      filters: { mode: activeTab },
+    };
+  }, [activeTab, myStats, globalStats, myTradeSetups, globalTradeSetups]);
 
   return (
     <Layout>
@@ -44,7 +63,7 @@ function BacktesterContent() {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="my-setups" className="w-full">
+          <Tabs defaultValue="my-setups" className="w-full" onValueChange={setActiveTab}>
             <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="my-setups">My Trade Setups</TabsTrigger>
               <TabsTrigger value="global">Global AlphaLens Data</TabsTrigger>
@@ -89,6 +108,7 @@ function BacktesterContent() {
         {/* AURA Assistant */}
         <AURA
           context="Backtester"
+          contextData={contextData}
           isExpanded={isAURAExpanded}
           onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
         />

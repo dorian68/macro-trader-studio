@@ -1,3 +1,16 @@
+export interface AURAContextData {
+  page: string;
+  stats?: {
+    totalTrades?: number;
+    winRate?: number;
+    avgPnL?: number;
+    totalValue?: number;
+    activeTrades?: number;
+  };
+  recentData?: any[];
+  filters?: Record<string, any>;
+}
+
 export interface AURATeaser {
   text: string;
   cta: string;

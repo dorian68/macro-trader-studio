@@ -13,6 +13,7 @@ interface AURAProps {
   context: string; // e.g., "Portfolio Analytics", "Backtester", "Scenario Simulator"
   isExpanded: boolean;
   onToggle: () => void;
+  contextData?: import('@/lib/auraMessages').AURAContextData;
 }
 
 interface Message {
@@ -40,7 +41,7 @@ const QUICK_ACTIONS: Record<string, string[]> = {
   ]
 };
 
-export default function AURA({ context, isExpanded, onToggle }: AURAProps) {
+export default function AURA({ context, isExpanded, onToggle, contextData }: AURAProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -105,7 +106,13 @@ export default function AURA({ context, isExpanded, onToggle }: AURAProps) {
             'Content-Type': 'application/json',
             Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4`,
           },
-          body: JSON.stringify({ question, context }),
+          body: JSON.stringify({ 
+            question, 
+            context: {
+              page: context,
+              data: contextData,
+            }
+          }),
         }
       );
 

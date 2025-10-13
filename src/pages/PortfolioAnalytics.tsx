@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import PNLCalculator from '@/components/PNLCalculator';
 import PortfolioAnalysis from '@/components/PortfolioAnalysis';
@@ -8,11 +8,34 @@ import { supabase } from '@/integrations/supabase/client';
 import { TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AURA from '@/components/AURA';
 
 export default function PortfolioAnalytics() {
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
   const [trades, setTrades] = useState<MockTrade[]>(mockTrades);
   const [loading, setLoading] = useState(false);
+  const [isAURAExpanded, setIsAURAExpanded] = useState(false);
+
+  const contextData = useMemo(() => {
+    const totalPnL = trades.reduce((sum, t) => sum + t.pnl, 0);
+    const winningTrades = trades.filter(t => t.pnl > 0).length;
+    const winRate = trades.length > 0 ? (winningTrades / trades.length) * 100 : 0;
+    const avgPnL = trades.length > 0 ? totalPnL / trades.length : 0;
+    const activeTrades = trades.filter(t => !t.exit).length;
+
+    return {
+      page: 'Portfolio Analytics',
+      stats: {
+        totalTrades: trades.length,
+        winRate,
+        avgPnL,
+        totalValue: totalPnL,
+        activeTrades,
+      },
+      recentData: trades.slice(0, 10),
+      filters: selectedPortfolioId ? { selectedPortfolio: selectedPortfolioId } : undefined,
+    };
+  }, [trades, selectedPortfolioId]);
 
   useEffect(() => {
     if (selectedPortfolioId) {
@@ -64,7 +87,8 @@ export default function PortfolioAnalytics() {
 
   return (
     <Layout>
-      <div className="container-wrapper space-y-6 py-6 px-4">
+      <div className={`flex h-full relative transition-all duration-300 ${isAURAExpanded ? 'md:mr-[33.333%]' : ''}`}>
+        <div className="flex-1 container-wrapper space-y-6 py-6 px-4">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between mb-4">
@@ -112,6 +136,14 @@ export default function PortfolioAnalytics() {
             </Tabs>
           </CardContent>
         </Card>
+        </div>
+        
+        <AURA
+          context="Portfolio Analytics"
+          contextData={contextData}
+          isExpanded={isAURAExpanded}
+          onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
+        />
       </div>
     </Layout>
   );
