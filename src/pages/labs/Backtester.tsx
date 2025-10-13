@@ -185,7 +185,7 @@ function BacktesterContent() {
   return (
     <Layout>
       <div className={`flex h-full relative transition-all ${isAURAExpanded ? 'md:mr-[33.333%]' : ''}`}>
-        <div className="flex-1 container-wrapper py-8 px-4 space-y-6">
+        <div className="flex-1 w-full max-w-7xl mx-auto py-8 px-6 md:px-8 space-y-6">
           {/* Header */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">

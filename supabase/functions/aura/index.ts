@@ -200,7 +200,11 @@ Context: ${contextPage}`;
     }
 
     // No tool calls - return the response normally
+    console.log("No tool calls detected, preparing normal response");
+    console.log("Message content available:", !!message?.content);
+    
     if (!message?.content) {
+      console.error("No message content received from Lovable AI");
       return new Response(JSON.stringify({ 
         message: "Désolé, je n'ai pas pu générer une réponse. Pouvez-vous reformuler votre question ?"
       }), {
@@ -208,6 +212,7 @@ Context: ${contextPage}`;
       });
     }
 
+    console.log("Returning normal message, length:", message.content.length);
     return new Response(JSON.stringify({ message: message.content }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

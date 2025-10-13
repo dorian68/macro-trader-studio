@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { mapToTwelveData } from '../_shared/instrument-mappings.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,93 +9,9 @@ const corsHeaders = {
 
 const TWELVE_API_KEY = 'e40fcead02054731aef55d2dfe01cf47';
 
-// Map instruments to TwelveData symbols with extensive coverage
-function mapToTwelveDataSymbol(instrument: string): string {
-  // 1. Extract symbol from parentheses if present (e.g., "GOLD (XAU/USD)" -> "XAU/USD")
-  const parenthesesMatch = instrument.match(/\(([^)]+)\)/);
-  if (parenthesesMatch) {
-    instrument = parenthesesMatch[1];
-  }
-  
-  // 2. Clean the input
-  const cleaned = instrument.trim().replace(/\s+/g, ' ');
-  
-  // 3. Extended mappings dictionary
-  const mappings: Record<string, string> = {
-    // Forex pairs
-    'EUR/USD': 'EUR/USD',
-    'GBP/USD': 'GBP/USD',
-    'USD/JPY': 'USD/JPY',
-    'USD/CHF': 'USD/CHF',
-    'AUD/USD': 'AUD/USD',
-    'NZD/USD': 'NZD/USD',
-    'EUR/GBP': 'EUR/GBP',
-    'GBP/JPY': 'GBP/JPY',
-    'AUD/JPY': 'AUD/JPY',
-    'USD/CAD': 'USD/CAD',
-    
-    // Cryptocurrencies - Bitcoin
-    'BTC': 'BTC/USD',
-    'BITCOIN': 'BTC/USD',
-    'BITCOIN (BTC)': 'BTC/USD',
-    'BTC/USD': 'BTC/USD',
-    
-    // Cryptocurrencies - Ethereum
-    'ETH': 'ETH/USD',
-    'ETHEREUM': 'ETH/USD',
-    'ETH/USD': 'ETH/USD',
-    
-    // Cryptocurrencies - Stellar
-    'XLM': 'XLM/USD',
-    'XLM/USD': 'XLM/USD',
-    'XLM-USD': 'XLM/USD',
-    'STELLAR': 'XLM/USD',
-    
-    // Commodities - Gold
-    'GOLD': 'XAU/USD',
-    'XAU/USD': 'XAU/USD',
-    'XAUUSD': 'XAU/USD',
-    'GOLD (XAU/USD)': 'XAU/USD',
-    
-    // Commodities - Silver
-    'SILVER': 'XAG/USD',
-    'XAG/USD': 'XAG/USD',
-    'XAGUSD': 'XAG/USD',
-    'SILVER (XAG/USD)': 'XAG/USD',
-    
-    // Oil & Energy
-    'WTI': 'WTI/USD',
-    'BRENT': 'BRENT/USD',
-    'OIL': 'WTI/USD',
-    'CRUDE OIL': 'WTI/USD',
-    'NATURAL GAS': 'NATGAS/USD',
-    'NG': 'NATGAS/USD',
-    'NATURAL GAS (NG)': 'NATGAS/USD',
-    'NATGAS': 'NATGAS/USD',
-    
-    // Stocks (major)
-    'GOOGL': 'GOOGL',
-    'AAPL': 'AAPL',
-    'MSFT': 'MSFT',
-    'TSLA': 'TSLA',
-    
-    // Note: Coffee futures may not be supported by TwelveData Basic
-    'COFFEE': 'COFFEE',
-    'KC=F': 'COFFEE',
-  };
-  
-  // 4. Try case-insensitive match
-  const upperCleaned = cleaned.toUpperCase();
-  for (const [key, value] of Object.entries(mappings)) {
-    if (key.toUpperCase() === upperCleaned) {
-      console.log(`Mapped "${instrument}" -> "${value}"`);
-      return value;
-    }
-  }
-  
-  // 5. If no mapping found, return cleaned
-  console.log(`No mapping for "${instrument}", using cleaned: "${cleaned}"`);
-  return cleaned;
+// Map instruments to TwelveData symbols using centralized mappings
+function mapToTwelveDataSymbol(instrument: string): string | null {
+  return mapToTwelveData(instrument);
 }
 
 serve(async (req) => {
@@ -155,8 +72,26 @@ serve(async (req) => {
       );
     }
 
-    // Fetch from TwelveData API
+    // Map instrument to TwelveData symbol
     const apiSymbol = mapToTwelveDataSymbol(instrument);
+    
+    // Check if instrument is not supported BEFORE calling API
+    if (apiSymbol === null) {
+      console.warn(`Instrument "${instrument}" is not supported (requires Futures API)`);
+      return new Response(
+        JSON.stringify({
+          instrument,
+          interval,
+          data: [],
+          cached: false,
+          error: 'not_supported',
+          message: `Instrument "${instrument}" requires TwelveData Futures API (not available in Basic plan). Supported: Forex, Crypto, Metals, Major Stocks.`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // Fetch from TwelveData API
     const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(apiSymbol)}&interval=${interval}&start_date=${startStr}&end_date=${endStr}&apikey=${TWELVE_API_KEY}&format=JSON`;
     
     console.log(`Calling TwelveData API: ${url.replace(TWELVE_API_KEY, 'REDACTED')}`);

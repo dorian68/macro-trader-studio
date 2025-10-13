@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface SimulatedTrade extends BacktestTradeSetup {
   simulated?: boolean;
-  simulated_outcome?: 'tp_hit' | 'sl_hit' | 'open' | 'insufficient_data';
+  simulated_outcome?: 'tp_hit' | 'sl_hit' | 'open' | 'insufficient_data' | 'not_supported';
   hit_date?: string;
   hit_price?: number;
   simulated_pnl_usd?: number;
@@ -83,6 +83,21 @@ export function useBacktestSimulation() {
             extendDays
           }
         });
+
+        // Check if instrument is not supported
+        if (priceData?.error === 'not_supported') {
+          console.warn(`Instrument ${instrument} not supported by TwelveData`);
+          instrumentTrades.forEach(trade => {
+            simulatedTrades.push({
+              ...trade,
+              simulated: true,
+              simulated_outcome: 'not_supported',
+              simulated_pnl_usd: 0,
+              simulated_pnl_percent: 0
+            });
+          });
+          continue;
+        }
 
         if (priceError || !priceData || !priceData.data || priceData.data.length === 0) {
           console.error(`No price data for ${instrument}:`, priceError || priceData?.error);

@@ -12,7 +12,7 @@ export interface BacktestTradeSetup {
   user_id?: string;
   // Simulation fields
   simulated?: boolean;
-  simulated_outcome?: 'tp_hit' | 'sl_hit' | 'open' | 'insufficient_data';
+  simulated_outcome?: 'tp_hit' | 'sl_hit' | 'open' | 'insufficient_data' | 'not_supported';
   hit_date?: string;
   hit_price?: number;
   simulated_pnl_usd?: number;

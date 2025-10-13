@@ -207,19 +207,23 @@ export function BacktesterTable({ trades }: BacktesterTableProps) {
                           {trade.status === 'TP Hit' ? '✅ TP Hit' : '❌ SL Hit'}
                         </Badge>
                       </TableCell>
-                      {trade.simulated !== undefined && (
-                        <TableCell>
-                          {trade.simulated_outcome === 'insufficient_data' ? (
-                            <Badge variant="destructive">No Data</Badge>
-                          ) : trade.simulated_outcome === 'tp_hit' ? (
-                            <Badge variant="default" className="bg-success text-success-foreground">✓ TP</Badge>
-                          ) : trade.simulated_outcome === 'sl_hit' ? (
-                            <Badge variant="destructive">✗ SL</Badge>
-                          ) : (
-                            <Badge variant="outline">Open</Badge>
-                          )}
-                        </TableCell>
-                      )}
+              {trade.simulated !== undefined && (
+                <TableCell>
+                  {trade.simulated_outcome === 'not_supported' ? (
+                    <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                      Not Supported
+                    </Badge>
+                  ) : trade.simulated_outcome === 'insufficient_data' ? (
+                    <Badge variant="destructive">No Data</Badge>
+                  ) : trade.simulated_outcome === 'tp_hit' ? (
+                    <Badge variant="default" className="bg-success text-success-foreground">✓ TP</Badge>
+                  ) : trade.simulated_outcome === 'sl_hit' ? (
+                    <Badge variant="destructive">✗ SL</Badge>
+                  ) : (
+                    <Badge variant="outline">Open</Badge>
+                  )}
+                </TableCell>
+              )}
                       <TableCell className={`text-right font-medium ${
                         trade.pnl_percent >= 0 ? 'text-success' : 'text-destructive'
                       }`}>
