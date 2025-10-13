@@ -144,6 +144,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
       }
 
       const data = await resp.json();
+      console.log("AURA received data:", data);
 
       // Handle tool calls
       if (data.toolCalls) {

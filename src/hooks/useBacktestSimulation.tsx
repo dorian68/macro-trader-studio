@@ -84,11 +84,11 @@ export function useBacktestSimulation() {
           }
         });
 
-        if (priceError || !priceData || !priceData.data) {
-          console.error(`Error fetching prices for ${instrument}:`, priceError);
+        if (priceError || !priceData || !priceData.data || priceData.data.length === 0) {
+          console.error(`No price data for ${instrument}:`, priceError || priceData?.error);
           toast({
-            title: `Failed to fetch data for ${instrument}`,
-            description: `Check instrument symbol mapping in TwelveData API.`,
+            title: `No data for ${instrument}`,
+            description: priceData?.error || 'Instrument may not be supported by TwelveData',
             variant: 'destructive',
           });
           // Mark trades as insufficient data

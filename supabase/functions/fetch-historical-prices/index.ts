@@ -10,12 +10,16 @@ const TWELVE_API_KEY = 'e40fcead02054731aef55d2dfe01cf47';
 
 // Map instruments to TwelveData symbols with extensive coverage
 function mapToTwelveDataSymbol(instrument: string): string {
-  // First extract symbol from parentheses if present (e.g., "GOLD (XAU/USD)" -> "XAU/USD")
+  // 1. Extract symbol from parentheses if present (e.g., "GOLD (XAU/USD)" -> "XAU/USD")
   const parenthesesMatch = instrument.match(/\(([^)]+)\)/);
   if (parenthesesMatch) {
     instrument = parenthesesMatch[1];
   }
   
+  // 2. Clean the input
+  const cleaned = instrument.trim().replace(/\s+/g, ' ');
+  
+  // 3. Extended mappings dictionary
   const mappings: Record<string, string> = {
     // Forex pairs
     'EUR/USD': 'EUR/USD',
@@ -29,12 +33,22 @@ function mapToTwelveDataSymbol(instrument: string): string {
     'AUD/JPY': 'AUD/JPY',
     'USD/CAD': 'USD/CAD',
     
-    // Cryptocurrencies
-    'BITCOIN': 'BTC/USD',
+    // Cryptocurrencies - Bitcoin
     'BTC': 'BTC/USD',
+    'BITCOIN': 'BTC/USD',
     'BITCOIN (BTC)': 'BTC/USD',
-    'ETHEREUM': 'ETH/USD',
+    'BTC/USD': 'BTC/USD',
+    
+    // Cryptocurrencies - Ethereum
     'ETH': 'ETH/USD',
+    'ETHEREUM': 'ETH/USD',
+    'ETH/USD': 'ETH/USD',
+    
+    // Cryptocurrencies - Stellar
+    'XLM': 'XLM/USD',
+    'XLM/USD': 'XLM/USD',
+    'XLM-USD': 'XLM/USD',
+    'STELLAR': 'XLM/USD',
     
     // Commodities - Gold
     'GOLD': 'XAU/USD',
@@ -45,37 +59,42 @@ function mapToTwelveDataSymbol(instrument: string): string {
     // Commodities - Silver
     'SILVER': 'XAG/USD',
     'XAG/USD': 'XAG/USD',
+    'XAGUSD': 'XAG/USD',
     'SILVER (XAG/USD)': 'XAG/USD',
     
     // Oil & Energy
     'WTI': 'WTI/USD',
     'BRENT': 'BRENT/USD',
     'OIL': 'WTI/USD',
+    'CRUDE OIL': 'WTI/USD',
     'NATURAL GAS': 'NATGAS/USD',
     'NG': 'NATGAS/USD',
     'NATURAL GAS (NG)': 'NATGAS/USD',
     'NATGAS': 'NATGAS/USD',
     
-    // Commodities futures
-    'COFFEE': 'KC=F',
-    'KC=F': 'KC=F',
+    // Stocks (major)
+    'GOOGL': 'GOOGL',
+    'AAPL': 'AAPL',
+    'MSFT': 'MSFT',
+    'TSLA': 'TSLA',
+    
+    // Note: Coffee futures may not be supported by TwelveData Basic
+    'COFFEE': 'COFFEE',
+    'KC=F': 'COFFEE',
   };
   
-  // Clean up the input
-  const cleanedInstrument = instrument.trim();
-  
-  // Try exact match first
-  if (mappings[cleanedInstrument]) {
-    return mappings[cleanedInstrument];
+  // 4. Try case-insensitive match
+  const upperCleaned = cleaned.toUpperCase();
+  for (const [key, value] of Object.entries(mappings)) {
+    if (key.toUpperCase() === upperCleaned) {
+      console.log(`Mapped "${instrument}" -> "${value}"`);
+      return value;
+    }
   }
   
-  // Try uppercase match
-  if (mappings[cleanedInstrument.toUpperCase()]) {
-    return mappings[cleanedInstrument.toUpperCase()];
-  }
-  
-  // Return original if no mapping found
-  return cleanedInstrument;
+  // 5. If no mapping found, return cleaned
+  console.log(`No mapping for "${instrument}", using cleaned: "${cleaned}"`);
+  return cleaned;
 }
 
 serve(async (req) => {
@@ -146,7 +165,20 @@ serve(async (req) => {
     const data = await response.json();
 
     if (data.status === 'error') {
-      throw new Error(data.message || 'TwelveData API error');
+      console.error('TwelveData error:', data.message);
+      
+      // Return empty response instead of throwing
+      return new Response(
+        JSON.stringify({
+          instrument,
+          interval,
+          data: [],
+          cached: false,
+          error: `Instrument not supported: ${apiSymbol}`,
+          message: data.message
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (!data.values || data.values.length === 0) {

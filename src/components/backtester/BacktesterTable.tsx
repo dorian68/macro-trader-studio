@@ -162,6 +162,9 @@ export function BacktesterTable({ trades }: BacktesterTableProps) {
                     <TableHead className="text-right">TP</TableHead>
                     <TableHead className="text-right">SL</TableHead>
                     <TableHead>Status</TableHead>
+                    {paginatedTrades[0]?.simulated !== undefined && (
+                      <TableHead>Sim Status</TableHead>
+                    )}
                     <TableHead className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => handleSort('pnl_percent')}>
                         PnL (%) <ArrowUpDown className="ml-1 h-3 w-3" />
@@ -204,6 +207,19 @@ export function BacktesterTable({ trades }: BacktesterTableProps) {
                           {trade.status === 'TP Hit' ? '✅ TP Hit' : '❌ SL Hit'}
                         </Badge>
                       </TableCell>
+                      {trade.simulated !== undefined && (
+                        <TableCell>
+                          {trade.simulated_outcome === 'insufficient_data' ? (
+                            <Badge variant="destructive">No Data</Badge>
+                          ) : trade.simulated_outcome === 'tp_hit' ? (
+                            <Badge variant="default" className="bg-success text-success-foreground">✓ TP</Badge>
+                          ) : trade.simulated_outcome === 'sl_hit' ? (
+                            <Badge variant="destructive">✗ SL</Badge>
+                          ) : (
+                            <Badge variant="outline">Open</Badge>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className={`text-right font-medium ${
                         trade.pnl_percent >= 0 ? 'text-success' : 'text-destructive'
                       }`}>

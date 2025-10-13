@@ -180,7 +180,9 @@ Context: ${contextPage}`;
     }
 
     const data = await response.json();
+    console.log("Lovable AI response:", JSON.stringify(data));
     const message = data.choices?.[0]?.message;
+    console.log("Extracted message:", JSON.stringify(message));
     
     // Handle tool calls
     const toolCalls = message?.tool_calls;
@@ -198,7 +200,15 @@ Context: ${contextPage}`;
     }
 
     // No tool calls - return the response normally
-    return new Response(JSON.stringify({ message: message?.content }), {
+    if (!message?.content) {
+      return new Response(JSON.stringify({ 
+        message: "Désolé, je n'ai pas pu générer une réponse. Pouvez-vous reformuler votre question ?"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ message: message.content }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
