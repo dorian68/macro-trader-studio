@@ -26,7 +26,7 @@ serve(async (req) => {
       case 'trade_setups':
         let setupsQuery = supabase
           .from('jobs')
-          .select('id, feature, created_at, response_payload, request_payload')
+          .select('id, feature, created_at, response_payload, request_payload, user_id')
           .eq('status', 'completed')
           .or('feature.eq.AI Trade Setup,feature.eq.ai_trade_setup,feature.eq.Trade Setup')
           .order('created_at', { ascending: false });
@@ -46,9 +46,17 @@ serve(async (req) => {
         setupsQuery = setupsQuery.limit(limit);
         const { data: setups } = await setupsQuery;
         
+        // Récupérer les emails des utilisateurs
+        const userIds = [...new Set(setups?.map(job => job.user_id).filter(Boolean) || [])];
+        const { data: { users } } = await supabase.auth.admin.listUsers();
+        const userEmailMap = new Map(
+          users?.map(u => [u.id, u.email]) || []
+        );
+        
         data = setups?.map(job => {
           const content = job.response_payload?.message?.content || job.response_payload?.content || job.response_payload;
           return {
+            user_email: userEmailMap.get(job.user_id) || null,
             instrument: job.request_payload?.instrument || 'Unknown',
             direction: content?.direction,
             confidence: content?.confidence,
@@ -70,7 +78,7 @@ serve(async (req) => {
       case 'macro_commentary':
         let macrosQuery = supabase
           .from('jobs')
-          .select('id, feature, created_at, response_payload, request_payload')
+          .select('id, feature, created_at, response_payload, request_payload, user_id')
           .eq('status', 'completed')
           .or('feature.eq.Macro Commentary,feature.eq.macro_commentary,feature.eq.Macro Analysis')
           .order('created_at', { ascending: false });
@@ -90,10 +98,18 @@ serve(async (req) => {
         macrosQuery = macrosQuery.limit(limit);
         const { data: macros } = await macrosQuery;
         
+        // Récupérer les emails des utilisateurs
+        const userIdsMacro = [...new Set(macros?.map(job => job.user_id).filter(Boolean) || [])];
+        const { data: { users: usersMacro } } = await supabase.auth.admin.listUsers();
+        const userEmailMapMacro = new Map(
+          usersMacro?.map(u => [u.id, u.email]) || []
+        );
+        
         data = macros?.map(job => {
           const content = job.response_payload?.message?.content || job.response_payload?.content || job.response_payload;
           const fullText = typeof content === 'string' ? content : (content?.content || content?.summary || '');
           return {
+            user_email: userEmailMapMacro.get(job.user_id) || null,
             instrument: job.request_payload?.instrument || 'General',
             summary: fullText.substring(0, 500),
             full_content: fullText,
@@ -109,7 +125,7 @@ serve(async (req) => {
       case 'reports':
         let reportsQuery = supabase
           .from('jobs')
-          .select('id, feature, created_at, response_payload, request_payload')
+          .select('id, feature, created_at, response_payload, request_payload, user_id')
           .eq('status', 'completed')
           .or('feature.eq.Reports,feature.eq.Report,feature.eq.reports')
           .order('created_at', { ascending: false });
@@ -126,6 +142,13 @@ serve(async (req) => {
         reportsQuery = reportsQuery.limit(fetchLimit);
         const { data: allReports } = await reportsQuery;
         
+        // Récupérer les emails des utilisateurs
+        const userIdsReports = [...new Set(allReports?.map(job => job.user_id).filter(Boolean) || [])];
+        const { data: { users: usersReports } } = await supabase.auth.admin.listUsers();
+        const userEmailMapReports = new Map(
+          usersReports?.map(u => [u.id, u.email]) || []
+        );
+        
         // Filter by instrument client-side if needed
         let reports = allReports;
         if (instrument && allReports) {
@@ -139,6 +162,7 @@ serve(async (req) => {
           const content = job.response_payload?.message?.content || job.response_payload?.content || job.response_payload;
           const fullText = typeof content === 'string' ? content : JSON.stringify(content);
           return {
+            user_email: userEmailMapReports.get(job.user_id) || null,
             report_type: job.request_payload?.report_type || 'custom',
             instruments: job.request_payload?.instruments || [],
             summary: fullText.substring(0, 500),
