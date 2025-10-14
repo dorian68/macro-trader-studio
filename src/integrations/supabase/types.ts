@@ -904,6 +904,39 @@ export type Database = {
           },
         ]
       }
+      technical_indicators_cache: {
+        Row: {
+          cached_at: string | null
+          date: string
+          id: string
+          indicator: string
+          instrument: string
+          interval: string
+          time_period: number
+          value: number
+        }
+        Insert: {
+          cached_at?: string | null
+          date: string
+          id?: string
+          indicator: string
+          instrument: string
+          interval: string
+          time_period: number
+          value: number
+        }
+        Update: {
+          cached_at?: string | null
+          date?: string
+          id?: string
+          indicator?: string
+          instrument?: string
+          interval?: string
+          time_period?: number
+          value?: number
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           created_at: string
