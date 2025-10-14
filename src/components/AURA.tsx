@@ -578,8 +578,8 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
         <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-                <img src={auraLogo} alt="AURA" className="h-6 w-6" />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
+                <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
               </div>
               <div>
                 <CardTitle className="text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
