@@ -398,8 +398,20 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       console.log("📊 Fetching real-time price data from Twelve Data");
       
       try {
-        const { instrument: priceInstrument, dataType, interval = '5min' } = parsedArgs;
-        console.log("Price data request:", { instrument: priceInstrument, dataType, interval });
+        const { 
+          instrument: priceInstrument, 
+          dataType, 
+          interval = '5min',
+          start_date,
+          end_date
+        } = parsedArgs;
+        console.log("Price data request:", { 
+          instrument: priceInstrument, 
+          dataType, 
+          interval,
+          start_date,
+          end_date
+        });
 
         if (!collectOnly) {
           setMessages((prev) => [...prev, {
@@ -408,14 +420,23 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
           }]);
         }
 
+        // Use provided dates or fallback to 24h window
+        const finalStartDate = start_date 
+          ? start_date.split('T')[0] 
+          : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          
+        const finalEndDate = end_date 
+          ? end_date.split('T')[0] 
+          : new Date().toISOString().split('T')[0];
+
         // Call fetch-historical-prices edge function
         const { data: priceData, error: priceError } = await supabase.functions.invoke(
           'fetch-historical-prices',
           {
             body: {
               instrument: priceInstrument,
-              startDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              endDate: new Date().toISOString().split('T')[0],
+              startDate: finalStartDate,
+              endDate: finalEndDate,
               interval: dataType === 'quote' ? '1day' : interval
             }
           }
@@ -481,8 +502,24 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       console.log("📈 Fetching technical indicators from Twelve Data");
       
       try {
-        const { instrument: techInstrument, indicators = ['rsi'], time_period = 14, interval = '1day' } = parsedArgs;
-        console.log("Technical indicators request:", { instrument: techInstrument, indicators, time_period, interval });
+        const { 
+          instrument: techInstrument, 
+          indicators = ['rsi'], 
+          time_period = 14, 
+          interval = '1day',
+          start_date,
+          end_date,
+          outputsize = 30
+        } = parsedArgs;
+        console.log("Technical indicators request:", { 
+          instrument: techInstrument, 
+          indicators, 
+          time_period, 
+          interval,
+          start_date,
+          end_date,
+          outputsize
+        });
 
         if (!collectOnly) {
           setMessages((prev) => [...prev, {
@@ -499,7 +536,10 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               instrument: techInstrument,
               indicators,
               time_period,
-              interval
+              interval,
+              start_date,
+              end_date,
+              outputsize
             }
           }
         );

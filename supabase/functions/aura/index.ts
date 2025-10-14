@@ -70,6 +70,118 @@ serve(async (req) => {
     console.log("🔍 Detected instruments:", detectedInstruments);
     console.log("📊 Is asset query:", isAssetQuery);
 
+    // 🕒 INTELLIGENT TIMEFRAME DETECTION
+    function detectTimeframe(query: string): {
+      horizon: string;
+      interval: string;
+      outputsize: number;
+      startDate?: string;
+      endDate: string;
+    } {
+      const lowerQuery = query.toLowerCase();
+      const now = new Date();
+      const endDate = now.toISOString();
+      
+      // Intraday patterns (hours)
+      const hoursMatch = lowerQuery.match(/(?:last|past|previous)\s+(\d+)\s+hours?/i);
+      if (hoursMatch) {
+        const hours = parseInt(hoursMatch[1]);
+        const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
+        return {
+          horizon: 'intraday',
+          interval: hours <= 6 ? '5min' : '15min',
+          outputsize: Math.min(hours * 12, 300),
+          startDate,
+          endDate
+        };
+      }
+      
+      // Daily patterns
+      const daysMatch = lowerQuery.match(/(?:last|past|previous)\s+(\d+)\s+days?/i);
+      if (daysMatch) {
+        const days = parseInt(daysMatch[1]);
+        const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+        return {
+          horizon: 'daily',
+          interval: days <= 7 ? '1h' : '1day',
+          outputsize: days <= 7 ? days * 24 : Math.min(days, 200),
+          startDate,
+          endDate
+        };
+      }
+      
+      // Weekly patterns
+      const weeksMatch = lowerQuery.match(/(?:last|past|previous)\s+(\d+)\s+weeks?/i);
+      if (weeksMatch) {
+        const weeks = parseInt(weeksMatch[1]);
+        const startDate = new Date(now.getTime() - weeks * 7 * 24 * 60 * 60 * 1000).toISOString();
+        return {
+          horizon: 'weekly',
+          interval: weeks <= 8 ? '1day' : '1week',
+          outputsize: weeks <= 8 ? weeks * 7 : Math.min(weeks, 100),
+          startDate,
+          endDate
+        };
+      }
+      
+      // Monthly patterns
+      const monthsMatch = lowerQuery.match(/(?:last|past|previous)\s+(\d+)\s+months?/i);
+      if (monthsMatch) {
+        const months = parseInt(monthsMatch[1]);
+        const startDate = new Date(now.getTime() - months * 30 * 24 * 60 * 60 * 1000).toISOString();
+        return {
+          horizon: 'monthly',
+          interval: '1week',
+          outputsize: Math.min(months * 4, 100),
+          startDate,
+          endDate
+        };
+      }
+      
+      // Implicit patterns
+      if (/short[\s-]?term/i.test(lowerQuery)) {
+        return {
+          horizon: 'intraday',
+          interval: '15min',
+          outputsize: 100,
+          startDate: new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString(),
+          endDate
+        };
+      }
+      
+      if (/medium[\s-]?term/i.test(lowerQuery)) {
+        return {
+          horizon: 'daily',
+          interval: '1day',
+          outputsize: 30,
+          startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          endDate
+        };
+      }
+      
+      if (/long[\s-]?term/i.test(lowerQuery)) {
+        return {
+          horizon: 'weekly',
+          interval: '1week',
+          outputsize: 52,
+          startDate: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+          endDate
+        };
+      }
+      
+      // DEFAULT: 1 day analysis (backward compatible)
+      return {
+        horizon: 'daily',
+        interval: '1day',
+        outputsize: 30,
+        startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate
+      };
+    }
+
+    const detectedTimeframe = detectTimeframe(question);
+    console.log("🕒 Detected timeframe:", detectedTimeframe);
+
     // 🌍 COLLECTIVE INTELLIGENCE LAYER
     let collectiveContext = '';
 
@@ -573,9 +685,26 @@ Remember: Be conversational, guide naturally, and always confirm before launchin
 
 When a user asks for "technical analysis" of an instrument, YOU MUST follow this systematic approach:
 
-1. **AUTOMATICALLY GATHER DATA** (without asking for confirmation):
-   - Use 'get_realtime_price' to get current price and recent price action
-   - Use 'get_technical_indicators' to fetch key indicators:
+🕒 TIMEFRAME AWARENESS (CRITICAL):
+- ALWAYS mention the detected timeframe in your analysis
+- Current analysis timeframe: ${detectedTimeframe.horizon}
+- Data interval: ${detectedTimeframe.interval}
+- Data points analyzed: ${detectedTimeframe.outputsize}
+- Analysis window: ${detectedTimeframe.startDate ? new Date(detectedTimeframe.startDate).toUTCString() : 'Auto'} to ${new Date(detectedTimeframe.endDate).toUTCString()}
+- Adapt your language:
+  * Intraday (hours) → Focus on momentum, volatility, quick reversals
+  * Daily (days) → Focus on short-term trends, support/resistance
+  * Weekly (weeks) → Focus on medium-term trends, moving averages
+  * Monthly (months) → Focus on long-term cycles, major trendlines
+
+1. **AUTOMATICALLY GATHER DATA** (without asking for confirmation, using detected timeframe):
+   - Use 'get_realtime_price' with interval: "${detectedTimeframe.interval}" and time window
+   - Use 'get_technical_indicators' with:
+     * interval: "${detectedTimeframe.interval}"
+     * outputsize: ${detectedTimeframe.outputsize}
+     * start_date: "${detectedTimeframe.startDate || ''}"
+     * end_date: "${detectedTimeframe.endDate}"
+   - Fetch key indicators:
      * RSI (14-period) → Overbought/Oversold detection
      * SMA 50 and SMA 200 → Trend identification
      * ATR (14-period) → Volatility measurement
@@ -608,10 +737,12 @@ When a user asks for "technical analysis" of an instrument, YOU MUST follow this
    - Focus on what data IS available
 
 ⚠️ CRITICAL: When you detect "technical analysis" or similar intent, immediately call:
-   1. get_realtime_price (instrument, dataType: "time_series", interval: "1day")
-   2. get_technical_indicators (instrument, indicators: ["rsi", "sma", "atr", "macd"], interval: "1day")
+   1. get_realtime_price(instrument, dataType: "time_series", interval: "${detectedTimeframe.interval}", start_date: "${detectedTimeframe.startDate || ''}", end_date: "${detectedTimeframe.endDate}")
+   2. get_technical_indicators(instrument, indicators: ["rsi", "sma", "atr", "macd"], interval: "${detectedTimeframe.interval}", outputsize: ${detectedTimeframe.outputsize}, start_date: "${detectedTimeframe.startDate || ''}", end_date: "${detectedTimeframe.endDate}")
    
-Then synthesize the results into a coherent technical analysis report.
+Then synthesize the results into a coherent technical analysis report, ALWAYS mentioning:
+- The timeframe analyzed (${detectedTimeframe.horizon})
+- The current UTC time context: ${new Date(detectedTimeframe.endDate).toUTCString()}
 
 📝 EXAMPLE CONVERSATIONS 📝
 
@@ -705,7 +836,7 @@ AURA Response (NO technical errors exposed):
 
 Which one would you like me to analyze instead? Or tell me more about XYZ123 if it's a specific asset you're tracking."
 
-🌍 LANGUAGE REMINDER: Unless the user clearly writes in another language (French/Spanish/German with proper grammar), you MUST respond in English. This is the default behavior.${languageInstruction}${collectiveContext}${proactiveGuidanceContext}`;
+🌍 LANGUAGE REMINDER: Unless the user clearly writes in another language (French/Spanish/German with proper grammar), you MUST respond in English. This is the default behavior.${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n⏰ TEMPORAL CONTEXT:\n- Current UTC time: ${new Date(detectedTimeframe.endDate).toUTCString()}\n- Analysis horizon: ${detectedTimeframe.horizon}\n- Data interval: ${detectedTimeframe.interval}\n- Data points: ${detectedTimeframe.outputsize}\n- Time window: ${detectedTimeframe.startDate ? new Date(detectedTimeframe.startDate).toUTCString() : 'Auto'} to ${new Date(detectedTimeframe.endDate).toUTCString()}\n\n**CRITICAL**: Mention this timeframe context in your analysis (e.g., "As of ${new Date(detectedTimeframe.endDate).toUTCString()}, based on the last ${detectedTimeframe.horizon} data...")\n` : ''}${languageInstruction}${collectiveContext}${proactiveGuidanceContext}`;
     
     messagesPayload.push({ role: "system", content: systemPrompt });
 
@@ -819,7 +950,7 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
             type: "function",
             function: {
               name: "get_realtime_price",
-              description: "Get real-time or latest price data for a specific instrument from Twelve Data API",
+              description: "Get real-time or time-series price data for a specific instrument with optional time window",
               parameters: {
                 type: "object",
                 properties: {
@@ -830,12 +961,20 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
                   dataType: {
                     type: "string",
                     enum: ["quote", "time_series"],
-                    description: "Type of data: 'quote' for latest price, 'time_series' for recent candles"
+                    description: "Type of data: 'quote' for latest price, 'time_series' for historical candles"
                   },
                   interval: {
                     type: "string",
-                    enum: ["1min", "5min", "15min", "30min", "1h", "4h", "1day"],
-                    description: "Interval for time_series (default: 5min)"
+                    enum: ["1min", "5min", "15min", "30min", "1h", "4h", "1day", "1week"],
+                    description: "Interval for time_series (default: 1day)"
+                  },
+                  start_date: {
+                    type: "string",
+                    description: "Start date in ISO 8601 format (e.g., '2025-10-01T00:00:00Z') - optional"
+                  },
+                  end_date: {
+                    type: "string",
+                    description: "End date in ISO 8601 format (e.g., '2025-10-14T23:59:59Z') - optional"
                   }
                 },
                 required: ["instrument", "dataType"]
@@ -846,7 +985,7 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
             type: "function",
             function: {
               name: "get_technical_indicators",
-              description: "Get technical indicators (RSI, ATR, SMA, EMA, MACD, Bollinger Bands) for an instrument",
+              description: "Get technical indicators (RSI, ATR, SMA, EMA, MACD, Bollinger Bands) for an instrument with optional time window",
               parameters: {
                 type: "object",
                 properties: {
@@ -870,6 +1009,18 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
                     type: "string",
                     enum: ["1min", "5min", "15min", "30min", "1h", "4h", "1day", "1week"],
                     description: "Time interval (default: 1day)"
+                  },
+                  outputsize: {
+                    type: "number",
+                    description: "Number of data points to retrieve (default: 30, max: 300 for dense analysis)"
+                  },
+                  start_date: {
+                    type: "string",
+                    description: "Start date for analysis window in ISO 8601 format (e.g., '2025-10-01T00:00:00Z') - optional"
+                  },
+                  end_date: {
+                    type: "string",
+                    description: "End date for analysis window in ISO 8601 format (e.g., '2025-10-14T23:59:59Z') - optional"
                   }
                 },
                 required: ["instrument"]

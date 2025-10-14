@@ -21,7 +21,9 @@ serve(async (req) => {
       indicators = ['rsi'],
       time_period = 14, 
       interval = '1day',
-      outputsize = 30
+      outputsize = 30,
+      start_date,
+      end_date
     } = await req.json();
 
     if (!instrument) {
@@ -88,6 +90,14 @@ serve(async (req) => {
         
         if (['sma', 'ema'].includes(indicatorLower)) {
           url += '&series_type=close';
+        }
+
+        // Add time window if provided
+        if (start_date && end_date) {
+          const startDateOnly = start_date.split('T')[0];
+          const endDateOnly = end_date.split('T')[0];
+          url += `&start_date=${startDateOnly}&end_date=${endDateOnly}`;
+          console.log(`Using time window: ${startDateOnly} to ${endDateOnly}`);
         }
 
         console.log(`Calling TwelveData API for ${indicatorLower}`);
