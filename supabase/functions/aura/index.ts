@@ -95,6 +95,70 @@ serve(async (req) => {
       detected: detectedInstruments
     });
 
+    // 🤔 DETECT VAGUE ASSET QUERIES (need proactive guidance)
+    function isVagueAssetQuery(query: string, detectedInstruments: string[]): boolean {
+      if (detectedInstruments.length === 0) return false;
+      
+      // Keywords indicating user is asking for opinion/analysis without being specific
+      const vagueKeywords = [
+        'penses-tu', 'think about', 'avis', 'opinion', 'analyse',
+        'comment', 'how', 'what about', 'dis-moi', 'tell me',
+        'parle-moi', 'talk about', 'explique', 'explain', 'que penses'
+      ];
+      
+      // Check if query contains vague keywords
+      const hasVagueKeyword = vagueKeywords.some(keyword => 
+        query.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      // Check if query does NOT explicitly mention "community", "collective", "ABCG"
+      const hasExplicitCollectiveRequest = collectiveKeywords.some(keyword =>
+        query.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      return hasVagueKeyword && !hasExplicitCollectiveRequest;
+    }
+
+    const needsProactiveGuidance = isVagueAssetQuery(question, detectedInstruments);
+
+    console.log("🤔 Needs proactive guidance:", needsProactiveGuidance);
+
+    // 🧠 INTELLIGENT LIMIT CALCULATION
+    function calculateOptimalLimit(type: string, hasInstrumentFilter: boolean, conversationDepth: number): number {
+      // Base limits
+      const baseLimits: { [key: string]: number } = {
+        trade_setups: 10,
+        macro_commentary: 5,
+        abcg_insights: 5
+      };
+      
+      // Multipliers
+      let multiplier = 1;
+      
+      // If filtering by instrument, fetch more data (higher confidence with specific focus)
+      if (hasInstrumentFilter) {
+        multiplier *= 2; // 20 setups, 10 macro, 10 ABCG
+      }
+      
+      // If user is in deep conversation (>3 messages), assume they want comprehensive data
+      if (conversationDepth > 3) {
+        multiplier *= 1.5; // Up to 30 setups, 15 macro, 15 ABCG
+      }
+      
+      // If no instrument filter but user seems to want broad market view
+      if (!hasInstrumentFilter && conversationDepth > 2) {
+        multiplier *= 2; // Broader scope = more data needed
+      }
+      
+      const limit = Math.min(
+        Math.round(baseLimits[type] * multiplier),
+        100 // Hard cap to avoid performance issues
+      );
+      
+      console.log(`📊 Calculated limit for ${type}: ${limit} (multiplier: ${multiplier})`);
+      return limit;
+    }
+
     if (isCollectiveQuery) {
       console.log("🌍 Collective query detected, fetching community data...");
       
@@ -106,8 +170,14 @@ serve(async (req) => {
 
       console.log("🎯 Filtering collective data for instrument:", instrumentFilter);
       
+      // Apply dynamic limits
+      const conversationDepth = conversationHistory?.length || 0;
+      const tradeSetupsLimit = calculateOptimalLimit('trade_setups', !!instrumentFilter, conversationDepth);
+      const macroLimit = calculateOptimalLimit('macro_commentary', !!instrumentFilter, conversationDepth);
+      const abcgLimit = calculateOptimalLimit('abcg_insights', !!instrumentFilter, conversationDepth);
+      
       try {
-        // Fetch collective data via internal function call with optional instrument filtering
+        // Fetch collective data via internal function call with dynamic limits
         const [tradesRes, macroRes, abcgRes] = await Promise.all([
           fetch(`${SUPABASE_URL}/functions/v1/collective-insights`, {
             method: 'POST',
@@ -117,7 +187,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({ 
               type: 'trade_setups', 
-              limit: 10,
+              limit: tradeSetupsLimit,
               instrument: instrumentFilter 
             })
           }),
@@ -129,7 +199,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({ 
               type: 'macro_commentary', 
-              limit: 5,
+              limit: macroLimit,
               instrument: instrumentFilter
             })
           }),
@@ -141,7 +211,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({ 
               type: 'abcg_insights', 
-              limit: 5,
+              limit: abcgLimit,
               instrument: instrumentFilter
             })
           })
@@ -151,22 +221,60 @@ serve(async (req) => {
         const macros = await macroRes.json();
         const abcg = await abcgRes.json();
 
-        const instrumentContext = instrumentFilter ? `\n🎯 FOCUSED ON: ${instrumentFilter}\n` : '';
+        // Calculate confidence metrics
+        const dataAvailability = {
+          trade_setups_count: trades.data?.length || 0,
+          macro_count: macros.data?.length || 0,
+          abcg_count: abcg.data?.length || 0,
+          total_datapoints: (trades.data?.length || 0) + (macros.data?.length || 0) + (abcg.data?.length || 0),
+          confidence_level: ''
+        };
+
+        // Determine confidence level
+        if (dataAvailability.total_datapoints >= 30) {
+          dataAvailability.confidence_level = 'HIGH (30+ datapoints available)';
+        } else if (dataAvailability.total_datapoints >= 15) {
+          dataAvailability.confidence_level = 'MEDIUM (15-29 datapoints available)';
+        } else if (dataAvailability.total_datapoints >= 5) {
+          dataAvailability.confidence_level = 'LOW (5-14 datapoints available)';
+        } else {
+          dataAvailability.confidence_level = 'VERY LOW (<5 datapoints - be cautious with conclusions)';
+        }
+
+        console.log("📊 Data availability:", dataAvailability);
+
+        const instrumentContext = instrumentFilter ? `
+🎯 FOCUSED ON: ${instrumentFilter}
+📊 DATA CONFIDENCE: ${dataAvailability.confidence_level}
+📈 Available Data: ${dataAvailability.trade_setups_count} setups, ${dataAvailability.macro_count} macro views, ${dataAvailability.abcg_count} ABCG insights
+` : `
+📊 DATA CONFIDENCE: ${dataAvailability.confidence_level}
+📈 Available Data: ${dataAvailability.trade_setups_count} setups, ${dataAvailability.macro_count} macro views, ${dataAvailability.abcg_count} ABCG insights
+`;
 
         collectiveContext = `
 
 --- COLLECTIVE INTELLIGENCE CONTEXT ---${instrumentContext}
 
-Recent Community Trade Setups (Last 10):
+📊 DATA SCOPE: ${tradeSetupsLimit} Trade Setups | ${macroLimit} Macro Commentaries | ${abcgLimit} ABCG Insights
+(Dynamically adjusted based on query context)
+
+Recent Community Trade Setups (Last ${tradeSetupsLimit}):
 ${JSON.stringify(trades.data, null, 2)}
 
-Recent Macro Commentaries (Last 5):
+Recent Macro Commentaries (Last ${macroLimit}):
 ${JSON.stringify(macros.data, null, 2)}
 
-ABCG Research Insights (Latest):
+ABCG Research Insights (Latest ${abcgLimit}):
 ${JSON.stringify(abcg.data, null, 2)}
 
-IMPORTANT PRIVACY RULES:
+⚠️ IMPORTANT:
+- These are the ONLY real datapoints available
+- NEVER invent additional data beyond what's shown here
+- If asked about metrics not in this context, admit you don't have that data
+- Always cite the number of datapoints when making claims (e.g., "Based on ${dataAvailability.trade_setups_count} setups analyzed...")
+
+PRIVACY RULES:
 - NEVER disclose user_id or personal information
 - Only reference aggregated trends and anonymized insights
 - Use phrases like "community analysis shows..." or "recent setups indicate..."
@@ -193,11 +301,64 @@ IMPORTANT PRIVACY RULES:
     // 📝 Build messages array with conversation history
     const messagesPayload = [];
     
+    // Add proactive guidance instruction
+    let proactiveGuidanceContext = '';
+    if (needsProactiveGuidance && detectedInstruments.length > 0) {
+      proactiveGuidanceContext = `
+
+⚠️ PROACTIVE GUIDANCE REQUIRED ⚠️
+The user asked about ${detectedInstruments[0]} but didn't specify what kind of analysis they want.
+
+YOU MUST BE PROACTIVE AND WELCOMING:
+1. Briefly acknowledge their question
+2. Immediately propose: "Would you like me to analyze what the AlphaLens trading community and ABCG Research have to say about ${detectedInstruments[0]}?"
+3. Explain what you can provide: "I can show you recent setups, directional bias, macro insights, and institutional research."
+4. DO NOT wait for them to ask explicitly - guide them!
+
+Example response:
+"Ah, you're interested in ${detectedInstruments[0]}! 📊 I have access to recent community analysis and ABCG Research data. Would you like me to show you:
+- Recent trade setups from AlphaLens traders
+- Directional bias and confidence levels
+- Latest macro commentary
+- ABCG Research insights
+
+This will give you a comprehensive view of what professional traders and analysts are seeing. Should I pull that data for you?"
+`;
+    }
+
     // System prompt with enhanced conversational guidance
     const systemPrompt = `You are AURA (AlphaLens Unified Research Assistant), a highly specialized financial market AI assistant with access to collective intelligence.
 
 CONTEXT:
 - User is viewing: ${contextPage}
+
+🚨 CRITICAL ANTI-HALLUCINATION RULES 🚨
+YOU MUST FOLLOW THESE RULES ABSOLUTELY:
+
+1. **NEVER INVENT DATA**: You can ONLY use data from:
+   - The COLLECTIVE INTELLIGENCE CONTEXT section below
+   - Real-time data from tool calls (get_realtime_price)
+   - Context data provided in this conversation
+
+2. **ALWAYS CITE SOURCES**: When referencing numbers, trends, or setups, specify:
+   - "Based on X community setups analyzed..."
+   - "According to ABCG Research from [date]..."
+   - "From the latest Y datapoints..."
+
+3. **ADMIT WHEN DATA IS MISSING**: If you don't have specific data, say:
+   - "I don't have enough community data on [instrument] to provide a confident analysis."
+   - "The available data doesn't include [specific metric]."
+   - NEVER say "approximately", "around", or "roughly" if you don't have exact numbers.
+
+4. **NO SPECULATION**: Don't predict prices or market movements unless:
+   - You have explicit community consensus data (e.g., "70% of setups are bullish")
+   - ABCG Research provides a specific outlook
+   - You're asked to generate a trade setup (which triggers the tool)
+
+5. **VERIFY BEFORE RESPONDING**: If a user asks about an asset:
+   - Check if COLLECTIVE INTELLIGENCE CONTEXT contains data for that asset
+   - If YES → Synthesize and present it factually
+   - If NO → Be proactive: "I notice limited data on [instrument]. Would you like me to analyze recent community setups and ABCG insights for this asset?"
 
 YOUR CAPABILITIES:
 - Analyze market data and trading patterns
@@ -283,7 +444,7 @@ TOOL USAGE:
 - Use 'launch_macro_commentary' when user confirms they want macro analysis
 - Use 'launch_report' when user confirms they want a report
 
-Remember: Be conversational, guide naturally, and always confirm before launching.${collectiveContext}`;
+Remember: Be conversational, guide naturally, and always confirm before launching.${collectiveContext}${proactiveGuidanceContext}`;
     
     messagesPayload.push({ role: "system", content: systemPrompt });
 
