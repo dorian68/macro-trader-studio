@@ -304,7 +304,75 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     
     console.log('🚀 [AURA] Launching tool:', { functionName, instrument, parsedArgs });
     
-    // Map tool function to feature type
+    // Handle get_realtime_price separately (doesn't require credits or job creation)
+    if (functionName === 'get_realtime_price') {
+      console.log("📊 Fetching real-time price data from Twelve Data");
+      
+      try {
+        const { instrument: priceInstrument, dataType, interval = '5min' } = parsedArgs;
+        console.log("Price data request:", { instrument: priceInstrument, dataType, interval });
+
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          content: `📊 Récupération des données en temps réel pour ${priceInstrument}...`
+        }]);
+
+        // Call fetch-historical-prices edge function
+        const { data: priceData, error: priceError } = await supabase.functions.invoke(
+          'fetch-historical-prices',
+          {
+            body: {
+              instrument: priceInstrument,
+              startDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              endDate: new Date().toISOString().split('T')[0],
+              interval: dataType === 'quote' ? '1day' : interval
+            }
+          }
+        );
+
+        if (priceError || !priceData?.data || priceData.data.length === 0) {
+          console.error("Price data fetch error:", priceError);
+          setMessages((prev) => [...prev.slice(0, -1), {
+            role: 'assistant',
+            content: `⚠️ Impossible de récupérer les données pour ${priceInstrument}. ${priceError?.message || 'Aucune donnée disponible.'}`
+          }]);
+          return;
+        }
+
+        const latestPrice = priceData.data[priceData.data.length - 1];
+        const priceInfo = dataType === 'quote' 
+          ? `Prix actuel pour **${priceInstrument}**: ${latestPrice.close} (Haut: ${latestPrice.high}, Bas: ${latestPrice.low})`
+          : `Prix récents pour **${priceInstrument}**:\n${priceData.data.slice(-5).map((d: any) => 
+              `- ${d.date}: Ouverture ${d.open}, Clôture ${d.close}`
+            ).join('\n')}`;
+
+        console.log("✅ Price data retrieved successfully");
+
+        // Update message with price info
+        setMessages((prev) => [...prev.slice(0, -1), {
+          role: 'assistant',
+          content: `📊 **Données en Temps Réel**\n\n${priceInfo}\n\nLaissez-moi analyser ces données pour vous...`
+        }]);
+
+        // Continue conversation with price context
+        setTimeout(() => {
+          sendMessage(
+            `En me basant sur ces données en temps réel pour ${priceInstrument}: ${priceInfo}. Peux-tu fournir ton analyse en intégrant ces informations de marché actuelles ?`
+          );
+        }, 1000);
+
+        return; // Exit early for price data
+      } catch (error) {
+        console.error("Error fetching real-time price:", error);
+        setMessages((prev) => [...prev.slice(0, -1), {
+          role: 'assistant',
+          content: "❌ Échec de la récupération des données en temps réel. Veuillez réessayer."
+        }]);
+        return;
+      }
+    }
+
+    // Map tool function to feature type (for other tools)
     let featureType: 'ai_trade_setup' | 'macro_commentary' | 'reports' = 'ai_trade_setup';
     let creditType: 'ideas' | 'queries' | 'reports' = 'ideas';
     

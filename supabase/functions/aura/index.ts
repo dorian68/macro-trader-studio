@@ -26,6 +26,50 @@ serve(async (req) => {
     const contextPage = typeof context === 'string' ? context : context?.page || 'General Analytics';
     const contextData = typeof context === 'object' ? context?.data : null;
 
+    // 🔍 INTELLIGENT INSTRUMENT DETECTION
+    const KNOWN_INSTRUMENTS = [
+      // Forex
+      'EUR/USD', 'EURUSD', 'GBP/USD', 'GBPUSD', 'USD/JPY', 'USDJPY', 
+      'AUD/USD', 'AUDUSD', 'USD/CHF', 'USDCHF', 'USD/CAD', 'USDCAD',
+      'NZD/USD', 'NZDUSD', 'EUR/GBP', 'EURGBP', 'EUR/JPY', 'EURJPY',
+      
+      // Crypto
+      'BTC/USD', 'BTCUSD', 'Bitcoin', 'ETH/USD', 'ETHUSD', 'Ethereum',
+      'SOL/USD', 'SOLUSD', 'Solana', 'XRP/USD', 'XRPUSD', 'Ripple',
+      
+      // Commodities
+      'Gold', 'XAU/USD', 'XAUUSD', 'Silver', 'XAG/USD', 'XAGUSD',
+      'Oil', 'WTI', 'Crude Oil', 'Brent', 'Or',
+      
+      // Indices
+      'S&P500', 'SPX', 'NASDAQ', 'NDX', 'DAX', 'FTSE', 'CAC40'
+    ];
+
+    function detectInstruments(query: string): string[] {
+      const detected: string[] = [];
+      const upperQuery = query.toUpperCase();
+      
+      for (const instrument of KNOWN_INSTRUMENTS) {
+        const upperInstrument = instrument.toUpperCase();
+        if (upperQuery.includes(upperInstrument)) {
+          // Normalize to standard format
+          const normalized = instrument.includes('/') ? instrument : instrument;
+          if (!detected.includes(normalized)) {
+            detected.push(normalized);
+          }
+        }
+      }
+      
+      return detected;
+    }
+
+    // Detect if query is about specific instruments
+    const detectedInstruments = detectInstruments(question);
+    const isAssetQuery = detectedInstruments.length > 0;
+
+    console.log("🔍 Detected instruments:", detectedInstruments);
+    console.log("📊 Is asset query:", isAssetQuery);
+
     // 🌍 COLLECTIVE INTELLIGENCE LAYER
     let collectiveContext = '';
 
@@ -36,9 +80,20 @@ serve(async (req) => {
       'latest insights', 'recent setups', 'trend', 'communauté', 'populaire'
     ];
 
-    const isCollectiveQuery = collectiveKeywords.some(keyword => 
+    // Trigger collective intelligence if:
+    // 1. Explicit collective keywords detected
+    // 2. User asks about a specific asset/instrument
+    const hasCollectiveKeyword = collectiveKeywords.some(keyword => 
       question.toLowerCase().includes(keyword.toLowerCase())
     );
+
+    const isCollectiveQuery = hasCollectiveKeyword || isAssetQuery;
+
+    console.log("🌍 Collective query trigger reasons:", {
+      hasCollectiveKeyword,
+      isAssetQuery,
+      detected: detectedInstruments
+    });
 
     if (isCollectiveQuery) {
       console.log("🌍 Collective query detected, fetching community data...");
@@ -46,8 +101,13 @@ serve(async (req) => {
       const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
       const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       
+      // If specific instrument detected, filter data for that instrument
+      const instrumentFilter = detectedInstruments.length > 0 ? detectedInstruments[0] : null;
+
+      console.log("🎯 Filtering collective data for instrument:", instrumentFilter);
+      
       try {
-        // Fetch collective data via internal function call
+        // Fetch collective data via internal function call with optional instrument filtering
         const [tradesRes, macroRes, abcgRes] = await Promise.all([
           fetch(`${SUPABASE_URL}/functions/v1/collective-insights`, {
             method: 'POST',
@@ -55,7 +115,11 @@ serve(async (req) => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
             },
-            body: JSON.stringify({ type: 'trade_setups', limit: 10 })
+            body: JSON.stringify({ 
+              type: 'trade_setups', 
+              limit: 10,
+              instrument: instrumentFilter 
+            })
           }),
           fetch(`${SUPABASE_URL}/functions/v1/collective-insights`, {
             method: 'POST',
@@ -63,7 +127,11 @@ serve(async (req) => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
             },
-            body: JSON.stringify({ type: 'macro_commentary', limit: 5 })
+            body: JSON.stringify({ 
+              type: 'macro_commentary', 
+              limit: 5,
+              instrument: instrumentFilter
+            })
           }),
           fetch(`${SUPABASE_URL}/functions/v1/collective-insights`, {
             method: 'POST',
@@ -71,7 +139,11 @@ serve(async (req) => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
             },
-            body: JSON.stringify({ type: 'abcg_insights', limit: 5 })
+            body: JSON.stringify({ 
+              type: 'abcg_insights', 
+              limit: 5,
+              instrument: instrumentFilter
+            })
           })
         ]);
 
@@ -79,9 +151,11 @@ serve(async (req) => {
         const macros = await macroRes.json();
         const abcg = await abcgRes.json();
 
+        const instrumentContext = instrumentFilter ? `\n🎯 FOCUSED ON: ${instrumentFilter}\n` : '';
+
         collectiveContext = `
 
---- COLLECTIVE INTELLIGENCE CONTEXT ---
+--- COLLECTIVE INTELLIGENCE CONTEXT ---${instrumentContext}
 
 Recent Community Trade Setups (Last 10):
 ${JSON.stringify(trades.data, null, 2)}
@@ -131,6 +205,23 @@ YOUR CAPABILITIES:
 - Generate trade setups with entry/exit levels
 - Create comprehensive market reports
 - **Access collective intelligence from AlphaLens community and ABCG Research**
+- **Get real-time price data from Twelve Data API**
+- **Automatically detect when users ask about specific instruments**
+
+AUTOMATIC ASSET INTELLIGENCE:
+When a user asks about a specific instrument (e.g., "What do you think about EUR/USD?", "Tell me about Bitcoin", "Analyze Gold"):
+1. **Automatically fetch** community trade setups, macro views, and ABCG insights for that instrument
+2. **Combine** with real-time price data if relevant
+3. **Synthesize** a comprehensive answer without requiring the user to explicitly ask for "community data"
+
+Examples:
+- User: "What's happening with EUR/USD?" → Auto-fetch community setups + ABCG + current price
+- User: "Tell me about Bitcoin" → Auto-fetch crypto sentiment + latest BTC analysis
+- User: "Should I trade Gold now?" → Auto-fetch Gold setups + macro context
+
+REAL-TIME DATA ACCESS:
+- Use 'get_realtime_price' tool when users ask about current prices, latest quotes, or recent market movements
+- Examples: "What's the current price of EUR/USD?", "Show me BTC's latest candles", "What's Gold trading at?"
 
 COLLECTIVE INTELLIGENCE FEATURES:
 - Query recent trade setups across all users (anonymized)
@@ -299,6 +390,33 @@ Remember: Be conversational, guide naturally, and always confirm before launchin
                   report_type: { type: "string", enum: ["daily", "weekly", "custom"], description: "Type of report" },
                   instruments: { type: "array", items: { type: "string" }, description: "List of instruments" }
                 }
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_realtime_price",
+              description: "Get real-time or latest price data for a specific instrument from Twelve Data API",
+              parameters: {
+                type: "object",
+                properties: {
+                  instrument: { 
+                    type: "string", 
+                    description: "Trading instrument (e.g., EUR/USD, BTC/USD, Gold, AAPL)" 
+                  },
+                  dataType: {
+                    type: "string",
+                    enum: ["quote", "time_series"],
+                    description: "Type of data: 'quote' for latest price, 'time_series' for recent candles"
+                  },
+                  interval: {
+                    type: "string",
+                    enum: ["1min", "5min", "15min", "30min", "1h", "4h", "1day"],
+                    description: "Interval for time_series (default: 5min)"
+                  }
+                },
+                required: ["instrument", "dataType"]
               }
             }
           }

@@ -12,7 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const { type, limit = 10 } = await req.json();
+    const { type, limit = 10, instrument } = await req.json();
+    
+    console.log(`Fetching collective insights: type=${type}, limit=${limit}, instrument=${instrument || 'ALL'}`);
     
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -22,13 +24,20 @@ serve(async (req) => {
 
     switch (type) {
       case 'trade_setups':
-        const { data: setups } = await supabase
+        let setupsQuery = supabase
           .from('jobs')
           .select('id, feature, created_at, response_payload, request_payload')
           .eq('status', 'completed')
           .eq('feature', 'AI Trade Setup')
           .order('created_at', { ascending: false })
           .limit(limit);
+        
+        // Apply instrument filter if provided
+        if (instrument) {
+          setupsQuery = setupsQuery.ilike('request_payload->instrument', `%${instrument}%`);
+        }
+        
+        const { data: setups } = await setupsQuery;
         
         data = setups?.map(job => ({
           instrument: job.request_payload?.instrument || 'Unknown',
@@ -46,13 +55,20 @@ serve(async (req) => {
         break;
 
       case 'macro_commentary':
-        const { data: macros } = await supabase
+        let macrosQuery = supabase
           .from('jobs')
           .select('id, feature, created_at, response_payload, request_payload')
           .eq('status', 'completed')
           .eq('feature', 'Macro Commentary')
           .order('created_at', { ascending: false })
           .limit(limit);
+        
+        // Apply instrument filter if provided
+        if (instrument) {
+          macrosQuery = macrosQuery.ilike('request_payload->instrument', `%${instrument}%`);
+        }
+        
+        const { data: macros } = await macrosQuery;
         
         data = macros?.map(job => ({
           instrument: job.request_payload?.instrument || 'General',
@@ -64,13 +80,20 @@ serve(async (req) => {
         break;
 
       case 'reports':
-        const { data: reports } = await supabase
+        let reportsQuery = supabase
           .from('jobs')
           .select('id, feature, created_at, response_payload, request_payload')
           .eq('status', 'completed')
           .eq('feature', 'Reports')
           .order('created_at', { ascending: false })
           .limit(limit);
+        
+        // Apply instrument filter if provided (check instruments array)
+        if (instrument) {
+          reportsQuery = reportsQuery.contains('request_payload->instruments', [instrument]);
+        }
+        
+        const { data: reports } = await reportsQuery;
         
         data = reports?.map(job => ({
           report_type: job.request_payload?.report_type || 'custom',
