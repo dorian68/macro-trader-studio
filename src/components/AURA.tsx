@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe } from 'lucide-react';
+import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { AURATeaser } from '@/components/aura/AURATeaser';
@@ -68,6 +68,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobBadges, setJobBadges] = useState<AuraJobBadge[]>([]);
   const [showCollectivePanel, setShowCollectivePanel] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -76,8 +77,48 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const { createJob } = useRealtimeJobManager();
   const { canLaunchJob, engageCredit } = useCreditEngagement();
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (only if user is near bottom)
   useEffect(() => {
+    if (scrollRef.current) {
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        const isNearBottom = 
+          scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
+        
+        if (isNearBottom) {
+          scrollContainer.scrollTo({
+            top: scrollContainer.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+        
+        setShowScrollButton(!isNearBottom);
+      }
+    }
+  }, [messages, jobBadges, isLoading]);
+
+  // Scroll button visibility listener
+  useEffect(() => {
+    if (!isExpanded) return;
+    
+    const scrollContainer = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (!scrollContainer) return;
+    
+    const handleScroll = () => {
+      const isNearBottom = 
+        scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+    };
+    
+    scrollContainer.addEventListener('scroll', handleScroll);
+    handleScroll();
+    
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll);
+    };
+  }, [isExpanded]);
+
+  const scrollToBottom = () => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
@@ -87,7 +128,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
         });
       }
     }
-  }, [messages, jobBadges, isLoading]);
+  };
 
   // Reset teaser state when chat opens
   useEffect(() => {
@@ -521,18 +562,83 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
               )
             );
 
-            if (job.status === 'completed') {
+            if (job.status === 'completed' && job.response_payload) {
+              let parsedPayload = job.response_payload;
+              if (typeof job.response_payload === 'string') {
+                try {
+                  parsedPayload = JSON.parse(job.response_payload);
+                } catch (parseError) {
+                  console.error('❌ [AURA] Failed to parse response_payload JSON:', parseError);
+                  setMessages((prev) => [
+                    ...prev.slice(0, -1),
+                    { role: 'assistant', content: `❌ Erreur de format des données pour ${instrument}.` },
+                  ]);
+                  toast({
+                    title: "Erreur de Format",
+                    description: "Les données retournées sont invalides.",
+                    variant: "destructive"
+                  });
+                  setActiveJobId(null);
+                  supabase.removeChannel(channel);
+                  return;
+                }
+              }
+              
               setMessages((prev) => [
                 ...prev.slice(0, -1),
-                { role: 'assistant', content: `✅ Requête terminée pour ${instrument}. Vous pouvez consulter le résultat via les notifications en bas à droite ou cliquer sur le badge ci-dessus.` },
+                { 
+                  role: 'assistant', 
+                  content: `✅ Analyse terminée pour ${instrument} ! 🎉\n\nVous pouvez consulter le résultat complet via :\n- Le badge ci-dessus (cliquer pour naviguer)\n- Les notifications en bas à droite\n- La page dédiée (${
+                    featureType === 'ai_trade_setup' ? 'AI Setup' :
+                    featureType === 'macro_commentary' ? 'Macro Analysis' :
+                    'Reports'
+                  })`
+                },
               ]);
+              
+              toast({ 
+                title: "✅ Analyse Complétée", 
+                description: `Votre ${
+                  featureType === 'ai_trade_setup' ? 'trade setup' :
+                  featureType === 'macro_commentary' ? 'analyse macro' :
+                  'rapport'
+                } pour ${instrument} est prêt.`,
+                duration: 5000
+              });
+              
               setActiveJobId(null);
               supabase.removeChannel(channel);
+              
             } else if (job.status === 'error') {
+              const errorMsg = job.error_message || "Une erreur inconnue est survenue.";
+              console.error('❌ [AURA Realtime] Job failed:', errorMsg);
+              
+              let userMessage = `❌ Échec du traitement pour ${instrument}.\n\n`;
+              
+              if (errorMsg.toLowerCase().includes('timeout')) {
+                userMessage += "⏱️ **Délai dépassé** : La requête a pris trop de temps. Essayez avec un timeframe plus court.";
+              } else if (errorMsg.toLowerCase().includes('rate limit')) {
+                userMessage += "🚦 **Limite atteinte** : Trop de requêtes en peu de temps. Attendez quelques instants.";
+              } else if (errorMsg.toLowerCase().includes('no data')) {
+                userMessage += "📭 **Pas de données** : Aucune donnée disponible pour cet instrument sur cette période.";
+              } else if (errorMsg.toLowerCase().includes('credit')) {
+                userMessage += "💳 **Crédits insuffisants** : Veuillez recharger vos crédits.";
+              } else {
+                userMessage += `Détails : ${errorMsg}`;
+              }
+              
               setMessages((prev) => [
                 ...prev.slice(0, -1),
-                { role: 'assistant', content: `❌ Erreur lors du traitement pour ${instrument}.` },
+                { role: 'assistant', content: userMessage },
               ]);
+              
+              toast({
+                title: "❌ Échec de l'Analyse",
+                description: errorMsg,
+                variant: "destructive",
+                duration: 7000
+              });
+              
               setActiveJobId(null);
               supabase.removeChannel(channel);
             }
@@ -549,7 +655,11 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
       });
 
       try {
-        const { response } = await enhancedPostRequest(
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('HTTP_TIMEOUT')), 25000)
+        );
+        
+        const requestPromise = enhancedPostRequest(
           'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
           requestPayload,
           {
@@ -561,9 +671,34 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
             jobId: jobId
           }
         );
+        
+        await Promise.race([requestPromise, timeoutPromise]);
         console.log('📩 [AURA HTTP] Request sent to n8n (waiting for Realtime response)');
-      } catch (httpError) {
-        console.log('⏱️ [AURA HTTP] Request timeout (expected, waiting for Realtime)', httpError);
+        
+      } catch (httpError: any) {
+        console.log('⏱️ [AURA HTTP] Request issue:', httpError);
+        
+        if (httpError.message === 'HTTP_TIMEOUT') {
+          console.log('⏱️ [AURA HTTP] Timeout HTTP (expected), continuing with Realtime listener...');
+        } else {
+          console.error('❌ [AURA HTTP] Critical error:', httpError);
+          
+          supabase.removeChannel(channel);
+          
+          setMessages((prev) => [
+            ...prev.slice(0, -1),
+            { role: 'assistant', content: `❌ Impossible de contacter le serveur. Vérifiez votre connexion.` },
+          ]);
+          
+          toast({
+            title: "Erreur Réseau",
+            description: "Impossible d'envoyer la requête. Vérifiez votre connexion internet.",
+            variant: "destructive"
+          });
+          
+          setActiveJobId(null);
+          return;
+        }
       }
 
       console.log('✅ [AURA] Job created and n8n request sent:', { jobId, featureType });
@@ -801,6 +936,21 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
             </div>
           )}
         </div>
+
+        {/* Scroll to bottom button */}
+        {showScrollButton && messages.length > 0 && (
+          <div className="sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={scrollToBottom}
+              className="pointer-events-auto shadow-lg hover:shadow-xl transition-all duration-200 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+              aria-label="Scroll to bottom"
+            >
+              <ChevronDown className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
       </ScrollArea>
 
       {/* Input */}

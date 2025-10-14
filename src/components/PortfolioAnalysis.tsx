@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Clock, BarChart3, Filter } from 'lucide-react
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import {
   Pagination,
   PaginationContent,
@@ -157,16 +158,16 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
   return (
     <div className={className}>
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <Card className="gradient-card border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
               Win Rate
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{stats.winRate}%</div>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-xl sm:text-2xl font-bold text-primary">{stats.winRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.lossRate}% loss rate
             </p>
@@ -174,14 +175,14 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
         </Card>
 
         <Card className="gradient-card border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" />
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
               Total PNL
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className={`text-xl sm:text-2xl font-bold ${stats.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
               ${stats.totalPnl.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -191,14 +192,14 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
         </Card>
 
         <Card className="gradient-card border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
               Largest Gain
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-xl sm:text-2xl font-bold text-green-500">
               ${stats.largestGain.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Best trade</p>
@@ -206,14 +207,14 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
         </Card>
 
         <Card className="gradient-card border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-500" />
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+              <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
               Largest Loss
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-xl sm:text-2xl font-bold text-red-500">
               ${stats.largestLoss.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Worst trade</p>
@@ -222,14 +223,14 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
         {/* PNL Curve */}
         <Card className="gradient-card border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-lg">PNL Curve Over Time</CardTitle>
+          <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2">
+            <CardTitle className="text-base sm:text-lg">PNL Curve Over Time</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+          <CardContent className="px-2 sm:px-6 pb-3 sm:pb-6">
+            <ResponsiveContainer width="100%" height={200}>
               <LineChart data={pnlCurveData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -256,19 +257,24 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
 
         {/* Instrument Distribution */}
         <Card className="gradient-card border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-lg">Trades by Instrument</CardTitle>
+          <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2">
+            <CardTitle className="text-base sm:text-lg">Trades by Instrument</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+          <CardContent className="px-2 sm:px-6 pb-3 sm:pb-6">
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={instrumentData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ instrument, percent }) => `${instrument} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
+                  label={({ instrument, percent }) => {
+                    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                      return percent > 0.15 ? `${instrument} ${(percent * 100).toFixed(0)}%` : '';
+                    }
+                    return `${instrument} ${(percent * 100).toFixed(0)}%`;
+                  }}
+                  outerRadius={typeof window !== 'undefined' && window.innerWidth < 640 ? 60 : 80}
                   fill="#8884d8"
                   dataKey="count"
                 >
@@ -284,11 +290,11 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
 
         {/* Win/Loss by Instrument */}
         <Card className="gradient-card border-primary/20 lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Performance by Instrument</CardTitle>
+          <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2">
+            <CardTitle className="text-base sm:text-lg">Performance by Instrument</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="px-2 sm:px-6 pb-3 sm:pb-6">
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={instrumentPnlData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="instrument" stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -311,19 +317,19 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
 
       {/* Risk Concentration Table */}
       <Card className="gradient-card border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+        <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
             Risk Concentration Analysis
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-2">
             Configurable filters for high-risk trades
           </p>
           
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 pt-4 border-t">
             <div className="space-y-2">
-              <Label htmlFor="leverage-filter">Leverage minimum</Label>
+              <Label htmlFor="leverage-filter" className="text-sm">Leverage minimum</Label>
               <Input
                 id="leverage-filter"
                 type="number"
@@ -335,7 +341,7 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="pnl-filter">|PNL| minimum ($)</Label>
+              <Label htmlFor="pnl-filter" className="text-sm">|PNL| minimum ($)</Label>
               <Input
                 id="pnl-filter"
                 type="number"
@@ -347,7 +353,7 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="items-per-page">Items per page</Label>
+              <Label htmlFor="items-per-page" className="text-sm">Items per page</Label>
               <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(Number(v))}>
                 <SelectTrigger id="items-per-page">
                   <SelectValue />
@@ -363,80 +369,95 @@ export default function PortfolioAnalysis({ trades, className }: PortfolioAnalys
             </div>
           </div>
           
-          <div className="text-sm text-muted-foreground mt-2">
+          <div className="text-xs sm:text-sm text-muted-foreground mt-2">
             Showing {paginatedRiskTrades.length} of {filteredRiskTrades.length} trades
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Instrument</TableHead>
-                <TableHead>Size (lots)</TableHead>
-                <TableHead>Leverage</TableHead>
-                <TableHead>Entry</TableHead>
-                <TableHead>Exit</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead className="text-right">PNL</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedRiskTrades.length === 0 ? (
+        <CardContent className="px-0 sm:px-6 pb-3 sm:pb-6">
+          <div className="overflow-x-auto -mx-3 sm:mx-0">
+            <Table className="min-w-[600px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    No trades match the current filters
-                  </TableCell>
+                  <TableHead className="text-xs sm:text-sm">Instrument</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Size</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Leverage</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Entry</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Exit</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Duration</TableHead>
+                  <TableHead className="text-right text-xs sm:text-sm">PNL</TableHead>
                 </TableRow>
-              ) : (
-                paginatedRiskTrades.map((trade) => (
-                  <TableRow key={trade.id}>
-                    <TableCell className="font-medium">{trade.instrument}</TableCell>
-                    <TableCell>{trade.size}</TableCell>
-                    <TableCell>
-                      <span className={trade.leverage > 75 ? 'text-red-500 font-semibold' : ''}>
-                        {trade.leverage}x
-                      </span>
-                    </TableCell>
-                    <TableCell>{trade.entry.toFixed(2)}</TableCell>
-                    <TableCell>{trade.exit.toFixed(2)}</TableCell>
-                    <TableCell>{trade.duration}</TableCell>
-                    <TableCell className={`text-right font-semibold ${trade.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      ${trade.pnl.toFixed(2)}
+              </TableHeader>
+              <TableBody>
+                {paginatedRiskTrades.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8 text-sm">
+                      No trades match the current filters
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  paginatedRiskTrades.map((trade) => (
+                    <TableRow key={trade.id}>
+                      <TableCell className="font-medium text-xs sm:text-sm">{trade.instrument}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">{trade.size}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">
+                        <span className={trade.leverage > 75 ? 'text-red-500 font-semibold' : ''}>
+                          {trade.leverage}x
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm">{trade.entry.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">{trade.exit.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">{trade.duration}</TableCell>
+                      <TableCell className={`text-right font-semibold text-xs sm:text-sm ${trade.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        ${trade.pnl.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
           
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-4">
+            <div className="mt-4 px-3 sm:px-0">
               <Pagination>
-                <PaginationContent>
+                <PaginationContent className="flex-wrap gap-1">
                   <PaginationItem>
                     <PaginationPrevious 
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      className={cn(
+                        "text-xs sm:text-sm",
+                        currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                      )}
                     />
                   </PaginationItem>
                   
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(page)}
-                        isActive={currentPage === page}
-                        className="cursor-pointer"
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      if (typeof window !== 'undefined' && window.innerWidth < 640) {
+                        return Math.abs(page - currentPage) <= 1;
+                      }
+                      return true;
+                    })
+                    .map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer text-xs sm:text-sm"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
                   
                   <PaginationItem>
                     <PaginationNext 
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      className={cn(
+                        "text-xs sm:text-sm",
+                        currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                      )}
                     />
                   </PaginationItem>
                 </PaginationContent>
