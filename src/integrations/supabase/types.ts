@@ -270,7 +270,7 @@ export type Database = {
           {
             foreignKeyName: "ai_trade_setups_job_id_fkey"
             columns: ["job_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
