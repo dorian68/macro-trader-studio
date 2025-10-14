@@ -14,12 +14,12 @@ export function AURATeaser({ teaser, onCTAClick, onDismiss, isVisible }: AURATea
   return (
     <div
       className={cn(
-        "absolute bottom-20 right-6 max-w-xs transition-all duration-300",
+        "absolute bottom-full right-0 mb-4 max-w-xs transition-all duration-300 z-50",
         isVisible ? "animate-fade-in-up opacity-100" : "animate-fade-out-down opacity-0 pointer-events-none"
       )}
     >
       {/* Speech bubble tail */}
-      <div className="absolute -bottom-2 right-8 w-4 h-4 bg-card border-r border-b border-border rotate-45 transform origin-center" />
+      <div className="absolute -bottom-2 right-4 w-4 h-4 bg-card border-r border-b border-border rotate-45 transform origin-center" />
       
       {/* Speech bubble content */}
       <div className="relative bg-card border border-border rounded-2xl shadow-xl p-4 animate-breathing">

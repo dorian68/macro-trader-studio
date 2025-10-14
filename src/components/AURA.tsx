@@ -543,10 +543,10 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   if (!isExpanded) {
     // Collapsed floating bubble with glow
     return (
-      <>
+      <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={onToggle}
-          className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-full animate-pulse-glow hover:scale-110 transition-all duration-300"
+          className="p-4 bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-full animate-pulse-glow hover:scale-110 transition-all duration-300"
           aria-label="Open AURA"
         >
           <MessageCircle className="h-6 w-6" />
@@ -563,7 +563,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
             isVisible={showTeaser}
           />
         )}
-      </>
+      </div>
     );
   }
 
