@@ -686,29 +686,33 @@ Remember: Be conversational, guide naturally, and always confirm before launchin
 When a user asks for "technical analysis" of an instrument, YOU MUST follow this systematic approach:
 
 🕒 TIMEFRAME AWARENESS (CRITICAL):
-- ALWAYS mention the detected timeframe in your analysis
-- Current analysis timeframe: ${detectedTimeframe.horizon}
+- Current UTC time: ${new Date(detectedTimeframe.endDate).toUTCString()}
+- Analysis horizon: ${detectedTimeframe.horizon}
 - Data interval: ${detectedTimeframe.interval}
-- Data points analyzed: ${detectedTimeframe.outputsize}
-- Analysis window: ${detectedTimeframe.startDate ? new Date(detectedTimeframe.startDate).toUTCString() : 'Auto'} to ${new Date(detectedTimeframe.endDate).toUTCString()}
-- Adapt your language:
-  * Intraday (hours) → Focus on momentum, volatility, quick reversals
-  * Daily (days) → Focus on short-term trends, support/resistance
-  * Weekly (weeks) → Focus on medium-term trends, moving averages
-  * Monthly (months) → Focus on long-term cycles, major trendlines
+- Data points: ${detectedTimeframe.outputsize}
+${detectedTimeframe.startDate ? `- Time window: ${new Date(detectedTimeframe.startDate).toUTCString()} to ${new Date(detectedTimeframe.endDate).toUTCString()}` : '- Time window: Last 30 days (default)'}
 
-1. **AUTOMATICALLY GATHER DATA** (without asking for confirmation, using detected timeframe):
-   - Use 'get_realtime_price' with interval: "${detectedTimeframe.interval}" and time window
+**CRITICAL: Adapt your analysis based on detected horizon:**
+${detectedTimeframe.horizon === 'intraday' ? '✓ INTRADAY ANALYSIS: Focus on momentum, volatility, quick reversals. Mention specific hours analyzed.' : ''}
+${detectedTimeframe.horizon === 'daily' ? '✓ DAILY ANALYSIS: Focus on short-term trends, support/resistance over days.' : ''}
+${detectedTimeframe.horizon === 'weekly' ? '✓ WEEKLY ANALYSIS: Focus on medium-term trends, moving averages over weeks.' : ''}
+${detectedTimeframe.horizon === 'monthly' ? '✓ MONTHLY ANALYSIS: Focus on long-term cycles, major trendlines over months.' : ''}
+
+1. **AUTOMATICALLY GATHER DATA** (using detected timeframe - DO NOT use hardcoded values):
+   - Use 'get_realtime_price' with:
+     * instrument: <detected_instrument>
+     * dataType: "time_series"
+     * interval: "${detectedTimeframe.interval}"
+     ${detectedTimeframe.startDate ? `* start_date: "${detectedTimeframe.startDate}"` : ''}
+     * end_date: "${detectedTimeframe.endDate}"
+   
    - Use 'get_technical_indicators' with:
+     * instrument: <detected_instrument>
+     * indicators: ["rsi", "sma", "atr", "macd"]
      * interval: "${detectedTimeframe.interval}"
      * outputsize: ${detectedTimeframe.outputsize}
-     * start_date: "${detectedTimeframe.startDate || ''}"
+     ${detectedTimeframe.startDate ? `* start_date: "${detectedTimeframe.startDate}"` : ''}
      * end_date: "${detectedTimeframe.endDate}"
-   - Fetch key indicators:
-     * RSI (14-period) → Overbought/Oversold detection
-     * SMA 50 and SMA 200 → Trend identification
-     * ATR (14-period) → Volatility measurement
-     * MACD → Momentum analysis
    
 2. **PRESENT YOUR ANALYSIS** in this structure:
    ✅ **Current Price**: [latest close price]
