@@ -134,7 +134,8 @@ serve(async (req) => {
     const priceData = data.values.map((v: any) => ({
       instrument,
       interval,
-      date: v.datetime.split(' ')[0], // Extract date part
+      datetime: v.datetime, // Keep full datetime for intraday
+      date: v.datetime.split(' ')[0], // Extract date part for DB key
       open: parseFloat(v.open),
       high: parseFloat(v.high),
       low: parseFloat(v.low),
@@ -158,6 +159,7 @@ serve(async (req) => {
         instrument,
         interval,
         data: priceData.map(d => ({
+          datetime: d.datetime, // Include full datetime for intraday
           date: d.date,
           open: d.open,
           high: d.high,

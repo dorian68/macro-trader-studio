@@ -135,31 +135,42 @@ export default function LightweightChartWidget({
 
         if (fetchError) throw fetchError;
 
-        if (data && Array.isArray(data)) {
-          const formattedData: CandlestickData[] = data
-            .map((item: any) => ({
-              time: (new Date(item.date).getTime() / 1000) as UTCTimestamp,
+        // Parse response - edge function returns {data: [...], cached: boolean}
+        const payload = data as { data?: any[]; cached?: boolean; error?: string; message?: string };
+        const rows = Array.isArray(payload) ? payload : payload?.data;
+        
+        if (!rows || rows.length === 0) {
+          throw new Error(payload?.message || 'No data available');
+        }
+
+        const formattedData: CandlestickData[] = rows
+          .map((item: any) => {
+            // Support both datetime (intraday) and date (daily)
+            const ts = item.datetime ?? item.date;
+            const time = ts ? (Math.floor(new Date(ts).getTime() / 1000) as UTCTimestamp) : undefined;
+            
+            return {
+              time,
               open: parseFloat(item.open),
               high: parseFloat(item.high),
               low: parseFloat(item.low),
               close: parseFloat(item.close),
-            }))
-            .filter((item: CandlestickData) => 
-              !isNaN(item.open) && !isNaN(item.high) && 
-              !isNaN(item.low) && !isNaN(item.close)
-            )
-            .sort((a, b) => (a.time as number) - (b.time as number));
+            };
+          })
+          .filter((item: CandlestickData) => 
+            item.time && 
+            !isNaN(item.open) && !isNaN(item.high) && 
+            !isNaN(item.low) && !isNaN(item.close)
+          )
+          .sort((a, b) => (a.time as number) - (b.time as number));
 
-          if (formattedData.length > 0) {
-            candlestickSeriesRef.current.setData(formattedData);
-            lastCandleRef.current = formattedData[formattedData.length - 1];
-            chartRef.current?.timeScale().fitContent();
-            setLoading(false);
-          } else {
-            throw new Error('No valid data received');
-          }
+        if (formattedData.length > 0) {
+          candlestickSeriesRef.current.setData(formattedData);
+          lastCandleRef.current = formattedData[formattedData.length - 1];
+          chartRef.current?.timeScale().fitContent();
+          setLoading(false);
         } else {
-          throw new Error('Invalid data format');
+          throw new Error('No valid data after parsing');
         }
       } catch (err) {
         console.error('Error fetching historical data:', err);
@@ -206,33 +217,39 @@ export default function LightweightChartWidget({
 
         ws.onmessage = (event) => {
           try {
-            const data = JSON.parse(event.data);
+            const msg = JSON.parse(event.data);
             
             // Handle subscription confirmation
-            if (data.event === 'subscribe-status') {
-              console.log('Subscription status:', data);
+            if (msg.event === 'subscribe-status') {
+              console.log('Subscription status:', msg);
               return;
             }
             
-            // Handle price updates
-            if (data.price && candlestickSeriesRef.current && lastCandleRef.current) {
-              const price = parseFloat(data.price);
-              const timestamp = Math.floor(Date.now() / 1000) as UTCTimestamp;
+            // Handle price updates - tolerate different message formats
+            const isPriceEvent = msg.event === 'price' || typeof msg.price !== 'undefined';
+            
+            if (isPriceEvent && candlestickSeriesRef.current && lastCandleRef.current) {
+              const price = parseFloat(msg.price ?? msg.data?.price);
               
-              // Update the last candle with the new price
-              const updatedCandle: CandlestickData = {
-                ...lastCandleRef.current,
-                time: timestamp,
-                close: price,
-                high: Math.max(lastCandleRef.current.high, price),
-                low: Math.min(lastCandleRef.current.low, price),
-              };
+              if (!isNaN(price)) {
+                const timestamp = Math.floor(Date.now() / 1000) as UTCTimestamp;
+                
+                // Update the last candle with the new price
+                const updatedCandle: CandlestickData = {
+                  ...lastCandleRef.current,
+                  time: timestamp,
+                  close: price,
+                  high: Math.max(lastCandleRef.current.high, price),
+                  low: Math.min(lastCandleRef.current.low, price),
+                };
 
-              candlestickSeriesRef.current.update(updatedCandle);
-              lastCandleRef.current = updatedCandle;
+                candlestickSeriesRef.current.update(updatedCandle);
+                lastCandleRef.current = updatedCandle;
 
-              if (onPriceUpdate) {
-                onPriceUpdate(data.price);
+                if (onPriceUpdate) {
+                  const decimals = selectedSymbol.includes('JPY') ? 2 : 4;
+                  onPriceUpdate(price.toFixed(decimals));
+                }
               }
             }
           } catch (err) {
