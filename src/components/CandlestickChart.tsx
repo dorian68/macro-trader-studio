@@ -6,6 +6,7 @@ import { BarChart3, Wifi, WifiOff } from 'lucide-react';
 import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
+import LightweightChartWidget from './LightweightChartWidget';
 const {
   useState
 } = React;
@@ -70,6 +71,7 @@ export function CandlestickChart({
   const [timeframe, setTimeframe] = useState('1h');
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
+  const [useFallback, setUseFallback] = useState(false);
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
 
@@ -182,7 +184,27 @@ export function CandlestickChart({
           
           <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6">
             <div className="relative overflow-hidden isolate z-0">
-              <TradingViewWidget selectedSymbol={binanceSymbol} timeframe={timeframe} onPriceUpdate={price => setCurrentPrice(price)} className="border-0 shadow-none" />
+              {!useFallback ? (
+                <LightweightChartWidget
+                  selectedSymbol={asset}
+                  timeframe={timeframe}
+                  onPriceUpdate={(price) => {
+                    setCurrentPrice(price);
+                    setIsConnected(true);
+                  }}
+                  onFallback={() => {
+                    console.log('Lightweight Chart failed, switching to TradingView fallback');
+                    setUseFallback(true);
+                  }}
+                />
+              ) : (
+                <TradingViewWidget 
+                  selectedSymbol={binanceSymbol} 
+                  timeframe={timeframe} 
+                  onPriceUpdate={price => setCurrentPrice(price)} 
+                  className="border-0 shadow-none" 
+                />
+              )}
               
               {/* Mobile-responsive Trade Levels Overlay */}
               {tradeLevels && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-lg sm:rounded-xl p-2 sm:p-3 shadow-xl w-[calc(100%-1rem)] max-w-[280px] sm:min-w-[240px] sm:max-w-[300px] sm:w-auto z-10">
@@ -249,7 +271,7 @@ export function CandlestickChart({
             </div>
             
             {showHeader && <div className="mt-3 text-xs text-muted-foreground text-center">
-                {hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`}
+                {!useFallback ? 'Powered by Twelve Data + Binance' : (hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`)}
               </div>}
           </CardContent>
         </Card>
