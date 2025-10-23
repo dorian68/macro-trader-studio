@@ -25,7 +25,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.fetch-historical-prices]
-verify_jwt = true
+verify_jwt = false
 
 [functions.collective-insights]
 verify_jwt = false

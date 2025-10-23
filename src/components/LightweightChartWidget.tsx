@@ -32,6 +32,46 @@ const TIMEFRAME_MAPPING: Record<string, string> = {
   'M': '1month'
 };
 
+// Local TwelveData symbol mapping
+const mapToTwelveDataSymbol = (asset: string): string => {
+  const mappings: Record<string, string> = {
+    // Forex
+    'EUR/USD': 'EUR/USD',
+    'GBP/USD': 'GBP/USD',
+    'USD/JPY': 'USD/JPY',
+    'AUD/USD': 'AUD/USD',
+    'NZD/USD': 'NZD/USD',
+    'USD/CHF': 'USD/CHF',
+    'EUR/GBP': 'EUR/GBP',
+    'EUR/JPY': 'EUR/JPY',
+    
+    // Crypto
+    'Bitcoin': 'BTC/USD',
+    'BTC': 'BTC/USD',
+    'Ethereum': 'ETH/USD',
+    'ETH': 'ETH/USD',
+    'BTC-USD': 'BTC/USD',
+    'ETH-USD': 'ETH/USD',
+    
+    // Commodities
+    'GOLD': 'XAU/USD',
+    'Gold': 'XAU/USD',
+    'SILVER': 'XAG/USD',
+    'Silver': 'XAG/USD',
+    'CRUDE': 'WTI/USD',
+    'Crude Oil': 'WTI/USD',
+    'NATGAS': 'NG/USD',
+    'Natural Gas': 'NG/USD',
+    
+    // Indices
+    'SPX': 'SPX',
+    'DJI': 'DJI',
+    'IXIC': 'IXIC'
+  };
+  
+  return mappings[asset] || asset;
+};
+
 export default function LightweightChartWidget({
   selectedSymbol,
   timeframe,
@@ -118,34 +158,69 @@ export default function LightweightChartWidget({
       setError(null);
 
       try {
+        const tdSymbol = mapToTwelveDataSymbol(selectedSymbol);
         const interval = TIMEFRAME_MAPPING[timeframe] || '1h';
         const endDate = new Date();
         const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30); // 30 days of history
+        startDate.setDate(startDate.getDate() - 30);
 
-        const { data, error: fetchError } = await supabase.functions.invoke('fetch-historical-prices', {
-          body: {
-            instrument: selectedSymbol,
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0],
-            interval: interval,
-            extendDays: 5
+        console.log(`📊 Fetching historical data for ${selectedSymbol} → TwelveData: ${tdSymbol}, interval: ${interval}`);
+
+        let rows: any[] = [];
+
+        // Try edge function first
+        try {
+          const { data, error: fetchError } = await supabase.functions.invoke('fetch-historical-prices', {
+            body: {
+              instrument: tdSymbol,
+              startDate: startDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0],
+              interval: interval,
+              extendDays: 5
+            }
+          });
+
+          if (fetchError) throw fetchError;
+
+          const payload = data as { data?: any[]; cached?: boolean; error?: string; message?: string };
+          rows = Array.isArray(payload) ? payload : payload?.data || [];
+          
+          console.log(`✅ Edge function returned ${rows.length} data points`);
+        } catch (edgeError) {
+          console.warn('⚠️ Edge function failed, trying direct TwelveData API:', edgeError);
+
+          // Fallback to direct TwelveData REST API
+          const apiKey = import.meta.env.VITE_TWELVE_DATA_API_KEY;
+          if (!apiKey) throw new Error('TwelveData API key not configured');
+
+          const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${interval}&start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}&apikey=${apiKey}&outputsize=500`;
+          
+          const response = await fetch(url);
+          const json = await response.json();
+
+          if (json.status === 'error') {
+            throw new Error(json.message || 'TwelveData API error');
           }
-        });
 
-        if (fetchError) throw fetchError;
+          rows = (json.values || []).map((v: any) => ({
+            datetime: v.datetime,
+            date: v.datetime?.split(' ')[0],
+            open: v.open,
+            high: v.high,
+            low: v.low,
+            close: v.close,
+            volume: v.volume
+          }));
 
-        // Parse response - edge function returns {data: [...], cached: boolean}
-        const payload = data as { data?: any[]; cached?: boolean; error?: string; message?: string };
-        const rows = Array.isArray(payload) ? payload : payload?.data;
+          console.log(`✅ Direct API returned ${rows.length} data points`);
+        }
         
         if (!rows || rows.length === 0) {
-          throw new Error(payload?.message || 'No data available');
+          throw new Error('No data available from any source');
         }
 
         const formattedData: CandlestickData[] = rows
           .map((item: any) => {
-            // Support both datetime (intraday) and date (daily)
             const ts = item.datetime ?? item.date;
             const time = ts ? (Math.floor(new Date(ts).getTime() / 1000) as UTCTimestamp) : undefined;
             
@@ -165,6 +240,7 @@ export default function LightweightChartWidget({
           .sort((a, b) => (a.time as number) - (b.time as number));
 
         if (formattedData.length > 0) {
+          console.log(`✅ Loaded ${formattedData.length} candles to chart`);
           candlestickSeriesRef.current.setData(formattedData);
           lastCandleRef.current = formattedData[formattedData.length - 1];
           chartRef.current?.timeScale().fitContent();
@@ -173,11 +249,10 @@ export default function LightweightChartWidget({
           throw new Error('No valid data after parsing');
         }
       } catch (err) {
-        console.error('Error fetching historical data:', err);
+        console.error('❌ Error fetching historical data:', err);
         setError('Failed to load chart data');
         setLoading(false);
         
-        // Trigger fallback after 2 seconds
         if (onFallback) {
           setTimeout(onFallback, 2000);
         }
@@ -201,16 +276,17 @@ export default function LightweightChartWidget({
 
     const connectWebSocket = () => {
       try {
+        const tdSymbol = mapToTwelveDataSymbol(selectedSymbol);
         const ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
         
         ws.onopen = () => {
-          console.log(`✅ TwelveData WebSocket connected for ${selectedSymbol}`);
+          console.log(`✅ TwelveData WebSocket connected for ${selectedSymbol} → ${tdSymbol}`);
           
-          // Subscribe to the symbol
+          // Subscribe to the TwelveData symbol
           ws.send(JSON.stringify({
             action: 'subscribe',
             params: {
-              symbols: selectedSymbol
+              symbols: tdSymbol
             }
           }));
         };
