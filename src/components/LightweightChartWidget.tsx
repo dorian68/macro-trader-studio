@@ -4,6 +4,7 @@ import {
   IChartApi, 
   ISeriesApi, 
   CandlestickData, 
+  CandlestickSeries,
   UTCTimestamp
 } from 'lightweight-charts';
 import { Card, CardContent } from '@/components/ui/card';
@@ -93,11 +94,28 @@ export default function LightweightChartWidget({
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // Initialize chart
+  // FIX: [2025-01-24] Lightweight chart rendering issue
+  // - Corrected addSeries() syntax for v5 API (addCandlestickSeries)
+  // - Added proper cleanup in useEffect to prevent multiple chart instances
+  // - Prevents "Assertion failed" error and chart superposition bug
+  
+  // Initialize chart (ONCE on mount)
   useEffect(() => {
     if (!chartContainerRef.current) return;
+    
+    console.log('📊 LightweightChartWidget render:', { selectedSymbol, timeframe });
+
+    // Cleanup existing chart if any
+    if (chartRef.current) {
+      console.log('🧹 Cleaning up existing chart instance');
+      chartRef.current.remove();
+      chartRef.current = null;
+      candlestickSeriesRef.current = null;
+    }
 
     try {
+      console.log('🎬 Chart initialization starting');
+      
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: 'transparent' },
@@ -119,17 +137,19 @@ export default function LightweightChartWidget({
         },
       });
 
-      const candlestickSeries = chart.addSeries({
-        type: 'Candlestick',
+      // Use lightweight-charts v5 API - import CandlestickSeries and pass as first argument
+      const candlestickSeries = chart.addSeries(CandlestickSeries, {
         upColor: '#22c55e',
         downColor: '#ef4444',
         borderVisible: false,
         wickUpColor: '#22c55e',
         wickDownColor: '#ef4444',
-      } as any);
+      });
 
       chartRef.current = chart;
       candlestickSeriesRef.current = candlestickSeries;
+      
+      console.log('✅ Chart created successfully');
 
       // Handle resize
       const handleResize = () => {
@@ -143,14 +163,30 @@ export default function LightweightChartWidget({
       window.addEventListener('resize', handleResize);
 
       return () => {
+        console.log('🧹 Cleanup: removing chart on unmount');
         window.removeEventListener('resize', handleResize);
-        chart.remove();
+        if (chartRef.current) {
+          chartRef.current.remove();
+          chartRef.current = null;
+        }
+        candlestickSeriesRef.current = null;
       };
     } catch (err) {
       console.error('Error initializing chart:', err);
       setError('Failed to initialize chart');
     }
-  }, [onFallback]);
+  }, []); // Empty deps = init once on mount
+  
+  // Reset chart data when instrument or timeframe changes
+  useEffect(() => {
+    if (candlestickSeriesRef.current) {
+      console.log(`🔄 Instrument/timeframe changed to ${selectedSymbol} ${timeframe}, clearing data`);
+      candlestickSeriesRef.current.setData([]);
+      lastCandleRef.current = null;
+    }
+    setLoading(true);
+    setError(null);
+  }, [selectedSymbol, timeframe]);
 
   // Fetch historical data
   useEffect(() => {
