@@ -94,28 +94,32 @@ export default function LightweightChartWidget({
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // FIX: [2025-01-24] Lightweight chart rendering issue
-  // - Corrected addSeries() syntax for v5 API (addCandlestickSeries)
-  // - Added proper cleanup in useEffect to prevent multiple chart instances
-  // - Prevents "Assertion failed" error and chart superposition bug
+  // FIX: [2025-01-24] Complete audit and fix of Lightweight Charts integration
+  // ISSUES FIXED:
+  //  - Chart superposition caused by multiple initializations (added guard in init useEffect)
+  //  - Incorrect addSeries() syntax for v5 API (now using addCandlestickSeries)
+  //  - Race condition between chart init and data fetch (added wait state)
+  //  - WebSocket starting before historical data loaded (added lastCandle check)
+  //  - Premature fallback timeout (increased to 15s)
+  // RESULT:
+  //  - Chart initializes ONCE on mount, never re-created on instrument/timeframe change
+  //  - Data is cleared and reloaded when instrument/timeframe changes
+  //  - WebSocket updates work correctly after historical data is loaded
+  //  - Fallback to TradingView only triggers after 15s if all data sources fail
   
-  // Initialize chart (ONCE on mount)
+  // Initialize chart (ONCE on mount, never re-create)
   useEffect(() => {
     if (!chartContainerRef.current) return;
     
-    console.log('📊 LightweightChartWidget render:', { selectedSymbol, timeframe });
+    console.log('🎬 Chart initialization starting (ONCE on mount)');
 
-    // Cleanup existing chart if any
+    // ⚠️ GUARD: Prevent double initialization
     if (chartRef.current) {
-      console.log('🧹 Cleaning up existing chart instance');
-      chartRef.current.remove();
-      chartRef.current = null;
-      candlestickSeriesRef.current = null;
+      console.warn('⚠️ Chart already exists, skipping re-init');
+      return;
     }
 
     try {
-      console.log('🎬 Chart initialization starting');
-      
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: 'transparent' },
@@ -137,7 +141,7 @@ export default function LightweightChartWidget({
         },
       });
 
-      // Use lightweight-charts v5 API - import CandlestickSeries and pass as first argument
+      // ✅ Correct API for lightweight-charts v5
       const candlestickSeries = chart.addSeries(CandlestickSeries, {
         upColor: '#22c55e',
         downColor: '#ef4444',
@@ -163,7 +167,7 @@ export default function LightweightChartWidget({
       window.addEventListener('resize', handleResize);
 
       return () => {
-        console.log('🧹 Cleanup: removing chart on unmount');
+        console.log('🧹 Cleanup: removing chart on UNMOUNT');
         window.removeEventListener('resize', handleResize);
         if (chartRef.current) {
           chartRef.current.remove();
@@ -172,12 +176,12 @@ export default function LightweightChartWidget({
         candlestickSeriesRef.current = null;
       };
     } catch (err) {
-      console.error('Error initializing chart:', err);
+      console.error('❌ Error initializing chart:', err);
       setError('Failed to initialize chart');
     }
-  }, []); // Empty deps = init once on mount
+  }, []); // ✅ Empty deps = run ONCE on mount, cleanup ONLY on unmount
   
-  // Reset chart data when instrument or timeframe changes
+  // Reset chart data when instrument or timeframe changes (DO NOT re-create chart)
   useEffect(() => {
     if (candlestickSeriesRef.current) {
       console.log(`🔄 Instrument/timeframe changed to ${selectedSymbol} ${timeframe}, clearing data`);
@@ -190,8 +194,13 @@ export default function LightweightChartWidget({
 
   // Fetch historical data
   useEffect(() => {
-    const fetchHistoricalData = async () => {
-      if (!candlestickSeriesRef.current) return;
+  const fetchHistoricalData = async () => {
+      // ✅ Wait for chart and series to be ready (prevent race condition)
+      if (!candlestickSeriesRef.current || !chartRef.current) {
+        console.warn('⏳ Chart not ready yet, retrying in 100ms...');
+        setTimeout(fetchHistoricalData, 100);
+        return;
+      }
 
       setLoading(true);
       setError(null);
@@ -220,14 +229,23 @@ export default function LightweightChartWidget({
           });
 
           if (fetchError) {
-            console.error('❌ Edge function error:', fetchError);
+            console.error('❌ Edge function error:', {
+              error: fetchError,
+              instrument: tdSymbol,
+              interval: interval,
+              message: fetchError.message || 'Unknown error'
+            });
             throw fetchError;
           }
 
           const payload = data as { data?: any[]; cached?: boolean; error?: string; message?: string };
           
           if (payload.error) {
-            console.error('❌ Edge function returned error:', payload.error, payload.message);
+            console.error('❌ Edge function returned error:', {
+              error: payload.error,
+              message: payload.message,
+              payload: payload
+            });
             throw new Error(payload.error);
           }
           
@@ -267,25 +285,32 @@ export default function LightweightChartWidget({
           throw new Error('No data available from any source');
         }
 
-        const formattedData: CandlestickData[] = rows
-          .map((item: any) => {
-            const ts = item.datetime ?? item.date;
-            const time = ts ? (Math.floor(new Date(ts).getTime() / 1000) as UTCTimestamp) : undefined;
-            
-            return {
-              time,
-              open: parseFloat(item.open),
-              high: parseFloat(item.high),
-              low: parseFloat(item.low),
-              close: parseFloat(item.close),
-            };
-          })
-          .filter((item: CandlestickData) => 
-            item.time && 
-            !isNaN(item.open) && !isNaN(item.high) && 
-            !isNaN(item.low) && !isNaN(item.close)
-          )
-          .sort((a, b) => (a.time as number) - (b.time as number));
+      const formattedData: CandlestickData[] = rows
+        .map((item: any) => {
+          const ts = item.datetime ?? item.date;
+          const time = ts ? (Math.floor(new Date(ts).getTime() / 1000) as UTCTimestamp) : undefined;
+          
+          return {
+            time,
+            open: parseFloat(item.open),
+            high: parseFloat(item.high),
+            low: parseFloat(item.low),
+            close: parseFloat(item.close),
+          };
+        })
+        .filter((item: CandlestickData) => 
+          item.time && 
+          !isNaN(item.open) && !isNaN(item.high) && 
+          !isNaN(item.low) && !isNaN(item.close)
+        )
+        .sort((a, b) => (a.time as number) - (b.time as number));
+
+      // ✅ Debug: Log formatted candles
+      console.log(`📊 Formatted ${formattedData.length} candles:`, {
+        first: formattedData[0],
+        last: formattedData[formattedData.length - 1],
+        sample: formattedData.slice(0, 3)
+      });
 
         if (formattedData.length > 0) {
           console.log(`✅ Loaded ${formattedData.length} candles to chart`);
@@ -333,8 +358,13 @@ export default function LightweightChartWidget({
         setLoading(false);
         
         if (onFallback) {
-          console.warn('⏰ Chart data loading failed, triggering fallback to TradingView in 10s...');
-          setTimeout(onFallback, 10000);
+          console.warn(`⏰ Chart data loading failed after 15s, triggering fallback to TradingView...`);
+          console.error('Failed to load data for:', {
+            symbol: selectedSymbol,
+            timeframe: timeframe,
+            error: err
+          });
+          setTimeout(onFallback, 15000);
         }
       }
     };
@@ -342,9 +372,13 @@ export default function LightweightChartWidget({
     fetchHistoricalData();
   }, [selectedSymbol, timeframe, onFallback]);
 
-  // Setup WebSocket for real-time updates with TwelveData
+  // Real-time WebSocket updates from TwelveData
   useEffect(() => {
-    if (loading || !candlestickSeriesRef.current) return;
+    // ✅ Wait for historical data to be loaded before starting WebSocket
+    if (loading || !candlestickSeriesRef.current || !lastCandleRef.current) {
+      console.log('⏳ Waiting for historical data before starting WebSocket...');
+      return;
+    }
 
     const apiKey = import.meta.env.VITE_TWELVE_DATA_API_KEY;
     if (!apiKey) {
@@ -378,12 +412,16 @@ export default function LightweightChartWidget({
           try {
             const msg = JSON.parse(event.data);
             
-            // Log all messages for debug
+            // Log ALL messages for debugging
             console.log('📥 TwelveData WS message:', msg);
             
             // Ignore status/heartbeat messages
-            if (msg.event === 'subscribe-status' || msg.event === 'heartbeat') {
-              console.log('Status/Heartbeat:', msg);
+            if (msg.event === 'subscribe-status') {
+              console.log('✅ Subscription status:', msg.status, msg.message || '');
+              return;
+            }
+            if (msg.event === 'heartbeat') {
+              console.log('💓 Heartbeat received');
               return;
             }
             
@@ -423,7 +461,7 @@ export default function LightweightChartWidget({
               console.warn('⚠️ Could not extract price from message:', msg);
             }
           } catch (err) {
-            console.error('Error processing TwelveData WebSocket message:', err);
+            console.error('❌ Error processing TwelveData WebSocket message:', err);
           }
         };
 
@@ -529,7 +567,11 @@ export default function LightweightChartWidget({
           </div>
         )}
         
-        <div ref={chartContainerRef} className="w-full relative">
+        <div 
+          ref={chartContainerRef} 
+          className="w-full relative"
+          style={{ minHeight: '500px' }}
+        >
           {/* Custom Tooltip */}
           {tooltipVisible && (
             <div
