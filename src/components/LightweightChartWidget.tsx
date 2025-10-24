@@ -119,7 +119,6 @@ export default function LightweightChartWidget({
         },
       });
 
-      // Create candlestick series - lightweight-charts v5 syntax
       const candlestickSeries = chart.addSeries({
         type: 'Candlestick',
         upColor: '#22c55e',
@@ -150,9 +149,6 @@ export default function LightweightChartWidget({
     } catch (err) {
       console.error('Error initializing chart:', err);
       setError('Failed to initialize chart');
-      if (onFallback) {
-        setTimeout(onFallback, 100);
-      }
     }
   }, [onFallback]);
 
@@ -187,9 +183,18 @@ export default function LightweightChartWidget({
             }
           });
 
-          if (fetchError) throw fetchError;
+          if (fetchError) {
+            console.error('❌ Edge function error:', fetchError);
+            throw fetchError;
+          }
 
           const payload = data as { data?: any[]; cached?: boolean; error?: string; message?: string };
+          
+          if (payload.error) {
+            console.error('❌ Edge function returned error:', payload.error, payload.message);
+            throw new Error(payload.error);
+          }
+          
           rows = Array.isArray(payload) ? payload : payload?.data || [];
           
           console.log(`✅ Edge function returned ${rows.length} data points`);
@@ -292,8 +297,8 @@ export default function LightweightChartWidget({
         setLoading(false);
         
         if (onFallback) {
-          console.warn('⏰ Chart data loading failed, triggering fallback to TradingView in 5s...');
-          setTimeout(onFallback, 5000);
+          console.warn('⏰ Chart data loading failed, triggering fallback to TradingView in 10s...');
+          setTimeout(onFallback, 10000);
         }
       }
     };
