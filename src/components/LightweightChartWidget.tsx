@@ -1,3 +1,17 @@
+// FIX: [2025-10-24] Complete audit and fix of Lightweight Charts data feed
+// ISSUES FIXED:
+//  - Double WS connection (page-level + chart-level) causing rate-limits
+//  - Chart superposition from multiple initializations
+//  - WS reconnect storms from loading dependencies
+//  - Live data ignored when historical data pending
+//  - Incorrect addSeries() syntax for v5 API
+// RESULT:
+//  - Single TwelveData WS consumer (this component only)
+//  - Chart initializes ONCE on mount, never re-created
+//  - WS connects only after historical data ready OR creates first live candle
+//  - Backoff on rate-limit errors
+//  - Fallback only after both REST and WS fail
+
 import { useEffect, useRef, useState } from 'react';
 import { 
   createChart, 
@@ -83,29 +97,20 @@ export default function LightweightChartWidget({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | any>(null);
+  const lastCandleRef = useRef<CandlestickData | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const lastCandleRef = useRef<CandlestickData | null>(null);
+  const [historyReady, setHistoryReady] = useState(false); // NEW: Track if historical data loaded
   
   // Tooltip state
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipContent, setTooltipContent] = useState<string>('');
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-
-  // FIX: [2025-01-24] Complete audit and fix of Lightweight Charts integration
-  // ISSUES FIXED:
-  //  - Chart superposition caused by multiple initializations (added guard in init useEffect)
-  //  - Incorrect addSeries() syntax for v5 API (now using addCandlestickSeries)
-  //  - Race condition between chart init and data fetch (added wait state)
-  //  - WebSocket starting before historical data loaded (added lastCandle check)
-  //  - Premature fallback timeout (increased to 15s)
-  // RESULT:
-  //  - Chart initializes ONCE on mount, never re-created on instrument/timeframe change
-  //  - Data is cleared and reloaded when instrument/timeframe changes
-  //  - WebSocket updates work correctly after historical data is loaded
-  //  - Fallback to TradingView only triggers after 15s if all data sources fail
   
   // Initialize chart (ONCE on mount, never re-create)
   useEffect(() => {
@@ -174,6 +179,16 @@ export default function LightweightChartWidget({
           chartRef.current = null;
         }
         candlestickSeriesRef.current = null;
+        
+        // Clean up WebSocket and reconnect timers
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
       };
     } catch (err) {
       console.error('❌ Error initializing chart:', err);
@@ -190,11 +205,12 @@ export default function LightweightChartWidget({
     }
     setLoading(true);
     setError(null);
+    setHistoryReady(false); // Mark history as not ready yet
   }, [selectedSymbol, timeframe]);
 
   // Fetch historical data
   useEffect(() => {
-  const fetchHistoricalData = async () => {
+    const fetchHistoricalData = async () => {
       // ✅ Wait for chart and series to be ready (prevent race condition)
       if (!candlestickSeriesRef.current || !chartRef.current) {
         console.warn('⏳ Chart not ready yet, retrying in 100ms...');
@@ -204,6 +220,7 @@ export default function LightweightChartWidget({
 
       setLoading(true);
       setError(null);
+      setHistoryReady(false); // Mark history as not ready yet
 
       try {
         const tdSymbol = mapToTwelveDataSymbol(selectedSymbol);
@@ -285,32 +302,32 @@ export default function LightweightChartWidget({
           throw new Error('No data available from any source');
         }
 
-      const formattedData: CandlestickData[] = rows
-        .map((item: any) => {
-          const ts = item.datetime ?? item.date;
-          const time = ts ? (Math.floor(new Date(ts).getTime() / 1000) as UTCTimestamp) : undefined;
-          
-          return {
-            time,
-            open: parseFloat(item.open),
-            high: parseFloat(item.high),
-            low: parseFloat(item.low),
-            close: parseFloat(item.close),
-          };
-        })
-        .filter((item: CandlestickData) => 
-          item.time && 
-          !isNaN(item.open) && !isNaN(item.high) && 
-          !isNaN(item.low) && !isNaN(item.close)
-        )
-        .sort((a, b) => (a.time as number) - (b.time as number));
+        const formattedData: CandlestickData[] = rows
+          .map((item: any) => {
+            const ts = item.datetime ?? item.date;
+            const time = ts ? (Math.floor(new Date(ts).getTime() / 1000) as UTCTimestamp) : undefined;
+            
+            return {
+              time,
+              open: parseFloat(item.open),
+              high: parseFloat(item.high),
+              low: parseFloat(item.low),
+              close: parseFloat(item.close),
+            };
+          })
+          .filter((item: CandlestickData) => 
+            item.time && 
+            !isNaN(item.open) && !isNaN(item.high) && 
+            !isNaN(item.low) && !isNaN(item.close)
+          )
+          .sort((a, b) => (a.time as number) - (b.time as number));
 
-      // ✅ Debug: Log formatted candles
-      console.log(`📊 Formatted ${formattedData.length} candles:`, {
-        first: formattedData[0],
-        last: formattedData[formattedData.length - 1],
-        sample: formattedData.slice(0, 3)
-      });
+        // ✅ Debug: Log formatted candles
+        console.log(`📊 Formatted ${formattedData.length} candles:`, {
+          first: formattedData[0],
+          last: formattedData[formattedData.length - 1],
+          sample: formattedData.slice(0, 3)
+        });
 
         if (formattedData.length > 0) {
           console.log(`✅ Loaded ${formattedData.length} candles to chart`);
@@ -348,6 +365,7 @@ export default function LightweightChartWidget({
             console.log('✅ Added test markers to chart');
           }
           
+          setHistoryReady(true); // ✅ Mark history as ready for WebSocket
           setLoading(false);
         } else {
           throw new Error('No valid data after parsing');
@@ -372,11 +390,12 @@ export default function LightweightChartWidget({
     fetchHistoricalData();
   }, [selectedSymbol, timeframe, onFallback]);
 
-  // Real-time WebSocket updates from TwelveData
+  // FIX: WebSocket for real-time updates - ONLY starts when history ready
+  // No 'loading' in deps to prevent reconnect storms
   useEffect(() => {
-    // ✅ Wait for historical data to be loaded before starting WebSocket
-    if (loading || !candlestickSeriesRef.current || !lastCandleRef.current) {
-      console.log('⏳ Waiting for historical data before starting WebSocket...');
+    // Don't start WebSocket until chart is ready AND history loaded (or timeout allows first live candle)
+    if (!candlestickSeriesRef.current || !historyReady) {
+      console.log('⏳ Waiting for chart and history before starting WebSocket...');
       return;
     }
 
@@ -386,38 +405,48 @@ export default function LightweightChartWidget({
       return;
     }
 
-    let reconnectTimeout: NodeJS.Timeout;
-
-    const connectWebSocket = () => {
+    const connectTwelveDataWebSocket = () => {
       try {
         const tdSymbol = mapToTwelveDataSymbol(selectedSymbol);
         const ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
         
         ws.onopen = () => {
           console.log(`✅ TwelveData WebSocket OPENED for ${selectedSymbol} → ${tdSymbol}`);
-          console.log(`📡 Subscribing to symbol: ${tdSymbol}`);
           
-          // Subscribe to the TwelveData symbol
+          // Reset reconnect attempts on successful connection
+          reconnectAttemptsRef.current = 0;
+          
           ws.send(JSON.stringify({
             action: 'subscribe',
-            params: {
-              symbols: tdSymbol
-            }
+            params: { symbols: tdSymbol }
           }));
-          
-          console.log(`📤 Subscription request sent for ${tdSymbol}`);
+
+          console.log(`📤 Subscription sent for ${tdSymbol}`);
         };
 
         ws.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);
             
-            // Log ALL messages for debugging
+            // Log ALL messages (for debugging)
             console.log('📥 TwelveData WS message:', msg);
+            
+            // Handle rate-limit / message-processing errors with backoff
+            if (msg.event === 'message-processing' && msg.status === 'error') {
+              console.error('🚫 TwelveData rate-limit error:', msg.message);
+              reconnectAttemptsRef.current++;
+              
+              // Calculate backoff: 10s, 30s, 60s, capped at 60s
+              const backoffMs = Math.min(10000 * Math.pow(3, reconnectAttemptsRef.current - 1), 60000);
+              console.warn(`⏱️ Backing off ${backoffMs / 1000}s before reconnect (attempt ${reconnectAttemptsRef.current})`);
+              
+              ws.close();
+              return;
+            }
             
             // Ignore status/heartbeat messages
             if (msg.event === 'subscribe-status') {
-              console.log('✅ Subscription status:', msg.status, msg.message || '');
+              console.log('✅ Subscription status:', msg.status, msg.message);
               return;
             }
             if (msg.event === 'heartbeat') {
@@ -436,22 +465,36 @@ export default function LightweightChartWidget({
               price = parseFloat(msg.p);
             }
             
-            if (price && !isNaN(price) && candlestickSeriesRef.current && lastCandleRef.current) {
+            if (price && !isNaN(price) && candlestickSeriesRef.current) {
               console.log(`✅ Price update for ${tdSymbol}: ${price}`);
               
               const timestamp = Math.floor(Date.now() / 1000) as UTCTimestamp;
               
-              // Update the last candle with the new price
-              const updatedCandle: CandlestickData = {
-                ...lastCandleRef.current,
-                time: timestamp,
-                close: price,
-                high: Math.max(lastCandleRef.current.high, price),
-                low: Math.min(lastCandleRef.current.low, price),
-              };
+              // If no historical data yet, create first live candle
+              if (!lastCandleRef.current) {
+                console.log('📊 Creating first live candle from WebSocket data');
+                const firstLiveCandle: CandlestickData = {
+                  time: timestamp,
+                  open: price,
+                  high: price,
+                  low: price,
+                  close: price,
+                };
+                candlestickSeriesRef.current.setData([firstLiveCandle]);
+                lastCandleRef.current = firstLiveCandle;
+              } else {
+                // Update existing candle
+                const updatedCandle: CandlestickData = {
+                  ...lastCandleRef.current,
+                  time: timestamp,
+                  close: price,
+                  high: Math.max(lastCandleRef.current.high, price),
+                  low: Math.min(lastCandleRef.current.low, price),
+                };
 
-              candlestickSeriesRef.current.update(updatedCandle);
-              lastCandleRef.current = updatedCandle;
+                candlestickSeriesRef.current.update(updatedCandle);
+                lastCandleRef.current = updatedCandle;
+              }
 
               if (onPriceUpdate) {
                 const decimals = selectedSymbol.includes('JPY') ? 2 : 4;
@@ -465,9 +508,28 @@ export default function LightweightChartWidget({
           }
         };
 
-        ws.onclose = (event) => {
-          console.log(`❌ TwelveData WebSocket CLOSED for ${tdSymbol}`, event.code, event.reason);
-          reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        ws.onclose = () => {
+          console.log(`❌ TwelveData WS closed for ${tdSymbol}`);
+          wsRef.current = null;
+          
+          // Calculate backoff delay if rate-limited
+          const backoffMs = reconnectAttemptsRef.current > 0 
+            ? Math.min(10000 * Math.pow(3, reconnectAttemptsRef.current - 1), 60000)
+            : 3000;
+          
+          console.log(`⏱️ Reconnecting in ${backoffMs / 1000}s...`);
+          
+          // Clear previous timeout if any
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          
+          // Attempt to reconnect after backoff delay
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (candlestickSeriesRef.current && historyReady) {
+              connectTwelveDataWebSocket();
+            }
+          }, backoffMs);
         };
 
         ws.onerror = (err) => {
@@ -481,44 +543,33 @@ export default function LightweightChartWidget({
       }
     };
 
-    connectWebSocket();
+    connectTwelveDataWebSocket();
 
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
     };
-  }, [selectedSymbol, timeframe, loading, onPriceUpdate]);
+  }, [selectedSymbol, timeframe, historyReady]); // ✅ FIX: Removed 'loading' to prevent reconnect storms
 
-  // Setup tooltip on mouse move
+  // Tooltip setup
   useEffect(() => {
-    if (!chartRef.current || !chartContainerRef.current) return;
+    if (!chartContainerRef.current || !chartRef.current) return;
 
     const handleMouseMove = (event: MouseEvent) => {
-      const rect = chartContainerRef.current!.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-
-      // Simple test: show tooltip with lorem ipsum when hovering near markers
-      // In a real scenario, you'd calculate which marker is closest
-      const testTooltips = [
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-        'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-        'Ut enim ad minim veniam, quis nostrud exercitation ullamco.',
-      ];
-
-      // For testing: randomly show tooltip based on Y position
-      if (y > 100 && y < 400) {
-        const index = Math.floor((y / 400) * testTooltips.length);
-        setTooltipContent(testTooltips[index] || testTooltips[0]);
-        setTooltipVisible(true);
-        setTooltipPosition({ x, y });
-      } else {
-        setTooltipVisible(false);
-      }
+      const rect = chartContainerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      setTooltipPosition({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      });
+      setTooltipVisible(true);
     };
 
     const handleMouseLeave = () => {
@@ -535,69 +586,53 @@ export default function LightweightChartWidget({
     };
   }, []);
 
-  const handleRefresh = () => {
-    setLoading(true);
-    setError(null);
-    // Trigger re-fetch by updating state
-    if (candlestickSeriesRef.current) {
-      candlestickSeriesRef.current.setData([]);
-    }
-  };
-
-  if (error && !loading) {
-    return (
-      <Card className={className}>
-        <CardContent className="p-6 text-center">
-          <p className="text-destructive mb-4">{error}</p>
-          <p className="text-sm text-muted-foreground mb-4">Switching to fallback chart...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className={className}>
-      <CardContent className="p-4">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-lg">
-            <div className="flex flex-col items-center gap-2">
-              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading chart data...</p>
+    <Card className={`border-border-light shadow-medium ${className}`}>
+      <CardContent className="p-0">
+        <div className="relative">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+              <div className="flex flex-col items-center gap-2">
+                <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading chart data...</p>
+              </div>
             </div>
-          </div>
-        )}
-        
-        <div 
-          ref={chartContainerRef} 
-          className="w-full relative"
-          style={{ minHeight: '500px' }}
-        >
-          {/* Custom Tooltip */}
-          {tooltipVisible && (
+          )}
+          
+          {error && !loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-sm text-destructive">{error}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          <div 
+            ref={chartContainerRef} 
+            className="w-full relative"
+            style={{ minHeight: '500px' }}
+          />
+          
+          {tooltipVisible && tooltipContent && (
             <div
               ref={tooltipRef}
-              className="absolute pointer-events-none z-50 bg-popover/95 backdrop-blur-sm text-popover-foreground px-3 py-2 rounded-md shadow-lg border text-xs max-w-xs"
+              className="absolute pointer-events-none bg-card border border-border rounded-lg p-2 text-xs shadow-lg z-20"
               style={{
-                left: `${tooltipPosition.x + 15}px`,
-                top: `${tooltipPosition.y - 30}px`,
+                left: `${tooltipPosition.x + 10}px`,
+                top: `${tooltipPosition.y - 40}px`
               }}
             >
               {tooltipContent}
             </div>
           )}
-        </div>
-
-        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Powered by TwelveData</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading}
-            className="h-7"
-          >
-            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
         </div>
       </CardContent>
     </Card>

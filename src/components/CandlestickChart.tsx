@@ -141,11 +141,12 @@ export function CandlestickChart({
                   timeframe={timeframe}
                   onPriceUpdate={(price) => {
                     setCurrentPrice(price);
-                    setIsConnected(true);
+                    setIsConnected(true); // Reflects TwelveData live connection
                   }}
                   onFallback={() => {
                     console.log('Lightweight Chart failed, switching to TradingView fallback');
                     setUseFallback(true);
+                    setIsConnected(false); // Fallback means no TwelveData connection
                   }}
                 />
               ) : (
