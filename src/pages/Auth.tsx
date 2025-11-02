@@ -59,47 +59,103 @@ export default function Auth() {
           if (provider === 'google') {
             console.log('[Google Auth] User signed in via Google');
             
-            // Check if profile exists
-            const { data: profile } = await supabase
+            // Check if profile exists AND if user is soft-deleted
+            const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('broker_id, status')
+              .select('broker_id, status, is_deleted, created_at')
               .eq('user_id', session.user.id)
               .maybeSingle();
             
-            // If profile exists but no broker_id, update it
-            if (profile && !profile.broker_id) {
+            // 🚫 Block soft-deleted users
+            if (profile?.is_deleted) {
+              console.log('[Google Auth] User is soft-deleted, blocking login');
+              
+              await supabase.auth.signOut();
+              
+              toast({
+                title: "Account Deactivated",
+                description: "Your account has been deactivated. Please contact support if you think this is an error.",
+                variant: "destructive",
+              });
+              
+              return;
+            }
+            
+            // Determine if this is a NEW user or RETURNING user
+            const isNewUser = profile && new Date(profile.created_at).getTime() > Date.now() - 5000;
+            
+            if (isNewUser) {
+              console.log('[Google Auth] NEW user detected');
+              
+              // Get pending broker info from sessionStorage (set in handleGoogleSignUp)
               const pendingBrokerId = sessionStorage.getItem('pending_broker_id');
               const pendingBrokerName = sessionStorage.getItem('pending_broker_name');
               
-              if (pendingBrokerId) {
-                console.log('[Google Auth] Updating profile with broker info');
+              if (pendingBrokerId && profile && !profile.broker_id) {
+                // Update profile with broker info
+                console.log('[Google Auth] Updating new user profile with broker');
                 
                 await supabase
                   .from('profiles')
                   .update({
                     broker_id: pendingBrokerId,
                     broker_name: pendingBrokerName,
-                    status: 'approved'
+                    status: 'pending' // Keep pending for approval
                   })
                   .eq('user_id', session.user.id);
-                
-                // Also update auth metadata
-                await supabase.auth.updateUser({
-                  data: {
-                    broker_id: pendingBrokerId,
-                    broker_name: pendingBrokerName
-                  }
-                });
                 
                 // Clear temporary storage
                 sessionStorage.removeItem('pending_broker_id');
                 sessionStorage.removeItem('pending_broker_name');
                 
                 toast({
-                  title: "Welcome!",
-                  description: "Your Google account has been linked successfully.",
+                  title: "Account Created",
+                  description: "Your account has been created and is pending approval. You'll receive an email once it's activated.",
                 });
+                
+                // Redirect to dashboard - AuthGuard will show pending message
+                navigate('/dashboard');
+                return;
               }
+              
+              // If no broker info in sessionStorage, user needs to complete signup
+              if (!profile?.broker_id) {
+                toast({
+                  title: "Setup Required",
+                  description: "Please select your broker to complete registration.",
+                  variant: "destructive",
+                });
+                
+                await supabase.auth.signOut();
+                return;
+              }
+            } else {
+              console.log('[Google Auth] RETURNING user detected');
+              
+              // Returning user - just sign in normally
+              // Update broker info if it was pending
+              if (profile && !profile.broker_id) {
+                const pendingBrokerId = sessionStorage.getItem('pending_broker_id');
+                const pendingBrokerName = sessionStorage.getItem('pending_broker_name');
+                
+                if (pendingBrokerId) {
+                  await supabase
+                    .from('profiles')
+                    .update({
+                      broker_id: pendingBrokerId,
+                      broker_name: pendingBrokerName
+                    })
+                    .eq('user_id', session.user.id);
+                  
+                  sessionStorage.removeItem('pending_broker_id');
+                  sessionStorage.removeItem('pending_broker_name');
+                }
+              }
+              
+              toast({
+                title: "Welcome back!",
+                description: "Successfully signed in with Google.",
+              });
             }
             
             // Handle free trial if needed
@@ -314,6 +370,29 @@ export default function Auth() {
       email,
       password
     });
+
+    // ✅ Check for soft-deleted users
+    if (data.user && !error) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_deleted, deleted_at')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+      
+      if (profile?.is_deleted) {
+        // Force sign out
+        await supabase.auth.signOut();
+        
+        toast({
+          title: "Account Deactivated",
+          description: "Your account has been deactivated. Please contact support if you think this is an error.",
+          variant: "destructive",
+        });
+        
+        setLoading(false);
+        return;
+      }
+    }
 
     // Store stay logged in preference separately after successful login
     if (data.user && !error && stayLoggedIn) {

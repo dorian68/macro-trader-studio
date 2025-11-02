@@ -47,6 +47,19 @@ export function useSessionManager() {
       // Register this session and invalidate others
       const registerSession = async () => {
         try {
+          // ✅ Check if user is soft-deleted before registering session
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_deleted')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (profile?.is_deleted) {
+            console.log('🚫 [SessionManager] User is soft-deleted, blocking session registration');
+            await signOut();
+            return;
+          }
+          
           console.log('🔐 [SessionManager] Registering session:', { userId: user.id, sessionId });
           
           // First, invalidate previous sessions

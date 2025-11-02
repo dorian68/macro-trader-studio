@@ -107,5 +107,6 @@ export function useProfile() {
     isApproved: profile?.status === 'approved',
     isPending: profile?.status === 'pending',
     isRejected: profile?.status === 'rejected',
+    isDeleted: (profile as any)?.is_deleted || false
   };
 }

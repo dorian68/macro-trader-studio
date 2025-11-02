@@ -5,7 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-import { AlertCircle, Clock, XCircle } from 'lucide-react';
+import { AlertCircle, Clock, XCircle, Loader2 } from 'lucide-react';
 
 const { useEffect } = React;
 
@@ -16,7 +16,7 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children, requireApproval = true }: AuthGuardProps) {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { profile, loading: profileLoading, isPending, isRejected, isApproved } = useProfile();
+  const { profile, loading: profileLoading, isPending, isRejected, isApproved, isDeleted } = useProfile();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,10 +29,36 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // ✅ Check if user is soft-deleted (safety net)
+  if (isDeleted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <XCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <CardTitle className="text-xl">Account Deactivated</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Your account has been deactivated. Please contact support if you think this is an error.
+            </p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <p className="text-sm text-destructive">
+                For assistance, please reach out to support@alphalens.ai
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => signOut()} className="w-full">
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
