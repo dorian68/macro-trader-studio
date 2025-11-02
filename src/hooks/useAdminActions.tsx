@@ -12,6 +12,9 @@ interface AdminUser {
   updated_at: string;
   email?: string;
   roles: string[];
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
 
 export function useAdminActions() {

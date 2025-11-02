@@ -59,37 +59,32 @@ serve(async (req) => {
       )
     }
 
-    console.log('User authenticated:', user.id);
+    console.log('[DELETE-USER] User authenticated:', user.id);
 
-    // Check if the user has admin or super_user role
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+    // ✅ FIX: Validate that the calling user has super_user role via user_roles table
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
 
-    if (profileError || !profile) {
-      console.log('Profile error:', profileError);
+    if (rolesError) {
+      console.error('[DELETE-USER] Failed to fetch roles:', rolesError);
       return new Response(
-        JSON.stringify({ error: 'Profile not found' }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: 'Failed to verify permissions' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('User role:', profile.role);
+    const roles = (userRoles || []).map(r => r.role);
+    const isSuperUser = roles.includes('super_user');
 
-    // Only super_users can delete users
-    if (profile.role !== 'super_user') {
-      console.log('Insufficient permissions for user role:', profile.role);
+    console.log('[DELETE-USER] User roles:', roles);
+
+    if (!isSuperUser) {
+      console.log('[DELETE-USER] Insufficient permissions. User roles:', roles);
       return new Response(
-        JSON.stringify({ error: 'Insufficient permissions' }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: 'Insufficient permissions: super_user role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -107,28 +102,73 @@ serve(async (req) => {
       )
     }
 
-    // Delete the user using admin API
-    console.log('Calling auth.admin.deleteUser...');
-    const { error: deleteError } = await supabase.auth.admin.deleteUser(userId)
-    
-    if (deleteError) {
-      console.error('Error deleting user:', deleteError)
+    // ✅ Verify user exists and check current soft delete status
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('user_id, is_deleted')
+      .eq('user_id', userId)
+      .single();
+
+    if (checkError || !existingProfile) {
+      console.error('[DELETE-USER] User profile not found:', checkError);
       return new Response(
-        JSON.stringify({ error: 'Failed to delete user', details: deleteError.message }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: 'User not found', details: checkError?.message }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('User deleted successfully');
-    return new Response(
-      JSON.stringify({ success: true }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    if (existingProfile.is_deleted) {
+      console.log('[DELETE-USER] User already soft deleted:', userId);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'User was already deactivated',
+          already_deleted: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ✅ Perform soft delete
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_by: user.id
+      })
+      .eq('user_id', userId);
+
+    if (updateError) {
+      console.error('[DELETE-USER] Failed to soft delete:', updateError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to deactivate user', details: updateError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 🔒 Revoke all user sessions to prevent login with existing tokens
+    console.log('[DELETE-USER] Revoking all user sessions for:', userId);
+    try {
+      const { error: signOutError } = await supabase.auth.admin.signOut(userId, 'global');
+      if (signOutError) {
+        console.error('[DELETE-USER] Warning: Failed to revoke sessions:', signOutError);
       }
+    } catch (signOutErr) {
+      console.error('[DELETE-USER] Exception during session revocation:', signOutErr);
+    }
+
+    // 📝 Audit log
+    console.log(`[AUDIT] User ${userId} soft deleted by super_user ${user.id} at ${new Date().toISOString()}`);
+
+    console.log('[DELETE-USER] Soft delete successful');
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: 'User successfully deactivated',
+        soft_deleted: true
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {

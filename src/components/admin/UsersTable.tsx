@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Settings, 
@@ -43,6 +45,9 @@ interface AdminUser {
   email?: string;
   user_plan?: string;
   roles: string[];
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
   credits?: {
     queries: number;
     ideas: number;
@@ -95,9 +100,15 @@ export function UsersTable({
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number | 'all'>(10);
+  const [showDeleted, setShowDeleted] = useState(false);
   const { isSuperUser, isAdmin } = useUserRole();
 
   const filteredUsers = users.filter(user => {
+    // ✅ Filter soft-deleted users unless showDeleted is enabled
+    if (!showDeleted && user.is_deleted) {
+      return false;
+    }
+    
     const matchesSearch = user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.broker_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          false;
@@ -190,6 +201,20 @@ export function UsersTable({
         </Select>
       </div>
 
+      {/* Toggle for soft-deleted users (Super Users only) */}
+      {isSuperUser && (
+        <div className="flex items-center gap-2 mb-4">
+          <Switch
+            id="show-deleted"
+            checked={showDeleted}
+            onCheckedChange={setShowDeleted}
+          />
+          <Label htmlFor="show-deleted" className="text-sm cursor-pointer">
+            Afficher les utilisateurs supprimés ({users.filter(u => u.is_deleted).length})
+          </Label>
+        </div>
+      )}
+
       {/* Table */}
       <div className="border border-border rounded-lg overflow-hidden">
         <ScrollArea className="h-[600px]">
@@ -221,10 +246,18 @@ export function UsersTable({
                                        user.roles?.includes('admin') ? 'admin' : 'user';
                     const RoleIcon = roleIcons[primaryRole];
                     return (
-                      <TableRow key={user.id} className="hover:bg-muted/50">
+                      <TableRow 
+                        key={user.id} 
+                        className={`hover:bg-muted/50 ${user.is_deleted ? 'opacity-50 bg-red-50/50 dark:bg-red-950/20' : ''}`}
+                      >
                         <TableCell>
-                          <div className="font-medium text-sm">
+                          <div className="font-medium text-sm flex items-center gap-2">
                             {user.email || 'N/A'}
+                            {user.is_deleted && (
+                              <Badge variant="destructive" className="text-xs">
+                                Supprimé
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>

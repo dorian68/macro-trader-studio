@@ -868,7 +868,10 @@ export type Database = {
           broker_id: string | null
           broker_name: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
+          is_deleted: boolean
           status: string
           updated_at: string
           user_id: string
@@ -878,7 +881,10 @@ export type Database = {
           broker_id?: string | null
           broker_name?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
+          is_deleted?: boolean
           status?: string
           updated_at?: string
           user_id: string
@@ -888,7 +894,10 @@ export type Database = {
           broker_id?: string | null
           broker_name?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
+          is_deleted?: boolean
           status?: string
           updated_at?: string
           user_id?: string

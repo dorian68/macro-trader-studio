@@ -9,6 +9,9 @@ interface UserProfile {
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  deleted_by: string | null;
 }
 
 interface UserWithEmail extends UserProfile {
@@ -80,15 +83,25 @@ Deno.serve(async (req) => {
       throw new Error('Profile not found')
     }
 
+    // ✅ Support optional showDeleted parameter
+    const url = new URL(req.url);
+    const showDeleted = url.searchParams.get('showDeleted') === 'true';
+
     // Fetch profiles with broker scoping for admins
     let profilesQuery = supabaseAdmin
       .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .select('*');
+
+    // Filter soft-deleted users by default
+    if (!showDeleted) {
+      profilesQuery = profilesQuery.eq('is_deleted', false);
+    }
+
+    profilesQuery = profilesQuery.order('created_at', { ascending: false });
 
     // Apply broker scoping for admin users (not super_user)
     if (roles.includes('admin') && !roles.includes('super_user') && profileData.broker_id) {
-      profilesQuery = profilesQuery.eq('broker_id', profileData.broker_id)
+      profilesQuery = profilesQuery.eq('broker_id', profileData.broker_id);
     }
 
     const { data: profiles, error: profilesError } = await profilesQuery
