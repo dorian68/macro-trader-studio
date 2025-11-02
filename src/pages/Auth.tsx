@@ -324,6 +324,49 @@ export default function Auth() {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    // First, check if broker is selected
+    if (!selectedBrokerId) {
+      toast({
+        title: "Broker Required",
+        description: "Please select a broker before signing up with Google.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setGoogleLoading(true);
+    
+    const selectedBroker = activeBrokers.find((b: any) => b.id === selectedBrokerId);
+    const redirectUrl = `${window.location.origin}/auth`;
+    
+    // Store broker info temporarily for OAuth callback
+    sessionStorage.setItem('pending_broker_id', selectedBrokerId);
+    sessionStorage.setItem('pending_broker_name', selectedBroker?.name || '');
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        }
+      }
+    });
+    
+    if (error) {
+      toast({
+        title: "Google Sign-Up Error",
+        description: error.message,
+        variant: "destructive"
+      });
+      setGoogleLoading(false);
+      // Clear stored broker info
+      sessionStorage.removeItem('pending_broker_id');
+      sessionStorage.removeItem('pending_broker_name');
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -497,6 +540,12 @@ export default function Auth() {
                   )}
                 </div>
                 
+                <GoogleAuthButton
+                  mode="signup"
+                  loading={googleLoading}
+                  onClick={handleGoogleSignUp}
+                  disabled={!selectedBrokerId}
+                />
                 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
