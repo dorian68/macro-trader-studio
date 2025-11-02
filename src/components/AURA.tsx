@@ -630,7 +630,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
           ...prev,
           { 
             role: 'assistant', 
-            content: `🤔 Je comprends votre demande, mais je ne peux pas exécuter cette action pour le moment.\n\n**Ce que je peux faire pour vous :**\n- 📊 Analyse de marché en temps réel\n- 💡 Génération de trade setups\n- 📈 Commentaires macro\n- 📋 Rapports de marché\n- 📉 Indicateurs techniques (RSI, MACD, SMA, ATR)\n\nPouvez-vous reformuler votre demande ou me dire ce que vous aimeriez savoir sur **${instrument || 'le marché'}** ?` 
+            content: `${t('toasts:aura.unknownAction')}\n\n${t('toasts:aura.availableActions')}\n\n${t('toasts:aura.reformulateRequest', { instrument: instrument || 'the market' })}` 
           }
         ]);
         
@@ -642,11 +642,11 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
     if (!creditCheck.canLaunch) {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `❌ ${creditCheck.message || "Crédits insuffisants."}` },
+        { role: 'assistant', content: t('toasts:aura.insufficientCredits', { message: creditCheck.message || t('toasts:aura.cannotLaunchRequest') }) },
       ]);
       toast({
-        title: "Crédits Insuffisants",
-        description: creditCheck.message || "Impossible de lancer cette requête.",
+        title: t('toasts:aura.insufficientCreditsTitle'),
+        description: creditCheck.message || t('toasts:aura.cannotLaunchRequest'),
         variant: "destructive"
       });
       return;
@@ -656,7 +656,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       // Show loading message in AURA
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `🚀 Lancement de la requête pour ${instrument}...` },
+        { role: 'assistant', content: t('toasts:aura.launchingRequest', { instrument }) },
       ]);
       setActiveJobId('pending');
 
@@ -712,8 +712,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       const engaged = await engageCredit(creditType, jobId);
       if (!engaged) {
         toast({
-          title: "Erreur",
-          description: "Impossible de réserver le crédit.",
+          title: t('toasts:aura.error'),
+          description: t('toasts:aura.cannotReserveCredit'),
           variant: "destructive"
         });
         setMessages((prev) => prev.slice(0, -1));
@@ -768,11 +768,11 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                   console.error('❌ [AURA] Failed to parse response_payload JSON:', parseError);
                   setMessages((prev) => [
                     ...prev.slice(0, -1),
-                    { role: 'assistant', content: `❌ Erreur de format des données pour ${instrument}.` },
+                    { role: 'assistant', content: t('toasts:aura.dataFormatError', { instrument }) },
                   ]);
                   toast({
-                    title: "Erreur de Format",
-                    description: "Les données retournées sont invalides.",
+                    title: t('toasts:aura.dataFormatErrorTitle'),
+                    description: t('toasts:aura.invalidDataReturned'),
                     variant: "destructive"
                   });
                   setActiveJobId(null);
@@ -785,21 +785,22 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 ...prev.slice(0, -1),
                 { 
                   role: 'assistant', 
-                  content: `✅ Analyse terminée pour ${instrument} ! 🎉\n\nVous pouvez consulter le résultat complet via :\n- Le badge ci-dessus (cliquer pour naviguer)\n- Les notifications en bas à droite\n- La page dédiée (${
-                    featureType === 'ai_trade_setup' ? 'AI Setup' :
-                    featureType === 'macro_commentary' ? 'Macro Analysis' :
-                    'Reports'
-                  })`
+                  content: `${t('toasts:aura.analysisCompleted', { instrument })} 🎉\n\n${t('toasts:aura.viewResultsVia', { 
+                    page: featureType === 'ai_trade_setup' ? 'AI Setup' :
+                          featureType === 'macro_commentary' ? 'Macro Analysis' :
+                          'Reports'
+                  })}`
                 },
               ]);
               
               toast({ 
-                title: "✅ Analyse Complétée", 
-                description: `Votre ${
-                  featureType === 'ai_trade_setup' ? 'trade setup' :
-                  featureType === 'macro_commentary' ? 'analyse macro' :
-                  'rapport'
-                } pour ${instrument} est prêt.`,
+                title: t('toasts:aura.analysisCompletedTitle'), 
+                description: t('toasts:aura.analysisCompletedDescription', {
+                  type: featureType === 'ai_trade_setup' ? 'trade setup' :
+                        featureType === 'macro_commentary' ? 'macro analysis' :
+                        'report',
+                  instrument
+                }),
                 duration: 5000
               });
               
@@ -807,21 +808,21 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               supabase.removeChannel(channel);
               
             } else if (job.status === 'error') {
-              const errorMsg = job.error_message || "Une erreur inconnue est survenue.";
+              const errorMsg = job.error_message || "Unknown error occurred.";
               console.error('❌ [AURA Realtime] Job failed:', errorMsg);
               
-              let userMessage = `❌ Échec du traitement pour ${instrument}.\n\n`;
+              let userMessage = `${t('toasts:aura.processingFailed', { instrument })}\n\n`;
               
               if (errorMsg.toLowerCase().includes('timeout')) {
-                userMessage += "⏱️ **Délai dépassé** : La requête a pris trop de temps. Essayez avec un timeframe plus court.";
+                userMessage += t('toasts:aura.timeoutError');
               } else if (errorMsg.toLowerCase().includes('rate limit')) {
-                userMessage += "🚦 **Limite atteinte** : Trop de requêtes en peu de temps. Attendez quelques instants.";
+                userMessage += t('toasts:aura.rateLimitError');
               } else if (errorMsg.toLowerCase().includes('no data')) {
-                userMessage += "📭 **Pas de données** : Aucune donnée disponible pour cet instrument sur cette période.";
+                userMessage += t('toasts:aura.noDataError');
               } else if (errorMsg.toLowerCase().includes('credit')) {
-                userMessage += "💳 **Crédits insuffisants** : Veuillez recharger vos crédits.";
+                userMessage += t('toasts:aura.creditError');
               } else {
-                userMessage += `Détails : ${errorMsg}`;
+                userMessage += `Details: ${errorMsg}`;
               }
               
               setMessages((prev) => [
@@ -830,7 +831,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               ]);
               
               toast({
-                title: "❌ Échec de l'Analyse",
+                title: t('toasts:aura.analysisFailedTitle'),
                 description: errorMsg,
                 variant: "destructive",
                 duration: 7000
@@ -884,12 +885,12 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
           
           setMessages((prev) => [
             ...prev.slice(0, -1),
-            { role: 'assistant', content: `❌ Impossible de contacter le serveur. Vérifiez votre connexion.` },
+            { role: 'assistant', content: t('toasts:aura.cannotContactServer') },
           ]);
           
           toast({
-            title: "Erreur Réseau",
-            description: "Impossible d'envoyer la requête. Vérifiez votre connexion internet.",
+            title: t('toasts:aura.networkErrorTitle'),
+            description: t('toasts:aura.cannotSendRequest'),
             variant: "destructive"
           });
           

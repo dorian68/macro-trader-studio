@@ -22,6 +22,7 @@ import { dualResponseHandler } from "@/lib/dual-response-handler";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreditEngagement } from "@/hooks/useCreditEngagement";
+import { useTranslation } from 'react-i18next';
 
 interface AssetProfile {
   id: number;
@@ -65,6 +66,7 @@ export default function Reports() {
   const { logInteraction, checkCredits } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
   const { canLaunchJob, engageCredit } = useCreditEngagement();
+  const { t } = useTranslation(['dashboard', 'toasts']);
 
   // Set up automatic response injection from Supabase
   useRealtimeResponseInjector({
@@ -281,48 +283,48 @@ export default function Reports() {
   const [availableSections, setAvailableSections] = useState<ReportSection[]>([
     {
       id: "market",
-      title: "Market Conditions",
-      description: "Macro context and trading conditions",
+      title: t('dashboard:reports.sections.market'),
+      description: t('dashboard:reports.sections.marketDescription'),
       included: true,
       order: 1,
       userNotes: ""
     },
     {
       id: "technical",
-      title: "Technical Analysis",
-      description: "Analysis of identified patterns and signals",
+      title: t('dashboard:reports.sections.technical'),
+      description: t('dashboard:reports.sections.technicalDescription'),
       included: true,
       order: 2,
       userNotes: ""
     },
     {
       id: "risks",
-      title: "Key Risks",
-      description: "Risk assessment and key threats to watch",
+      title: t('dashboard:reports.sections.risks'),
+      description: t('dashboard:reports.sections.risksDescription'),
       included: true,
       order: 3,
       userNotes: ""
     },
     {
       id: "events",
-      title: "Event Watch",
-      description: "Upcoming events and catalysts to monitor",
+      title: t('dashboard:reports.sections.events'),
+      description: t('dashboard:reports.sections.eventsDescription'),
       included: true,
       order: 4,
       userNotes: ""
     },
     {
       id: "sentiment",
-      title: "Sentiment & Positioning",
-      description: "Market sentiment and positioning analysis",
+      title: t('dashboard:reports.sections.sentiment'),
+      description: t('dashboard:reports.sections.sentimentDescription'),
       included: true,
       order: 5,
       userNotes: ""
     },
     {
       id: "recommendations",
-      title: "Recommendations",
-      description: "Investment recommendations and strategic outlook",
+      title: t('dashboard:reports.sections.recommendations'),
+      description: t('dashboard:reports.sections.recommendationsDescription'),
       included: true,
       order: 6,
       userNotes: ""
