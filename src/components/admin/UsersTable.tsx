@@ -210,7 +210,7 @@ export function UsersTable({
             onCheckedChange={setShowDeleted}
           />
           <Label htmlFor="show-deleted" className="text-sm cursor-pointer">
-            Afficher les utilisateurs supprimés ({users.filter(u => u.is_deleted).length})
+            Show deleted users ({users.filter(u => u.is_deleted).length})
           </Label>
         </div>
       )}
