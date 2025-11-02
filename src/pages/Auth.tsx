@@ -27,6 +27,7 @@ export default function Auth() {
   const [selectedBrokerId, setSelectedBrokerId] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [processingOAuth, setProcessingOAuth] = useState(false);
   const [session, setSession] = useState(null);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [activeBrokers, setActiveBrokers] = useState([]);
@@ -47,148 +48,22 @@ export default function Auth() {
   }, [password, confirmPassword]);
 
   useEffect(() => {
-    // Set up auth state listener
+    // CRITICAL: onAuthStateChange callback must NOT be async and must NOT call Supabase
+    // To prevent deadlocks, defer all async operations to a separate function
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        console.log(`[Auth] onAuthStateChange event: ${event}, provider: ${session?.user?.app_metadata?.provider}`);
         setSession(session);
         
-        // Handle Google OAuth callback
-        if (event === 'SIGNED_IN' && session?.user) {
-          const provider = session.user.app_metadata.provider;
-          
-          if (provider === 'google') {
-            console.log('[Google Auth] User signed in via Google');
-            
-            // Check if profile exists AND if user is soft-deleted
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('broker_id, status, is_deleted, created_at')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-            
-            // 🚫 Block soft-deleted users
-            if (profile?.is_deleted) {
-              console.log('[Google Auth] User is soft-deleted, blocking login');
-              
-              await supabase.auth.signOut();
-              
-              toast({
-                title: "Account Deactivated",
-                description: "Your account has been deactivated. Please contact support if you think this is an error.",
-                variant: "destructive",
-              });
-              
-              return;
-            }
-            
-            // Determine if this is a NEW user or RETURNING user
-            const isNewUser = profile && new Date(profile.created_at).getTime() > Date.now() - 5000;
-            
-            if (isNewUser) {
-              console.log('[Google Auth] NEW user detected');
-              
-              // Get pending broker info from sessionStorage (set in handleGoogleSignUp)
-              const pendingBrokerId = sessionStorage.getItem('pending_broker_id');
-              const pendingBrokerName = sessionStorage.getItem('pending_broker_name');
-              
-              if (pendingBrokerId && profile && !profile.broker_id) {
-                // Update profile with broker info
-                console.log('[Google Auth] Updating new user profile with broker');
-                
-                await supabase
-                  .from('profiles')
-                  .update({
-                    broker_id: pendingBrokerId,
-                    broker_name: pendingBrokerName,
-                    status: 'pending' // Keep pending for approval
-                  })
-                  .eq('user_id', session.user.id);
-                
-                // Clear temporary storage
-                sessionStorage.removeItem('pending_broker_id');
-                sessionStorage.removeItem('pending_broker_name');
-                
-                toast({
-                  title: "Account Created",
-                  description: "Your account has been created and is pending approval. You'll receive an email once it's activated.",
-                });
-                
-                // Redirect to dashboard - AuthGuard will show pending message
-                navigate('/dashboard');
-                return;
-              }
-              
-              // ❌ User tried "Sign in with Google" but account doesn't exist
-              // Redirect to Sign Up to select a broker
-              if (!profile?.broker_id && !pendingBrokerId) {
-                console.log('[Google Auth] New user tried to sign in - redirecting to Sign Up');
-                
-                // Sign out immediately to clean up the session
-                await supabase.auth.signOut();
-                
-                toast({
-                  title: "Compte inexistant",
-                  description: "Veuillez vous inscrire en sélectionnant votre broker dans l'onglet Sign Up.",
-                  variant: "destructive",
-                });
-                
-                // Stay on auth page, user will see Sign Up tab
-                return;
-              }
-            } else {
-              console.log('[Google Auth] RETURNING user detected');
-              
-              // Returning user - just sign in normally
-              // Update broker info if it was pending
-              if (profile && !profile.broker_id) {
-                const pendingBrokerId = sessionStorage.getItem('pending_broker_id');
-                const pendingBrokerName = sessionStorage.getItem('pending_broker_name');
-                
-                if (pendingBrokerId) {
-                  await supabase
-                    .from('profiles')
-                    .update({
-                      broker_id: pendingBrokerId,
-                      broker_name: pendingBrokerName
-                    })
-                    .eq('user_id', session.user.id);
-                  
-                  sessionStorage.removeItem('pending_broker_id');
-                  sessionStorage.removeItem('pending_broker_name');
-                }
-              }
-              
-              toast({
-                title: "Welcome back!",
-                description: "Successfully signed in with Google.",
-              });
-            }
-            
-            // Handle free trial if needed
-            if (intent === 'free_trial') {
-              const { error: trialError } = await activateFreeTrial();
-              if (!trialError) {
-                toast({
-                  title: "🎁 Free Trial Activated!",
-                  description: "Your account is ready with Free Trial access.",
-                });
-                navigate('/payment-success?type=free_trial');
-                return;
-              }
-            }
-            
-            // Standard redirect to dashboard
-            if (window.location.pathname === '/auth') {
-              navigate('/dashboard');
-            }
-          } else {
-            // Email/password flow
-            if (session?.user && event === 'SIGNED_IN' && window.location.pathname === '/auth') {
-              // Don't redirect if we're in free trial flow
-              if (intent !== 'free_trial') {
-                navigate('/dashboard');
-              }
-            }
+        // Defer OAuth handling to prevent deadlock
+        if (event === 'SIGNED_IN' && session?.user?.app_metadata?.provider === 'google') {
+          setTimeout(() => {
+            handleOAuthEvent(session);
+          }, 0);
+        } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
+          // Email/password flow - simple redirect
+          if (intent !== 'free_trial') {
+            navigate('/dashboard');
           }
         }
       }
@@ -201,6 +76,166 @@ export default function Auth() {
         navigate('/dashboard');
       }
     });
+
+    // Async handler for OAuth events (deferred from onAuthStateChange)
+    const handleOAuthEvent = async (session: any) => {
+      setProcessingOAuth(true);
+      console.log('[Google Auth] Processing OAuth callback');
+
+      try {
+        // Robust isNewUser detection using session.user.created_at
+        const userCreatedAt = new Date(session.user.created_at || 0).getTime();
+        const isNewUser = Date.now() - userCreatedAt < 10000; // 10 second window
+        console.log(`[Google Auth] isNewUser: ${isNewUser} (user created at: ${new Date(userCreatedAt).toISOString()})`);
+
+        // Fetch initial profile
+        let { data: profile } = await supabase
+          .from('profiles')
+          .select('broker_id, status, is_deleted, created_at')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        // 🚫 Block soft-deleted users
+        if (profile?.is_deleted) {
+          console.log('[Google Auth] User is soft-deleted, blocking login');
+          await supabase.auth.signOut();
+          toast({
+            title: "Account Deactivated",
+            description: "Your account has been deactivated. Please contact support if you think this is an error.",
+            variant: "destructive",
+          });
+          setProcessingOAuth(false);
+          return;
+        }
+
+        const pendingBrokerId = sessionStorage.getItem('pending_broker_id');
+        const pendingBrokerName = sessionStorage.getItem('pending_broker_name');
+        console.log(`[Google Auth] pendingBrokerId: ${pendingBrokerId}, pendingBrokerName: ${pendingBrokerName}`);
+
+        if (isNewUser) {
+          console.log('[Google Auth] NEW user flow');
+
+          // Case 1: New user tried to Sign In without selecting broker (mistake)
+          if (!pendingBrokerId) {
+            console.log('[Google Auth] New user tried to sign in without broker - redirecting to Sign Up');
+            await supabase.auth.signOut();
+            toast({
+              title: "Compte inexistant",
+              description: "Veuillez vous inscrire en sélectionnant votre broker dans l'onglet Sign Up.",
+              variant: "destructive",
+            });
+            setProcessingOAuth(false);
+            return;
+          }
+
+          // Case 2: New user with broker - wait for profile creation, then update
+          console.log('[Google Auth] New user with broker - waiting for profile creation');
+
+          // Wait for profile to be created by trigger (max 5 retries = 5 seconds)
+          let retries = 0;
+          while (!profile && retries < 5) {
+            console.log(`[Google Auth] Retry ${retries + 1}/5 - waiting for profile creation`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const { data } = await supabase
+              .from('profiles')
+              .select('broker_id, status, is_deleted, created_at')
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+            profile = data;
+            retries++;
+          }
+
+          if (!profile) {
+            console.error('[Google Auth] Profile not created after 5 retries');
+            await supabase.auth.signOut();
+            toast({
+              title: "Error",
+              description: "Profile creation failed. Please contact support.",
+              variant: "destructive"
+            });
+            setProcessingOAuth(false);
+            return;
+          }
+
+          console.log(`[Google Auth] Profile found after ${retries} retries, updating broker info`);
+
+          // Update profile with broker info
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              broker_id: pendingBrokerId,
+              broker_name: pendingBrokerName,
+              status: 'pending'
+            })
+            .eq('user_id', session.user.id);
+
+          if (updateError) {
+            console.error('[Google Auth] Failed to update broker:', updateError);
+            await supabase.auth.signOut();
+            toast({
+              title: "Error",
+              description: "Failed to assign broker. Please contact support.",
+              variant: "destructive"
+            });
+            setProcessingOAuth(false);
+            return;
+          }
+
+          console.log('[Google Auth] Broker assigned successfully');
+
+          // Clear temporary storage
+          sessionStorage.removeItem('pending_broker_id');
+          sessionStorage.removeItem('pending_broker_name');
+
+          toast({
+            title: "Account Created",
+            description: "Your account has been created and is pending approval. You'll receive an email once it's activated.",
+          });
+
+          navigate('/dashboard');
+          setProcessingOAuth(false);
+          return;
+        } else {
+          console.log('[Google Auth] RETURNING user flow');
+
+          // Returning user - simple sign in
+          toast({
+            title: "Welcome back!",
+            description: "Successfully signed in with Google.",
+          });
+
+          // Handle free trial if needed
+          if (intent === 'free_trial') {
+            const { error: trialError } = await activateFreeTrial();
+            if (!trialError) {
+              toast({
+                title: "🎁 Free Trial Activated!",
+                description: "Your account is ready with Free Trial access.",
+              });
+              navigate('/payment-success?type=free_trial');
+              setProcessingOAuth(false);
+              return;
+            }
+          }
+
+          // Standard redirect to dashboard
+          if (window.location.pathname === '/auth') {
+            navigate('/dashboard');
+          }
+
+          setProcessingOAuth(false);
+        }
+      } catch (error) {
+        console.error('[Google Auth] Unexpected error:', error);
+        await supabase.auth.signOut();
+        toast({
+          title: "Authentication Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive"
+        });
+        setProcessingOAuth(false);
+      }
+    };
 
     return () => subscription.unsubscribe();
   }, [navigate, intent, toast, activateFreeTrial]);
@@ -440,6 +475,18 @@ export default function Auth() {
     <div className="min-h-screen bg-background">
       <PublicNavbar />
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
+      {processingOAuth && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="w-full max-w-sm">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Processing Google sign-in...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
