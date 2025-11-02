@@ -3,6 +3,7 @@ import ApplyToPortfolioButton from "./ApplyToPortfolioButton";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
+import { useTranslation } from 'react-i18next';
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
@@ -125,6 +126,7 @@ interface WebhookResponse {
 }
 
 export function MacroCommentary({ instrument, timeframe, onClose }: MacroCommentaryProps = {}) {
+  const { t } = useTranslation('toasts');
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [commentary, setCommentary] = useState<WebhookResponse | null>(null);
@@ -389,15 +391,15 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       });
       
       toast({
-        title: "Analysis Generated",
-        description: "Successfully generated macro commentary",
+        title: t('toasts:macro.analysisCompleted'),
+        description: t('toasts:macro.analysisCompletedDescription'),
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate commentary';
       setError(errorMessage);
       
       toast({
-        title: "Error",
+        title: t('toasts:macro.analysisError'),
         description: errorMessage,
         variant: "destructive",
       });

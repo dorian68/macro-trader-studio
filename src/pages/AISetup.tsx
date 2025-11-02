@@ -12,6 +12,7 @@ import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from 'react-i18next';
 import TradeResultPanel from "@/components/TradeResultPanel";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { useGlobalLoading } from "@/components/GlobalLoadingProvider";
@@ -188,6 +189,7 @@ export default function AISetup() {
   const {
     toast
   } = useToast();
+  const { t } = useTranslation('toasts');
   const {
     user
   } = useAuth();
@@ -469,12 +471,19 @@ export default function AISetup() {
                       jobId: jobId
                     });
                     
-                    toast({ title: "Trade Setup Generated", description: "AI trade setup generated successfully." });
+                    toast({ 
+                      title: t('toasts:aisetup.tradeSetupGenerated'), 
+                      description: t('toasts:aisetup.tradeSetupGeneratedDesc') 
+                    });
                   } else {
                     setN8nResult(null);
                     setTradeSetup(null);
                     setError("No result available yet.");
-                    toast({ title: "No Setups Returned", description: "The response contains no setups.", variant: "destructive" });
+                    toast({ 
+                      title: t('toasts:aisetup.noSetupsReturned'), 
+                      description: t('toasts:aisetup.noSetupsReturnedDesc'), 
+                      variant: "destructive" 
+                    });
                   }
                   
                   setStep("generated");

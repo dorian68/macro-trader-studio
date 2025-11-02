@@ -69,5 +69,19 @@
     "invalidEmail": "Por favor ingrese una dirección de correo electrónico válida.",
     "success": "¡Mensaje enviado con éxito! Nos pondremos en contacto pronto.",
     "error": "Error al enviar el mensaje. Por favor intente de nuevo."
+  },
+  "aisetup": {
+    "tradeSetupGenerated": "Configuración Generada",
+    "tradeSetupGeneratedDesc": "Configuración de trading IA generada exitosamente.",
+    "noSetupsReturned": "Sin Configuraciones",
+    "noSetupsReturnedDesc": "La respuesta no contiene configuraciones."
+  },
+  "portfolio": {
+    "error": "Error",
+    "failedToLoad": "Error al cargar carteras",
+    "nameRequired": "El nombre de la cartera es requerido",
+    "success": "Éxito",
+    "created": "Cartera creada exitosamente",
+    "failedToCreate": "Error al crear la cartera"
   }
 }

@@ -119,5 +119,25 @@
     "totalAITradeUsed": "Total de Trading IA Generado",
     "totalReportsUsed": "Total de Informes Creados",
     "viewDetailedHistory": "Ver Historial Detallado"
+  },
+  "portfolioManager": {
+    "title": "Sus Carteras",
+    "subtitle": "Cree y administre sus carteras de inversión",
+    "createPortfolio": "Crear Cartera",
+    "createNew": "Crear Nueva Cartera",
+    "createNewDescription": "Configure una nueva cartera de inversión para rastrear sus tenencias",
+    "portfolioName": "Nombre de la Cartera",
+    "portfolioNamePlaceholder": "ej., Cartera de Crecimiento",
+    "description": "Descripción (Opcional)",
+    "descriptionPlaceholder": "Describa su estrategia de cartera...",
+    "cancel": "Cancelar",
+    "creating": "Creando...",
+    "createButton": "Crear Cartera",
+    "noPortfolios": "Aún no hay carteras",
+    "noPortfoliosDescription": "Cree su primera cartera para comenzar a rastrear sus inversiones",
+    "createFirst": "Cree Su Primera Cartera",
+    "noDescription": "Sin descripción",
+    "totalValue": "Valor Total",
+    "created": "Creado"
   }
 }

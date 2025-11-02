@@ -1,0 +1,77 @@
+{
+  "terms": {
+    "title": "Términos de Servicio",
+    "lastUpdated": "Última actualización: {{date}}",
+    "acceptance": {
+      "title": "1. Aceptación de los Términos",
+      "content": "Al acceder y utilizar Alphalens.ai ('el Servicio'), usted acepta estar sujeto a estos Términos de Servicio. Si no está de acuerdo con alguna parte de estos términos, no podrá acceder al Servicio."
+    },
+    "description": {
+      "title": "2. Descripción del Servicio",
+      "content": "Alphalens.ai proporciona análisis de mercado impulsado por IA, configuraciones de trading y perspectivas de inversión. El Servicio está destinado únicamente para fines informativos y educativos."
+    },
+    "userResponsibilities": {
+      "title": "3. Responsabilidades del Usuario",
+      "content": "Usted es responsable de mantener la confidencialidad de su cuenta y contraseña. Acepta aceptar la responsabilidad de todas las actividades que ocurran bajo su cuenta."
+    },
+    "investmentDisclaimer": {
+      "title": "4. Aviso de Inversión",
+      "content": "La información proporcionada por Alphalens.ai no constituye asesoramiento de inversión. Todas las decisiones de trading e inversión son responsabilidad exclusiva del usuario. El rendimiento pasado no garantiza resultados futuros."
+    },
+    "subscription": {
+      "title": "5. Suscripción y Facturación",
+      "content": "Al suscribirse a un plan de pago, acepta pagar todas las tarifas asociadas con el plan elegido. Las suscripciones se renovarán automáticamente a menos que se cancelen antes del próximo período de facturación."
+    },
+    "intellectualProperty": {
+      "title": "6. Propiedad Intelectual",
+      "content": "Todo el contenido, características y funcionalidad del Servicio son propiedad de Alphalens.ai y están protegidos por leyes internacionales de derechos de autor, marcas comerciales y otras leyes de propiedad intelectual."
+    },
+    "liability": {
+      "title": "7. Limitación de Responsabilidad",
+      "content": "Alphalens.ai no será responsable de pérdidas directas, indirectas, incidentales o consecuentes que resulten del uso o la imposibilidad de uso del Servicio."
+    },
+    "availability": {
+      "title": "8. Disponibilidad del Servicio",
+      "content": "Nos esforzamos por mantener el Servicio disponible las 24 horas del día, los 7 días de la semana, pero no podemos garantizar un tiempo de actividad ininterrumpido. Nos reservamos el derecho de modificar o discontinuar el Servicio en cualquier momento."
+    },
+    "contact": {
+      "title": "9. Contacto",
+      "content": "Si tiene alguna pregunta sobre estos Términos de Servicio, contáctenos en contact@alphalens.ai"
+    }
+  },
+  "privacy": {
+    "title": "Política de Privacidad",
+    "lastUpdated": "Última actualización: {{date}}",
+    "collection": {
+      "title": "1. Información que Recopilamos",
+      "content": "Recopilamos información que usted nos proporciona directamente, incluido su nombre, dirección de correo electrónico, información de pago e historial de uso del servicio."
+    },
+    "usage": {
+      "title": "2. Cómo Usamos Su Información",
+      "content": "Utilizamos su información para proporcionar, mantener y mejorar nuestros servicios, procesar transacciones, enviar comunicaciones técnicas y responder a sus solicitudes."
+    },
+    "security": {
+      "title": "3. Seguridad de Datos",
+      "content": "Implementamos medidas de seguridad apropiadas para proteger contra el acceso no autorizado, alteración, divulgación o destrucción de su información personal."
+    },
+    "sharing": {
+      "title": "4. Compartir Información",
+      "content": "No vendemos, comercializamos ni transferimos su información de identificación personal a terceros sin su consentimiento, excepto cuando sea requerido por ley."
+    },
+    "rights": {
+      "title": "5. Sus Derechos",
+      "content": "Tiene derecho a acceder, corregir o eliminar su información personal. Puede solicitar estos cambios contactándonos en contact@alphalens.ai"
+    },
+    "cookies": {
+      "title": "6. Cookies",
+      "content": "Utilizamos cookies y tecnologías similares para mejorar su experiencia, analizar tendencias y administrar el sitio web."
+    },
+    "contact": {
+      "title": "7. Contacto",
+      "content": "Para preguntas sobre esta Política de Privacidad, contáctenos en contact@alphalens.ai"
+    }
+  },
+  "footer": {
+    "copyright": "© 2024 Alphalens.ai. Todos los derechos reservados."
+  }
+}

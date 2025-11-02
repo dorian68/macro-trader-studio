@@ -13,6 +13,9 @@ import enContact from '@/locales/en/contact.json';
 import enHelp from '@/locales/en/help.json';
 import enToasts from '@/locales/en/toasts.json';
 import enAdmin from '@/locales/en/admin.json';
+import enAisetup from '@/locales/en/aisetup.json';
+import enDocumentation from '@/locales/en/documentation.json';
+import enLegal from '@/locales/en/legal.json';
 
 import esCommon from '@/locales/es/common.json';
 import esAuth from '@/locales/es/auth.json';
@@ -25,6 +28,9 @@ import esContact from '@/locales/es/contact.json';
 import esHelp from '@/locales/es/help.json';
 import esToasts from '@/locales/es/toasts.json';
 import esAdmin from '@/locales/es/admin.json';
+import esAisetup from '@/locales/es/aisetup.json';
+import esDocumentation from '@/locales/es/documentation.json';
+import esLegal from '@/locales/es/legal.json';
 
 import faCommon from '@/locales/fa/common.json';
 import faAuth from '@/locales/fa/auth.json';
@@ -37,6 +43,9 @@ import faContact from '@/locales/fa/contact.json';
 import faHelp from '@/locales/fa/help.json';
 import faToasts from '@/locales/fa/toasts.json';
 import faAdmin from '@/locales/fa/admin.json';
+import faAisetup from '@/locales/fa/aisetup.json';
+import faDocumentation from '@/locales/fa/documentation.json';
+import faLegal from '@/locales/fa/legal.json';
 
 export const supportedLanguages = ['en', 'es', 'fa'] as const;
 export type SupportedLanguage = typeof supportedLanguages[number];
@@ -58,6 +67,9 @@ i18n
       help: enHelp,
       toasts: enToasts,
       admin: enAdmin,
+      aisetup: enAisetup,
+      documentation: enDocumentation,
+      legal: enLegal,
     },
     es: {
       common: esCommon,
@@ -71,6 +83,9 @@ i18n
       help: esHelp,
       toasts: esToasts,
       admin: esAdmin,
+      aisetup: esAisetup,
+      documentation: esDocumentation,
+      legal: esLegal,
     },
     fa: {
       common: faCommon,
@@ -84,11 +99,14 @@ i18n
       help: faHelp,
       toasts: faToasts,
       admin: faAdmin,
+      aisetup: faAisetup,
+      documentation: faDocumentation,
+      legal: faLegal,
     },
   },
   fallbackLng: 'en',
   defaultNS: 'common',
-  ns: ['common', 'auth', 'dashboard', 'errors', 'about', 'features', 'pricing', 'contact', 'help', 'toasts', 'admin'],
+  ns: ['common', 'auth', 'dashboard', 'errors', 'about', 'features', 'pricing', 'contact', 'help', 'toasts', 'admin', 'aisetup', 'documentation', 'legal'],
     interpolation: {
       escapeValue: false,
     },

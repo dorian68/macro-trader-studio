@@ -69,5 +69,19 @@
     "invalidEmail": "Please enter a valid email address.",
     "success": "Message sent successfully! We'll get back to you soon.",
     "error": "Failed to send message. Please try again."
+  },
+  "aisetup": {
+    "tradeSetupGenerated": "Trade Setup Generated",
+    "tradeSetupGeneratedDesc": "AI trade setup generated successfully.",
+    "noSetupsReturned": "No Setups Returned",
+    "noSetupsReturnedDesc": "The response contains no setups."
+  },
+  "portfolio": {
+    "error": "Error",
+    "failedToLoad": "Failed to load portfolios",
+    "nameRequired": "Portfolio name is required",
+    "success": "Success",
+    "created": "Portfolio created successfully",
+    "failedToCreate": "Failed to create portfolio"
   }
 }

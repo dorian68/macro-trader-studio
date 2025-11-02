@@ -119,5 +119,25 @@
     "totalAITradeUsed": "کل معاملات هوش مصنوعی تولید شده",
     "totalReportsUsed": "کل گزارش‌های ایجاد شده",
     "viewDetailedHistory": "مشاهده تاریخچه تفصیلی"
+  },
+  "portfolioManager": {
+    "title": "پرتفوی‌های شما",
+    "subtitle": "ایجاد و مدیریت پرتفوی‌های سرمایه‌گذاری شما",
+    "createPortfolio": "ایجاد پرتفوی",
+    "createNew": "ایجاد پرتفوی جدید",
+    "createNewDescription": "یک پرتفوی سرمایه‌گذاری جدید برای پیگیری دارایی‌های خود ایجاد کنید",
+    "portfolioName": "نام پرتفوی",
+    "portfolioNamePlaceholder": "مثلاً، پرتفوی رشد",
+    "description": "توضیحات (اختیاری)",
+    "descriptionPlaceholder": "استراتژی پرتفوی خود را توصیف کنید...",
+    "cancel": "لغو",
+    "creating": "در حال ایجاد...",
+    "createButton": "ایجاد پرتفوی",
+    "noPortfolios": "هنوز پرتفویی وجود ندارد",
+    "noPortfoliosDescription": "اولین پرتفوی خود را برای شروع پیگیری سرمایه‌گذاری‌های خود ایجاد کنید",
+    "createFirst": "اولین پرتفوی خود را ایجاد کنید",
+    "noDescription": "بدون توضیحات",
+    "totalValue": "ارزش کل",
+    "created": "ایجاد شده"
   }
 }
