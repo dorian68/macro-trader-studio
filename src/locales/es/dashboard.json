@@ -140,5 +140,16 @@
     "noDescription": "Sin descripción",
     "totalValue": "Valor Total",
     "created": "Creado"
+  },
+  "news": {
+    "title": "Noticias del Mercado",
+    "searchPlaceholder": "Buscar noticias...",
+    "noNews": "No hay noticias disponibles",
+    "categories": {
+      "general": "General",
+      "forex": "Forex",
+      "crypto": "Cripto",
+      "merger_and_acquisition": "Fusiones"
+    }
   }
 }

@@ -16,7 +16,7 @@ import AssetInfoCard from "@/components/AssetInfoCard";
 import { JobStatusCard } from "@/components/JobStatusCard";
 import { useJobStatusManager } from "@/hooks/useJobStatusManager";
 import { useTranslation } from "react-i18next";
-import { NewsFeedPanel } from "@/components/NewsFeedPanel";
+import { MarketNewsCollapsible } from "@/components/MarketNewsCollapsible";
 
 interface PriceData {
   symbol: string;
@@ -207,18 +207,21 @@ export default function TradingDashboard() {
         {/* Mobile-first header with real-time price */}
         <div className="space-y-4">
           {/* Title section - Mobile optimized */}
-          <div className="flex items-center gap-3">
-            <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
-              <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
+                <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words">
+                  {t('dashboard:trading.title')}
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground break-words">
+                  {t('dashboard:trading.subtitle')}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words">
-                {t('dashboard:trading.title')}
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground break-words">
-                {t('dashboard:trading.subtitle')}
-              </p>
-            </div>
+            <MarketNewsCollapsible defaultOpen={false} />
           </div>
 
           {/* Price widget - Affiche uniquement l'actif sélectionné */}
@@ -458,9 +461,6 @@ export default function TradingDashboard() {
           setActiveTradeLevels(levels);
         }}
       />
-      
-      {/* News Feed Panel */}
-      <NewsFeedPanel />
     </Layout>
   );
 }

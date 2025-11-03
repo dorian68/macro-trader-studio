@@ -140,5 +140,16 @@
     "noDescription": "بدون توضیحات",
     "totalValue": "ارزش کل",
     "created": "ایجاد شده"
+  },
+  "news": {
+    "title": "اخبار بازار",
+    "searchPlaceholder": "جستجوی اخبار...",
+    "noNews": "خبری موجود نیست",
+    "categories": {
+      "general": "عمومی",
+      "forex": "فارکس",
+      "crypto": "کریپتو",
+      "merger_and_acquisition": "ادغام و تملک"
+    }
   }
 }

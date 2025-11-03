@@ -140,5 +140,16 @@
     "noDescription": "No description",
     "totalValue": "Total Value",
     "created": "Created"
+  },
+  "news": {
+    "title": "Market News",
+    "searchPlaceholder": "Search news...",
+    "noNews": "No news available",
+    "categories": {
+      "general": "General",
+      "forex": "Forex",
+      "crypto": "Crypto",
+      "merger_and_acquisition": "M&A"
+    }
   }
 }
