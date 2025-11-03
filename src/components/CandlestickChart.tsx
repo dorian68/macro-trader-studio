@@ -2,12 +2,13 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart3, Wifi, WifiOff } from 'lucide-react';
+import { BarChart3, Wifi, WifiOff, Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
 import LightweightChartWidget from './LightweightChartWidget';
 import { supabase } from '@/integrations/supabase/client';
+import { HybridSearchBar } from './HybridSearchBar';
 const {
   useState
 } = React;
@@ -23,6 +24,19 @@ interface TradeLevels {
     confirmation: boolean;
   };
 }
+interface PriceData {
+  symbol: string;
+  price: number;
+  change24h: number;
+  volume: number;
+}
+
+interface Asset {
+  symbol: string;
+  name: string;
+  icon: string;
+}
+
 interface CandlestickChartProps {
   asset: string;
   title?: string;
@@ -31,6 +45,20 @@ interface CandlestickChartProps {
   tradeLevels?: TradeLevels | null;
   onLevelUpdate?: (type: 'entry' | 'stopLoss' | 'takeProfit', value: number) => void;
   historicalData?: any[];
+  
+  // New props for integrated dashboard header
+  dashboardTitle?: string;
+  dashboardSubtitle?: string;
+  priceData?: PriceData | null;
+  isConnected?: boolean;
+  allAssets?: Asset[];
+  selectedAsset?: string;
+  currentAsset?: Asset;
+  onAssetSelect?: (asset: string) => void;
+  selectedAssetProfile?: any;
+  onAssetProfileSelect?: (asset: any) => void;
+  timeframe?: string;
+  onTimeframeChange?: (timeframe: string) => void;
 }
 const timeframes = [{
   value: '1m',
@@ -67,15 +95,30 @@ export function CandlestickChart({
   height = 400,
   tradeLevels,
   onLevelUpdate,
-  historicalData
+  historicalData,
+  dashboardTitle,
+  dashboardSubtitle,
+  priceData,
+  isConnected: isConnectedProp,
+  allAssets,
+  selectedAsset,
+  currentAsset,
+  onAssetSelect,
+  selectedAssetProfile,
+  onAssetProfileSelect,
+  timeframe: timeframeProp,
+  onTimeframeChange
 }: CandlestickChartProps) {
-  const [timeframe, setTimeframe] = useState('1h');
+  const [localTimeframe, setLocalTimeframe] = useState('1h');
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [useFallback, setUseFallback] = useState(false);
   const [globalProvider, setGlobalProvider] = useState<'twelvedata' | 'tradingview'>('twelvedata');
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
+  
+  // Use controlled timeframe if provided, otherwise use local state
+  const timeframe = timeframeProp || localTimeframe;
 
   React.useEffect(() => {
     const fetchProvider = async () => {
@@ -100,48 +143,129 @@ export function CandlestickChart({
   }, [asset]);
 
   const handleTimeframeChange = (newTimeframe: string) => {
-    setTimeframe(newTimeframe);
+    if (onTimeframeChange) {
+      onTimeframeChange(newTimeframe);
+    } else {
+      setLocalTimeframe(newTimeframe);
+    }
   };
   return <>
       {/* Chart Section - Full Width with integrated header */}
       <div className="w-full">
         <Card className="gradient-card border-border-light shadow-medium lg:rounded-none lg:border-0">
-          {/* Header Section - Now inside the chart card */}
+          {/* Header Section - Integrated dashboard header */}
           {showHeader && (
-            <CardHeader className="pb-4 border-b border-border/50">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                    <BarChart3 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <span className="text-xl font-bold">{title || `${asset} Live Chart`}</span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="border-primary/20 text-primary">
-                        {asset}
-                      </Badge>
-                      <Badge variant="outline" className={`border-${isConnected && hasRealTimeData ? 'success' : 'warning'}/20 text-${isConnected && hasRealTimeData ? 'success' : 'warning'}`}>
-                        {isConnected && hasRealTimeData ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
-                        {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
-                      </Badge>
+            <CardHeader className="pb-6 border-b border-border/50 space-y-6">
+              {/* Row 1: Trading Dashboard Title + Price Widget */}
+              {dashboardTitle && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Left: Dashboard Title */}
+                  <div className="flex items-center gap-3">
+                    <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
+                      <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                        {dashboardTitle}
+                      </h1>
+                      {dashboardSubtitle && (
+                        <p className="text-sm sm:text-base text-muted-foreground">
+                          {dashboardSubtitle}
+                        </p>
+                      )}
                     </div>
                   </div>
-                </CardTitle>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    
-                  </div>
-                  <Select value={timeframe} onValueChange={handleTimeframeChange}>
-                    <SelectTrigger className="w-32 bg-background/50 border-border-light">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeframes.map(tf => <SelectItem key={tf.value} value={tf.value}>
-                          {tf.label}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  
+                  {/* Right: Price Widget */}
+                  {priceData && (
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
+                          ${priceData.price.toFixed(selectedAsset?.includes('JPY') ? 2 : 4)}
+                        </span>
+                        <div className={cn(
+                          "w-2 h-2 rounded-full animate-pulse shrink-0",
+                          isConnectedProp ? "bg-success" : "bg-danger"
+                        )} />
+                      </div>
+                      {priceData.change24h !== undefined && (
+                        <div className={cn(
+                          "flex items-center gap-1 text-sm font-medium",
+                          priceData.change24h >= 0 ? "text-success" : "text-danger"
+                        )}>
+                          {priceData.change24h >= 0 ? 
+                            <TrendingUp className="h-3 w-3" /> : 
+                            <TrendingDown className="h-3 w-3" />
+                          }
+                          {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Row 2: HybridSearchBar */}
+              {onAssetSelect && allAssets && (
+                <div className="w-full">
+                  <HybridSearchBar
+                    assets={allAssets}
+                    selectedAsset={selectedAsset || asset}
+                    onAssetSelect={onAssetSelect}
+                    onAssetProfileSelect={onAssetProfileSelect}
+                    instrument={asset}
+                    timeframe={timeframe}
+                  />
+                </div>
+              )}
+
+              {/* Row 3: Popular Assets Selector */}
+              {allAssets && onAssetSelect && (
+                <div className="w-full -mx-2 sm:mx-0">
+                  <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide">
+                    {allAssets.map((assetItem) => (
+                      <button
+                        key={assetItem.symbol}
+                        onClick={() => onAssetSelect(assetItem.symbol)}
+                        className={cn(
+                          "px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-smooth flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 snap-start min-w-fit touch-manipulation",
+                          selectedAsset === assetItem.symbol
+                            ? "bg-primary text-primary-foreground shadow-glow-primary"
+                            : "bg-card/50 hover:bg-primary/10 text-foreground border border-border/30"
+                        )}
+                        style={{ minHeight: '44px' }}
+                      >
+                        <span className="font-semibold">{assetItem.symbol}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Row 4: Original Chart Controls (Asset Badge, Connection Status, Timeframe) */}
+              <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-primary/20 text-primary">
+                    {asset}
+                  </Badge>
+                  <Badge variant="outline" className={`border-${isConnected && hasRealTimeData ? 'success' : 'warning'}/20 text-${isConnected && hasRealTimeData ? 'success' : 'warning'}`}>
+                    {isConnected && hasRealTimeData ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
+                    {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
+                  </Badge>
+                </div>
+                
+                <Select value={timeframe} onValueChange={handleTimeframeChange}>
+                  <SelectTrigger className="w-32 bg-background/50 border-border-light">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeframes.map(tf => 
+                      <SelectItem key={tf.value} value={tf.value}>
+                        {tf.label}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
           )}

@@ -203,146 +203,6 @@ export default function TradingDashboard() {
       onResetJobsCount={jobManager.resetCompletedCount}
       activeJobsCount={jobManager.activeJobs.filter(job => job.status === 'pending' || job.status === 'running').length}
     >
-      {/* SECTION 1: Normal width - Header, Search, Popular Assets, Asset Info */}
-      <div className="space-y-4 sm:space-y-6 overflow-x-hidden">
-        {/* Mobile-first header with real-time price */}
-        <div className="space-y-4">
-          {/* Title section - Mobile optimized */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
-                <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words">
-                  {t('dashboard:trading.title')}
-                </h1>
-                <p className="text-sm sm:text-base text-muted-foreground break-words">
-                  {t('dashboard:trading.subtitle')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Price widget - Affiche uniquement l'actif sélectionné */}
-          {(selectedAssetProfile || (priceData && priceData.symbol === selectedAsset)) && (
-            <Card className="gradient-card border-primary/20 shadow-glow-primary w-full">
-              <CardContent className="p-4">
-                {selectedAssetProfile ? (
-                  // Display selected asset from search (priority)
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
-                        {selectedAssetProfile.symbol?.slice(0, 2)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground text-lg">{selectedAssetProfile.symbol}</h3>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {selectedAssetProfile.short_name || selectedAssetProfile.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedAssetProfile.sector} • {selectedAssetProfile.exchange}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
-                        className="shrink-0"
-                      >
-                        {t('common:actions.viewDetails')}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="secondary"
-                        onClick={() => setSelectedAssetProfile(null)}
-                        className="shrink-0"
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  // Affichage par défaut avec données temps réel
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
-                        <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
-                          ${priceData?.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
-                        </span>
-                        <div className={cn(
-                          "w-2 h-2 rounded-full animate-pulse shrink-0",
-                          isConnected ? "bg-success" : "bg-danger"
-                        )} />
-                      </div>
-                      {priceData && (
-                        <div className={cn(
-                          "flex items-center gap-1 text-sm font-medium",
-                          priceData.change24h >= 0 ? "text-success" : "text-danger"
-                        )}>
-                          {priceData.change24h >= 0 ? 
-                            <TrendingUp className="h-3 w-3" /> : 
-                            <TrendingDown className="h-3 w-3" />
-                          }
-                          {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-        </div>
-
-        {/* Hybrid Search + AI Interface */}
-        <HybridSearchBar
-          assets={allAssets}
-          selectedAsset={selectedAsset}
-          onAssetSelect={setSelectedAsset}
-          onAssetProfileSelect={handleAssetProfileSelect}
-          instrument={selectedAsset}
-          timeframe={timeframe}
-        />
-
-        {/* Popular assets - Mobile-first horizontal scroll */}
-        <div className="w-full -mx-2 sm:mx-0">
-          <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {allAssets.map((asset) => (
-              <button
-                key={asset.symbol}
-                onClick={() => setSelectedAsset(asset.symbol)}
-                className={cn(
-                  "px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-smooth flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 snap-start min-w-fit touch-manipulation",
-                  selectedAsset === asset.symbol
-                    ? "bg-primary text-primary-foreground shadow-glow-primary"
-                    : "bg-card/50 hover:bg-primary/10 text-foreground border border-border/30"
-                )}
-                style={{ minHeight: '44px' }}
-                >
-                <span className="font-semibold">{asset.symbol}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Asset Information Card */}
-        <AssetInfoCard 
-          symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset} 
-          className="w-full" 
-        />
-      </div>
 
       {/* SECTION 2: Full-width row with Chart (2/3) + Market News (1/3) */}
       <section 
@@ -350,8 +210,8 @@ export default function TradingDashboard() {
         className="relative left-1/2 -translate-x-1/2 w-screen px-4 sm:px-6 lg:px-8 my-8"
       >
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-start max-w-[1920px] mx-auto">
-          {/* Chart - 2/3 */}
-          <div className="min-w-0">
+          {/* Chart with integrated dashboard header - 2/3 */}
+          <div className="min-w-0 space-y-4">
             <CandlestickChart 
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
               showHeader={true}
@@ -365,6 +225,24 @@ export default function TradingDashboard() {
                   });
                 }
               }}
+              dashboardTitle={t('dashboard:trading.title')}
+              dashboardSubtitle={t('dashboard:trading.subtitle')}
+              priceData={priceData}
+              isConnected={isConnected}
+              allAssets={allAssets}
+              selectedAsset={selectedAsset}
+              currentAsset={currentAsset}
+              onAssetSelect={setSelectedAsset}
+              selectedAssetProfile={selectedAssetProfile}
+              onAssetProfileSelect={handleAssetProfileSelect}
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
+            />
+            
+            {/* Asset Info Card moved here */}
+            <AssetInfoCard 
+              symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset} 
+              className="w-full" 
             />
           </div>
           
