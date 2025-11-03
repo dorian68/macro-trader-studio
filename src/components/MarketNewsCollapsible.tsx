@@ -49,7 +49,7 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
   });
 
   return (
-    <Card className={cn("border border-border/50 rounded-lg min-h-[800px] lg:min-h-0 flex flex-col h-full", className)}>
+    <Card className={cn("border border-border/50 rounded-lg h-full flex flex-col", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-3">
           <CardTitle className="text-lg font-semibold">{t('dashboard:news.marketNews')}</CardTitle>
