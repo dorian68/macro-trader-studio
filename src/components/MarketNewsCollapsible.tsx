@@ -49,7 +49,7 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
   });
 
   return (
-    <Card className={cn("border border-border/50 rounded-lg min-h-[800px] flex flex-col", className)}>
+    <Card className={cn("border border-border/50 rounded-lg min-h-[800px] flex flex-col h-full", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-3">
           <CardTitle className="text-lg font-semibold">{t('dashboard:news.marketNews')}</CardTitle>
@@ -78,7 +78,7 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
         </Tabs>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="flex-1 min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
             {t('dashboard:loading')}
@@ -88,7 +88,7 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
             {t('dashboard:noDataAvailable')}
           </div>
         ) : (
-          <ScrollArea className="h-[500px] lg:h-[calc(100vh-16rem)]">
+          <ScrollArea className="h-full flex-1 min-h-0">
             <div className="space-y-3 pr-4">
               {filteredNews.map((item) => (
                 <div 
