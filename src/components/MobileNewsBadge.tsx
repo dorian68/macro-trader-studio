@@ -15,21 +15,21 @@ export function MobileNewsBadge({ onClick, hasNewItems = false }: MobileNewsBadg
       onClick={onClick}
       aria-label={t('dashboard:news.openNews')}
       className={cn(
-        "fixed lg:hidden right-4 top-1/2 -translate-y-1/2 z-40",
-        "flex items-center gap-2 px-4 py-3 rounded-full",
-        "bg-[rgba(26,26,26,0.8)] border border-primary/50",
-        "shadow-lg backdrop-blur-sm",
-        "hover:scale-105 transition-transform duration-200",
+        "fixed lg:hidden top-4 right-4 z-40",
+        "flex items-center gap-2 px-4 py-3 rounded-lg",
+        "bg-gradient-to-br from-primary to-primary/90 border border-accent/30",
+        "shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
+        "hover:scale-105 transition-all duration-200",
         "touch-manipulation"
       )}
     >
       <div className="relative">
-        <Newspaper className="h-5 w-5 text-primary" />
+        <Newspaper className="h-5 w-5 text-primary-foreground" />
         {hasNewItems && (
           <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
         )}
       </div>
-      <span className="text-sm font-medium text-foreground hidden xs:inline">
+      <span className="text-sm font-medium text-primary-foreground hidden xs:inline">
         {t('dashboard:news.newsLabel')}
       </span>
     </button>

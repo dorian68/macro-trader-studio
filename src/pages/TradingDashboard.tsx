@@ -18,7 +18,7 @@ import { useJobStatusManager } from "@/hooks/useJobStatusManager";
 import { useTranslation } from "react-i18next";
 import { MarketNewsCollapsible } from "@/components/MarketNewsCollapsible";
 import { MobileNewsBadge } from "@/components/MobileNewsBadge";
-import { MobileNewsDrawer } from "@/components/MobileNewsDrawer";
+import { MobileNewsModal } from "@/components/MobileNewsModal";
 
 interface PriceData {
   symbol: string;
@@ -416,13 +416,13 @@ export default function TradingDashboard() {
         hasNewItems={false}
       />
 
-      {/* Mobile News Drawer */}
-      <MobileNewsDrawer 
+      {/* Mobile News Modal - centered overlay */}
+      <MobileNewsModal 
         isOpen={isMobileNewsOpen}
         onClose={() => setIsMobileNewsOpen(false)}
       >
         <MarketNewsCollapsible className="h-full" />
-      </MobileNewsDrawer>
+      </MobileNewsModal>
     </Layout>
   );
 }
