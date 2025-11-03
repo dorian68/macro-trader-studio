@@ -83,5 +83,9 @@
     "success": "Success",
     "created": "Portfolio created successfully",
     "failedToCreate": "Failed to create portfolio"
+  },
+  "freeTrial": {
+    "started": "🎁 Free Trial Started!",
+    "startedDescription": "You now have access to all features. Start exploring!"
   }
 }

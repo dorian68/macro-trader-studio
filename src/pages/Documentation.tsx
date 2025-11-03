@@ -2,8 +2,11 @@ import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Book, Code, Zap, BarChart3, TrendingUp, Shield } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Documentation() {
+  const { t } = useTranslation('documentation');
+  
   return (
     <div className="min-h-screen bg-background">
       <PublicNavbar />
@@ -12,10 +15,10 @@ export default function Documentation() {
       <section className="py-20 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Documentation
+            {t('title')}
           </h1>
           <p className="text-lg text-muted-foreground mb-8">
-            Everything you need to master Alphalens and maximize your trading insights
+            {t('subtitle')}
           </p>
         </div>
       </section>
@@ -25,12 +28,12 @@ export default function Documentation() {
         <div className="container mx-auto max-w-6xl">
           <Tabs defaultValue="getting-started" className="space-y-8">
             <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
-              <TabsTrigger value="getting-started">Getting Started</TabsTrigger>
-              <TabsTrigger value="features">Features</TabsTrigger>
-              <TabsTrigger value="ai-setup">AI Setup</TabsTrigger>
-              <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-              <TabsTrigger value="api">API</TabsTrigger>
-              <TabsTrigger value="faq">FAQ</TabsTrigger>
+              <TabsTrigger value="getting-started">{t('tabs.gettingStarted')}</TabsTrigger>
+              <TabsTrigger value="features">{t('tabs.features')}</TabsTrigger>
+              <TabsTrigger value="ai-setup">{t('tabs.aiSetup')}</TabsTrigger>
+              <TabsTrigger value="portfolio">{t('tabs.portfolio')}</TabsTrigger>
+              <TabsTrigger value="api">{t('tabs.api')}</TabsTrigger>
+              <TabsTrigger value="faq">{t('tabs.faq')}</TabsTrigger>
             </TabsList>
 
             {/* Getting Started */}
@@ -39,44 +42,44 @@ export default function Documentation() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <Book className="w-6 h-6 text-primary" />
-                    <CardTitle>Quick Start Guide</CardTitle>
+                    <CardTitle>{t('gettingStarted.quickStart.title')}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">1. Create Your Account</h3>
-                    <p>Sign up with your email and start with a free trial to explore all features.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('gettingStarted.quickStart.step1')}</h3>
+                    <p>{t('gettingStarted.quickStart.step1Description')}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">2. Select Your Broker</h3>
-                    <p>Choose your trading broker from our supported list to get tailored insights.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('gettingStarted.quickStart.step2')}</h3>
+                    <p>{t('gettingStarted.quickStart.step2Description')}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">3. Explore AI Features</h3>
-                    <p>Use AI Trade Setup, Macro Commentary, and Reports to generate trading insights.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('gettingStarted.quickStart.step3')}</h3>
+                    <p>{t('gettingStarted.quickStart.step3Description')}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">4. Build Your Portfolio</h3>
-                    <p>Add positions and receive AI-powered recommendations for optimization.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('gettingStarted.quickStart.step4')}</h3>
+                    <p>{t('gettingStarted.quickStart.step4Description')}</p>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Understanding Credits</CardTitle>
+                  <CardTitle>{t('gettingStarted.credits.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <p>
-                    Alphalens uses a credit-based system for AI-generated insights:
+                    {t('gettingStarted.credits.description')}
                   </p>
                   <ul className="list-disc pl-6 space-y-2">
-                    <li><strong>Trade Setup:</strong> 1 credit per AI-generated trade idea</li>
-                    <li><strong>Macro Commentary:</strong> 1 credit per market analysis</li>
-                    <li><strong>Reports:</strong> 1 credit per comprehensive report</li>
+                    <li><strong>{t('gettingStarted.credits.tradeSetup')}</strong></li>
+                    <li><strong>{t('gettingStarted.credits.macroCommentary')}</strong></li>
+                    <li><strong>{t('gettingStarted.credits.reports')}</strong></li>
                   </ul>
                   <p className="mt-4">
-                    Credits reset monthly based on your subscription plan. Unused credits do not roll over.
+                    {t('gettingStarted.credits.resetInfo')}
                   </p>
                 </CardContent>
               </Card>
@@ -88,18 +91,18 @@ export default function Documentation() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <Zap className="w-6 h-6 text-primary" />
-                    <CardTitle>AI Trade Setup</CardTitle>
+                    <CardTitle>{t('features.aiSetup.title')}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <p>
-                    Generate intelligent trade ideas with entry points, stop losses, and take profit levels.
+                    {t('features.aiSetup.description')}
                   </p>
                   <ul className="list-disc pl-6 space-y-2">
-                    <li>Multi-timeframe technical analysis</li>
-                    <li>Risk-reward ratio calculations</li>
-                    <li>Real-time market data integration</li>
-                    <li>Customizable analysis parameters</li>
+                    <li>{t('features.aiSetup.feature1')}</li>
+                    <li>{t('features.aiSetup.feature2')}</li>
+                    <li>{t('features.aiSetup.feature3')}</li>
+                    <li>{t('features.aiSetup.feature4')}</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -108,18 +111,18 @@ export default function Documentation() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <TrendingUp className="w-6 h-6 text-primary" />
-                    <CardTitle>Macro Commentary</CardTitle>
+                    <CardTitle>{t('features.macroCommentary.title')}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <p>
-                    AI-powered analysis of macroeconomic trends and market sentiment.
+                    {t('features.macroCommentary.description')}
                   </p>
                   <ul className="list-disc pl-6 space-y-2">
-                    <li>Economic indicator analysis</li>
-                    <li>Sector rotation insights</li>
-                    <li>Geopolitical impact assessment</li>
-                    <li>Cross-asset correlations</li>
+                    <li>{t('features.macroCommentary.feature1')}</li>
+                    <li>{t('features.macroCommentary.feature2')}</li>
+                    <li>{t('features.macroCommentary.feature3')}</li>
+                    <li>{t('features.macroCommentary.feature4')}</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -128,18 +131,18 @@ export default function Documentation() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <BarChart3 className="w-6 h-6 text-primary" />
-                    <CardTitle>Comprehensive Reports</CardTitle>
+                    <CardTitle>{t('features.reports.title')}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <p>
-                    Generate detailed research reports on any asset or market.
+                    {t('features.reports.description')}
                   </p>
                   <ul className="list-disc pl-6 space-y-2">
-                    <li>Fundamental and technical analysis</li>
-                    <li>Earnings and financial data</li>
-                    <li>Historical performance metrics</li>
-                    <li>Export to PDF or email</li>
+                    <li>{t('features.reports.feature1')}</li>
+                    <li>{t('features.reports.feature2')}</li>
+                    <li>{t('features.reports.feature3')}</li>
+                    <li>{t('features.reports.feature4')}</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -149,24 +152,24 @@ export default function Documentation() {
             <TabsContent value="ai-setup" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Configuring AI Trade Setup</CardTitle>
+                  <CardTitle>{t('aiSetup.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">1. Select Your Asset</h3>
-                    <p>Search for stocks, forex pairs, cryptocurrencies, or commodities using the search bar.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('aiSetup.step1')}</h3>
+                    <p>{t('aiSetup.step1Description')}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">2. Choose Timeframe</h3>
-                    <p>Select from 1m, 5m, 15m, 1h, 4h, 1D, or 1W timeframes based on your trading style.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('aiSetup.step2')}</h3>
+                    <p>{t('aiSetup.step2Description')}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">3. Set Parameters</h3>
-                    <p>Adjust risk tolerance, position size, and analysis depth to match your strategy.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('aiSetup.step3')}</h3>
+                    <p>{t('aiSetup.step3Description')}</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">4. Generate Setup</h3>
-                    <p>Click "Generate AI Setup" and receive your personalized trade idea within seconds.</p>
+                    <h3 className="font-semibold text-foreground mb-2">{t('aiSetup.step4')}</h3>
+                    <p>{t('aiSetup.step4Description')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -176,18 +179,18 @@ export default function Documentation() {
             <TabsContent value="portfolio" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Portfolio Management</CardTitle>
+                  <CardTitle>{t('portfolio.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <p>
-                    Build and manage your investment portfolio with AI-powered insights.
+                    {t('portfolio.description')}
                   </p>
                   <ul className="list-disc pl-6 space-y-2">
-                    <li>Add positions with entry price and quantity</li>
-                    <li>Real-time P&L tracking and valuation</li>
-                    <li>AI recommendations for portfolio optimization</li>
-                    <li>Risk assessment and diversification analysis</li>
-                    <li>Historical performance tracking</li>
+                    <li>{t('portfolio.feature1')}</li>
+                    <li>{t('portfolio.feature2')}</li>
+                    <li>{t('portfolio.feature3')}</li>
+                    <li>{t('portfolio.feature4')}</li>
+                    <li>{t('portfolio.feature5')}</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -199,15 +202,15 @@ export default function Documentation() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <Code className="w-6 h-6 text-primary" />
-                    <CardTitle>API Access</CardTitle>
+                    <CardTitle>{t('api.title')}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                   <p>
-                    Enterprise and Professional plans include API access for integration with your own systems.
+                    {t('api.description')}
                   </p>
                   <p>
-                    For API documentation and access credentials, please contact our team at{" "}
+                    {t('api.contact')}{" "}
                     <span className="font-semibold text-foreground">research@albaricg.com</span>
                   </p>
                 </CardContent>
@@ -218,35 +221,31 @@ export default function Documentation() {
             <TabsContent value="faq" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Frequently Asked Questions</CardTitle>
+                  <CardTitle>{t('faq.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 text-muted-foreground">
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">How accurate are the AI predictions?</h3>
+                    <h3 className="font-semibold text-foreground mb-2">{t('faq.question1')}</h3>
                     <p>
-                      Our AI analyzes multiple data sources and technical indicators, but trading involves risk.
-                      Always use our insights as one input in your decision-making process.
+                      {t('faq.answer1')}
                     </p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">Can I cancel my subscription anytime?</h3>
+                    <h3 className="font-semibold text-foreground mb-2">{t('faq.question2')}</h3>
                     <p>
-                      Yes, you can cancel your subscription at any time from your account settings.
-                      You'll retain access until the end of your billing period.
+                      {t('faq.answer2')}
                     </p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">What markets do you support?</h3>
+                    <h3 className="font-semibold text-foreground mb-2">{t('faq.question3')}</h3>
                     <p>
-                      We support forex, cryptocurrencies, and commodities.
-                      Coverage is continuously expanding.
+                      {t('faq.answer3')}
                     </p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2">Is my data secure?</h3>
+                    <h3 className="font-semibold text-foreground mb-2">{t('faq.question4')}</h3>
                     <p>
-                      Yes, we use industry-standard encryption and security practices. We never sell
-                      your data to third parties.
+                      {t('faq.answer4')}
                     </p>
                   </div>
                 </CardContent>
@@ -259,7 +258,7 @@ export default function Documentation() {
       {/* Footer */}
       <footer className="bg-background border-t border-border py-8 px-4">
         <div className="container mx-auto max-w-6xl text-center text-muted-foreground text-sm">
-          <p>© 2025 alphaLens.ai. All rights reserved.</p>
+          <p>{t('footer.copyright')}</p>
         </div>
       </footer>
     </div>

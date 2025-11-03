@@ -14,7 +14,7 @@ export default function Homepage() {
   const { user } = useAuth();
   const { activateFreeTrial } = useCreditManager();
   const { toast } = useToast();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'toasts']);
 
   const handleFreeTrialClick = async () => {
     if (!user) {
@@ -25,8 +25,8 @@ export default function Homepage() {
       const { error } = await activateFreeTrial();
       if (!error) {
         toast({
-          title: "🎁 Free Trial Started!",
-          description: "You now have access to all features. Start exploring!",
+          title: t('toasts:freeTrial.started'),
+          description: t('toasts:freeTrial.startedDescription'),
         });
         navigate('/payment-success?type=free_trial');
       }
@@ -65,10 +65,10 @@ export default function Homepage() {
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">
-              Professional Trading Intelligence
+              {t('hero.tradingIntelligence')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Comprehensive tools and insights designed for traders, analysts, and financial institutions
+              {t('hero.tradingIntelligenceDescription')}
             </p>
           </div>
           

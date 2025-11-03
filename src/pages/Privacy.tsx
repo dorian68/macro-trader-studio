@@ -1,7 +1,10 @@
 import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 
 export default function Privacy() {
+  const { t } = useTranslation('legal');
+  
   return (
     <div className="min-h-screen bg-background">
       <PublicNavbar />
@@ -10,10 +13,10 @@ export default function Privacy() {
       <section className="py-20 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Privacy Policy
+            {t('privacy.title')}
           </h1>
           <p className="text-lg text-muted-foreground mb-8">
-            Last updated: January 2025
+            {t('privacy.lastUpdated')}
           </p>
         </div>
       </section>
@@ -24,111 +27,108 @@ export default function Privacy() {
           <div className="space-y-8">
             <Card>
               <CardHeader>
-                <CardTitle>1. Information We Collect</CardTitle>
+                <CardTitle>{t('privacy.collection.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
                 <p>
-                  We collect information you provide directly to us, including:
+                  {t('privacy.collection.description')}
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
-                  <li>Account information (name, email, company details)</li>
-                  <li>Trading preferences and portfolio data</li>
-                  <li>Usage data and interaction with our AI features</li>
-                  <li>Payment information (processed securely through Stripe)</li>
+                  <li>{t('privacy.collection.item1')}</li>
+                  <li>{t('privacy.collection.item2')}</li>
+                  <li>{t('privacy.collection.item3')}</li>
+                  <li>{t('privacy.collection.item4')}</li>
                 </ul>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>2. How We Use Your Information</CardTitle>
+                <CardTitle>{t('privacy.usage.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>We use the information we collect to:</p>
+                <p>{t('privacy.usage.intro')}</p>
                 <ul className="list-disc pl-6 space-y-2">
-                  <li>Provide, maintain, and improve our services</li>
-                  <li>Generate personalized AI-driven trading insights</li>
-                  <li>Process your transactions and manage subscriptions</li>
-                  <li>Send you technical notices and support messages</li>
-                  <li>Communicate about products, features, and updates</li>
+                  <li>{t('privacy.usage.item1')}</li>
+                  <li>{t('privacy.usage.item2')}</li>
+                  <li>{t('privacy.usage.item3')}</li>
+                  <li>{t('privacy.usage.item4')}</li>
+                  <li>{t('privacy.usage.item5')}</li>
                 </ul>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>3. Data Security</CardTitle>
+                <CardTitle>{t('privacy.security.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
                 <p>
-                  We implement robust security measures to protect your data:
+                  {t('privacy.security.description')}
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
-                  <li>End-to-end encryption for sensitive financial data</li>
-                  <li>Regular security audits and penetration testing</li>
-                  <li>Secure cloud infrastructure with Supabase</li>
-                  <li>Strict access controls and authentication protocols</li>
+                  <li>{t('privacy.security.item1')}</li>
+                  <li>{t('privacy.security.item2')}</li>
+                  <li>{t('privacy.security.item3')}</li>
+                  <li>{t('privacy.security.item4')}</li>
                 </ul>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>4. Data Sharing</CardTitle>
+                <CardTitle>{t('privacy.sharing.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
                 <p>
-                  We do not sell your personal information. We may share your data only:
+                  {t('privacy.sharing.description')}
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
-                  <li>With your explicit consent</li>
-                  <li>With service providers who assist our operations</li>
-                  <li>To comply with legal obligations</li>
-                  <li>With your broker if you've linked your account</li>
+                  <li>{t('privacy.sharing.item1')}</li>
+                  <li>{t('privacy.sharing.item2')}</li>
+                  <li>{t('privacy.sharing.item3')}</li>
+                  <li>{t('privacy.sharing.item4')}</li>
                 </ul>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>5. Your Rights</CardTitle>
+                <CardTitle>{t('privacy.rights.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>You have the right to:</p>
+                <p>{t('privacy.rights.intro')}</p>
                 <ul className="list-disc pl-6 space-y-2">
-                  <li>Access and download your personal data</li>
-                  <li>Correct inaccurate or incomplete information</li>
-                  <li>Request deletion of your account and data</li>
-                  <li>Opt-out of marketing communications</li>
-                  <li>Export your trading history and portfolio data</li>
+                  <li>{t('privacy.rights.item1')}</li>
+                  <li>{t('privacy.rights.item2')}</li>
+                  <li>{t('privacy.rights.item3')}</li>
+                  <li>{t('privacy.rights.item4')}</li>
+                  <li>{t('privacy.rights.item5')}</li>
                 </ul>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>6. Cookies and Tracking</CardTitle>
+                <CardTitle>{t('privacy.cookies.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
                 <p>
-                  We use cookies and similar technologies to improve user experience,
-                  analyze usage patterns, and maintain session security. You can control
-                  cookie preferences through your browser settings.
+                  {t('privacy.cookies.description')}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>7. Contact Us</CardTitle>
+                <CardTitle>{t('privacy.contact.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
                 <p>
-                  If you have questions about this Privacy Policy or our data practices,
-                  please contact us at:
+                  {t('privacy.contact.description')}
                 </p>
                 <p className="font-semibold text-foreground">
-                  Email: research@albaricg.com
+                  {t('privacy.contact.email')}
                 </p>
               </CardContent>
             </Card>
@@ -139,7 +139,7 @@ export default function Privacy() {
       {/* Footer */}
       <footer className="bg-background border-t border-border py-8 px-4">
         <div className="container mx-auto max-w-4xl text-center text-muted-foreground text-sm">
-          <p>© 2025 alphaLens.ai. All rights reserved.</p>
+          <p>{t('footer.copyright')}</p>
         </div>
       </footer>
     </div>

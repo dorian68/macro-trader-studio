@@ -15,7 +15,9 @@
     "subtitle": "Impulsado por IA",
     "description": "Análisis avanzado de FX, cripto y macroeconomía con información de nivel institucional, configuraciones de trading impulsadas por IA y reportes de investigación integrales para profesionales financieros.",
     "tryDemo": "Probar Demo",
-    "getStarted": "Comenzar"
+    "getStarted": "Comenzar",
+    "tradingIntelligence": "Inteligencia de Trading Profesional",
+    "tradingIntelligenceDescription": "Herramientas e información integrales diseñadas para traders, analistas e instituciones financieras"
   },
   "features": {
     "aiTradeSetups": {

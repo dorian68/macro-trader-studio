@@ -83,5 +83,9 @@
     "success": "Éxito",
     "created": "Cartera creada exitosamente",
     "failedToCreate": "Error al crear la cartera"
+  },
+  "freeTrial": {
+    "started": "🎁 ¡Prueba Gratuita Iniciada!",
+    "startedDescription": "Ahora tienes acceso a todas las funciones. ¡Comienza a explorar!"
   }
 }
