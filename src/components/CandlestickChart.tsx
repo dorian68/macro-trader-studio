@@ -274,7 +274,7 @@ export function CandlestickChart({
           )}
           
           <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1">
-            <div className="relative overflow-hidden isolate z-0">
+            <div className="relative overflow-hidden isolate z-0 h-full flex flex-col">
               {!useFallback && globalProvider === 'twelvedata' ? (
                 <LightweightChartWidget
                   selectedSymbol={asset}
