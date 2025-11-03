@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TrendingUp, BarChart3, AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
 declare global {
   interface Window {
     TradingView: any;
   }
 }
+
 interface TradingViewWidgetProps {
   selectedSymbol: string;
   timeframe?: string;
@@ -17,6 +20,7 @@ interface TradingViewWidgetProps {
   onPriceUpdate?: (price: string) => void;
   className?: string;
 }
+
 interface CombinedData {
   ts: string;
   open: number;
@@ -28,6 +32,31 @@ interface CombinedData {
   atr?: number | null;
   adx?: number | null;
 }
+
+const TIMEFRAME_MAPPING: Record<string, string> = {
+  '1m': '1min',
+  '5m': '5min',
+  '15m': '15min',
+  '30m': '30min',
+  '1h': '1h',
+  '4h': '4h',
+  'D': '1day',
+  'W': '1week',
+  'M': '1month'
+};
+
+const mapToTwelveDataSymbol = (asset: string): string => {
+  const mappings: Record<string, string> = {
+    'EURUSD': 'EUR/USD',
+    'GBPUSD': 'GBP/USD',
+    'XAUUSD': 'XAU/USD',
+    'BTCUSD': 'BTC/USD',
+    'USDJPY': 'USD/JPY',
+    'AUDUSD': 'AUD/USD',
+  };
+  return mappings[asset] || asset;
+};
+
 export function TradingViewWidget({
   selectedSymbol,
   timeframe: propTimeframe,
@@ -86,30 +115,51 @@ export function TradingViewWidget({
     setLoading(true);
     setError(null);
     try {
-      // Query combined data from both tables using direct REST API
-      const query = `
-        SELECT p.ts, p.open, p.high, p.low, p.close, p.volume,
-               i.rsi, i.atr, i.adx
-        FROM prices_tv p
-        LEFT JOIN indicators_tv i ON p.symbol = i.symbol AND p.ts = i.ts
-         WHERE p.symbol = '${currentSymbol}'
-         ORDER BY p.ts ASC
-        LIMIT 500
-      `;
-      const response = await fetch(`https://jqrlegdulnnrpiixiecf.supabase.co/rest/v1/rpc/search_chunks_cosine?query_embedding=[]&match_count=1`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4'
-        }
-      });
+      const tdSymbol = mapToTwelveDataSymbol(currentSymbol);
+      const interval = TIMEFRAME_MAPPING[timeframe] || '1h';
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
 
-      // Since the tables might not have data, show fallback immediately
-      console.log('Supabase query attempted, using TradingView fallback');
-      setHasFallback(true);
-      setData([]);
-      loadTradingViewFallback();
+      console.log(`Fetching data for: ${tdSymbol} (${interval}) from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+      // ✅ CORRECT: Use Supabase client to query prices_tv
+      const { data: priceData, error: fetchError } = await supabase
+        .from('prices_tv')
+        .select('ts, open, high, low, close, volume')
+        .eq('symbol', tdSymbol)
+        .gte('ts', startDate.toISOString())
+        .lte('ts', endDate.toISOString())
+        .order('ts', { ascending: true })
+        .limit(500);
+
+      if (fetchError) throw fetchError;
+
+      // ✅ LEFT JOIN indicators_tv manually
+      const { data: indicatorData } = await supabase
+        .from('indicators_tv')
+        .select('ts, rsi, atr, adx')
+        .eq('symbol', tdSymbol)
+        .gte('ts', startDate.toISOString())
+        .lte('ts', endDate.toISOString());
+
+      // Merge price + indicators
+      const combined = priceData.map((p: any) => ({
+        ...p,
+        rsi: indicatorData?.find((i: any) => i.ts === p.ts)?.rsi || null,
+        atr: indicatorData?.find((i: any) => i.ts === p.ts)?.atr || null,
+        adx: indicatorData?.find((i: any) => i.ts === p.ts)?.adx || null,
+      }));
+
+      const result = combined;
+      
+      if (result && result.length > 0) {
+        setData(result);
+        setHasFallback(false);
+        console.log(`✅ Loaded ${result.length} data points from Supabase`);
+      } else {
+        throw new Error('No data available');
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Using TradingView fallback data');

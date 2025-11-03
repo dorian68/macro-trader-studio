@@ -35,6 +35,15 @@ interface LightweightChartWidgetProps {
   className?: string;
 }
 
+interface CachedChartData {
+  symbol: string;
+  timeframe: string;
+  data: CandlestickData[];
+  timestamp: number;
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 const TIMEFRAME_MAPPING: Record<string, string> = {
   '1m': '1min',
   '5m': '5min',
@@ -101,10 +110,49 @@ export default function LightweightChartWidget({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isConnectingRef = useRef(false);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [historyReady, setHistoryReady] = useState(false); // NEW: Track if historical data loaded
+
+  // ✅ Cache functions
+  const getCachedData = (symbol: string, timeframe: string): CandlestickData[] | null => {
+    try {
+      const key = `chart_cache_${symbol}_${timeframe}`;
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+
+      const parsed: CachedChartData = JSON.parse(cached);
+      const age = Date.now() - parsed.timestamp;
+      
+      if (age > CACHE_TTL_MS) {
+        localStorage.removeItem(key);
+        return null;
+      }
+
+      console.log(`✅ Using cached data (age: ${Math.round(age / 1000)}s)`);
+      return parsed.data;
+    } catch {
+      return null;
+    }
+  };
+
+  const setCachedData = (symbol: string, timeframe: string, data: CandlestickData[]) => {
+    try {
+      const key = `chart_cache_${symbol}_${timeframe}`;
+      const cached: CachedChartData = {
+        symbol,
+        timeframe,
+        data,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(key, JSON.stringify(cached));
+      console.log(`✅ Cached ${data.length} candles`);
+    } catch (err) {
+      console.warn('Cache write failed:', err);
+    }
+  };
   
   // Tooltip state
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -215,6 +263,19 @@ export default function LightweightChartWidget({
       if (!candlestickSeriesRef.current || !chartRef.current) {
         console.warn('⏳ Chart not ready yet, retrying in 100ms...');
         setTimeout(fetchHistoricalData, 100);
+        return;
+      }
+
+      console.log(`📊 Fetching historical data for ${selectedSymbol} @ ${timeframe}`);
+      
+      // ✅ Check cache first
+      const cached = getCachedData(selectedSymbol, timeframe);
+      if (cached && cached.length > 0) {
+        candlestickSeriesRef.current.setData(cached);
+        lastCandleRef.current = cached[cached.length - 1];
+        chartRef.current?.timeScale().fitContent();
+        setHistoryReady(true);
+        setLoading(false);
         return;
       }
 
@@ -330,6 +391,9 @@ export default function LightweightChartWidget({
         });
 
         if (formattedData.length > 0) {
+          // ✅ Cache after successful fetch
+          setCachedData(selectedSymbol, timeframe, formattedData);
+          
           console.log(`✅ Loaded ${formattedData.length} candles to chart`);
           candlestickSeriesRef.current.setData(formattedData);
           lastCandleRef.current = formattedData[formattedData.length - 1];
@@ -405,6 +469,46 @@ export default function LightweightChartWidget({
       return;
     }
 
+    // ✅ Binance fallback function
+    const connectBinanceWebSocket = () => {
+      const mapToBinanceSymbol = (sym: string): string => {
+        const upper = sym.toUpperCase();
+        if (upper.includes('BTC')) return 'BTCUSDT';
+        if (upper.includes('ETH')) return 'ETHUSDT';
+        if (upper.includes('EUR')) return 'EURUSDT';
+        if (upper.includes('GBP')) return 'GBPUSDT';
+        return 'BTCUSDT';
+      };
+
+      const binanceSymbol = mapToBinanceSymbol(selectedSymbol);
+      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${binanceSymbol.toLowerCase()}@ticker`);
+      
+      ws.onopen = () => console.log(`✅ Binance WS connected: ${binanceSymbol}`);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data?.c) {
+            const price = parseFloat(data.c);
+            if (onPriceUpdate) onPriceUpdate(price.toFixed(2));
+            if (candlestickSeriesRef.current && lastCandleRef.current) {
+              const updatedCandle: CandlestickData = {
+                ...lastCandleRef.current,
+                time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+                close: price,
+                high: Math.max(lastCandleRef.current.high, price),
+                low: Math.min(lastCandleRef.current.low, price),
+              };
+              candlestickSeriesRef.current.update(updatedCandle);
+              lastCandleRef.current = updatedCandle;
+            }
+          }
+        } catch (err) {
+          console.error('Binance WS error:', err);
+        }
+      };
+      wsRef.current = ws;
+    };
+
     const connectTwelveDataWebSocket = () => {
       try {
         const tdSymbol = mapToTwelveDataSymbol(selectedSymbol);
@@ -412,15 +516,11 @@ export default function LightweightChartWidget({
         
         ws.onopen = () => {
           console.log(`✅ TwelveData WebSocket OPENED for ${selectedSymbol} → ${tdSymbol}`);
-          
-          // Reset reconnect attempts on successful connection
           reconnectAttemptsRef.current = 0;
-          
           ws.send(JSON.stringify({
             action: 'subscribe',
             params: { symbols: tdSymbol }
           }));
-
           console.log(`📤 Subscription sent for ${tdSymbol}`);
         };
 
@@ -433,14 +533,23 @@ export default function LightweightChartWidget({
             
             // Handle rate-limit / message-processing errors with backoff
             if (msg.event === 'message-processing' && msg.status === 'error') {
-              console.error('🚫 TwelveData rate-limit error:', msg.message);
+              console.error('🚫 TwelveData rate-limit:', msg.message);
               reconnectAttemptsRef.current++;
               
-              // Calculate backoff: 10s, 30s, 60s, capped at 60s
-              const backoffMs = Math.min(10000 * Math.pow(3, reconnectAttemptsRef.current - 1), 60000);
-              console.warn(`⏱️ Backing off ${backoffMs / 1000}s before reconnect (attempt ${reconnectAttemptsRef.current})`);
+              // ✅ Exponential backoff: 10s → 30s → 90s → 180s (cap 3min)
+              const backoffMs = Math.min(10000 * Math.pow(3, reconnectAttemptsRef.current - 1), 180000);
+              console.warn(`⏱️ Backoff ${backoffMs / 1000}s (attempt ${reconnectAttemptsRef.current})`);
               
               ws.close();
+              
+              // ✅ Fallback to Binance after 3 failed attempts
+              if (reconnectAttemptsRef.current >= 3) {
+                console.warn('🔄 Switching to Binance WebSocket fallback');
+                connectBinanceWebSocket();
+                return;
+              }
+              
+              reconnectTimeoutRef.current = setTimeout(connectTwelveDataWebSocket, backoffMs);
               return;
             }
             

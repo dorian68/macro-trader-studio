@@ -7,6 +7,7 @@ import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
 import LightweightChartWidget from './LightweightChartWidget';
+import { supabase } from '@/integrations/supabase/client';
 const {
   useState
 } = React;
@@ -72,8 +73,20 @@ export function CandlestickChart({
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [useFallback, setUseFallback] = useState(false);
+  const [globalProvider, setGlobalProvider] = useState<'twelvedata' | 'tradingview'>('twelvedata');
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
+
+  React.useEffect(() => {
+    const fetchProvider = async () => {
+      const { data } = await supabase.from('chart_provider_settings').select('provider').single();
+      if (data) {
+        setGlobalProvider(data.provider as 'twelvedata' | 'tradingview');
+        if (data.provider === 'tradingview') setUseFallback(true);
+      }
+    };
+    fetchProvider();
+  }, []);
 
   // Reset fallback when asset or timeframe changes - give TwelveData another try
   React.useEffect(() => {
@@ -135,7 +148,7 @@ export function CandlestickChart({
           
           <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6">
             <div className="relative overflow-hidden isolate z-0">
-              {!useFallback ? (
+              {!useFallback && globalProvider === 'twelvedata' ? (
                 <LightweightChartWidget
                   selectedSymbol={asset}
                   timeframe={timeframe}

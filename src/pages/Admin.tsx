@@ -998,6 +998,12 @@ export default function Admin() {
               <RealtimeDiagnostic />
             </TabsContent>
           )}
+
+          {isSuperUser && (
+            <TabsContent value="chart-provider">
+              <ChartProviderSettings />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </Layout>

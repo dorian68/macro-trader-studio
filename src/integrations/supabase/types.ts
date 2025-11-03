@@ -453,6 +453,27 @@ export type Database = {
         }
         Relationships: []
       }
+      chart_provider_settings: {
+        Row: {
+          id: string
+          provider: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          provider?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          provider?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       credits_engaged: {
         Row: {
           engaged_at: string | null
