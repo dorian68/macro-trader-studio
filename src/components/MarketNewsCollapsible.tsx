@@ -88,7 +88,7 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
             {t('dashboard:noDataAvailable')}
           </div>
         ) : (
-          <ScrollArea className="h-[500px]">
+          <ScrollArea className="h-[500px] lg:h-[calc(100vh-16rem)]">
             <div className="space-y-3 pr-4">
               {filteredNews.map((item) => (
                 <div 

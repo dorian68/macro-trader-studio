@@ -203,255 +203,258 @@ export default function TradingDashboard() {
       onResetJobsCount={jobManager.resetCompletedCount}
       activeJobsCount={jobManager.activeJobs.filter(job => job.status === 'pending' || job.status === 'running').length}
     >
-      <div className="space-y-4 sm:space-y-6 overflow-x-hidden scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {/* Mobile-first header with real-time price */}
-        <div className="space-y-4">
-          {/* Title section - Mobile optimized */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
-                <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-start">
+        {/* LEFT COLUMN - Trading Dashboard (2/3) */}
+        <div className="space-y-4 sm:space-y-6 overflow-x-hidden min-w-0">
+          {/* Mobile-first header with real-time price */}
+          <div className="space-y-4">
+            {/* Title section - Mobile optimized */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
+                  <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words">
+                    {t('dashboard:trading.title')}
+                  </h1>
+                  <p className="text-sm sm:text-base text-muted-foreground break-words">
+                    {t('dashboard:trading.subtitle')}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words">
-                  {t('dashboard:trading.title')}
-                </h1>
-                <p className="text-sm sm:text-base text-muted-foreground break-words">
-                  {t('dashboard:trading.subtitle')}
-                </p>
-              </div>
+            </div>
+
+            {/* Price widget - Affiche uniquement l'actif sélectionné */}
+            {(selectedAssetProfile || (priceData && priceData.symbol === selectedAsset)) && (
+              <Card className="gradient-card border-primary/20 shadow-glow-primary w-full">
+                <CardContent className="p-4">
+                  {selectedAssetProfile ? (
+                    // Display selected asset from search (priority)
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                          {selectedAssetProfile.symbol?.slice(0, 2)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-foreground text-lg">{selectedAssetProfile.symbol}</h3>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {selectedAssetProfile.short_name || selectedAssetProfile.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {selectedAssetProfile.sector} • {selectedAssetProfile.exchange}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
+                          className="shrink-0"
+                        >
+                          {t('common:actions.viewDetails')}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="secondary"
+                          onClick={() => setSelectedAssetProfile(null)}
+                          className="shrink-0"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Affichage par défaut avec données temps réel
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
+                          <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
+                            ${priceData?.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
+                          </span>
+                          <div className={cn(
+                            "w-2 h-2 rounded-full animate-pulse shrink-0",
+                            isConnected ? "bg-success" : "bg-danger"
+                          )} />
+                        </div>
+                        {priceData && (
+                          <div className={cn(
+                            "flex items-center gap-1 text-sm font-medium",
+                            priceData.change24h >= 0 ? "text-success" : "text-danger"
+                          )}>
+                            {priceData.change24h >= 0 ? 
+                              <TrendingUp className="h-3 w-3" /> : 
+                              <TrendingDown className="h-3 w-3" />
+                            }
+                            {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+          </div>
+
+          {/* Hybrid Search + AI Interface */}
+          <HybridSearchBar
+            assets={allAssets}
+            selectedAsset={selectedAsset}
+            onAssetSelect={setSelectedAsset}
+            onAssetProfileSelect={handleAssetProfileSelect}
+            instrument={selectedAsset}
+            timeframe={timeframe}
+          />
+
+          {/* Popular assets - Mobile-first horizontal scroll */}
+          <div className="w-full -mx-2 sm:mx-0">
+            <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {allAssets.map((asset) => (
+                <button
+                  key={asset.symbol}
+                  onClick={() => setSelectedAsset(asset.symbol)}
+                  className={cn(
+                    "px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-smooth flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 snap-start min-w-fit touch-manipulation",
+                    selectedAsset === asset.symbol
+                      ? "bg-primary text-primary-foreground shadow-glow-primary"
+                      : "bg-card/50 hover:bg-primary/10 text-foreground border border-border/30"
+                  )}
+                  style={{ minHeight: '44px' }}
+                  >
+                  <span className="font-semibold">{asset.symbol}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Price widget - Affiche uniquement l'actif sélectionné */}
-          {(selectedAssetProfile || (priceData && priceData.symbol === selectedAsset)) && (
-            <Card className="gradient-card border-primary/20 shadow-glow-primary w-full">
-              <CardContent className="p-4">
-                {selectedAssetProfile ? (
-                  // Display selected asset from search (priority)
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
-                        {selectedAssetProfile.symbol?.slice(0, 2)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground text-lg">{selectedAssetProfile.symbol}</h3>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {selectedAssetProfile.short_name || selectedAssetProfile.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedAssetProfile.sector} • {selectedAssetProfile.exchange}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => navigate(`/asset/${selectedAssetProfile.symbol}`)}
-                        className="shrink-0"
-                      >
-                        {t('common:actions.viewDetails')}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="secondary"
-                        onClick={() => setSelectedAssetProfile(null)}
-                        className="shrink-0"
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  // Affichage par défaut avec données temps réel
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground text-lg">{selectedAsset}</h3>
-                        <p className="text-xs text-muted-foreground truncate">{currentAsset?.name}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between sm:justify-end sm:text-right gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
-                          ${priceData?.price.toFixed(selectedAsset.includes('JPY') ? 2 : 4)}
-                        </span>
-                        <div className={cn(
-                          "w-2 h-2 rounded-full animate-pulse shrink-0",
-                          isConnected ? "bg-success" : "bg-danger"
-                        )} />
-                      </div>
-                      {priceData && (
-                        <div className={cn(
-                          "flex items-center gap-1 text-sm font-medium",
-                          priceData.change24h >= 0 ? "text-success" : "text-danger"
-                        )}>
-                          {priceData.change24h >= 0 ? 
-                            <TrendingUp className="h-3 w-3" /> : 
-                            <TrendingDown className="h-3 w-3" />
-                          }
-                          {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          {/* Asset Information Card */}
+          <AssetInfoCard 
+            symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset} 
+            className="w-full" 
+          />
 
-        </div>
+          {/* Market Chart - Full width within column */}
+          <div className="my-6">
+            <CandlestickChart 
+              asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
+              showHeader={true}
+              height={500}
+              tradeLevels={activeTradeLevels}
+              onLevelUpdate={(type, value) => {
+                if (activeTradeLevels) {
+                  setActiveTradeLevels({
+                    ...activeTradeLevels,
+                    [type === 'stopLoss' ? 'stopLoss' : type]: value
+                  });
+                }
+              }}
+            />
+          </div>
 
-        {/* Hybrid Search + AI Interface */}
-        <HybridSearchBar
-          assets={allAssets}
-          selectedAsset={selectedAsset}
-          onAssetSelect={setSelectedAsset}
-          onAssetProfileSelect={handleAssetProfileSelect}
-          instrument={selectedAsset}
-          timeframe={timeframe}
-        />
-
-        {/* Market News Panel */}
-        <MarketNewsCollapsible className="mb-8" />
-
-        {/* Popular assets - Mobile-first horizontal scroll */}
-        <div className="w-full -mx-2 sm:mx-0">
-          <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {allAssets.map((asset) => (
-              <button
-                key={asset.symbol}
-                onClick={() => setSelectedAsset(asset.symbol)}
-                className={cn(
-                  "px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-smooth flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 snap-start min-w-fit touch-manipulation",
-                  selectedAsset === asset.symbol
-                    ? "bg-primary text-primary-foreground shadow-glow-primary"
-                    : "bg-card/50 hover:bg-primary/10 text-foreground border border-border/30"
-                )}
+          {/* Navigation Cards */}
+          <section aria-label="Quick navigation" className="mt-8 md:mt-12">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card 
+                className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
+                onClick={() => navigate('/ai-setup')}
                 style={{ minHeight: '44px' }}
-                >
-                <span className="font-semibold">{asset.symbol}</span>
-              </button>
-            ))}
-          </div>
+              >
+                <CardContent className="p-6 text-center">
+                  <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
+                    <Zap className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{t('dashboard:trading.aiTradeSetup')}</h3>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    {t('dashboard:trading.intelligentTradeSetups')}
+                  </p>
+                  <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
+                    {t('dashboard:getStarted')}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
+                onClick={() => navigate('/macro-analysis')}
+                style={{ minHeight: '44px' }}
+              >
+                <CardContent className="p-6 text-center">
+                  <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
+                    <Activity className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{t('dashboard:trading.macroCommentary')}</h3>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    {t('dashboard:trading.inDepthAnalysis')}
+                  </p>
+                  <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
+                    {t('common:actions.explore')}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
+                onClick={() => navigate('/reports')}
+                style={{ minHeight: '44px' }}
+              >
+                <CardContent className="p-6 text-center">
+                  <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
+                    <Activity className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{t('dashboard:trading.reports')}</h3>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    {t('dashboard:trading.comprehensiveReports')}
+                  </p>
+                  <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
+                    {t('common:actions.explore')}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* Job Status Card */}
+          {jobManager.activeJobs.length > 0 && (
+            <JobStatusCard
+              jobs={jobManager.activeJobs}
+              onViewResult={(job) => {
+                // Navigate to appropriate result page based on job type
+                switch (job.type) {
+                  case 'ai_setup':
+                    navigate('/history');
+                    break;
+                  case 'macro_commentary':
+                    navigate('/macro-analysis');
+                    break;
+                    case 'report':
+                      navigate(`/reports?jobId=${job.id}`);
+                      break;
+                }
+              }}
+              onDismiss={jobManager.removeJob}
+            />
+          )}
         </div>
 
-        {/* Asset Information Card - Moved before chart to prevent overlap */}
-        <AssetInfoCard 
-          symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset} 
-          className="w-full" 
-        />
+        {/* RIGHT COLUMN - Market News (1/3) */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <MarketNewsCollapsible />
+        </div>
       </div>
-
-      {/* Market Chart - Full Width Section - Outside constrained container */}
-      <section aria-label="Market chart" className="relative left-1/2 -translate-x-1/2 w-screen px-4 sm:px-6 lg:px-0 my-6">
-        <CandlestickChart 
-          asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-          showHeader={true}
-          height={500}
-          tradeLevels={activeTradeLevels}
-          onLevelUpdate={(type, value) => {
-            if (activeTradeLevels) {
-              setActiveTradeLevels({
-                ...activeTradeLevels,
-                [type === 'stopLoss' ? 'stopLoss' : type]: value
-              });
-            }
-          }}
-        />
-      </section>
-
-      <div className="space-y-4 sm:space-y-6">
-
-
-        {/* Navigation Cards */}
-        <section aria-label="Quick navigation" className="mt-16 md:mt-24">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card 
-              className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
-              onClick={() => navigate('/ai-setup')}
-              style={{ minHeight: '44px' }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
-                  <Zap className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{t('dashboard:trading.aiTradeSetup')}</h3>
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                  {t('dashboard:trading.intelligentTradeSetups')}
-                </p>
-                <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
-                  {t('dashboard:getStarted')}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card 
-              className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
-              onClick={() => navigate('/macro-analysis')}
-              style={{ minHeight: '44px' }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
-                  <Activity className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{t('dashboard:trading.macroCommentary')}</h3>
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                  {t('dashboard:trading.inDepthAnalysis')}
-                </p>
-                <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
-                  {t('common:actions.explore')}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card 
-              className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden" 
-              onClick={() => navigate('/reports')}
-              style={{ minHeight: '44px' }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="gradient-primary p-3 rounded-xl shadow-glow-primary mx-auto w-fit mb-4">
-                  <Activity className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{t('dashboard:trading.reports')}</h3>
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                  {t('dashboard:trading.comprehensiveReports')}
-                </p>
-                <Button size="sm" className="w-full touch-manipulation" style={{ minHeight: '44px' }}>
-                  {t('common:actions.explore')}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      </div>
-
-      {/* Job Status Card */}
-      <JobStatusCard
-        jobs={jobManager.activeJobs}
-        onViewResult={(job) => {
-          // Navigate to appropriate result page based on job type
-          switch (job.type) {
-            case 'ai_setup':
-              navigate('/history');
-              break;
-            case 'macro_commentary':
-              navigate('/macro-analysis');
-              break;
-              case 'report':
-                navigate(`/reports?jobId=${job.id}`);
-                break;
-          }
-        }}
-        onDismiss={jobManager.removeJob}
-      />
 
       {/* Floating bubble system */}
       <BubbleSystem 
