@@ -95,7 +95,7 @@ export function NewsFeedPanel() {
       <Button
         variant="outline"
         size="icon"
-        className="fixed right-4 top-20 z-50 shadow-lg gradient-card border-primary/20 relative"
+        className="fixed right-4 top-24 z-[60] shadow-lg gradient-card border-primary/20 relative"
         onClick={handleOpen}
       >
         <Newspaper className="h-5 w-5" />
