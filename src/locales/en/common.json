@@ -86,5 +86,22 @@
     "defaultDescription": "Advanced FX, crypto, and macro analysis with institutional-grade insights, AI-powered trade setups, and comprehensive research reports.",
     "homeTitle": "alphaLens AI - AI-Powered Financial Research",
     "homeDescription": "Transform your trading strategy with AI-powered insights, macro commentary, and research reports for FX and crypto markets."
+  },
+  "newsFeed": {
+    "title": "Market News",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "filter": "Filter by category",
+    "search": "Search news...",
+    "categories": {
+      "all": "All",
+      "forex": "Forex",
+      "stocks": "Stocks",
+      "crypto": "Crypto",
+      "commodities": "Commodities"
+    },
+    "noNews": "No news available",
+    "loading": "Loading news...",
+    "readMore": "Read More"
   }
 }

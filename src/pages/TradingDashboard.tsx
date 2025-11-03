@@ -16,6 +16,7 @@ import AssetInfoCard from "@/components/AssetInfoCard";
 import { JobStatusCard } from "@/components/JobStatusCard";
 import { useJobStatusManager } from "@/hooks/useJobStatusManager";
 import { useTranslation } from "react-i18next";
+import { NewsFeedPanel } from "@/components/NewsFeedPanel";
 
 interface PriceData {
   symbol: string;
@@ -457,6 +458,9 @@ export default function TradingDashboard() {
           setActiveTradeLevels(levels);
         }}
       />
+      
+      {/* News Feed Panel */}
+      <NewsFeedPanel />
     </Layout>
   );
 }

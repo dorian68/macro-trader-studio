@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.restore-user]
 verify_jwt = false
+
+[functions.refresh-news-feed]
+verify_jwt = false

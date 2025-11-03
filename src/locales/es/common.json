@@ -86,5 +86,22 @@
     "defaultDescription": "Análisis avanzado de FX, cripto y macroeconomía con información de nivel institucional, configuraciones de trading impulsadas por IA y reportes de investigación integrales.",
     "homeTitle": "alphaLens AI - Investigación Financiera Impulsada por IA",
     "homeDescription": "Transforme su estrategia de trading con información impulsada por IA, comentarios macro e informes de investigación para mercados FX y cripto."
+  },
+  "newsFeed": {
+    "title": "Noticias del Mercado",
+    "collapse": "Colapsar",
+    "expand": "Expandir",
+    "filter": "Filtrar por categoría",
+    "search": "Buscar noticias...",
+    "categories": {
+      "all": "Todas",
+      "forex": "Forex",
+      "stocks": "Acciones",
+      "crypto": "Cripto",
+      "commodities": "Materias Primas"
+    },
+    "noNews": "No hay noticias disponibles",
+    "loading": "Cargando noticias...",
+    "readMore": "Leer Más"
   }
 }
