@@ -215,7 +215,7 @@ export default function TradingDashboard() {
         aria-label="Market chart and news" 
         className="relative left-1/2 -translate-x-1/2 w-screen px-4 sm:px-6 lg:px-8 my-8"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-start max-w-[1920px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-stretch max-w-[1920px] mx-auto">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
           <div className="min-w-0 min-h-0 order-1">
             <CandlestickChart
@@ -248,7 +248,7 @@ export default function TradingDashboard() {
           </div>
           
           {/* Col droite - Rangée 1 : Market News */}
-          <div className="min-w-0 min-h-0 order-3 lg:order-2 lg:self-stretch">
+          <div className="min-w-0 min-h-0 order-3 lg:order-2">
             <MarketNewsCollapsible className="h-full" />
           </div>
 
