@@ -167,8 +167,8 @@ export function CandlestickChart({
 
   return <>
       {/* Chart Section - Full Width with integrated header */}
-      <div className="w-full">
-        <Card className="gradient-card border border-border/50 shadow-medium rounded-lg min-h-[800px] flex flex-col">
+      <div className="w-full h-full">
+        <Card className="gradient-card border border-border/50 shadow-medium rounded-lg h-full min-h-[800px] lg:min-h-0 flex flex-col">
           {/* Header Section - Integrated dashboard header */}
           {showHeader && (
             <CardHeader className="pb-6 border-b border-border/50 space-y-4">

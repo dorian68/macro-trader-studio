@@ -30,13 +30,6 @@ export default function TradingDashboard() {
   const navigate = useNavigate();
   const jobManager = useJobStatusManager();
   
-  // Refs and state for height synchronization
-  const chartRef = useRef<HTMLDivElement>(null);
-  const [chartHeight, setChartHeight] = useState<number>(0);
-  const [isLg, setIsLg] = useState<boolean>(() => 
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
-  );
-  
   // Read session-based chart mode for super users (default: tradingview)
   const [sessionChartMode, setSessionChartMode] = useState<'tradingview' | 'light'>(() => {
     const stored = sessionStorage.getItem('dashboard_chart_mode');
@@ -208,28 +201,6 @@ export default function TradingDashboard() {
     }
   }, [allAssets, currentAsset]);
 
-  // Track lg breakpoint changes
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const media = window.matchMedia('(min-width: 1024px)');
-    const onChange = () => setIsLg(media.matches);
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, []);
-
-  // Observe chart height for exact alignment with Market News
-  useEffect(() => {
-    if (!chartRef.current) return;
-    const ro = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const h = Math.ceil(entry.contentRect.height);
-        setChartHeight(h);
-      }
-    });
-    ro.observe(chartRef.current);
-    return () => ro.disconnect();
-  }, [sessionChartMode, isLg]);
-
   return (
     <Layout
         activeModule="trading"
@@ -246,7 +217,7 @@ export default function TradingDashboard() {
       >
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-stretch max-w-[1920px] mx-auto">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
-          <div ref={chartRef} className="min-w-0 order-1">
+          <div className="min-w-0 min-h-0 order-1">
             <CandlestickChart
               forceMode={sessionChartMode}
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
@@ -277,10 +248,7 @@ export default function TradingDashboard() {
           </div>
           
           {/* Col droite - Rangée 1 : Market News */}
-          <div
-            className="min-w-0 min-h-0 order-3 lg:order-2"
-            style={isLg && chartHeight ? { height: chartHeight } : undefined}
-          >
+          <div className="min-w-0 min-h-0 order-3 lg:order-2">
             <MarketNewsCollapsible className="h-full" />
           </div>
 
