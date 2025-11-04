@@ -697,18 +697,28 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       // ✅ ATOMIC: Try to engage credit
       const creditResult = await tryEngageCredit(creditType, jobId);
       if (!creditResult.success) {
+        console.log('❌ [AURA] Credit engagement failed, cleaning up job:', jobId);
+        
+        // Nettoyer le job orphelin
+        await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', jobId);
+        
         toast({
-          title: t('toasts:aura.insufficientCreditsTitle'),
-          description: creditResult.message,
+          title: "Insufficient Credits",
+          description: "You've run out of credits. Please recharge to continue using AlphaLens.",
           variant: "destructive"
         });
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { role: 'assistant', content: t('toasts:aura.insufficientCredits', { message: creditResult.message }) }
+          { role: 'assistant', content: "❌ You've run out of credits. Please recharge to continue using AlphaLens." }
         ]);
         setActiveJobId(null);
         return;
       }
+      
+      console.log('✅ [AURA] Credit engaged successfully. Available:', creditResult.available);
 
       setActiveJobId(jobId);
 

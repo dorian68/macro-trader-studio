@@ -730,14 +730,24 @@ export default function MacroAnalysis() {
       // 3. ✅ ATOMIC: Try to engage credit
       const creditResult = await tryEngageCredit('queries', responseJobId);
       if (!creditResult.success) {
+        console.log('❌ [MacroAnalysis] Credit engagement failed, cleaning up job:', responseJobId);
+        
+        // Nettoyer le job orphelin
+        await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', responseJobId);
+        
         toast({
           title: "Insufficient Credits",
-          description: creditResult.message,
+          description: "You've run out of credits. Please recharge to continue using AlphaLens.",
           variant: "destructive"
         });
         setIsGenerating(false);
         return;
       }
+      
+      console.log('✅ [MacroAnalysis] Credit engaged successfully. Available:', creditResult.available);
 
       // 1. CRITICAL: Subscribe to Realtime BEFORE sending POST request
       console.log('📡 [Realtime] Subscribing to jobs updates before POST');

@@ -392,14 +392,24 @@ export default function AISetup() {
       // 3. ✅ ATOMIC: Try to engage credit (check + reserve in single transaction)
       const creditResult = await tryEngageCredit('ideas', jobId);
       if (!creditResult.success) {
+        console.log('❌ [AISetup] Credit engagement failed, cleaning up job:', jobId);
+        
+        // Nettoyer le job orphelin
+        await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', jobId);
+        
         toast({
           title: "Insufficient Credits",
-          description: creditResult.message,
+          description: "You've run out of credits. Please recharge to continue using AlphaLens.",
           variant: "destructive"
         });
         setIsGenerating(false);
         return;
       }
+      
+      console.log('✅ [AISetup] Credit engaged successfully. Available:', creditResult.available);
 
       console.log('📊[AISetup] Single request with trade query, jobId =', jobId);
       

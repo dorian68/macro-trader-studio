@@ -492,14 +492,24 @@ export default function Reports() {
       // ✅ ATOMIC: Try to engage credit
       const creditResult = await tryEngageCredit('reports', reportJobId);
       if (!creditResult.success) {
+        console.log('❌ [Reports] Credit engagement failed, cleaning up job:', reportJobId);
+        
+        // Nettoyer le job orphelin
+        await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', reportJobId);
+        
         toast({
           title: "Insufficient Credits",
-          description: creditResult.message,
+          description: "You've run out of credits. Please recharge to continue using AlphaLens.",
           variant: "destructive"
         });
         setIsGenerating(false);
         return;
       }
+      
+      console.log('✅ [Reports] Credit engaged successfully. Available:', creditResult.available);
 
       console.log('🚀 [Reports] Job created, realtime injection will handle response:', reportJobId);
 
