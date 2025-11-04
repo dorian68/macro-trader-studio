@@ -15,7 +15,7 @@ export function MobileNewsBadge({ onClick, hasNewItems = false }: MobileNewsBadg
       onClick={onClick}
       aria-label={t('dashboard:news.openNews')}
       className={cn(
-        "fixed lg:hidden top-4 right-4 z-40",
+        "fixed lg:hidden top-[4.5rem] right-4 z-40",
         "flex items-center gap-2 px-4 py-3 rounded-lg",
         "bg-gradient-to-br from-primary to-primary/90 border border-accent/30",
         "shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
