@@ -1237,6 +1237,14 @@ export type Database = {
           similarity: number
         }[]
       }
+      try_engage_credit: {
+        Args: { p_feature: string; p_job_id: string; p_user_id: string }
+        Returns: {
+          available_credits: number
+          message: string
+          success: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "super_user"

@@ -201,7 +201,7 @@ export default function AISetup() {
   const {
     createJob
   } = useRealtimeJobManager();
-  const { canLaunchJob, engageCredit } = useCreditEngagement();
+  const { tryEngageCredit } = useCreditEngagement();
   const [step, setStep] = useState<"parameters" | "generated">("parameters");
   const [isGenerating, setIsGenerating] = useState(false);
   const [tradeSetup, setTradeSetup] = useState<TradeSetup | null>(null);
@@ -358,17 +358,6 @@ export default function AISetup() {
     }
   }, [n8nResult?.instrument]);
   const generateTradeSetup = async () => {
-    // 🔹 STEP 1: Pre-check with engagement logic
-    const creditCheck = await canLaunchJob('ideas'); // AI Setup uses 'ideas'
-    if (!creditCheck.canLaunch) {
-      toast({
-        title: "Insufficient Credits",
-        description: creditCheck.message || "You cannot launch this request.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setIsGenerating(true);
     setError(null);
     setN8nResult(null);
@@ -377,21 +366,14 @@ export default function AISetup() {
     let channel: any = null;
     
     try {
-      // SINGLE JOB: Merged macro commentary + trade setup request
-      
-      // 1. Build merged payload with all fields at root level
+      // 1. Build merged payload
       const mergedPayload = {
-        // Macro commentary structure (base)
         type: "RAG",
         mode: "run",
         instrument: parameters.instrument,
         question: buildQuestion(parameters),
         user_email: user?.email || null,
-        
-        // Trade query flag
         isTradeQuery: true,
-        
-        // Trade setup data at root level (flattened)
         timeframe: parameters.timeframe,
         riskLevel: parameters.riskLevel,
         positionSize: parameters.positionSize,
@@ -399,7 +381,7 @@ export default function AISetup() {
         customNotes: parameters.customNotes
       };
 
-      // 2. Create single job with macro_commentary type
+      // 2. Create job FIRST
       const jobId = await createJob(
         'macro_commentary',
         parameters.instrument,
@@ -407,12 +389,12 @@ export default function AISetup() {
         'AI Trade Setup'
       );
 
-      // 🔹 STEP 2: Engage credit IMMEDIATELY after job creation
-      const engaged = await engageCredit('ideas', jobId);
-      if (!engaged) {
+      // 3. ✅ ATOMIC: Try to engage credit (check + reserve in single transaction)
+      const creditResult = await tryEngageCredit('ideas', jobId);
+      if (!creditResult.success) {
         toast({
-          title: "Error",
-          description: "Failed to reserve credit. Please try again.",
+          title: "Insufficient Credits",
+          description: creditResult.message,
           variant: "destructive"
         });
         setIsGenerating(false);

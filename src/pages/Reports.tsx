@@ -65,7 +65,7 @@ export default function Reports() {
   const { user } = useAuth();
   const { logInteraction, checkCredits } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
-  const { canLaunchJob, engageCredit } = useCreditEngagement();
+  const { tryEngageCredit } = useCreditEngagement();
   const { t } = useTranslation(['dashboard', 'toasts']);
 
   // Set up automatic response injection from Supabase
@@ -448,17 +448,6 @@ export default function Reports() {
   }, [availableSections, reportConfig]);
 
   const generateReport = async () => {
-    // 🔹 STEP 1: Pre-check with engagement logic
-    const creditCheck = await canLaunchJob('reports');
-    if (!creditCheck.canLaunch) {
-      toast({
-        title: "Insufficient Credits",
-        description: creditCheck.message || "You cannot launch this request.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setIsGenerating(true);
     console.log('🔄 [Loader] Starting report generation');
 
@@ -500,12 +489,12 @@ export default function Reports() {
         sections: includedSections.length 
       });
 
-      // 🔹 STEP 2: Engage credit IMMEDIATELY after job creation
-      const engaged = await engageCredit('reports', reportJobId);
-      if (!engaged) {
+      // ✅ ATOMIC: Try to engage credit
+      const creditResult = await tryEngageCredit('reports', reportJobId);
+      if (!creditResult.success) {
         toast({
-          title: "Error",
-          description: "Failed to reserve credit. Please try again.",
+          title: "Insufficient Credits",
+          description: creditResult.message,
           variant: "destructive"
         });
         setIsGenerating(false);

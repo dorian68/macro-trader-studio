@@ -71,7 +71,7 @@ export default function MacroAnalysis() {
     checkCredits
   } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
-  const { canLaunchJob, engageCredit } = useCreditEngagement();
+  const { tryEngageCredit } = useCreditEngagement();
   const { t } = useTranslation(['dashboard', 'toasts', 'common']);
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
@@ -690,47 +690,36 @@ export default function MacroAnalysis() {
   const generateAnalysis = async () => {
     if (!queryParams.query.trim()) return;
     
-    // 🔹 STEP 1: Pre-check with engagement logic
-    const creditCheck = await canLaunchJob('queries'); // Macro uses 'queries'
-    if (!creditCheck.canLaunch) {
-      toast({
-        title: "Insufficient Credits",
-        description: creditCheck.message || "You cannot launch this request.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     console.log('🔄 [Loader] Starting analysis generation');
     setIsGenerating(true);
     setJobStatus("running");
     try {
       // 1. Build payload first
-    const payload = {
-      type: "RAG",
-      question: queryParams.query,
-      mode: "run",
-      user_email: user?.email || null,
-      filters: {
-        region: "All",
-        product: "All",
-        category: "All"
-      },
-      analysis: {
-        query: queryParams.query,
-        timestamp: new Date().toISOString()
-      },
-      user_id: "default_user",
-      instrument: selectedAsset.symbol,
-      timeframe: "1H",
-      assetType: queryParams.assetType,
-      analysisDepth: queryParams.analysisDepth,
-      period: queryParams.period,
-      adresse: queryParams.adresse,
-      isTradeQuery: false
-    };
+      const payload = {
+        type: "RAG",
+        question: queryParams.query,
+        mode: "run",
+        user_email: user?.email || null,
+        filters: {
+          region: "All",
+          product: "All",
+          category: "All"
+        },
+        analysis: {
+          query: queryParams.query,
+          timestamp: new Date().toISOString()
+        },
+        user_id: "default_user",
+        instrument: selectedAsset.symbol,
+        timeframe: "1H",
+        assetType: queryParams.assetType,
+        analysisDepth: queryParams.analysisDepth,
+        period: queryParams.period,
+        adresse: queryParams.adresse,
+        isTradeQuery: false
+      };
       
-      // 2. Create job with payload using createJob hook (like Reports page)
+      // 2. Create job
       const responseJobId = await createJob(
         'macro_analysis',
         selectedAsset.symbol,
@@ -738,12 +727,12 @@ export default function MacroAnalysis() {
         'Macro Commentary'
       );
 
-      // 🔹 STEP 2: Engage credit IMMEDIATELY after job creation
-      const engaged = await engageCredit('queries', responseJobId);
-      if (!engaged) {
+      // 3. ✅ ATOMIC: Try to engage credit
+      const creditResult = await tryEngageCredit('queries', responseJobId);
+      if (!creditResult.success) {
         toast({
-          title: "Error",
-          description: "Failed to reserve credit. Please try again.",
+          title: "Insufficient Credits",
+          description: creditResult.message,
           variant: "destructive"
         });
         setIsGenerating(false);

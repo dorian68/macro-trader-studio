@@ -78,7 +78,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const navigate = useNavigate();
   const globalLoading = useGlobalLoading();
   const { createJob } = useRealtimeJobManager();
-  const { canLaunchJob, engageCredit } = useCreditEngagement();
+  const { tryEngageCredit } = useCreditEngagement();
 
   // Auto-scroll to bottom when new messages arrive (only if user is near bottom)
   useEffect(() => {
@@ -637,20 +637,6 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         return;
     }
 
-    // 🔹 Pre-check credits
-    const creditCheck = await canLaunchJob(creditType);
-    if (!creditCheck.canLaunch) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: t('toasts:aura.insufficientCredits', { message: creditCheck.message || t('toasts:aura.cannotLaunchRequest') }) },
-      ]);
-      toast({
-        title: t('toasts:aura.insufficientCreditsTitle'),
-        description: creditCheck.message || t('toasts:aura.cannotLaunchRequest'),
-        variant: "destructive"
-      });
-      return;
-    }
 
     try {
       // Show loading message in AURA
@@ -708,15 +694,18 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         featureType === 'macro_commentary' ? 'Macro Commentary' : 'Report'
       );
 
-      // 🔹 Engage credit
-      const engaged = await engageCredit(creditType, jobId);
-      if (!engaged) {
+      // ✅ ATOMIC: Try to engage credit
+      const creditResult = await tryEngageCredit(creditType, jobId);
+      if (!creditResult.success) {
         toast({
-          title: t('toasts:aura.error'),
-          description: t('toasts:aura.cannotReserveCredit'),
+          title: t('toasts:aura.insufficientCreditsTitle'),
+          description: creditResult.message,
           variant: "destructive"
         });
-        setMessages((prev) => prev.slice(0, -1));
+        setMessages((prev) => [
+          ...prev.slice(0, -1),
+          { role: 'assistant', content: t('toasts:aura.insufficientCredits', { message: creditResult.message }) }
+        ]);
         setActiveJobId(null);
         return;
       }
