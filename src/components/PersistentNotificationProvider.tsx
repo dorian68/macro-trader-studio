@@ -323,6 +323,35 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'jobs',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const deletedJob = payload.old as any;
+          
+          console.log('🗑️ [PersistentNotifications] Job DELETE:', deletedJob);
+          
+          // Stop mock simulator if active
+          mockSimulatorsActive.current.set(deletedJob.id, false);
+          
+          // Remove from active jobs
+          setActiveJobs(prev => {
+            const filtered = prev.filter(job => job.id !== deletedJob.id);
+            if (filtered.length !== prev.length) {
+              console.log(`🗑️ [PersistentNotifications] Removed deleted job ${deletedJob.id} from active jobs`);
+            }
+            return filtered;
+          });
+          
+          // Remove from completed jobs (au cas où)
+          setCompletedJobs(prev => prev.filter(job => job.id !== deletedJob.id));
+        }
+      )
       .subscribe();
 
     return () => {
