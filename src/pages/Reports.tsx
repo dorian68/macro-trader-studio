@@ -169,8 +169,8 @@ export default function Reports() {
   const [reportConfig, setReportConfig] = useState({
     title: "Monthly Trading Report",
     customNotes: "",
-    exportFormat: "pdf",
-    email: ""
+    exportFormat: "email",
+    email: user?.email || ""
   });
 
   // Update report title when asset is selected
@@ -182,6 +182,16 @@ export default function Reports() {
       }));
     }
   }, [selectedAsset]);
+
+  // Synchronize email with user's email if available
+  useEffect(() => {
+    if (user?.email && !reportConfig.email) {
+      setReportConfig(prev => ({
+        ...prev,
+        email: user.email || ""
+      }));
+    }
+  }, [user?.email]);
 
   // 🔄 Load persisted report results on mount or URL change
   useEffect(() => {
@@ -448,6 +458,27 @@ export default function Reports() {
   }, [availableSections, reportConfig]);
 
   const generateReport = async () => {
+    // ✅ VALIDATION: Verify email is provided
+    if (!reportConfig.email || !reportConfig.email.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please provide an email address to receive the report.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // ✅ VALIDATION: Verify email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(reportConfig.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsGenerating(true);
     console.log('🔄 [Loader] Starting report generation');
 
@@ -757,11 +788,13 @@ export default function Reports() {
                     <Select 
                       value={reportConfig.exportFormat} 
                       onValueChange={(value) => setReportConfig({ ...reportConfig, exportFormat: value })}
+                      disabled={true}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="opacity-60 cursor-not-allowed">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="email">Email</SelectItem>
                         <SelectItem value="pdf">PDF</SelectItem>
                         <SelectItem value="docx">Word (DOCX)</SelectItem>
                         <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
