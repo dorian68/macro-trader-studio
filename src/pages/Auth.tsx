@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import newLogo from '@/assets/new-logo.png';
@@ -30,6 +31,9 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [processingOAuth, setProcessingOAuth] = useState(false);
+  const [showBrokerPicker, setShowBrokerPicker] = useState(false);
+  const [brokerChoice, setBrokerChoice] = useState<string | null>(null);
+  const [pendingGoogleSession, setPendingGoogleSession] = useState<any>(null);
   const [session, setSession] = useState(null);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [activeBrokers, setActiveBrokers] = useState([]);
@@ -125,9 +129,15 @@ export default function Auth() {
     );
 
     // Check for existing session - redirect if already logged in
+    // BUT NOT if we're in an active OAuth flow
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user && window.location.pathname === '/auth' && intent !== 'free_trial') {
+      const oauthFlow = localStorage.getItem('oauth_flow');
+      const oauthStartedAt = localStorage.getItem('oauth_started_at');
+      const isOAuthActive = oauthFlow && oauthStartedAt && (Date.now() - parseInt(oauthStartedAt)) < 300000; // 5min
+      const hasOAuthParams = window.location.search.includes('code') || window.location.hash.includes('access_token');
+      
+      if (session?.user && window.location.pathname === '/auth' && intent !== 'free_trial' && !isOAuthActive && !hasOAuthParams) {
         navigate('/dashboard');
       }
     });
@@ -304,6 +314,11 @@ export default function Auth() {
             description: t('success.accountCreatedDescription'),
           });
 
+          // Clear OAuth flags
+          localStorage.removeItem('oauth_flow');
+          localStorage.removeItem('oauth_started_at');
+          localStorage.removeItem('oauth_pending_broker');
+
           navigate('/dashboard');
           setProcessingOAuth(false);
           return;
@@ -313,47 +328,25 @@ export default function Auth() {
           
           // ✅ FIX 5: Handle returning user without profile
           if (!existingProfile) {
-            console.warn('[Google Auth] Returning user has no profile, creating one');
-            const { error: createError } = await supabase
-              .from('profiles')
-              .insert({
-                user_id: session.user.id,
-                status: 'pending'
-              });
-            
-            if (createError) {
-              console.error('[Google Auth] Failed to create missing profile:', createError);
-              // ✅ FIX 4: Add detailed logout logging
-              console.error('[Google Auth] LOGOUT TRIGGERED:', {
-                reason: 'missing_profile_creation_failed',
-                userId: session.user.id,
-                error: createError,
-                timestamp: new Date().toISOString()
-              });
-              toast({
-                title: t('errors.accountError'),
-                description: 'Failed to initialize your profile. Please contact support.',
-                variant: 'destructive'
-              });
-              await supabase.auth.signOut();
-              setProcessingOAuth(false);
-              return;
-            }
-            
-            toast({
-              title: 'Profile Created',
-              description: 'Your profile has been initialized. Please contact support to assign a broker.',
-              variant: 'default'
-            });
+            console.warn('[Google Auth] Returning user has no profile, will show broker picker');
+            setPendingGoogleSession(session);
+            setShowBrokerPicker(true);
+            setProcessingOAuth(false);
+            setGoogleLoading(false);
+            localStorage.removeItem('oauth_flow');
+            localStorage.removeItem('oauth_started_at');
+            return;
           } else {
             // Check broker assignment
             if (!existingProfile.broker_id) {
-              console.warn('[Google Auth] Returning user has no broker assigned');
-              toast({
-                title: t('errors.noBrokerAssigned'),
-                description: t('errors.contactSupport'),
-                variant: 'destructive'
-              });
+              console.warn('[Google Auth] Returning user has no broker assigned, will show broker picker');
+              setPendingGoogleSession(session);
+              setShowBrokerPicker(true);
+              setProcessingOAuth(false);
+              setGoogleLoading(false);
+              localStorage.removeItem('oauth_flow');
+              localStorage.removeItem('oauth_started_at');
+              return;
             }
             
             // Show welcome back message
@@ -378,6 +371,10 @@ export default function Auth() {
           }
           
           // Navigate to dashboard
+          // Clear OAuth flags
+          localStorage.removeItem('oauth_flow');
+          localStorage.removeItem('oauth_started_at');
+          
           if (intent !== 'free_trial') {
             navigate('/dashboard');
           } else {
@@ -498,6 +495,10 @@ export default function Auth() {
     setGoogleLoading(true);
     setProcessingOAuth(true);
     
+    // Set OAuth flow flags
+    localStorage.setItem('oauth_flow', 'signin');
+    localStorage.setItem('oauth_started_at', Date.now().toString());
+    
     const redirectUrl = `${window.location.origin}/auth`;
     console.log('[Google Sign In] Starting OAuth redirect', { redirectTo: redirectUrl });
     
@@ -520,6 +521,8 @@ export default function Auth() {
       });
       setGoogleLoading(false);
       setProcessingOAuth(false);
+      localStorage.removeItem('oauth_flow');
+      localStorage.removeItem('oauth_started_at');
     }
   };
 
@@ -536,6 +539,10 @@ export default function Auth() {
     
     setGoogleLoading(true);
     setProcessingOAuth(true);
+    
+    // Set OAuth flow flags
+    localStorage.setItem('oauth_flow', 'signup');
+    localStorage.setItem('oauth_started_at', Date.now().toString());
     
     const selectedBroker = activeBrokers.find((b: any) => b.id === selectedBrokerId);
     const redirectUrl = `${window.location.origin}/auth`;
@@ -569,6 +576,8 @@ export default function Auth() {
       });
       setGoogleLoading(false);
       setProcessingOAuth(false);
+      localStorage.removeItem('oauth_flow');
+      localStorage.removeItem('oauth_started_at');
       // Clear stored broker info
       localStorage.removeItem('oauth_pending_broker');
     }
@@ -642,6 +651,107 @@ export default function Auth() {
     setLoading(false);
   };
 
+  // Handle broker selection from picker dialog
+  const handleBrokerPickerConfirm = async () => {
+    if (!brokerChoice || !pendingGoogleSession) {
+      toast({
+        title: t('errors.validationError'),
+        description: t('errors.selectBrokerError'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setProcessingOAuth(true);
+    const selectedBroker = activeBrokers.find((b: any) => b.id === brokerChoice);
+
+    try {
+      // Wait for profile to exist (fallback if trigger is slow)
+      let attempts = 0;
+      let profile = null;
+      while (attempts < 10 && !profile) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('user_id', pendingGoogleSession.user.id)
+          .maybeSingle();
+        profile = data;
+        if (!profile) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        }
+      }
+
+      // If still no profile, create one manually
+      if (!profile) {
+        console.warn('[Broker Picker] Profile not found after 10s, creating manually');
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: pendingGoogleSession.user.id,
+            status: 'pending',
+          });
+
+        if (insertError) {
+          console.error('[Broker Picker] Failed to create profile:', insertError);
+          toast({
+            title: t('errors.profileCreationFailed'),
+            description: t('errors.profileCreationFailedDescription'),
+            variant: 'destructive',
+          });
+          setProcessingOAuth(false);
+          return;
+        }
+      }
+
+      // Update profile with broker
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          broker_id: brokerChoice,
+          broker_name: selectedBroker?.name || '',
+          status: 'pending',
+        })
+        .eq('user_id', pendingGoogleSession.user.id);
+
+      if (updateError) {
+        console.error('[Broker Picker] Failed to update broker:', updateError);
+        toast({
+          title: t('errors.brokerAssignmentFailed'),
+          description: t('errors.brokerAssignmentFailedDescription'),
+          variant: 'destructive',
+        });
+        setProcessingOAuth(false);
+        return;
+      }
+
+      // Success
+      console.log('[Broker Picker] Broker assigned successfully');
+      toast({
+        title: t('success.accountCreated'),
+        description: t('success.accountCreatedDescription'),
+      });
+
+      // Clean up and navigate
+      setShowBrokerPicker(false);
+      setBrokerChoice(null);
+      setPendingGoogleSession(null);
+      localStorage.removeItem('oauth_flow');
+      localStorage.removeItem('oauth_started_at');
+      localStorage.removeItem('oauth_pending_broker');
+      setProcessingOAuth(false);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('[Broker Picker] Unexpected error:', error);
+      toast({
+        title: t('errors.authenticationError'),
+        description: t('errors.authenticationErrorDescription'),
+        variant: 'destructive',
+      });
+      setProcessingOAuth(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <PublicNavbar />
@@ -658,6 +768,48 @@ export default function Auth() {
           </Card>
         </div>
       )}
+
+      {/* Broker Picker Dialog for Google OAuth without broker */}
+      <Dialog open={showBrokerPicker} onOpenChange={setShowBrokerPicker}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('selectBroker')}</DialogTitle>
+            <DialogDescription>
+              {t('brokerRequired')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Select value={brokerChoice || ''} onValueChange={setBrokerChoice}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('brokerPlaceholder')} />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-background">
+                {activeBrokers.map((broker: any) => (
+                  <SelectItem key={broker.id} value={broker.id}>
+                    {broker.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {activeBrokers.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                {t('brokerNotListed')}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleBrokerPickerConfirm}
+              disabled={!brokerChoice || processingOAuth}
+              className="w-full"
+            >
+              {processingOAuth && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('createAccount')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
