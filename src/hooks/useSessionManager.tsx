@@ -62,11 +62,12 @@ export function useSessionManager() {
           
           console.log('🔐 [SessionManager] Registering session:', { userId: user.id, sessionId });
           
-          // First, invalidate previous sessions
-          await supabase.rpc('invalidate_previous_sessions', {
-            current_user_id: user.id,
-            current_session_id: sessionId
-          });
+          // ✅ FIX 6: Temporarily disable aggressive session invalidation for testing
+          // COMMENTED OUT to test if this causes the logout loops
+          // await supabase.rpc('invalidate_previous_sessions', {
+          //   current_user_id: user.id,
+          //   current_session_id: sessionId
+          // });
 
           // Then update the current session; if none updated, insert
           const updatePayload = {

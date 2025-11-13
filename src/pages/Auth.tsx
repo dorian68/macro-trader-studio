@@ -85,10 +85,16 @@ export default function Auth() {
       console.log('[Google Auth] Processing OAuth callback');
 
       try {
-        // Robust isNewUser detection using session.user.created_at
-        const userCreatedAt = new Date(session.user.created_at || 0).getTime();
-        const isNewUser = Date.now() - userCreatedAt < 10000; // 10 second window
-        console.log(`[Google Auth] isNewUser: ${isNewUser} (user created at: ${new Date(userCreatedAt).toISOString()})`);
+        // ✅ FIX 1: Check if profile exists instead of using created_at timing
+        console.log('[Google Auth] Checking for existing profile...');
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('user_id, broker_id, broker_name, status')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        const isNewUser = !existingProfile;
+        console.log('[Google Auth] Profile check:', { isNewUser, profile: existingProfile });
 
         // Fetch initial profile
         let { data: profile } = await supabase
@@ -110,58 +116,87 @@ export default function Auth() {
           return;
         }
 
-        const pendingBrokerId = sessionStorage.getItem('pending_broker_id');
-        const pendingBrokerName = sessionStorage.getItem('pending_broker_name');
+        // ✅ FIX 3: Use localStorage instead of sessionStorage for OAuth popup compatibility
+        let pendingBrokerId: string | null = null;
+        let pendingBrokerName: string | null = null;
+        
+        const storedBrokerData = localStorage.getItem('oauth_pending_broker');
+        if (storedBrokerData) {
+          try {
+            const { brokerId, brokerName, timestamp } = JSON.parse(storedBrokerData);
+            // Check if not expired (5 minutes = 300000ms)
+            if (Date.now() - timestamp < 300000) {
+              pendingBrokerId = brokerId;
+              pendingBrokerName = brokerName;
+              console.log('[Google Auth] Retrieved broker from localStorage:', { brokerId, brokerName });
+            } else {
+              console.warn('[Google Auth] Broker data expired in localStorage');
+            }
+          } catch (e) {
+            console.error('[Google Auth] Failed to parse broker data from localStorage:', e);
+          }
+          localStorage.removeItem('oauth_pending_broker');
+        }
         console.log(`[Google Auth] pendingBrokerId: ${pendingBrokerId}, pendingBrokerName: ${pendingBrokerName}`);
 
         if (isNewUser) {
-          console.log('[Google Auth] NEW user flow');
-
-          // Case 1: New user tried to Sign In without selecting broker (mistake)
+          console.log('[Google Auth] New user detected, waiting for trigger profile creation');
+          
+          // No broker selected during signup
           if (!pendingBrokerId) {
-            console.log('[Google Auth] New user tried to sign in without broker - redirecting to Sign Up');
-            await supabase.auth.signOut();
-            toast({
-              title: t('errors.accountNotFound'),
-              description: t('errors.accountNotFoundDescription'),
-              variant: "destructive",
+            console.error('[Google Auth] No broker selected - user should have signed up, not signed in');
+            // ✅ FIX 4: Add detailed logout logging
+            console.error('[Google Auth] LOGOUT TRIGGERED:', {
+              reason: 'no_broker_selected',
+              userId: session.user.id,
+              timestamp: new Date().toISOString()
             });
+            toast({
+              title: t('errors.selectBrokerFirst'),
+              description: t('errors.selectBrokerBeforeSignup'),
+              variant: 'destructive'
+            });
+            await supabase.auth.signOut();
             setProcessingOAuth(false);
             return;
           }
 
-          // Case 2: New user with broker - wait for profile creation, then update
-          console.log('[Google Auth] New user with broker - waiting for profile creation');
-
-          // Wait for profile to be created by trigger (max 5 retries = 5 seconds)
+          // ✅ FIX 2: Increase timeout to 10 seconds (10 retries)
+          let profile = null;
           let retries = 0;
-          while (!profile && retries < 5) {
-            console.log(`[Google Auth] Retry ${retries + 1}/5 - waiting for profile creation`);
+          while (!profile && retries < 10) {
+            console.log(`[Google Auth] Retry ${retries + 1}/10 - waiting for profile creation`);
             await new Promise(resolve => setTimeout(resolve, 1000));
+            
             const { data } = await supabase
               .from('profiles')
-              .select('broker_id, status, is_deleted, created_at')
+              .select('*')
               .eq('user_id', session.user.id)
               .maybeSingle();
+            
             profile = data;
             retries++;
           }
 
           if (!profile) {
-            console.error('[Google Auth] Profile not created after 5 retries');
-            await supabase.auth.signOut();
-            toast({
-              title: t('errors.profileCreationFailed'),
-              description: t('errors.profileCreationFailedDescription'),
-              variant: "destructive"
+            console.error('[Google Auth] Profile creation timed out after 10 seconds');
+            // ✅ FIX 4: Add detailed logout logging
+            console.error('[Google Auth] LOGOUT TRIGGERED:', {
+              reason: 'profile_creation_timeout',
+              userId: session.user.id,
+              timestamp: new Date().toISOString()
             });
+            toast({
+              title: t('errors.accountCreationFailed'),
+              description: 'Profile creation timed out. Please try again.',
+              variant: 'destructive'
+            });
+            await supabase.auth.signOut();
             setProcessingOAuth(false);
             return;
           }
 
-          console.log(`[Google Auth] Profile found after ${retries} retries, updating broker info`);
-
-          // Update profile with broker info
+          // Update profile with broker
           const { error: updateError } = await supabase
             .from('profiles')
             .update({
@@ -170,24 +205,27 @@ export default function Auth() {
               status: 'pending'
             })
             .eq('user_id', session.user.id);
-
+          
           if (updateError) {
-            console.error('[Google Auth] Failed to update broker:', updateError);
-            await supabase.auth.signOut();
-            toast({
-              title: t('errors.brokerAssignmentFailed'),
-              description: t('errors.brokerAssignmentFailedDescription'),
-              variant: "destructive"
+            console.error('[Google Auth] Failed to update profile with broker:', updateError);
+            // ✅ FIX 4: Add detailed logout logging
+            console.error('[Google Auth] LOGOUT TRIGGERED:', {
+              reason: 'profile_update_failed',
+              userId: session.user.id,
+              error: updateError,
+              timestamp: new Date().toISOString()
             });
+            toast({
+              title: t('errors.accountCreationFailed'),
+              description: t('errors.profileUpdateFailed'),
+              variant: 'destructive'
+            });
+            await supabase.auth.signOut();
             setProcessingOAuth(false);
             return;
           }
 
           console.log('[Google Auth] Broker assigned successfully');
-
-          // Clear temporary storage
-          sessionStorage.removeItem('pending_broker_id');
-          sessionStorage.removeItem('pending_broker_name');
 
           toast({
             title: t('success.accountCreated'),
@@ -198,14 +236,61 @@ export default function Auth() {
           setProcessingOAuth(false);
           return;
         } else {
-          console.log('[Google Auth] RETURNING user flow');
-
-          // Returning user - simple sign in
-          toast({
-            title: t('success.welcomeBack'),
-            description: t('success.welcomeBackDescription'),
-          });
-
+          // Returning user
+          console.log('[Google Auth] Returning user detected');
+          
+          // ✅ FIX 5: Handle returning user without profile
+          if (!existingProfile) {
+            console.warn('[Google Auth] Returning user has no profile, creating one');
+            const { error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                user_id: session.user.id,
+                status: 'pending'
+              });
+            
+            if (createError) {
+              console.error('[Google Auth] Failed to create missing profile:', createError);
+              // ✅ FIX 4: Add detailed logout logging
+              console.error('[Google Auth] LOGOUT TRIGGERED:', {
+                reason: 'missing_profile_creation_failed',
+                userId: session.user.id,
+                error: createError,
+                timestamp: new Date().toISOString()
+              });
+              toast({
+                title: t('errors.accountError'),
+                description: 'Failed to initialize your profile. Please contact support.',
+                variant: 'destructive'
+              });
+              await supabase.auth.signOut();
+              setProcessingOAuth(false);
+              return;
+            }
+            
+            toast({
+              title: 'Profile Created',
+              description: 'Your profile has been initialized. Please contact support to assign a broker.',
+              variant: 'default'
+            });
+          } else {
+            // Check broker assignment
+            if (!existingProfile.broker_id) {
+              console.warn('[Google Auth] Returning user has no broker assigned');
+              toast({
+                title: t('errors.noBrokerAssigned'),
+                description: t('errors.contactSupport'),
+                variant: 'destructive'
+              });
+            }
+            
+            // Show welcome back message
+            toast({
+              title: t('success.welcomeBack'),
+              description: t('success.welcomeBackDescription'),
+            });
+          }
+          
           // Handle free trial if needed
           if (intent === 'free_trial') {
             const { error: trialError } = await activateFreeTrial();
@@ -219,12 +304,14 @@ export default function Auth() {
               return;
             }
           }
-
-          // Standard redirect to dashboard
-          if (window.location.pathname === '/auth') {
+          
+          // Navigate to dashboard
+          if (intent !== 'free_trial') {
             navigate('/dashboard');
+          } else {
+            navigate('/');
           }
-
+          
           setProcessingOAuth(false);
         }
       } catch (error) {
@@ -377,9 +464,14 @@ export default function Auth() {
     const selectedBroker = activeBrokers.find((b: any) => b.id === selectedBrokerId);
     const redirectUrl = `${window.location.origin}/auth`;
     
-    // Store broker info temporarily for OAuth callback
-    sessionStorage.setItem('pending_broker_id', selectedBrokerId);
-    sessionStorage.setItem('pending_broker_name', selectedBroker?.name || '');
+    // ✅ FIX 3: Store broker in localStorage with timestamp for OAuth popup compatibility
+    const brokerData = {
+      brokerId: selectedBrokerId,
+      brokerName: selectedBroker?.name || '',
+      timestamp: Date.now()
+    };
+    localStorage.setItem('oauth_pending_broker', JSON.stringify(brokerData));
+    console.log('[Google Sign Up] Stored broker in localStorage:', brokerData);
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -400,8 +492,7 @@ export default function Auth() {
       });
       setGoogleLoading(false);
       // Clear stored broker info
-      sessionStorage.removeItem('pending_broker_id');
-      sessionStorage.removeItem('pending_broker_name');
+      localStorage.removeItem('oauth_pending_broker');
     }
   };
 
