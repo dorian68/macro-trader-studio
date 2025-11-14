@@ -814,9 +814,9 @@ export default function Auth() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-sm text-amber-800">
-                Reactivating your account will restore full access immediately.
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                Your request will be reviewed by our team within 24-48 hours. You'll receive an email notification with the decision.
               </p>
             </div>
           </div>
@@ -838,37 +838,37 @@ export default function Auth() {
               onClick={async () => {
                 setLoading(true);
                 try {
-                  const { data, error } = await supabase.functions.invoke('restore-user-self');
+                  const { data, error } = await supabase.functions.invoke('request-reactivation');
                   
                   if (error) throw error;
-                  
-                  if (data?.success) {
-                    toast({
-                      title: t('reactivation.success'),
-                      description: "Welcome back! Your account is now active.",
-                    });
-                    
-                    // Clean up OAuth flags if present
-                    localStorage.removeItem('oauth_flow');
-                    localStorage.removeItem('oauth_started_at');
-                    localStorage.removeItem('oauth_pending_broker');
-                    
-                    setShowReactivation(false);
-                    setPendingReactivationUser(null);
-                    setLoading(false);
-                    
-                    // Reload to refresh profile state
-                    window.location.href = '/dashboard';
-                  } else {
-                    throw new Error(data?.error || 'Failed to reactivate account');
-                  }
-                } catch (error) {
-                  console.error('[Auth] Reactivation error:', error);
+
                   toast({
-                    title: t('reactivation.error'),
-                    description: "Please try again or contact support.",
-                    variant: "destructive",
+                    title: t('auth.reactivation.request_sent_title'),
+                    description: t('auth.reactivation.request_sent_description'),
                   });
+
+                  setShowReactivation(false);
+                  setPendingReactivationUser(null);
+                  await supabase.auth.signOut();
+                  navigate('/auth');
+                } catch (error: any) {
+                  console.error('[Auth] Reactivation request error:', error);
+                  
+                  if (error.message?.includes('already have a pending')) {
+                    toast({
+                      title: t('auth.reactivation.pending_request_title'),
+                      description: t('auth.reactivation.pending_request_description'),
+                    });
+                  } else {
+                    toast({
+                      title: t('auth.reactivation.request_error_title'),
+                      description: t('auth.reactivation.request_error_description'),
+                      variant: "destructive",
+                    });
+                  }
+                  await supabase.auth.signOut();
+                  navigate('/auth');
+                } finally {
                   setLoading(false);
                 }
               }}
@@ -876,7 +876,7 @@ export default function Auth() {
               className="w-full"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('reactivation.confirm')}
+              {t('auth.reactivation.request_button')}
             </Button>
           </DialogFooter>
         </DialogContent>

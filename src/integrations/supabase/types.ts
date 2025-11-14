@@ -970,6 +970,42 @@ export type Database = {
           },
         ]
       }
+      reactivation_requests: {
+        Row: {
+          broker_name: string | null
+          email: string
+          id: string
+          rejection_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          broker_name?: string | null
+          email: string
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          broker_name?: string | null
+          email?: string
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       technical_indicators_cache: {
         Row: {
           cached_at: string | null

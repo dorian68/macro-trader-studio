@@ -38,33 +38,36 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     );
   }
 
-  // Handle account reactivation
-  const handleReactivate = async () => {
+  // Handle account reactivation request
+  const handleRequestReactivation = async () => {
     if (!user) return;
     
     setReactivating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('restore-user-self');
+      const { data, error } = await supabase.functions.invoke('request-reactivation');
       
       if (error) throw error;
       
-      if (data?.success) {
-        toast({
-          title: "Account Reactivated",
-          description: "Your account has been successfully reactivated. Welcome back!",
-        });
-        // Reload to refresh profile state
-        window.location.href = '/dashboard';
-      } else {
-        throw new Error(data?.error || 'Failed to reactivate account');
-      }
-    } catch (error) {
-      console.error('[AuthGuard] Reactivation error:', error);
       toast({
-        title: "Reactivation Failed",
-        description: "Unable to reactivate your account. Please contact support.",
-        variant: "destructive",
+        title: "Reactivation Request Sent",
+        description: "Your request has been sent to our team. You will receive a response via email within 24-48 hours.",
       });
+    } catch (error: any) {
+      console.error('[AuthGuard] Reactivation request error:', error);
+      
+      if (error.message?.includes('already have a pending')) {
+        toast({
+          title: "Request Already Pending",
+          description: "You already have a pending reactivation request. Please wait for our team to review it.",
+        });
+      } else {
+        toast({
+          title: "Request Failed",
+          description: "Unable to submit your reactivation request. Please try again or contact support.",
+          variant: "destructive",
+        });
+      }
+    } finally {
       setReactivating(false);
     }
   };
@@ -82,26 +85,26 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Your account has been deactivated. You can reactivate it now or contact support if you need assistance.
+              Your account has been deactivated. Submit a reactivation request and our team will review it.
             </p>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-sm text-amber-800">
-                Reactivating your account will restore full access immediately.
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                Your request will be reviewed by our team within 24-48 hours. You'll receive an email notification with the decision.
               </p>
             </div>
             <div className="flex flex-col gap-2">
               <Button 
-                onClick={handleReactivate} 
+                onClick={handleRequestReactivation} 
                 disabled={reactivating}
                 className="w-full"
               >
                 {reactivating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Reactivating...
+                    Sending Request...
                   </>
                 ) : (
-                  "Reactivate My Account"
+                  "Request Account Reactivation"
                 )}
               </Button>
               <Button variant="outline" onClick={() => signOut()} className="w-full" disabled={reactivating}>

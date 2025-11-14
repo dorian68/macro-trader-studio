@@ -9,15 +9,10 @@ const corsHeaders = {
 };
 
 interface AdminNotificationRequest {
-  to: string;
-  notificationType: 'status_approved' | 'status_rejected' | 'credits_updated';
-  userName?: string;
-  metadata?: {
-    newStatus?: 'approved' | 'rejected';
-    previousCredits?: { queries: number; ideas: number; reports: number; };
-    newCredits?: { queries: number; ideas: number; reports: number; };
-    planType?: string;
-  };
+  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected';
+  userEmail: string;
+  userName: string;
+  metadata?: any;
 }
 
 function getEmailContent(type: string, userName: string, metadata?: any): { subject: string; html: string } {
@@ -322,6 +317,135 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
             </body>
           </html>
         `,
+      };
+
+    case 'reactivation_request':
+      const { userEmail, brokerName, deletedAt } = metadata || {};
+      return {
+        subject: '🔔 New Account Reactivation Request - Alphalens',
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head><style>${baseStyles}</style></head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <p class="header-text">Alphalens Admin Panel</p>
+                </div>
+                <div class="content">
+                  <h2>🔔 New Reactivation Request</h2>
+                  <p>A user has requested to reactivate their soft-deleted account.</p>
+                  
+                  <div class="highlight-box info">
+                    <strong>Request Details:</strong>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                      <li><strong>User Email:</strong> ${userEmail}</li>
+                      <li><strong>Broker:</strong> ${brokerName || 'N/A'}</li>
+                      <li><strong>Account Deleted:</strong> ${deletedAt ? new Date(deletedAt).toLocaleDateString() : 'Unknown'}</li>
+                      <li><strong>Request Date:</strong> ${new Date().toLocaleDateString()}</li>
+                    </ul>
+                  </div>
+
+                  <p style="text-align: center;">
+                    <a href="https://alphalensai.com/admin?tab=reactivations" class="cta-button">
+                      Review Request in Admin Panel →
+                    </a>
+                  </p>
+
+                  <p style="font-size: 14px; color: #6b7280;">Please review this request and take appropriate action.</p>
+                </div>
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} Alphalens. All rights reserved.</p>
+                  <p>This is an automated notification for administrators.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `
+      };
+
+    case 'reactivation_approved':
+      return {
+        subject: '✅ Your Alphalens Account Has Been Reactivated!',
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head><style>${baseStyles}</style></head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <p class="header-text">Welcome Back to Alphalens!</p>
+                </div>
+                <div class="content">
+                  <h2>✅ Great News, ${userName}!</h2>
+                  <p>Your reactivation request has been approved. Your Alphalens account is now active again.</p>
+                  
+                  <div class="highlight-box success">
+                    <strong>What's Next?</strong>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                      <li>Sign in to access your account</li>
+                      <li>Continue using our AI-powered trading tools</li>
+                      <li>Get real-time market insights</li>
+                    </ul>
+                  </div>
+
+                  <p style="text-align: center;">
+                    <a href="https://alphalensai.com/auth" class="cta-button">
+                      Sign In Now →
+                    </a>
+                  </p>
+
+                  <p>We're glad to have you back!</p>
+                </div>
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} Alphalens. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `
+      };
+
+    case 'reactivation_rejected':
+      const { rejectionReason } = metadata || {};
+      return {
+        subject: '❌ Update on Your Account Reactivation Request',
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head><style>${baseStyles}</style></head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <p class="header-text">Alphalens Account Update</p>
+                </div>
+                <div class="content">
+                  <h2>Hello ${userName},</h2>
+                  <p>Thank you for your reactivation request.</p>
+                  
+                  <p>Unfortunately, we are unable to reactivate your account at this time.</p>
+
+                  ${rejectionReason ? `
+                  <div class="highlight-box warning">
+                    <strong>Reason:</strong>
+                    <p style="margin: 10px 0;">${rejectionReason}</p>
+                  </div>
+                  ` : ''}
+
+                  <div class="highlight-box info">
+                    <strong>Need Help?</strong>
+                    <p style="margin: 10px 0;">If you have questions about this decision or need assistance, please contact our support team at <a href="mailto:support@alphalens.ai" style="color: #f97316;">support@alphalens.ai</a></p>
+                  </div>
+
+                  <p>We appreciate your understanding.</p>
+                </div>
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} Alphalens. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `
       };
 
     default:
