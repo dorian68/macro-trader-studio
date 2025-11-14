@@ -34,6 +34,8 @@ export default function Auth() {
   const [showBrokerPicker, setShowBrokerPicker] = useState(false);
   const [brokerChoice, setBrokerChoice] = useState<string | null>(null);
   const [pendingGoogleSession, setPendingGoogleSession] = useState<any>(null);
+  const [showReactivation, setShowReactivation] = useState(false);
+  const [pendingReactivationUser, setPendingReactivationUser] = useState<any>(null);
   const [session, setSession] = useState(null);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [activeBrokers, setActiveBrokers] = useState([]);
@@ -166,16 +168,13 @@ export default function Auth() {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        // 🚫 Block soft-deleted users
+        // 🔄 Offer reactivation for soft-deleted users
         if (profile?.is_deleted) {
-          console.log('[Google Auth] User is soft-deleted, blocking login');
-          await supabase.auth.signOut();
-          toast({
-            title: t('errors.accountDeactivated'),
-            description: t('errors.accountDeactivatedDescription'),
-            variant: "destructive",
-          });
+          console.log('[Google Auth] User is soft-deleted, offering reactivation');
+          setPendingReactivationUser(session.user);
+          setShowReactivation(true);
           setProcessingOAuth(false);
+          setGoogleLoading(false);
           return;
         }
 
@@ -601,15 +600,10 @@ export default function Auth() {
         .maybeSingle();
       
       if (profile?.is_deleted) {
-        // Force sign out
-        await supabase.auth.signOut();
-        
-        toast({
-          title: t('errors.accountDeactivated'),
-          description: t('errors.accountDeactivatedDescription'),
-          variant: "destructive",
-        });
-        
+        // Offer reactivation instead of blocking
+        console.log('[Email Auth] User is soft-deleted, offering reactivation');
+        setPendingReactivationUser(data.user);
+        setShowReactivation(true);
         setLoading(false);
         return;
       }
@@ -809,6 +803,85 @@ export default function Auth() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reactivation Dialog for soft-deleted users */}
+      <Dialog open={showReactivation} onOpenChange={setShowReactivation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('reactivation.title')}</DialogTitle>
+            <DialogDescription>
+              {t('reactivation.description')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                Reactivating your account will restore full access immediately.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowReactivation(false);
+                setPendingReactivationUser(null);
+                supabase.auth.signOut();
+                navigate('/auth');
+              }}
+              disabled={loading}
+              className="w-full"
+            >
+              {t('reactivation.cancel')}
+            </Button>
+            <Button
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke('restore-user-self');
+                  
+                  if (error) throw error;
+                  
+                  if (data?.success) {
+                    toast({
+                      title: t('reactivation.success'),
+                      description: "Welcome back! Your account is now active.",
+                    });
+                    
+                    // Clean up OAuth flags if present
+                    localStorage.removeItem('oauth_flow');
+                    localStorage.removeItem('oauth_started_at');
+                    localStorage.removeItem('oauth_pending_broker');
+                    
+                    setShowReactivation(false);
+                    setPendingReactivationUser(null);
+                    setLoading(false);
+                    
+                    // Reload to refresh profile state
+                    window.location.href = '/dashboard';
+                  } else {
+                    throw new Error(data?.error || 'Failed to reactivate account');
+                  }
+                } catch (error) {
+                  console.error('[Auth] Reactivation error:', error);
+                  toast({
+                    title: t('reactivation.error'),
+                    description: "Please try again or contact support.",
+                    variant: "destructive",
+                  });
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('reactivation.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
