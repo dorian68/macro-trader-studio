@@ -4,10 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 import { AlertCircle, Clock, XCircle, Loader2 } from 'lucide-react';
 
-const { useEffect } = React;
+const { useEffect, useState } = React;
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -18,6 +20,8 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   const { user, loading: authLoading, signOut } = useAuth();
   const { profile, loading: profileLoading, isPending, isRejected, isApproved, isDeleted } = useProfile();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [reactivating, setReactivating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -34,6 +38,37 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     );
   }
 
+  // Handle account reactivation
+  const handleReactivate = async () => {
+    if (!user) return;
+    
+    setReactivating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('restore-user-self');
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast({
+          title: "Account Reactivated",
+          description: "Your account has been successfully reactivated. Welcome back!",
+        });
+        // Reload to refresh profile state
+        window.location.href = '/dashboard';
+      } else {
+        throw new Error(data?.error || 'Failed to reactivate account');
+      }
+    } catch (error) {
+      console.error('[AuthGuard] Reactivation error:', error);
+      toast({
+        title: "Reactivation Failed",
+        description: "Unable to reactivate your account. Please contact support.",
+        variant: "destructive",
+      });
+      setReactivating(false);
+    }
+  };
+
   // ✅ Check if user is soft-deleted (safety net)
   if (isDeleted) {
     return (
@@ -47,16 +82,37 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Your account has been deactivated. Please contact support if you think this is an error.
+              Your account has been deactivated. You can reactivate it now or contact support if you need assistance.
             </p>
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-              <p className="text-sm text-destructive">
-                For assistance, please reach out to support@alphalens.ai
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                Reactivating your account will restore full access immediately.
               </p>
             </div>
-            <Button variant="outline" onClick={() => signOut()} className="w-full">
-              Sign Out
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button 
+                onClick={handleReactivate} 
+                disabled={reactivating}
+                className="w-full"
+              >
+                {reactivating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Reactivating...
+                  </>
+                ) : (
+                  "Reactivate My Account"
+                )}
+              </Button>
+              <Button variant="outline" onClick={() => signOut()} className="w-full" disabled={reactivating}>
+                Sign Out
+              </Button>
+            </div>
+            <div className="bg-muted border border-border rounded-lg p-3 mt-4">
+              <p className="text-xs text-muted-foreground">
+                Need help? Contact support@alphalens.ai
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         timestamp: new Date().toISOString()
       });
       
-      // ✅ Check if user is soft-deleted before establishing session
+      // ✅ Check if user is soft-deleted - don't block, let AuthGuard handle
       if (currentSession?.user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -112,19 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .maybeSingle();
         
         if (profile?.is_deleted) {
-          console.log('🚫 [Auth] User is soft-deleted, blocking authentication');
-          
-          // Immediately sign out
-          await supabase.auth.signOut();
-          
-          // Clear local state
-          setUser(null);
-          setSession(null);
-          previousSession = null;
-          setLoading(false);
-          
-          // Don't show toast here - will be handled by Auth.tsx
-          return;
+          console.log('⚠️ [Auth] User is soft-deleted, will be handled by AuthGuard');
+          // Don't signOut here - let AuthGuard display reactivation option
         }
       }
       

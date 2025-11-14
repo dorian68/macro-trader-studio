@@ -47,7 +47,7 @@ export function useSessionManager() {
       // Register this session and invalidate others
       const registerSession = async () => {
         try {
-          // ✅ Check if user is soft-deleted before registering session
+          // ✅ Check if user is soft-deleted - don't block, let AuthGuard handle
           const { data: profile } = await supabase
             .from('profiles')
             .select('is_deleted')
@@ -55,8 +55,8 @@ export function useSessionManager() {
             .maybeSingle();
           
           if (profile?.is_deleted) {
-            console.log('🚫 [SessionManager] User is soft-deleted, blocking session registration');
-            await signOut();
+            console.log('⚠️ [SessionManager] User is soft-deleted, will be handled by AuthGuard');
+            // Don't register session or signOut - let AuthGuard handle reactivation
             return;
           }
           
