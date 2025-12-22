@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FlaskConical, ChevronDown, Play, AlertCircle, Clock, Settings2 } from "lucide-react";
+import { FlaskConical, ChevronDown, ChevronRight, Play, AlertCircle, Clock, Settings2, BarChart3, Eye } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const ALLOWED_ASSETS = [
   "AUD/USD",
@@ -31,6 +32,93 @@ interface RequestInfo {
   params: Record<string, unknown>;
   timestamp: string;
   duration: number;
+}
+
+interface PredictionPoint {
+  horizon: number;
+  value: number;
+  [key: string]: unknown;
+}
+
+// Local styled JSON viewer component (not shared)
+function StyledJsonViewer({ data, depth = 0 }: { data: unknown; depth?: number }) {
+  const [collapsed, setCollapsed] = useState(depth > 1);
+
+  if (data === null) {
+    return <span className="text-muted-foreground italic">null</span>;
+  }
+
+  if (typeof data === "boolean") {
+    return <span className={data ? "text-emerald-500" : "text-rose-500"}>{String(data)}</span>;
+  }
+
+  if (typeof data === "number") {
+    return <span className="text-amber-500">{data}</span>;
+  }
+
+  if (typeof data === "string") {
+    return <span className="text-emerald-400">"{data}"</span>;
+  }
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return <span className="text-muted-foreground">[]</span>;
+    }
+
+    return (
+      <div className="inline">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <span className="ml-1 text-xs">Array({data.length})</span>
+        </button>
+        {!collapsed && (
+          <div className="ml-4 border-l border-border pl-3">
+            {data.map((item, index) => (
+              <div key={index} className="py-0.5">
+                <span className="text-muted-foreground mr-2">{index}:</span>
+                <StyledJsonViewer data={item} depth={depth + 1} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (typeof data === "object") {
+    const entries = Object.entries(data);
+    if (entries.length === 0) {
+      return <span className="text-muted-foreground">{"{}"}</span>;
+    }
+
+    return (
+      <div className="inline">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <span className="ml-1 text-xs">Object({entries.length})</span>
+        </button>
+        {!collapsed && (
+          <div className="ml-4 border-l border-border pl-3">
+            {entries.map(([key, value]) => (
+              <div key={key} className="py-0.5">
+                <span className="text-primary font-medium">"{key}"</span>
+                <span className="text-muted-foreground">: </span>
+                <StyledJsonViewer data={value} depth={depth + 1} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return <span>{String(data)}</span>;
 }
 
 function ForecastPlaygroundContent() {
@@ -50,6 +138,10 @@ function ForecastPlaygroundContent() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [requestInfo, setRequestInfo] = useState<RequestInfo | null>(null);
+
+  // Optional enhancement toggles (disabled by default)
+  const [showChart, setShowChart] = useState(false);
+  const [showStyledJson, setShowStyledJson] = useState(false);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -107,6 +199,24 @@ function ForecastPlaygroundContent() {
       setLoading(false);
     }
   };
+
+  // Extract predictions for chart (only when needed)
+  const getPredictionsForChart = (): PredictionPoint[] => {
+    if (!result?.data || typeof result.data !== "object") return [];
+    const data = result.data as { predictions?: unknown };
+    if (!Array.isArray(data.predictions)) return [];
+    
+    return data.predictions
+      .filter((p): p is PredictionPoint => 
+        typeof p === "object" && p !== null && 
+        typeof (p as PredictionPoint).horizon === "number" && 
+        typeof (p as PredictionPoint).value === "number"
+      )
+      .sort((a, b) => a.horizon - b.horizon);
+  };
+
+  const chartData = showChart ? getPredictionsForChart() : [];
+  const hasValidChartData = chartData.length > 0;
 
   return (
     <Layout>
@@ -307,14 +417,85 @@ function ForecastPlaygroundContent() {
         {result && requestInfo && !loading && (
           <Card>
             <CardHeader>
-              <CardTitle>Forecast Results</CardTitle>
-              <CardDescription className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Completed in {requestInfo.duration.toFixed(0)}ms at{" "}
-                {new Date(requestInfo.timestamp).toLocaleTimeString()}
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Forecast Results</CardTitle>
+                  <CardDescription className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Completed in {requestInfo.duration.toFixed(0)}ms at{" "}
+                    {new Date(requestInfo.timestamp).toLocaleTimeString()}
+                  </CardDescription>
+                </div>
+                {/* Optional chart toggle */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="showChart"
+                    checked={showChart}
+                    onCheckedChange={setShowChart}
+                  />
+                  <Label htmlFor="showChart" className="flex items-center gap-2 text-sm cursor-pointer">
+                    <BarChart3 className="h-4 w-4" />
+                    Show Forecast Chart
+                  </Label>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              {/* Optional Chart Section */}
+              {showChart && (
+                <div className="rounded-lg border bg-card p-4">
+                  {hasValidChartData ? (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-muted-foreground">Predictions by Horizon</h4>
+                      <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                            <XAxis 
+                              dataKey="horizon" 
+                              label={{ value: 'Horizon', position: 'insideBottomRight', offset: -5 }}
+                              className="text-xs fill-muted-foreground"
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            />
+                            <YAxis 
+                              label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
+                              className="text-xs fill-muted-foreground"
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                              tickFormatter={(value) => value.toFixed(4)}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px',
+                                color: 'hsl(var(--foreground))'
+                              }}
+                              formatter={(value: number) => [value.toFixed(6), 'Predicted Value']}
+                              labelFormatter={(label) => `Horizon: ${label}`}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="value" 
+                              stroke="hsl(var(--primary))" 
+                              strokeWidth={2}
+                              dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                              activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                      <p>No valid prediction data available for chart.</p>
+                      <p className="text-sm mt-1">Ensure the response contains <code className="bg-muted px-1 rounded">data.predictions</code> with horizon and value fields.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Existing Tabs */}
               <Tabs defaultValue="predictions" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="predictions">Predictions</TabsTrigger>
@@ -366,11 +547,31 @@ function ForecastPlaygroundContent() {
                 </TabsContent>
 
                 <TabsContent value="raw" className="mt-4">
-                  <ScrollArea className="h-[400px] rounded-md border p-4">
-                    <pre className="text-sm font-mono whitespace-pre-wrap break-words">
-                      {JSON.stringify(result, null, 2)}
-                    </pre>
-                  </ScrollArea>
+                  <div className="space-y-3">
+                    {/* Optional styled JSON toggle */}
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="showStyledJson"
+                        checked={showStyledJson}
+                        onCheckedChange={setShowStyledJson}
+                      />
+                      <Label htmlFor="showStyledJson" className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Eye className="h-4 w-4" />
+                        Show Styled View
+                      </Label>
+                    </div>
+                    <ScrollArea className="h-[400px] rounded-md border p-4">
+                      {showStyledJson ? (
+                        <div className="text-sm font-mono">
+                          <StyledJsonViewer data={result} />
+                        </div>
+                      ) : (
+                        <pre className="text-sm font-mono whitespace-pre-wrap break-words">
+                          {JSON.stringify(result, null, 2)}
+                        </pre>
+                      )}
+                    </ScrollArea>
+                  </div>
                 </TabsContent>
               </Tabs>
             </CardContent>
