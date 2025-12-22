@@ -84,7 +84,7 @@ function ForecastPlaygroundContent() {
     }
 
     try {
-      const response = await fetch("http://3.17.224.165:8000/forecast", {
+      const response = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/forecast-proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
