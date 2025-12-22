@@ -14,8 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FlaskConical, ChevronDown, ChevronRight, Play, AlertCircle, Clock, Settings2, BarChart3, Eye } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FlaskConical, ChevronDown, ChevronRight, Play, AlertCircle, Clock, Settings2, BarChart3, Eye, TrendingUp, TrendingDown, Database, Cpu, FileText } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const ALLOWED_ASSETS = [
   "AUD/USD",
@@ -34,11 +35,52 @@ interface RequestInfo {
   duration: number;
 }
 
-interface PredictionPoint {
-  horizon: number;
-  value: number;
-  [key: string]: unknown;
+// Actual API prediction format
+interface PredictionDataPoint {
+  ds: string;
+  yhat: number;
 }
+
+interface HorizonForecast {
+  direction: string;
+  forecast_price_median?: number;
+  forecast_price?: number;
+  tp?: number;
+  sl?: number;
+  risk_reward?: number;
+  confidence?: number;
+  prob_tp_before_sl?: number;
+}
+
+interface ApiMetadata {
+  symbol?: string;
+  timeframe?: string;
+  as_of?: string;
+  n_obs?: number;
+  mc_paths?: number;
+  exec_ms_mean?: number;
+  exec_ms_vol?: number;
+  mean_model?: string;
+  vol_model?: string;
+}
+
+interface ModelStatus {
+  mean_model?: string;
+  vol_model?: string;
+  device?: string;
+  loaded?: boolean;
+  mean_status?: string;
+  vol_status?: string;
+}
+
+// Chart color palette for multiple horizons
+const HORIZON_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(142, 76%, 45%)", // emerald
+  "hsl(38, 92%, 50%)",  // amber
+  "hsl(262, 83%, 58%)", // violet
+  "hsl(198, 93%, 60%)", // sky
+];
 
 // Local styled JSON viewer component (not shared)
 function StyledJsonViewer({ data, depth = 0 }: { data: unknown; depth?: number }) {
@@ -121,6 +163,164 @@ function StyledJsonViewer({ data, depth = 0 }: { data: unknown; depth?: number }
   return <span>{String(data)}</span>;
 }
 
+// Professional Forecast Summary Table (Optional)
+function ForecastSummaryTable({ horizons }: { horizons: Record<string, HorizonForecast> }) {
+  const entries = Object.entries(horizons);
+  
+  if (entries.length === 0) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p>No horizon data available</p>
+      </div>
+    );
+  }
+
+  const formatPrice = (val?: number) => val != null ? val.toFixed(5) : "—";
+  const formatPercent = (val?: number) => val != null ? `${(val * 100).toFixed(1)}%` : "—";
+  const formatRatio = (val?: number) => val != null ? val.toFixed(2) : "—";
+
+  return (
+    <div className="rounded-lg border overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="font-semibold">Horizon</TableHead>
+            <TableHead className="font-semibold">Direction</TableHead>
+            <TableHead className="font-semibold text-right">Forecast Price</TableHead>
+            <TableHead className="font-semibold text-right">TP</TableHead>
+            <TableHead className="font-semibold text-right">SL</TableHead>
+            <TableHead className="font-semibold text-right">R/R</TableHead>
+            <TableHead className="font-semibold text-right">Confidence</TableHead>
+            <TableHead className="font-semibold text-right">Prob TP/SL</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.map(([horizon, data]) => (
+            <TableRow key={horizon}>
+              <TableCell className="font-medium">{horizon}</TableCell>
+              <TableCell>
+                <Badge 
+                  variant="outline" 
+                  className={
+                    data.direction?.toLowerCase() === "long" 
+                      ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" 
+                      : data.direction?.toLowerCase() === "short"
+                        ? "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-950/30"
+                        : ""
+                  }
+                >
+                  {data.direction?.toLowerCase() === "long" && <TrendingUp className="h-3 w-3 mr-1" />}
+                  {data.direction?.toLowerCase() === "short" && <TrendingDown className="h-3 w-3 mr-1" />}
+                  {data.direction || "—"}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">
+                {formatPrice(data.forecast_price_median ?? data.forecast_price)}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm text-emerald-600">
+                {formatPrice(data.tp)}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm text-rose-600">
+                {formatPrice(data.sl)}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">
+                {formatRatio(data.risk_reward)}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">
+                {formatPercent(data.confidence)}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">
+                {formatPercent(data.prob_tp_before_sl)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// Metadata Table (Optional, professional format)
+function MetadataTable({ metadata }: { metadata: ApiMetadata }) {
+  const items = [
+    { label: "Symbol", value: metadata.symbol },
+    { label: "Timeframe", value: metadata.timeframe },
+    { label: "As-of Timestamp", value: metadata.as_of ? new Date(metadata.as_of).toLocaleString() : undefined },
+    { label: "Observations", value: metadata.n_obs?.toLocaleString() },
+    { label: "Monte Carlo Paths", value: metadata.mc_paths?.toLocaleString() },
+    { label: "Mean Model Exec (ms)", value: metadata.exec_ms_mean?.toFixed(1) },
+    { label: "Vol Model Exec (ms)", value: metadata.exec_ms_vol?.toFixed(1) },
+    { label: "Mean Model", value: metadata.mean_model },
+    { label: "Volatility Model", value: metadata.vol_model },
+  ].filter(item => item.value != null);
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p>No metadata available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border overflow-hidden">
+      <Table>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.label}>
+              <TableCell className="font-medium text-muted-foreground w-1/3">{item.label}</TableCell>
+              <TableCell className="font-mono text-sm">{item.value}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// Model Status Card (Optional)
+function ModelStatusCard({ status }: { status: ModelStatus }) {
+  const items = [
+    { label: "Mean Model", value: status.mean_model, status: status.mean_status },
+    { label: "Volatility Model", value: status.vol_model, status: status.vol_status },
+    { label: "Device", value: status.device },
+    { label: "Loaded", value: status.loaded != null ? (status.loaded ? "Yes" : "No") : undefined },
+  ].filter(item => item.value != null);
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        <Cpu className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p>No model status available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border overflow-hidden">
+      <Table>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.label}>
+              <TableCell className="font-medium text-muted-foreground w-1/3">{item.label}</TableCell>
+              <TableCell className="font-mono text-sm">
+                {item.value}
+                {item.status && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {item.status}
+                  </Badge>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 function ForecastPlaygroundContent() {
   // Form state
   const [symbol, setSymbol] = useState("EUR/USD");
@@ -142,6 +342,7 @@ function ForecastPlaygroundContent() {
   // Optional enhancement toggles (disabled by default)
   const [showChart, setShowChart] = useState(false);
   const [showStyledJson, setShowStyledJson] = useState(false);
+  const [showDetailedView, setShowDetailedView] = useState(false);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -200,23 +401,90 @@ function ForecastPlaygroundContent() {
     }
   };
 
-  // Extract predictions for chart (only when needed)
-  const getPredictionsForChart = (): PredictionPoint[] => {
-    if (!result?.data || typeof result.data !== "object") return [];
-    const data = result.data as { predictions?: unknown };
-    if (!Array.isArray(data.predictions)) return [];
+  // FIXED: Extract predictions for chart with CORRECT format
+  // Actual format: data.predictions = { "1h": [{ ds, yhat }], "3h": [...], ... }
+  const getMultiHorizonChartData = () => {
+    if (!result?.data || typeof result.data !== "object") return { series: [], allPoints: [] };
     
-    return data.predictions
-      .filter((p): p is PredictionPoint => 
-        typeof p === "object" && p !== null && 
-        typeof (p as PredictionPoint).horizon === "number" && 
-        typeof (p as PredictionPoint).value === "number"
-      )
-      .sort((a, b) => a.horizon - b.horizon);
+    const data = result.data as { predictions?: Record<string, PredictionDataPoint[]> };
+    if (!data.predictions || typeof data.predictions !== "object" || Array.isArray(data.predictions)) {
+      return { series: [], allPoints: [] };
+    }
+
+    const horizonEntries = Object.entries(data.predictions);
+    if (horizonEntries.length === 0) return { series: [], allPoints: [] };
+
+    // Build series metadata
+    const series = horizonEntries.map(([horizonKey], index) => ({
+      key: horizonKey,
+      color: HORIZON_COLORS[index % HORIZON_COLORS.length],
+    }));
+
+    // Flatten all points with horizon labels for unified X-axis
+    // We'll create a combined dataset where each unique ds maps to multiple yhat values
+    const allTimestamps = new Set<string>();
+    horizonEntries.forEach(([, points]) => {
+      if (Array.isArray(points)) {
+        points.forEach((p) => {
+          if (p.ds) allTimestamps.add(p.ds);
+        });
+      }
+    });
+
+    const sortedTimestamps = Array.from(allTimestamps).sort();
+    
+    // Build chart data: each row has ds and yhat_{horizon} for each horizon
+    const allPoints = sortedTimestamps.map((ds) => {
+      const point: Record<string, unknown> = { ds, dsFormatted: formatTimestamp(ds) };
+      horizonEntries.forEach(([horizonKey, points]) => {
+        if (Array.isArray(points)) {
+          const match = points.find((p) => p.ds === ds);
+          if (match) {
+            point[`yhat_${horizonKey}`] = match.yhat;
+          }
+        }
+      });
+      return point;
+    });
+
+    return { series, allPoints };
   };
 
-  const chartData = showChart ? getPredictionsForChart() : [];
-  const hasValidChartData = chartData.length > 0;
+  const formatTimestamp = (ds: string) => {
+    try {
+      const date = new Date(ds);
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return ds;
+    }
+  };
+
+  const { series: chartSeries, allPoints: chartData } = showChart ? getMultiHorizonChartData() : { series: [], allPoints: [] };
+  const hasValidChartData = chartSeries.length > 0 && chartData.length > 0;
+
+  // Extract structured data for detailed view
+  const getPayloadHorizons = (): Record<string, HorizonForecast> => {
+    if (!result?.data || typeof result.data !== "object") return {};
+    const data = result.data as { payload?: { horizons?: Record<string, HorizonForecast> } };
+    return data.payload?.horizons || {};
+  };
+
+  const getMetadata = (): ApiMetadata => {
+    if (!result?.data || typeof result.data !== "object") return {};
+    const data = result.data as { metadata?: ApiMetadata };
+    return data.metadata || {};
+  };
+
+  const getModelStatus = (): ModelStatus => {
+    if (!result?.data || typeof result.data !== "object") return {};
+    const data = result.data as { model_status?: ModelStatus };
+    return data.model_status || {};
+  };
+
+  const payloadHorizons = showDetailedView ? getPayloadHorizons() : {};
+  const metadata = showDetailedView ? getMetadata() : {};
+  const modelStatus = showDetailedView ? getModelStatus() : {};
+  const hasDetailedData = Object.keys(payloadHorizons).length > 0 || Object.keys(metadata).length > 0 || Object.keys(modelStatus).length > 0;
 
   return (
     <Layout>
@@ -426,42 +694,55 @@ function ForecastPlaygroundContent() {
                     {new Date(requestInfo.timestamp).toLocaleTimeString()}
                   </CardDescription>
                 </div>
-                {/* Optional chart toggle */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="showChart"
-                    checked={showChart}
-                    onCheckedChange={setShowChart}
-                  />
-                  <Label htmlFor="showChart" className="flex items-center gap-2 text-sm cursor-pointer">
-                    <BarChart3 className="h-4 w-4" />
-                    Show Forecast Chart
-                  </Label>
+                {/* Optional toggles */}
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="showChart"
+                      checked={showChart}
+                      onCheckedChange={setShowChart}
+                    />
+                    <Label htmlFor="showChart" className="flex items-center gap-2 text-sm cursor-pointer">
+                      <BarChart3 className="h-4 w-4" />
+                      Chart
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="showDetailedView"
+                      checked={showDetailedView}
+                      onCheckedChange={setShowDetailedView}
+                    />
+                    <Label htmlFor="showDetailedView" className="flex items-center gap-2 text-sm cursor-pointer">
+                      <FileText className="h-4 w-4" />
+                      Detailed View
+                    </Label>
+                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Optional Chart Section */}
+              {/* Optional Chart Section - FIXED for actual API format */}
               {showChart && (
                 <div className="rounded-lg border bg-card p-4">
                   {hasValidChartData ? (
                     <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-muted-foreground">Predictions by Horizon</h4>
-                      <div className="h-[250px] w-full">
+                      <h4 className="text-sm font-medium text-muted-foreground">Predictions by Horizon (Time Series)</h4>
+                      <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                             <XAxis 
-                              dataKey="horizon" 
-                              label={{ value: 'Horizon', position: 'insideBottomRight', offset: -5 }}
+                              dataKey="dsFormatted" 
                               className="text-xs fill-muted-foreground"
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                              interval="preserveStartEnd"
                             />
                             <YAxis 
-                              label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
                               className="text-xs fill-muted-foreground"
                               tick={{ fill: 'hsl(var(--muted-foreground))' }}
                               tickFormatter={(value) => value.toFixed(4)}
+                              domain={['auto', 'auto']}
                             />
                             <Tooltip 
                               contentStyle={{ 
@@ -470,17 +751,28 @@ function ForecastPlaygroundContent() {
                                 borderRadius: '8px',
                                 color: 'hsl(var(--foreground))'
                               }}
-                              formatter={(value: number) => [value.toFixed(6), 'Predicted Value']}
-                              labelFormatter={(label) => `Horizon: ${label}`}
+                              formatter={(value: number, name: string) => [
+                                value.toFixed(6), 
+                                name.replace('yhat_', 'Horizon ')
+                              ]}
+                              labelFormatter={(label) => `Time: ${label}`}
                             />
-                            <Line 
-                              type="monotone" 
-                              dataKey="value" 
-                              stroke="hsl(var(--primary))" 
-                              strokeWidth={2}
-                              dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                              activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                            <Legend 
+                              formatter={(value) => value.replace('yhat_', '')}
                             />
+                            {chartSeries.map((s) => (
+                              <Line 
+                                key={s.key}
+                                type="monotone" 
+                                dataKey={`yhat_${s.key}`}
+                                name={`yhat_${s.key}`}
+                                stroke={s.color}
+                                strokeWidth={2}
+                                dot={{ fill: s.color, strokeWidth: 1, r: 2 }}
+                                activeDot={{ r: 5, fill: s.color }}
+                                connectNulls
+                              />
+                            ))}
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -489,7 +781,68 @@ function ForecastPlaygroundContent() {
                     <div className="text-center py-8 text-muted-foreground">
                       <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-50" />
                       <p>No valid prediction data available for chart.</p>
-                      <p className="text-sm mt-1">Ensure the response contains <code className="bg-muted px-1 rounded">data.predictions</code> with horizon and value fields.</p>
+                      <p className="text-sm mt-1">
+                        Enable <code className="bg-muted px-1 rounded">Include Predictions</code> in Advanced Options and run the forecast again.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Optional Detailed View Section - Professional Tables */}
+              {showDetailedView && (
+                <div className="space-y-4">
+                  {/* Forecast Summary Table */}
+                  {Object.keys(payloadHorizons).length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        Trade Forecast Summary
+                      </h4>
+                      <ForecastSummaryTable horizons={payloadHorizons} />
+                    </div>
+                  )}
+
+                  {/* Metadata Table */}
+                  {Object.keys(metadata).length > 0 && (
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="gap-2 w-full justify-start">
+                          <Database className="h-4 w-4" />
+                          Metadata
+                          <ChevronDown className="h-4 w-4 ml-auto" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <MetadataTable metadata={metadata} />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Model Status */}
+                  {Object.keys(modelStatus).length > 0 && (
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="gap-2 w-full justify-start">
+                          <Cpu className="h-4 w-4" />
+                          Model Status
+                          <ChevronDown className="h-4 w-4 ml-auto" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <ModelStatusCard status={modelStatus} />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {!hasDetailedData && (
+                    <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                      <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                      <p>No detailed data available.</p>
+                      <p className="text-sm mt-1">
+                        Enable <code className="bg-muted px-1 rounded">Include Metadata</code> and{" "}
+                        <code className="bg-muted px-1 rounded">Include Model Info</code> in Advanced Options.
+                      </p>
                     </div>
                   )}
                 </div>
