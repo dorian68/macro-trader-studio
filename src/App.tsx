@@ -60,6 +60,7 @@ const AlphaLensLabs = lazy(() => import("./pages/AlphaLensLabs"));
 const PortfolioAnalytics = lazy(() => import("./pages/PortfolioAnalytics"));
 const ScenarioSimulator = lazy(() => import("./pages/labs/ScenarioSimulator"));
 const Backtester = lazy(() => import("./pages/labs/Backtester"));
+const ForecastPlayground = lazy(() => import("./pages/ForecastPlayground"));
 
 const queryClient = new QueryClient();
 // Force rebuild after PersistentNotificationProvider interface update
@@ -111,6 +112,7 @@ const App = () => {
                       <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
                       <Route path="/labs/scenario-simulator" element={<ScenarioSimulator />} />
                       <Route path="/labs/backtester" element={<Backtester />} />
+                      <Route path="/forecast-playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
                       <Route path="/coming-soon" element={<ComingSoon />} />
                       <Route path="/product" element={<ProductPresentation />} />
                       <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />
