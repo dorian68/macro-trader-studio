@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, subDays, parseISO } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,8 @@ import {
   CreditCard,
   ArrowRightLeft,
   AlertCircle,
-  Upload
+  Upload,
+  FlaskConical
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -106,6 +108,7 @@ export default function Admin() {
   const { isSuperUser, isAdmin } = useUserRole();
   const { profile } = useProfile();
   const { t } = useTranslation('admin');
+  const navigate = useNavigate();
   const { 
     fetchUsers,
     updateUserStatus, 
@@ -419,6 +422,16 @@ export default function Admin() {
             )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {isSuperUser && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/forecast-playground')}
+                className="h-10 sm:h-11"
+              >
+                <FlaskConical className="h-4 w-4 mr-2" />
+                Forecast Lab
+              </Button>
+            )}
             <CreateUserDialog
               onCreateUser={createUser}
               loading={actionLoading}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Menu, X, ChevronRight, ChevronDown, Activity, Zap, User, LogOut, Building2, Shield, FileText, History, Calculator, FlaskConical } from "lucide-react";
+import { TrendingUp, Menu, X, ChevronRight, ChevronDown, Activity, Zap, User, LogOut, Building2, Shield, FileText, History, Calculator } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
@@ -99,17 +99,6 @@ export default function Layout({
                 <Calculator className="h-4 w-4 mr-2" />
                 AlphaLens Labs
               </Button>
-              {isSuperUser && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => navigate('/forecast-playground')}
-                  className="h-8 px-3"
-                >
-                  <FlaskConical className="h-4 w-4 mr-2" />
-                  Forecast Lab
-                </Button>
-              )}
             </div>
 
             {/* Mobile Navigation + Auth + Status */}
@@ -220,15 +209,6 @@ export default function Layout({
                     <Calculator className="h-4 w-4 mr-2" />
                     AlphaLens Labs
                   </Button>
-                  {isSuperUser && (
-                    <Button variant="outline" size="sm" onClick={() => {
-                      navigate('/forecast-playground');
-                      setIsMobileMenuOpen(false);
-                    }} className="justify-start text-sm">
-                      <FlaskConical className="h-4 w-4 mr-2" />
-                      Forecast Lab
-                    </Button>
-                  )}
                   
                   {/* App navigation items for authenticated users */}
                   {user && <>
