@@ -228,22 +228,22 @@ function ForecastSummaryTable({ horizons }: { horizons: HorizonForecast[] | Reco
 
   return (
     <div className="rounded-lg border overflow-x-auto">
-      <Table>
+      <Table className="min-w-[1000px]">
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead className="font-semibold">Horizon</TableHead>
-            <TableHead className="font-semibold">Direction</TableHead>
-            <TableHead className="font-semibold">Trade Mode</TableHead>
-            <TableHead className="font-semibold text-right">Entry Price</TableHead>
-            <TableHead className="font-semibold">Entry Type</TableHead>
-            <TableHead className="font-semibold text-right">Forecast (Med)</TableHead>
-            <TableHead className="font-semibold text-right">TP</TableHead>
-            <TableHead className="font-semibold text-right">SL</TableHead>
-            <TableHead className="font-semibold text-right">R/R</TableHead>
-            <TableHead className="font-semibold text-right">Confidence</TableHead>
-            <TableHead className="font-semibold text-right">Prob TP&gt;SL</TableHead>
-            <TableHead className="font-semibold text-right">Position Size</TableHead>
-            <TableHead className="font-semibold">Model</TableHead>
+            <TableHead className="font-semibold text-xs whitespace-nowrap">Horizon</TableHead>
+            <TableHead className="font-semibold text-xs whitespace-nowrap">Direction</TableHead>
+            <TableHead className="font-semibold text-xs whitespace-nowrap">Trade Mode</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">Entry Price</TableHead>
+            <TableHead className="font-semibold text-xs whitespace-nowrap">Entry Type</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">Forecast (Med)</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">TP</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">SL</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">R/R</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">Confidence</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">Prob TP&gt;SL</TableHead>
+            <TableHead className="font-semibold text-xs text-right whitespace-nowrap">Pos. Size</TableHead>
+            <TableHead className="font-semibold text-xs whitespace-nowrap">Model</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -436,7 +436,7 @@ function ForecastPlaygroundContent() {
   const [tradeMode, setTradeMode] = useState<'spot' | 'forward'>('spot'); // NEW: Trade mode selector
   const [useMonteCarlo, setUseMonteCarlo] = useState(true);
   const [paths, setPaths] = useState(3000);
-  const [includePredictions, setIncludePredictions] = useState(false);
+  const [includePredictions, setIncludePredictions] = useState(true);
   const [includeMetadata, setIncludeMetadata] = useState(false);
   const [includeModelInfo, setIncludeModelInfo] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -687,7 +687,7 @@ function ForecastPlaygroundContent() {
                 <RadioGroup
                   value={tradeMode}
                   onValueChange={(value) => setTradeMode(value as 'spot' | 'forward')}
-                  className="flex gap-4"
+                  className="flex flex-col sm:flex-row gap-2 sm:gap-4"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="spot" id="spot" />
@@ -835,7 +835,7 @@ function ForecastPlaygroundContent() {
                   </CardDescription>
                 </div>
                 {/* Optional toggles */}
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="showChart"
@@ -990,7 +990,7 @@ function ForecastPlaygroundContent() {
 
               {/* Existing Tabs */}
               <Tabs defaultValue="predictions" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
                   <TabsTrigger value="predictions">Predictions</TabsTrigger>
                   <TabsTrigger value="request">Request Info</TabsTrigger>
                   <TabsTrigger value="raw">Raw Response</TabsTrigger>
