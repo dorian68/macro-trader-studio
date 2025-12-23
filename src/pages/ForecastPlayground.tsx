@@ -15,7 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FlaskConical, ChevronDown, ChevronRight, Play, AlertCircle, Clock, Settings2, BarChart3, Eye, TrendingUp, TrendingDown, Database, Cpu, FileText } from "lucide-react";
+import { FlaskConical, ChevronDown, ChevronRight, Play, AlertCircle, Clock, Settings2, BarChart3, Eye, TrendingUp, TrendingDown, Database, Cpu, FileText, Zap, Target } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const ALLOWED_ASSETS = [
@@ -41,14 +42,33 @@ interface PredictionDataPoint {
   yhat: number;
 }
 
+// Correct interface matching actual API response from data.payload.horizons[]
 interface HorizonForecast {
+  h: string;                          // Horizon identifier
   direction: string;
-  forecast_price_median?: number;
-  forecast_price?: number;
+  trade_mode?: 'spot' | 'forward';    // Trade mode
+  entry_price?: number;               // CRITICAL: Entry price
+  entry_type?: string;                // Entry type description
+  entry_method?: string;              // e.g., "last_price", "median"
+  forecast?: {                        // Nested forecast object
+    medianPrice?: number;
+    p20?: number;
+    p80?: number;
+  };
   tp?: number;
   sl?: number;
-  risk_reward?: number;
+  riskReward?: number;                // camelCase from API
+  prob_hit_tp_before_sl?: number;     // Correct field name
   confidence?: number;
+  position_size?: number;             // Position size
+  model?: {                           // Nested model object
+    mean?: string;
+    vol?: string;
+  };
+  // Legacy fields for backward compatibility
+  forecast_price_median?: number;
+  forecast_price?: number;
+  risk_reward?: number;
   prob_tp_before_sl?: number;
 }
 
@@ -163,9 +183,12 @@ function StyledJsonViewer({ data, depth = 0 }: { data: unknown; depth?: number }
   return <span>{String(data)}</span>;
 }
 
-// Professional Forecast Summary Table (Optional)
-function ForecastSummaryTable({ horizons }: { horizons: Record<string, HorizonForecast> }) {
-  const entries = Object.entries(horizons);
+// Professional Trade Forecast Summary Table - FIXED field mappings
+function ForecastSummaryTable({ horizons }: { horizons: HorizonForecast[] | Record<string, HorizonForecast> }) {
+  // Handle both array and object formats from API
+  const entries: [string, HorizonForecast][] = Array.isArray(horizons)
+    ? horizons.map((h, i) => [h.h || `H${i + 1}`, h])
+    : Object.entries(horizons);
   
   if (entries.length === 0) {
     return (
@@ -180,25 +203,56 @@ function ForecastSummaryTable({ horizons }: { horizons: Record<string, HorizonFo
   const formatPercent = (val?: number) => val != null ? `${(val * 100).toFixed(1)}%` : "—";
   const formatRatio = (val?: number) => val != null ? val.toFixed(2) : "—";
 
+  // Helper to get forecast price from nested or flat structure
+  const getForecastPrice = (data: HorizonForecast): number | undefined => {
+    return data.forecast?.medianPrice ?? data.forecast_price_median ?? data.forecast_price;
+  };
+
+  // Helper to get risk/reward from correct field
+  const getRiskReward = (data: HorizonForecast): number | undefined => {
+    return data.riskReward ?? data.risk_reward;
+  };
+
+  // Helper to get prob TP > SL from correct field
+  const getProbTpBeforeSl = (data: HorizonForecast): number | undefined => {
+    return data.prob_hit_tp_before_sl ?? data.prob_tp_before_sl;
+  };
+
+  // Get entry type label
+  const getEntryTypeLabel = (data: HorizonForecast): string => {
+    if (data.entry_type) return data.entry_type;
+    if (data.trade_mode === 'forward') return 'Conditional Entry';
+    if (data.trade_mode === 'spot') return 'Market Entry';
+    return 'Market Entry'; // Default
+  };
+
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="rounded-lg border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
             <TableHead className="font-semibold">Horizon</TableHead>
             <TableHead className="font-semibold">Direction</TableHead>
-            <TableHead className="font-semibold text-right">Forecast Price</TableHead>
+            <TableHead className="font-semibold">Trade Mode</TableHead>
+            <TableHead className="font-semibold text-right">Entry Price</TableHead>
+            <TableHead className="font-semibold">Entry Type</TableHead>
+            <TableHead className="font-semibold text-right">Forecast (Med)</TableHead>
             <TableHead className="font-semibold text-right">TP</TableHead>
             <TableHead className="font-semibold text-right">SL</TableHead>
             <TableHead className="font-semibold text-right">R/R</TableHead>
             <TableHead className="font-semibold text-right">Confidence</TableHead>
-            <TableHead className="font-semibold text-right">Prob TP/SL</TableHead>
+            <TableHead className="font-semibold text-right">Prob TP&gt;SL</TableHead>
+            <TableHead className="font-semibold text-right">Position Size</TableHead>
+            <TableHead className="font-semibold">Model</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {entries.map(([horizon, data]) => (
             <TableRow key={horizon}>
-              <TableCell className="font-medium">{horizon}</TableCell>
+              {/* Horizon */}
+              <TableCell className="font-medium">{data.h || horizon}</TableCell>
+              
+              {/* Direction Badge */}
               <TableCell>
                 <Badge 
                   variant="outline" 
@@ -215,23 +269,76 @@ function ForecastSummaryTable({ horizons }: { horizons: Record<string, HorizonFo
                   {data.direction || "—"}
                 </Badge>
               </TableCell>
-              <TableCell className="text-right font-mono text-sm">
-                {formatPrice(data.forecast_price_median ?? data.forecast_price)}
+              
+              {/* Trade Mode Badge */}
+              <TableCell>
+                <Badge 
+                  variant="outline" 
+                  className={
+                    data.trade_mode === 'spot'
+                      ? "border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/30"
+                      : data.trade_mode === 'forward'
+                        ? "border-violet-500 text-violet-600 bg-violet-50 dark:bg-violet-950/30"
+                        : "border-muted-foreground/50"
+                  }
+                >
+                  {data.trade_mode === 'spot' ? 'Spot' : data.trade_mode === 'forward' ? 'Forward' : data.trade_mode || '—'}
+                </Badge>
               </TableCell>
+              
+              {/* Entry Price - CRITICAL */}
+              <TableCell className="text-right font-mono text-sm font-semibold text-primary">
+                {formatPrice(data.entry_price)}
+              </TableCell>
+              
+              {/* Entry Type */}
+              <TableCell className="text-sm">
+                <span className="text-muted-foreground">{getEntryTypeLabel(data)}</span>
+                {data.entry_method && (
+                  <span className="text-xs text-muted-foreground/70 ml-1">({data.entry_method})</span>
+                )}
+              </TableCell>
+              
+              {/* Forecast (Med) */}
+              <TableCell className="text-right font-mono text-sm">
+                {formatPrice(getForecastPrice(data))}
+              </TableCell>
+              
+              {/* TP */}
               <TableCell className="text-right font-mono text-sm text-emerald-600">
                 {formatPrice(data.tp)}
               </TableCell>
+              
+              {/* SL */}
               <TableCell className="text-right font-mono text-sm text-rose-600">
                 {formatPrice(data.sl)}
               </TableCell>
+              
+              {/* R/R */}
               <TableCell className="text-right font-mono text-sm">
-                {formatRatio(data.risk_reward)}
+                {formatRatio(getRiskReward(data))}
               </TableCell>
+              
+              {/* Confidence */}
               <TableCell className="text-right font-mono text-sm">
                 {formatPercent(data.confidence)}
               </TableCell>
+              
+              {/* Prob TP > SL */}
               <TableCell className="text-right font-mono text-sm">
-                {formatPercent(data.prob_tp_before_sl)}
+                {formatPercent(getProbTpBeforeSl(data))}
+              </TableCell>
+              
+              {/* Position Size */}
+              <TableCell className="text-right font-mono text-sm">
+                {data.position_size != null ? data.position_size.toFixed(4) : "—"}
+              </TableCell>
+              
+              {/* Model Info */}
+              <TableCell className="text-xs text-muted-foreground">
+                {data.model ? (
+                  <span>{data.model.mean || '—'} / {data.model.vol || '—'}</span>
+                ) : "—"}
               </TableCell>
             </TableRow>
           ))}
@@ -326,6 +433,7 @@ function ForecastPlaygroundContent() {
   const [symbol, setSymbol] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15min");
   const [horizons, setHorizons] = useState("1, 3, 6");
+  const [tradeMode, setTradeMode] = useState<'spot' | 'forward'>('spot'); // NEW: Trade mode selector
   const [useMonteCarlo, setUseMonteCarlo] = useState(true);
   const [paths, setPaths] = useState(3000);
   const [includePredictions, setIncludePredictions] = useState(false);
@@ -366,6 +474,7 @@ function ForecastPlaygroundContent() {
       symbol,
       timeframe,
       horizons: parsedHorizons,
+      trade_mode: tradeMode, // NEW: Include trade mode in request
       use_montecarlo: useMonteCarlo,
       include_predictions: includePredictions,
       include_metadata: includeMetadata,
@@ -463,10 +572,16 @@ function ForecastPlaygroundContent() {
   const hasValidChartData = chartSeries.length > 0 && chartData.length > 0;
 
   // Extract structured data for detailed view
-  const getPayloadHorizons = (): Record<string, HorizonForecast> => {
-    if (!result?.data || typeof result.data !== "object") return {};
-    const data = result.data as { payload?: { horizons?: Record<string, HorizonForecast> } };
-    return data.payload?.horizons || {};
+  // FIXED: Handle both array and object formats from API (data.payload.horizons)
+  const getPayloadHorizons = (): HorizonForecast[] => {
+    if (!result?.data || typeof result.data !== "object") return [];
+    const data = result.data as { payload?: { horizons?: HorizonForecast[] | Record<string, HorizonForecast> } };
+    const horizonsData = data.payload?.horizons;
+    if (!horizonsData) return [];
+    // If it's already an array, return it directly
+    if (Array.isArray(horizonsData)) return horizonsData;
+    // If it's an object, convert to array
+    return Object.entries(horizonsData).map(([key, val]) => ({ ...val, h: val.h || key }));
   };
 
   const getMetadata = (): ApiMetadata => {
@@ -481,10 +596,10 @@ function ForecastPlaygroundContent() {
     return data.model_status || {};
   };
 
-  const payloadHorizons = showDetailedView ? getPayloadHorizons() : {};
+  const payloadHorizons = showDetailedView ? getPayloadHorizons() : [];
   const metadata = showDetailedView ? getMetadata() : {};
   const modelStatus = showDetailedView ? getModelStatus() : {};
-  const hasDetailedData = Object.keys(payloadHorizons).length > 0 || Object.keys(metadata).length > 0 || Object.keys(modelStatus).length > 0;
+  const hasDetailedData = payloadHorizons.length > 0 || Object.keys(metadata).length > 0 || Object.keys(modelStatus).length > 0;
 
   return (
     <Layout>
@@ -564,6 +679,31 @@ function ForecastPlaygroundContent() {
                   onChange={(e) => setHorizons(e.target.value)}
                   placeholder="1, 3, 6"
                 />
+              </div>
+
+              {/* Trade Mode Selector - NEW */}
+              <div className="space-y-2">
+                <Label>Trade Mode</Label>
+                <RadioGroup
+                  value={tradeMode}
+                  onValueChange={(value) => setTradeMode(value as 'spot' | 'forward')}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="spot" id="spot" />
+                    <Label htmlFor="spot" className="flex items-center gap-1.5 cursor-pointer font-normal">
+                      <Zap className="h-3.5 w-3.5 text-blue-500" />
+                      Spot (Market)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="forward" id="forward" />
+                    <Label htmlFor="forward" className="flex items-center gap-1.5 cursor-pointer font-normal">
+                      <Target className="h-3.5 w-3.5 text-violet-500" />
+                      Forward (Conditional)
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
             </div>
 
@@ -793,7 +933,7 @@ function ForecastPlaygroundContent() {
               {showDetailedView && (
                 <div className="space-y-4">
                   {/* Forecast Summary Table */}
-                  {Object.keys(payloadHorizons).length > 0 && (
+                  {payloadHorizons.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="text-sm font-semibold flex items-center gap-2">
                         <TrendingUp className="h-4 w-4" />
