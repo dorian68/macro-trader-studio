@@ -841,16 +841,32 @@ function ForecastPlaygroundContent() {
   };
 
   // FIXED: Extract predictions for chart with CORRECT format
-  // Actual format: data.predictions = { "1h": [{ ds, yhat }], "3h": [...], ... }
+  // Try multiple possible paths: data.predictions OR data.payload.predictions
   const getMultiHorizonChartData = () => {
     if (!result?.data || typeof result.data !== "object") return { series: [], allPoints: [] };
 
-    const data = result.data as { predictions?: Record<string, PredictionDataPoint[]> };
-    if (!data.predictions || typeof data.predictions !== "object" || Array.isArray(data.predictions)) {
+    const responseData = result.data as Record<string, unknown>;
+    
+    // DEBUG: Log actual data structure to diagnose
+    console.log("[ForecastPlayground] result.data structure:", {
+      hasData: !!responseData,
+      dataKeys: Object.keys(responseData),
+      hasPredictions: !!responseData.predictions,
+      hasPayloadPredictions: !!(responseData.payload as any)?.predictions,
+    });
+    
+    // Try multiple possible paths for predictions
+    const predictions = 
+      (responseData.predictions as Record<string, PredictionDataPoint[]>) ||
+      ((responseData.payload as Record<string, unknown>)?.predictions as Record<string, PredictionDataPoint[]>) ||
+      null;
+
+    if (!predictions || typeof predictions !== "object" || Array.isArray(predictions)) {
+      console.warn("[ForecastPlayground] No predictions found in expected paths");
       return { series: [], allPoints: [] };
     }
 
-    const horizonEntries = Object.entries(data.predictions);
+    const horizonEntries = Object.entries(predictions);
     if (horizonEntries.length === 0) return { series: [], allPoints: [] };
 
     // Build series metadata
@@ -1363,16 +1379,25 @@ function ForecastPlaygroundContent() {
 
                 <TabsContent value="predictions" className="mt-4">
                   <ScrollArea className="h-[400px] rounded-md border p-4">
-                    {result.data && typeof result.data === "object" && "predictions" in (result.data as object) ? (
-                      <pre className="text-sm font-mono whitespace-pre-wrap break-words">
-                        {JSON.stringify((result.data as { predictions: unknown }).predictions, null, 2)}
-                      </pre>
-                    ) : (
-                      <div className="text-muted-foreground">
-                        <p>No predictions data found in response.</p>
-                        <p className="text-sm mt-2">Check the "Raw Response" tab for the full response structure.</p>
-                      </div>
-                    )}
+                    {(() => {
+                      const responseData = result.data as Record<string, unknown>;
+                      const predictions = responseData?.predictions || 
+                        (responseData?.payload as Record<string, unknown>)?.predictions;
+                      
+                      if (predictions) {
+                        return (
+                          <pre className="text-sm font-mono whitespace-pre-wrap break-words">
+                            {JSON.stringify(predictions, null, 2)}
+                          </pre>
+                        );
+                      }
+                      return (
+                        <div className="text-muted-foreground">
+                          <p>No predictions data found in response.</p>
+                          <p className="text-sm mt-2">Check the "Raw Response" tab for the full response structure.</p>
+                        </div>
+                      );
+                    })()}
                   </ScrollArea>
                 </TabsContent>
 
