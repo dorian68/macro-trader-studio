@@ -1252,7 +1252,7 @@ function ForecastPlaygroundContent() {
                       </h4>
                       <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                             <XAxis
                               dataKey="dsFormatted"
@@ -1262,9 +1262,15 @@ function ForecastPlaygroundContent() {
                             />
                             <YAxis
                               className="text-xs fill-muted-foreground"
-                              tick={{ fill: "hsl(var(--muted-foreground))" }}
-                              tickFormatter={(value) => value.toFixed(4)}
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                              tickFormatter={(value: number) => {
+                                if (value >= 1000) return value.toFixed(0);
+                                if (value >= 100) return value.toFixed(1);
+                                if (value >= 1) return value.toFixed(3);
+                                return value.toFixed(5);
+                              }}
                               domain={["auto", "auto"]}
+                              width={70}
                             />
                             <Tooltip
                               contentStyle={{
