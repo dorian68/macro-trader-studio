@@ -2,6 +2,7 @@ import { useState } from "react";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
+import { RiskSurfaceChart, SurfaceApiResponse } from "@/components/labs/RiskSurfaceChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -447,6 +448,11 @@ function ForecastPlaygroundContent() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [requestInfo, setRequestInfo] = useState<RequestInfo | null>(null);
 
+  // Surface API state (NEW - additive)
+  const [surfaceResult, setSurfaceResult] = useState<SurfaceApiResponse | null>(null);
+  const [surfaceLoading, setSurfaceLoading] = useState(false);
+  const [surfaceError, setSurfaceError] = useState<string | null>(null);
+
   // Optional enhancement toggles (disabled by default)
   const [showChart, setShowChart] = useState(false);
   const [showStyledJson, setShowStyledJson] = useState(false);
@@ -456,6 +462,11 @@ function ForecastPlaygroundContent() {
     setLoading(true);
     setError(null);
     setResult(null);
+    // Reset surface state too
+    setSurfaceLoading(true);
+    setSurfaceError(null);
+    setSurfaceResult(null);
+    
     const startTime = performance.now();
 
     // Parse horizons
@@ -467,6 +478,7 @@ function ForecastPlaygroundContent() {
     if (parsedHorizons.length === 0) {
       setError("Invalid horizons. Please enter comma-separated positive integers.");
       setLoading(false);
+      setSurfaceLoading(false);
       return;
     }
 
@@ -485,12 +497,30 @@ function ForecastPlaygroundContent() {
       requestBody.paths = paths;
     }
 
+    // Execute BOTH API calls in parallel (forecast + surface)
+    const forecastPromise = fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/forecast-proxy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    const surfacePromise = fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        symbol,
+        timeframe,
+        horizon_hours: parsedHorizons,
+        paths: 1000,
+        dof: 3.0,
+        target_prob: { min: 0.05, max: 0.95, steps: 30 },
+        sl_sigma: { min: 0.1, max: 8.0, steps: 30 },
+      }),
+    });
+
+    // Handle forecast API (existing behavior preserved)
     try {
-      const response = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/forecast-proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await forecastPromise;
 
       if (!response.ok) {
         throw new Error(`Backend error: ${response.status} ${response.statusText}`);
@@ -507,6 +537,23 @@ function ForecastPlaygroundContent() {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setLoading(false);
+    }
+
+    // Handle surface API (NEW - additive, independent error handling)
+    try {
+      const surfaceResponse = await surfacePromise;
+      
+      if (!surfaceResponse.ok) {
+        throw new Error(`Surface API error: ${surfaceResponse.status}`);
+      }
+
+      const surfaceData = await surfaceResponse.json();
+      setSurfaceResult(surfaceData);
+    } catch (err) {
+      console.error("[Surface API] Error:", err);
+      setSurfaceError(err instanceof Error ? err.message : "Surface API error");
+    } finally {
+      setSurfaceLoading(false);
     }
   };
 
@@ -988,10 +1035,11 @@ function ForecastPlaygroundContent() {
                 </div>
               )}
 
-              {/* Existing Tabs */}
+              {/* Existing Tabs - Updated to include Risk Surface */}
               <Tabs defaultValue="predictions" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
+                <TabsList className="grid w-full grid-cols-4 text-xs sm:text-sm">
                   <TabsTrigger value="predictions">Predictions</TabsTrigger>
+                  <TabsTrigger value="risk-surface">Risk Surface</TabsTrigger>
                   <TabsTrigger value="request">Request Info</TabsTrigger>
                   <TabsTrigger value="raw">Raw Response</TabsTrigger>
                 </TabsList>
@@ -1011,6 +1059,15 @@ function ForecastPlaygroundContent() {
                       </div>
                     )}
                   </ScrollArea>
+                </TabsContent>
+
+                {/* NEW: Risk Surface Tab - Additive */}
+                <TabsContent value="risk-surface" className="mt-4">
+                  <RiskSurfaceChart 
+                    data={surfaceResult} 
+                    loading={surfaceLoading} 
+                    error={surfaceError} 
+                  />
                 </TabsContent>
 
                 <TabsContent value="request" className="mt-4">

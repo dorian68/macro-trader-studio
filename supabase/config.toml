@@ -32,8 +32,6 @@ verify_jwt = false
 
 [functions.cleanup-stale-credits]
 verify_jwt = false
-# Exécuter toutes les heures pour nettoyer les crédits engagés de jobs > 24h
-# Format cron: minute hour day month weekday
 cron = "0 * * * *"
 
 [functions.fetch-historical-prices]
@@ -52,4 +50,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.refresh-news-feed]
+verify_jwt = false
+
+[functions.surface-proxy]
 verify_jwt = false
