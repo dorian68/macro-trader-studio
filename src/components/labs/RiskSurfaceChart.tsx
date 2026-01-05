@@ -19,8 +19,8 @@ export interface SurfaceApiResponse {
   sigma_ref: number;
   entry_price: number;
   surface: {
-    target_probs: number[];  // X-axis values (swapped)
-    sl_sigma: number[];      // Y-axis values (swapped)
+    target_probs: number[];  // Y-axis values (Target Probability)
+    sl_sigma: number[];      // X-axis values (Stop-Loss σ)
     tp_sigma: number[][];    // Z-axis matrix [target_prob_index][sl_sigma_index]
   };
   horizons?: Array<{
@@ -71,8 +71,8 @@ export function RiskSurfaceChart({
     if (!data || !event.points || event.points.length === 0) return;
     
     const point = event.points[0];
-    const targetProb = point.x as number;  // X is now Target Probability
-    const slSigma = point.y as number;     // Y is now Stop-Loss
+    const slSigma = point.x as number;      // X is now Stop-Loss
+    const targetProb = point.y as number;  // Y is now Target Probability
     // Access z from the point data - use type assertion for surface plot data
     const pointData = point as unknown as { z: number };
     const tpSigma = pointData.z;
@@ -124,18 +124,17 @@ export function RiskSurfaceChart({
 
     const { target_probs, sl_sigma, tp_sigma } = data.surface;
 
-    // Transpose tp_sigma matrix to swap axes: original is [target_prob_index][sl_sigma_index]
-    // After swap: X = target_probs, Y = sl_sigma, so we need [sl_sigma_index][target_prob_index]
-    const transposedZ = sl_sigma.map((_, slIdx) =>
-      target_probs.map((_, tpIdx) => tp_sigma[tpIdx][slIdx])
-    );
+    // New axis config: X = sl_sigma, Y = target_probs
+    // Original matrix: tp_sigma[target_prob_index][sl_sigma_index]
+    // Plotly expects z[y_index][x_index] = z[target_prob_index][sl_sigma_index] ✓
+    // No transpose needed - matrix already matches the new orientation
 
     const plotData: Data[] = [
       {
         type: "surface",
-        x: target_probs,   // Swapped: Target Probability on X-axis
-        y: sl_sigma,       // Swapped: Stop-Loss on Y-axis
-        z: transposedZ,    // Transposed matrix to match new axes
+        x: sl_sigma,       // X-axis: Stop-Loss (σ)
+        y: target_probs,   // Y-axis: Target Probability
+        z: tp_sigma,       // Z-axis: Take-Profit (σ) - no transpose needed
         colorscale: [
           [0, "hsl(220, 70%, 50%)"],      // Blue for low TP
           [0.25, "hsl(180, 60%, 45%)"],   // Teal
@@ -149,8 +148,8 @@ export function RiskSurfaceChart({
           len: 0.8,
         },
         hovertemplate: 
-          "<b>Target Prob:</b> %{x:.1%}<br>" +
-          "<b>Stop-Loss:</b> %{y:.2f}σ<br>" +
+          "<b>Stop-Loss:</b> %{x:.2f}σ<br>" +
+          "<b>Target Prob:</b> %{y:.1%}<br>" +
           "<b>Take-Profit:</b> %{z:.2f}σ<br>" +
           "<extra></extra>",
         lighting: {
@@ -175,13 +174,13 @@ export function RiskSurfaceChart({
       margin: { l: 0, r: 0, t: 30, b: 0 },
       scene: {
         xaxis: {
-          title: { text: "Target Probability", font: { size: 11 } },
-          tickformat: ".0%",
+          title: { text: "Stop-Loss (σ)", font: { size: 11 } },
           tickfont: { size: 9 },
           gridcolor: "rgba(255,255,255,0.1)",
         },
         yaxis: {
-          title: { text: "Stop-Loss (σ)", font: { size: 11 } },
+          title: { text: "Target Probability", font: { size: 11 } },
+          tickformat: ".0%",
           tickfont: { size: 9 },
           gridcolor: "rgba(255,255,255,0.1)",
         },
