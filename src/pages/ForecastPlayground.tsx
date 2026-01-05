@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
@@ -16,9 +16,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FlaskConical, ChevronDown, ChevronRight, Play, AlertCircle, Clock, Settings2, BarChart3, Eye, TrendingUp, TrendingDown, Database, Cpu, FileText, Zap, Target } from "lucide-react";
+import { FlaskConical, ChevronDown, ChevronRight, Play, AlertCircle, Clock, Settings2, BarChart3, Eye, TrendingUp, TrendingDown, Database, Cpu, FileText, Zap, Target, Layers } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import {
+  RISK_PROFILES,
+  pipSizeForSymbol,
+  pipUnitLabel,
+  sigmaHProxyFromQuantiles,
+  sigmaHFromSigmaRef,
+  tpSlFromSigmas,
+  priceDistanceToPips,
+  computeSteps
+} from "@/lib/forecastUtils";
 
 const ALLOWED_ASSETS = [
   "AUD/USD",
@@ -184,8 +194,169 @@ function StyledJsonViewer({ data, depth = 0 }: { data: unknown; depth?: number }
   return <span>{String(data)}</span>;
 }
 
+// NEW: Risk Profiles Panel Component (expandable per horizon row)
+function RiskProfilesPanel({ 
+  horizonData, 
+  symbol, 
+  sigmaRef,
+  timeframe
+}: { 
+  horizonData: HorizonForecast; 
+  symbol?: string;
+  sigmaRef?: number;
+  timeframe?: string;
+}) {
+  const entryPrice = horizonData.entry_price;
+  const direction = (horizonData.direction?.toLowerCase() || "long") as "long" | "short";
+  const p20 = horizonData.forecast?.p20;
+  const p80 = horizonData.forecast?.p80;
+
+  // Calculate sigma_h for this horizon
+  let sigmaH: number | null = null;
+  let sigmaSource = "";
+  
+  // Method 1: From quantiles (preferred) - approximates horizon volatility from p20/p80
+  if (p20 != null && p80 != null && entryPrice) {
+    sigmaH = sigmaHProxyFromQuantiles(p20, p80) / entryPrice; // Normalize by entry price
+    sigmaSource = "quantiles";
+  }
+  // Method 2: Fallback to sigma_ref (if surface data available)
+  else if (sigmaRef != null && timeframe) {
+    // Parse horizon from h field (e.g., "1h" → 1)
+    const horizonMatch = horizonData.h?.match(/^(\d+)/);
+    const horizonHours = horizonMatch ? parseInt(horizonMatch[1], 10) : 1;
+    const steps = computeSteps(horizonHours, timeframe);
+    sigmaH = sigmaHFromSigmaRef(sigmaRef, steps);
+    sigmaSource = "sigma_ref";
+  }
+
+  if (!entryPrice || sigmaH == null) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        Insufficient data to calculate risk profiles (need entry price and volatility estimate)
+      </div>
+    );
+  }
+
+  const pipSize = symbol ? pipSizeForSymbol(symbol) : 0.0001;
+  const pipUnit = symbol ? pipUnitLabel(symbol) : "pips";
+
+  const profiles = Object.entries(RISK_PROFILES).map(([key, profile]) => {
+    const { tpPrice, slPrice, tpDistance, slDistance } = tpSlFromSigmas(
+      entryPrice,
+      direction,
+      sigmaH as number,
+      profile.tpSigma,
+      profile.slSigma
+    );
+
+    const tpPips = priceDistanceToPips(tpDistance, pipSize);
+    const slPips = priceDistanceToPips(slDistance, pipSize);
+    const riskReward = slDistance > 0 ? tpDistance / slDistance : 0;
+
+    return {
+      key,
+      ...profile,
+      tpPrice,
+      slPrice,
+      tpPips,
+      slPips,
+      riskReward
+    };
+  });
+
+  const formatPrice = (val: number) => val.toFixed(5);
+
+  return (
+    <div className="p-4 space-y-3 bg-muted/20">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Layers className="h-4 w-4" />
+          Risk Profiles for {horizonData.h}
+        </div>
+        <Badge variant="outline" className="text-xs">
+          σ source: {sigmaSource}
+        </Badge>
+      </div>
+      <div className="rounded-lg border overflow-x-auto bg-background">
+        <Table className="text-sm">
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="text-xs font-semibold">Profile</TableHead>
+              <TableHead className="text-xs font-semibold">Target Prob</TableHead>
+              <TableHead className="text-xs font-semibold text-right">SL (σ)</TableHead>
+              <TableHead className="text-xs font-semibold text-right">TP (σ)</TableHead>
+              <TableHead className="text-xs font-semibold text-right">SL Price</TableHead>
+              <TableHead className="text-xs font-semibold text-right">TP Price</TableHead>
+              <TableHead className="text-xs font-semibold text-right">SL ({pipUnit})</TableHead>
+              <TableHead className="text-xs font-semibold text-right">TP ({pipUnit})</TableHead>
+              <TableHead className="text-xs font-semibold text-right">R/R</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {profiles.map((p) => (
+              <TableRow key={p.key}>
+                <TableCell className="font-medium">
+                  <Badge 
+                    variant="outline" 
+                    className={
+                      p.key === "conservative" 
+                        ? "border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/30"
+                        : p.key === "moderate"
+                          ? "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30"
+                          : "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-950/30"
+                    }
+                  >
+                    {p.name}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-mono">{(p.targetProb * 100).toFixed(0)}%</TableCell>
+                <TableCell className="text-right font-mono text-rose-600">{p.slSigma.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-emerald-600">{p.tpSigma.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-rose-600">{formatPrice(p.slPrice)}</TableCell>
+                <TableCell className="text-right font-mono text-emerald-600">{formatPrice(p.tpPrice)}</TableCell>
+                <TableCell className="text-right font-mono text-rose-600">{p.slPips.toFixed(1)}</TableCell>
+                <TableCell className="text-right font-mono text-emerald-600">{p.tpPips.toFixed(1)}</TableCell>
+                <TableCell className="text-right font-mono font-semibold">{p.riskReward.toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {direction === "long" ? "LONG" : "SHORT"}: TP {direction === "long" ? "above" : "below"} entry, SL {direction === "long" ? "below" : "above"} entry
+      </p>
+    </div>
+  );
+}
+
 // Professional Trade Forecast Summary Table - FIXED field mappings
-function ForecastSummaryTable({ horizons }: { horizons: HorizonForecast[] | Record<string, HorizonForecast> }) {
+function ForecastSummaryTable({ 
+  horizons,
+  symbol,
+  sigmaRef,
+  timeframe
+}: { 
+  horizons: HorizonForecast[] | Record<string, HorizonForecast>;
+  symbol?: string;
+  sigmaRef?: number;
+  timeframe?: string;
+}) {
+  // NEW: Expandable rows state
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRow = (horizon: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(horizon)) {
+        next.delete(horizon);
+      } else {
+        next.add(horizon);
+      }
+      return next;
+    });
+  };
+
   // Handle both array and object formats from API
   const entries: [string, HorizonForecast][] = Array.isArray(horizons)
     ? horizons.map((h, i) => [h.h || `H${i + 1}`, h])
@@ -229,9 +400,10 @@ function ForecastSummaryTable({ horizons }: { horizons: HorizonForecast[] | Reco
 
   return (
     <div className="rounded-lg border overflow-x-auto">
-      <Table className="min-w-[1000px]">
+      <Table className="min-w-[1100px]">
         <TableHeader>
           <TableRow className="bg-muted/50">
+            <TableHead className="font-semibold text-xs whitespace-nowrap w-8"></TableHead>
             <TableHead className="font-semibold text-xs whitespace-nowrap">Horizon</TableHead>
             <TableHead className="font-semibold text-xs whitespace-nowrap">Direction</TableHead>
             <TableHead className="font-semibold text-xs whitespace-nowrap">Trade Mode</TableHead>
@@ -248,101 +420,138 @@ function ForecastSummaryTable({ horizons }: { horizons: HorizonForecast[] | Reco
           </TableRow>
         </TableHeader>
         <TableBody>
-          {entries.map(([horizon, data]) => (
-            <TableRow key={horizon}>
-              {/* Horizon */}
-              <TableCell className="font-medium">{data.h || horizon}</TableCell>
-              
-              {/* Direction Badge */}
-              <TableCell>
-                <Badge 
-                  variant="outline" 
-                  className={
-                    data.direction?.toLowerCase() === "long" 
-                      ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" 
-                      : data.direction?.toLowerCase() === "short"
-                        ? "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-950/30"
-                        : ""
-                  }
-                >
-                  {data.direction?.toLowerCase() === "long" && <TrendingUp className="h-3 w-3 mr-1" />}
-                  {data.direction?.toLowerCase() === "short" && <TrendingDown className="h-3 w-3 mr-1" />}
-                  {data.direction || "—"}
-                </Badge>
-              </TableCell>
-              
-              {/* Trade Mode Badge */}
-              <TableCell>
-                <Badge 
-                  variant="outline" 
-                  className={
-                    data.trade_mode === 'spot'
-                      ? "border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/30"
-                      : data.trade_mode === 'forward'
-                        ? "border-violet-500 text-violet-600 bg-violet-50 dark:bg-violet-950/30"
-                        : "border-muted-foreground/50"
-                  }
-                >
-                  {data.trade_mode === 'spot' ? 'Spot' : data.trade_mode === 'forward' ? 'Forward' : data.trade_mode || '—'}
-                </Badge>
-              </TableCell>
-              
-              {/* Entry Price - CRITICAL */}
-              <TableCell className="text-right font-mono text-sm font-semibold text-primary">
-                {formatPrice(data.entry_price)}
-              </TableCell>
-              
-              {/* Entry Type */}
-              <TableCell className="text-sm">
-                <span className="text-muted-foreground">{getEntryTypeLabel(data)}</span>
-                {data.entry_method && (
-                  <span className="text-xs text-muted-foreground/70 ml-1">({data.entry_method})</span>
+          {entries.map(([horizon, data]) => {
+            const rowKey = data.h || horizon;
+            const isExpanded = expandedRows.has(rowKey);
+            
+            return (
+              <React.Fragment key={rowKey}>
+                <TableRow>
+                  {/* NEW: Expand/Collapse Button */}
+                  <TableCell className="text-center p-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 w-6 p-0"
+                      onClick={() => toggleRow(rowKey)}
+                      title="Show Risk Profiles"
+                    >
+                      {isExpanded 
+                        ? <ChevronDown className="h-4 w-4" /> 
+                        : <ChevronRight className="h-4 w-4" />
+                      }
+                    </Button>
+                  </TableCell>
+                  
+                  {/* Horizon */}
+                  <TableCell className="font-medium">{data.h || horizon}</TableCell>
+                  
+                  {/* Direction Badge */}
+                  <TableCell>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        data.direction?.toLowerCase() === "long" 
+                          ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" 
+                          : data.direction?.toLowerCase() === "short"
+                            ? "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-950/30"
+                            : ""
+                      }
+                    >
+                      {data.direction?.toLowerCase() === "long" && <TrendingUp className="h-3 w-3 mr-1" />}
+                      {data.direction?.toLowerCase() === "short" && <TrendingDown className="h-3 w-3 mr-1" />}
+                      {data.direction || "—"}
+                    </Badge>
+                  </TableCell>
+                  
+                  {/* Trade Mode Badge */}
+                  <TableCell>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        data.trade_mode === 'spot'
+                          ? "border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/30"
+                          : data.trade_mode === 'forward'
+                            ? "border-violet-500 text-violet-600 bg-violet-50 dark:bg-violet-950/30"
+                            : "border-muted-foreground/50"
+                      }
+                    >
+                      {data.trade_mode === 'spot' ? 'Spot' : data.trade_mode === 'forward' ? 'Forward' : data.trade_mode || '—'}
+                    </Badge>
+                  </TableCell>
+                  
+                  {/* Entry Price - CRITICAL */}
+                  <TableCell className="text-right font-mono text-sm font-semibold text-primary">
+                    {formatPrice(data.entry_price)}
+                  </TableCell>
+                  
+                  {/* Entry Type */}
+                  <TableCell className="text-sm">
+                    <span className="text-muted-foreground">{getEntryTypeLabel(data)}</span>
+                    {data.entry_method && (
+                      <span className="text-xs text-muted-foreground/70 ml-1">({data.entry_method})</span>
+                    )}
+                  </TableCell>
+                  
+                  {/* Forecast (Med) */}
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPrice(getForecastPrice(data))}
+                  </TableCell>
+                  
+                  {/* TP */}
+                  <TableCell className="text-right font-mono text-sm text-emerald-600">
+                    {formatPrice(data.tp)}
+                  </TableCell>
+                  
+                  {/* SL */}
+                  <TableCell className="text-right font-mono text-sm text-rose-600">
+                    {formatPrice(data.sl)}
+                  </TableCell>
+                  
+                  {/* R/R */}
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatRatio(getRiskReward(data))}
+                  </TableCell>
+                  
+                  {/* Confidence */}
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercent(data.confidence)}
+                  </TableCell>
+                  
+                  {/* Prob TP > SL */}
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercent(getProbTpBeforeSl(data))}
+                  </TableCell>
+                  
+                  {/* Position Size */}
+                  <TableCell className="text-right font-mono text-sm">
+                    {data.position_size != null ? data.position_size.toFixed(4) : "—"}
+                  </TableCell>
+                  
+                  {/* Model Info */}
+                  <TableCell className="text-xs text-muted-foreground">
+                    {data.model ? (
+                      <span>{data.model.mean || '—'} / {data.model.vol || '—'}</span>
+                    ) : "—"}
+                  </TableCell>
+                </TableRow>
+                
+                {/* NEW: Expandable Risk Profiles Row */}
+                {isExpanded && (
+                  <TableRow key={`${horizon}-profiles`} className="hover:bg-transparent">
+                    <TableCell colSpan={14} className="p-0 border-t-0">
+                      <RiskProfilesPanel 
+                        horizonData={data}
+                        symbol={symbol}
+                        sigmaRef={sigmaRef}
+                        timeframe={timeframe}
+                      />
+                    </TableCell>
+                  </TableRow>
                 )}
-              </TableCell>
-              
-              {/* Forecast (Med) */}
-              <TableCell className="text-right font-mono text-sm">
-                {formatPrice(getForecastPrice(data))}
-              </TableCell>
-              
-              {/* TP */}
-              <TableCell className="text-right font-mono text-sm text-emerald-600">
-                {formatPrice(data.tp)}
-              </TableCell>
-              
-              {/* SL */}
-              <TableCell className="text-right font-mono text-sm text-rose-600">
-                {formatPrice(data.sl)}
-              </TableCell>
-              
-              {/* R/R */}
-              <TableCell className="text-right font-mono text-sm">
-                {formatRatio(getRiskReward(data))}
-              </TableCell>
-              
-              {/* Confidence */}
-              <TableCell className="text-right font-mono text-sm">
-                {formatPercent(data.confidence)}
-              </TableCell>
-              
-              {/* Prob TP > SL */}
-              <TableCell className="text-right font-mono text-sm">
-                {formatPercent(getProbTpBeforeSl(data))}
-              </TableCell>
-              
-              {/* Position Size */}
-              <TableCell className="text-right font-mono text-sm">
-                {data.position_size != null ? data.position_size.toFixed(4) : "—"}
-              </TableCell>
-              
-              {/* Model Info */}
-              <TableCell className="text-xs text-muted-foreground">
-                {data.model ? (
-                  <span>{data.model.mean || '—'} / {data.model.vol || '—'}</span>
-                ) : "—"}
-              </TableCell>
-            </TableRow>
-          ))}
+              </React.Fragment>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -1012,7 +1221,12 @@ function ForecastPlaygroundContent() {
                         <TrendingUp className="h-4 w-4" />
                         Trade Forecast Summary
                       </h4>
-                      <ForecastSummaryTable horizons={payloadHorizons} />
+                      <ForecastSummaryTable 
+                        horizons={payloadHorizons} 
+                        symbol={symbol}
+                        sigmaRef={surfaceResult?.sigma_ref}
+                        timeframe={timeframe}
+                      />
                     </div>
                   )}
 
@@ -1092,7 +1306,15 @@ function ForecastPlaygroundContent() {
                   <RiskSurfaceChart 
                     data={surfaceResult} 
                     loading={surfaceLoading} 
-                    error={surfaceError} 
+                    error={surfaceError}
+                    symbol={symbol}
+                    timeframe={timeframe}
+                    horizonHours={
+                      horizons
+                        .split(",")
+                        .map((h) => parseInt(h.trim(), 10))
+                        .filter((h) => !isNaN(h) && h > 0)[0] ?? 1
+                    }
                   />
                 </TabsContent>
 

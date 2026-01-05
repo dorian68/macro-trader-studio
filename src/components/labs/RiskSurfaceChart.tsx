@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Target, TrendingUp, TrendingDown, AlertCircle, MousePointer } from "lucide-react";
+import {
+  pipSizeForSymbol,
+  pipUnitLabel,
+  computeSteps,
+  sigmaHFromSigmaRef,
+  priceDistanceToPips
+} from "@/lib/forecastUtils";
 
 // Interface for Surface API response
 export interface SurfaceApiResponse {
@@ -28,15 +35,29 @@ interface SelectedPoint {
   targetProb: number;
   slPrice: number;
   tpPrice: number;
+  // NEW: Pips info
+  slPips?: number;
+  tpPips?: number;
+  pipUnit?: string;
 }
 
 interface RiskSurfaceChartProps {
   data: SurfaceApiResponse | null;
   loading?: boolean;
   error?: string | null;
+  symbol?: string;       // NEW: for pip calculation
+  timeframe?: string;    // NEW: for horizon scaling
+  horizonHours?: number; // NEW: for horizon scaling
 }
 
-export function RiskSurfaceChart({ data, loading, error }: RiskSurfaceChartProps) {
+export function RiskSurfaceChart({ 
+  data, 
+  loading, 
+  error,
+  symbol,
+  timeframe,
+  horizonHours
+}: RiskSurfaceChartProps) {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
 
   // Calculate price from sigma
@@ -61,14 +82,39 @@ export function RiskSurfaceChart({ data, loading, error }: RiskSurfaceChartProps
     const slPrice = sigmaToPrice(slSigma, data.entry_price, data.sigma_ref, true);
     const tpPrice = sigmaToPrice(tpSigma, data.entry_price, data.sigma_ref, false);
 
+    // NEW: Calculate pips if symbol is available
+    let slPips: number | undefined;
+    let tpPips: number | undefined;
+    let pipUnit: string | undefined;
+
+    if (symbol && timeframe && data.sigma_ref) {
+      const pipSize = pipSizeForSymbol(symbol);
+      pipUnit = pipUnitLabel(symbol);
+      
+      // Calculate horizon-scaled sigma
+      const horizon = horizonHours ?? 1;
+      const steps = computeSteps(horizon, timeframe);
+      const sigmaH = sigmaHFromSigmaRef(data.sigma_ref, steps);
+      
+      // Calculate price distances using horizon-scaled sigma
+      const slDistance = data.entry_price * (slSigma * sigmaH);
+      const tpDistance = data.entry_price * (tpSigma * sigmaH);
+      
+      slPips = priceDistanceToPips(slDistance, pipSize);
+      tpPips = priceDistanceToPips(tpDistance, pipSize);
+    }
+
     setSelectedPoint({
       slSigma,
       tpSigma,
       targetProb,
       slPrice,
       tpPrice,
+      slPips,
+      tpPips,
+      pipUnit,
     });
-  }, [data, sigmaToPrice]);
+  }, [data, sigmaToPrice, symbol, timeframe, horizonHours]);
 
   // Memoize plot data and layout
   const { plotData, layout } = useMemo(() => {
@@ -279,6 +325,12 @@ export function RiskSurfaceChart({ data, loading, error }: RiskSurfaceChartProps
                 <div className="text-xs text-muted-foreground mt-1">
                   Price: {formatPrice(selectedPoint.slPrice)}
                 </div>
+                {/* NEW: Pips display */}
+                {selectedPoint.slPips != null && (
+                  <div className="text-sm font-mono font-semibold text-rose-600 dark:text-rose-400 mt-1">
+                    {selectedPoint.slPips.toFixed(1)} {selectedPoint.pipUnit}
+                  </div>
+                )}
               </div>
 
               {/* Take-Profit */}
@@ -293,6 +345,12 @@ export function RiskSurfaceChart({ data, loading, error }: RiskSurfaceChartProps
                 <div className="text-xs text-muted-foreground mt-1">
                   Price: {formatPrice(selectedPoint.tpPrice)}
                 </div>
+                {/* NEW: Pips display */}
+                {selectedPoint.tpPips != null && (
+                  <div className="text-sm font-mono font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                    {selectedPoint.tpPips.toFixed(1)} {selectedPoint.pipUnit}
+                  </div>
+                )}
               </div>
 
               {/* Probability */}
