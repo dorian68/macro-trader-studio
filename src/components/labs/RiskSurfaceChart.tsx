@@ -323,7 +323,7 @@ export function RiskSurfaceChart({
                   {formatSigma(selectedPoint.slSigma)}σ
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Price: {formatPrice(selectedPoint.slPrice)}
+                  SL Price: {formatPrice(selectedPoint.slPrice)}
                 </div>
                 {/* NEW: Pips display */}
                 {selectedPoint.slPips != null && (
@@ -343,7 +343,7 @@ export function RiskSurfaceChart({
                   {formatSigma(selectedPoint.tpSigma)}σ
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Price: {formatPrice(selectedPoint.tpPrice)}
+                  TP Price: {formatPrice(selectedPoint.tpPrice)}
                 </div>
                 {/* NEW: Pips display */}
                 {selectedPoint.tpPips != null && (
