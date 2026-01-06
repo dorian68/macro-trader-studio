@@ -36,10 +36,10 @@ interface SelectedPoint {
   targetProb: number;
   slPrice: number;
   tpPrice: number;
-  // NEW: Pips info
   slPips?: number;
   tpPips?: number;
   pipUnit?: string;
+  calculationMethod?: "ATR" | "σ";  // Indicates which method was used for price/pip calculation
 }
 
 interface RiskSurfaceChartProps {
@@ -61,9 +61,17 @@ export function RiskSurfaceChart({
 }: RiskSurfaceChartProps) {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
 
-  // Calculate price from sigma
-  const sigmaToPrice = useCallback((sigma: number, entryPrice: number, sigmaRef: number, isLoss: boolean) => {
-    const delta = sigma * sigmaRef;
+  // Calculate price from multiplier - supports ATR (priority) or sigma_ref (fallback)
+  const calculatePrice = useCallback((
+    multiplier: number,
+    entryPrice: number,
+    sigmaRef: number,
+    atr: number | undefined,
+    isLoss: boolean
+  ) => {
+    // Prioritize ATR if available and valid, otherwise use sigma_ref
+    const useATR = atr != null && atr > 0;
+    const delta = useATR ? multiplier * atr : multiplier * sigmaRef;
     return isLoss ? entryPrice - delta : entryPrice + delta;
   }, []);
 
@@ -73,36 +81,47 @@ export function RiskSurfaceChart({
     
     const point = event.points[0];
     const slSigma = point.x as number;      // X is now Stop-Loss
-    const targetProb = point.y as number;  // Y is now Target Probability
-    // Access z from the point data - use type assertion for surface plot data
+    const targetProb = point.y as number;   // Y is now Target Probability
     const pointData = point as unknown as { z: number };
     const tpSigma = pointData.z;
 
     if (typeof tpSigma !== 'number') return;
 
-    const slPrice = sigmaToPrice(slSigma, data.entry_price, data.sigma_ref, true);
-    const tpPrice = sigmaToPrice(tpSigma, data.entry_price, data.sigma_ref, false);
+    // Determine calculation method: ATR (priority) or sigma (fallback)
+    const useATR = data.atr != null && data.atr > 0;
 
-    // NEW: Calculate pips if symbol is available
+    // Calculate SL/TP prices using ATR or sigma_ref
+    const slPrice = calculatePrice(slSigma, data.entry_price, data.sigma_ref, data.atr, true);
+    const tpPrice = calculatePrice(tpSigma, data.entry_price, data.sigma_ref, data.atr, false);
+
+    // Calculate pips if symbol is available
     let slPips: number | undefined;
     let tpPips: number | undefined;
     let pipUnit: string | undefined;
+    let calculationMethod: "ATR" | "σ" | undefined;
 
-    if (symbol && timeframe && data.sigma_ref) {
+    if (symbol) {
       const pipSize = pipSizeForSymbol(symbol);
       pipUnit = pipUnitLabel(symbol);
       
-      // Calculate horizon-scaled sigma
-      const horizon = horizonHours ?? 1;
-      const steps = computeSteps(horizon, timeframe);
-      const sigmaH = sigmaHFromSigmaRef(data.sigma_ref, steps);
-      
-      // Calculate price distances using horizon-scaled sigma
-      const slDistance = data.entry_price * (slSigma * sigmaH);
-      const tpDistance = data.entry_price * (tpSigma * sigmaH);
-      
-      slPips = priceDistanceToPips(slDistance, pipSize);
-      tpPips = priceDistanceToPips(tpDistance, pipSize);
+      if (useATR && data.atr) {
+        // ATR-based calculation
+        const slDistance = slSigma * data.atr;
+        const tpDistance = tpSigma * data.atr;
+        slPips = priceDistanceToPips(slDistance, pipSize);
+        tpPips = priceDistanceToPips(tpDistance, pipSize);
+        calculationMethod = "ATR";
+      } else if (timeframe && data.sigma_ref) {
+        // Fallback: Sigma-based calculation
+        const horizon = horizonHours ?? 1;
+        const steps = computeSteps(horizon, timeframe);
+        const sigmaH = sigmaHFromSigmaRef(data.sigma_ref, steps);
+        const slDistance = data.entry_price * (slSigma * sigmaH);
+        const tpDistance = data.entry_price * (tpSigma * sigmaH);
+        slPips = priceDistanceToPips(slDistance, pipSize);
+        tpPips = priceDistanceToPips(tpDistance, pipSize);
+        calculationMethod = "σ";
+      }
     }
 
     setSelectedPoint({
@@ -114,8 +133,9 @@ export function RiskSurfaceChart({
       slPips,
       tpPips,
       pipUnit,
+      calculationMethod,
     });
-  }, [data, sigmaToPrice, symbol, timeframe, horizonHours]);
+  }, [data, calculatePrice, symbol, timeframe, horizonHours]);
 
   // Memoize plot data and layout
   const { plotData, layout } = useMemo(() => {
@@ -321,6 +341,17 @@ export function RiskSurfaceChart({
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
               Selected Trade Scenario
+              {selectedPoint.calculationMethod && (
+                <Badge 
+                  variant={selectedPoint.calculationMethod === "ATR" ? "default" : "outline"} 
+                  className={selectedPoint.calculationMethod === "ATR" 
+                    ? "ml-1 text-xs font-mono bg-emerald-600 hover:bg-emerald-700" 
+                    : "ml-1 text-xs font-mono"
+                  }
+                >
+                  {selectedPoint.calculationMethod === "ATR" ? "ATR-based" : "σ-based"}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
