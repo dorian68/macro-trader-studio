@@ -44,6 +44,7 @@ import {
   sigmaHProxyFromQuantiles,
   sigmaHFromSigmaRef,
   tpSlFromSigmas,
+  tpSlFromATR,  // NEW: ATR-based TP/SL calculation
   priceDistanceToPips,
   computeSteps,
 } from "@/lib/forecastUtils";
@@ -213,18 +214,23 @@ function RiskProfilesPanel({
   symbol,
   sigmaRef,
   timeframe,
+  atr,  // NEW: ATR from surface API (optional)
 }: {
   horizonData: HorizonForecast;
   symbol?: string;
   sigmaRef?: number;
   timeframe?: string;
+  atr?: number;  // NEW: ATR(14) in price units
 }) {
   const entryPrice = horizonData.entry_price;
   const direction = (horizonData.direction?.toLowerCase() || "long") as "long" | "short";
   const p20 = horizonData.forecast?.p20;
   const p80 = horizonData.forecast?.p80;
 
-  // Calculate sigma_h for this horizon
+  // Determine calculation method: ATR (priority) or Sigma (fallback)
+  const useATR = atr != null && atr > 0;
+
+  // Calculate sigma_h for this horizon (still used for fallback + analytics display)
   let sigmaH: number | null = null;
   let sigmaSource = "";
 
@@ -243,10 +249,11 @@ function RiskProfilesPanel({
     sigmaSource = "sigma_ref";
   }
 
-  if (!entryPrice || sigmaH == null) {
+  // Check if we have enough data to calculate profiles
+  if (!entryPrice || (!useATR && sigmaH == null)) {
     return (
       <div className="p-4 text-sm text-muted-foreground">
-        Insufficient data to calculate risk profiles (need entry price and volatility estimate)
+        Insufficient data to calculate risk profiles (need entry price and ATR or volatility estimate)
       </div>
     );
   }
@@ -254,14 +261,37 @@ function RiskProfilesPanel({
   const pipSize = symbol ? pipSizeForSymbol(symbol) : 0.0001;
   const pipUnit = symbol ? pipUnitLabel(symbol) : "pips";
 
+  // Calculate profiles using ATR (priority) or sigma (fallback)
   const profiles = Object.entries(RISK_PROFILES).map(([key, profile]) => {
-    const { tpPrice, slPrice, tpDistance, slDistance } = tpSlFromSigmas(
-      entryPrice,
-      direction,
-      sigmaH as number,
-      profile.tpSigma,
-      profile.slSigma,
-    );
+    let tpPrice: number, slPrice: number, tpDistance: number, slDistance: number;
+
+    if (useATR) {
+      // NEW: Use ATR-based calculation (priority)
+      const result = tpSlFromATR(
+        entryPrice,
+        direction,
+        atr as number,
+        profile.tpSigma,  // Use same multipliers as sigma (k_TP)
+        profile.slSigma   // k_SL
+      );
+      tpPrice = result.tpPrice;
+      slPrice = result.slPrice;
+      tpDistance = result.tpDistance;
+      slDistance = result.slDistance;
+    } else {
+      // FALLBACK: Existing sigma-based logic (unchanged)
+      const result = tpSlFromSigmas(
+        entryPrice,
+        direction,
+        sigmaH as number,
+        profile.tpSigma,
+        profile.slSigma,
+      );
+      tpPrice = result.tpPrice;
+      slPrice = result.slPrice;
+      tpDistance = result.tpDistance;
+      slDistance = result.slDistance;
+    }
 
     const tpPips = priceDistanceToPips(tpDistance, pipSize);
     const slPips = priceDistanceToPips(slDistance, pipSize);
@@ -294,6 +324,11 @@ function RiskProfilesPanel({
     }
   };
 
+  // Calculation source label for display
+  const calculationLabel = useATR 
+    ? `ATR: ${atr?.toFixed(5)}` 
+    : `σ: ${sigmaSource}`;
+
   return (
     <div className="p-4 space-y-3 bg-gradient-to-b from-muted/30 to-muted/10 animate-in slide-in-from-top-2 duration-200">
       <div className="flex items-center justify-between">
@@ -301,9 +336,15 @@ function RiskProfilesPanel({
           <Layers className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">Suggested TP/SL based on risk appetite</span>
         </div>
-        <Badge variant="outline" className="text-xs font-mono">
-          σ: {sigmaSource}
-        </Badge>
+        {useATR ? (
+          <Badge className="text-xs font-mono bg-emerald-600 hover:bg-emerald-700" title="Using ATR(14) for TP/SL calculation">
+            {calculationLabel}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs font-mono" title="Using sigma-based calculation">
+            {calculationLabel}
+          </Badge>
+        )}
       </div>
       <div className="rounded-lg border overflow-x-auto bg-background/80 backdrop-blur-sm">
         <Table className="text-sm">
@@ -367,11 +408,13 @@ function ForecastSummaryTable({
   symbol,
   sigmaRef,
   timeframe,
+  atr,  // NEW: ATR from surface API (optional)
 }: {
   horizons: HorizonForecast[] | Record<string, HorizonForecast>;
   symbol?: string;
   sigmaRef?: number;
   timeframe?: string;
+  atr?: number;  // NEW: ATR(14) in price units
 }) {
   // NEW: Expandable rows state
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -603,6 +646,7 @@ function ForecastSummaryTable({
                           symbol={symbol}
                           sigmaRef={sigmaRef}
                           timeframe={timeframe}
+                          atr={atr}
                         />
                       </TableCell>
                     </TableRow>
@@ -1290,6 +1334,7 @@ function ForecastPlaygroundContent() {
                       symbol={symbol}
                       sigmaRef={surfaceResult?.sigma_ref}
                       timeframe={timeframe}
+                      atr={surfaceResult?.atr}
                     />
                   )}
 

@@ -186,3 +186,40 @@ export function priceDistanceToPips(distance: number, pipSize: number): number {
   if (pipSize === 0) return 0;
   return Math.abs(distance) / pipSize;
 }
+
+/**
+ * Calculate TP/SL prices using ATR (Average True Range)
+ * 
+ * @param entryPrice - Entry price for the trade
+ * @param direction - Trade direction: "long" or "short"
+ * @param atr - ATR(14) value in price units
+ * @param tpMultiplier - ATR multiplier for Take Profit (k_TP)
+ * @param slMultiplier - ATR multiplier for Stop Loss (k_SL)
+ * @returns TP/SL prices and distances
+ */
+export function tpSlFromATR(
+  entryPrice: number,
+  direction: "long" | "short",
+  atr: number,
+  tpMultiplier: number,
+  slMultiplier: number
+): { tpPrice: number; slPrice: number; tpDistance: number; slDistance: number } {
+  const tpDistance = tpMultiplier * atr;
+  const slDistance = slMultiplier * atr;
+
+  if (direction === "long") {
+    return {
+      tpPrice: entryPrice + tpDistance,
+      slPrice: entryPrice - slDistance,
+      tpDistance,
+      slDistance
+    };
+  } else {
+    return {
+      tpPrice: entryPrice - tpDistance,
+      slPrice: entryPrice + slDistance,
+      tpDistance,
+      slDistance
+    };
+  }
+}

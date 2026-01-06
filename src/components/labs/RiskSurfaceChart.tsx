@@ -18,6 +18,7 @@ import {
 export interface SurfaceApiResponse {
   sigma_ref: number;
   entry_price: number;
+  atr?: number;  // NEW: ATR(14) in PRICE units (optional, from backend)
   surface: {
     target_probs: number[];  // Y-axis values (Target Probability)
     sl_sigma: number[];      // X-axis values (Stop-Loss σ)
@@ -273,6 +274,11 @@ export function RiskSurfaceChart({
               <Badge variant="secondary" className="font-mono text-xs" title="Entry price for scenario calculations">
                 Entry: {formatPrice(data.entry_price)}
               </Badge>
+              {data.atr != null && data.atr > 0 && (
+                <Badge className="font-mono text-xs bg-emerald-600 hover:bg-emerald-700" title="ATR(14) - Average True Range in price units">
+                  ATR: {data.atr.toFixed(5)}
+                </Badge>
+              )}
               <Badge variant="outline" className="font-mono text-xs" title="Reference volatility (standard deviation)">
                 σ ref: {data.sigma_ref.toFixed(6)}
               </Badge>
