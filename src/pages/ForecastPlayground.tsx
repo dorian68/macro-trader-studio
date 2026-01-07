@@ -980,30 +980,37 @@ function ForecastPlaygroundContent() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <FlaskConical className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Forecast Playground</h1>
+        {/* Header - Premium Trading Desk Style */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 -mx-4 sm:-mx-6 rounded-xl bg-gradient-to-r from-primary/5 via-transparent to-transparent border-b border-primary/10">
+          <div className="space-y-2">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-primary/10 ring-1 ring-primary/20 shadow-lg shadow-primary/10">
+                <FlaskConical className="h-7 w-7 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Forecast Playground</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Configure and test the forecasting pipeline
+                </p>
+              </div>
             </div>
-            <p className="text-muted-foreground">
-              Configure and test the forecasting pipeline. Internal debugging tool.
-            </p>
           </div>
-          <Badge variant="outline" className="w-fit text-amber-600 border-amber-600 bg-amber-50 dark:bg-amber-950/20">
-            🔬 Internal Tool — Super Users Only
+          <Badge variant="outline" className="w-fit px-4 py-1.5 text-amber-600 border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/30 shadow-sm animate-pulse">
+            <span className="mr-1.5">🔬</span>
+            <span className="font-semibold">Internal Tool</span>
           </Badge>
         </div>
 
         {/* Configuration Form - Grouped into logical sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Market Context Card */}
-          <Card className="border bg-card/50">
+          {/* Market Context Card - Enhanced */}
+          <Card className="border bg-card/50 hover:border-primary/30 hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <BarChart3 className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle className="flex items-center gap-3 text-base">
+                <div className="p-1.5 rounded-md bg-primary/10">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
                   Market Context
                 </span>
               </CardTitle>
@@ -1064,12 +1071,14 @@ function ForecastPlaygroundContent() {
             </CardContent>
           </Card>
 
-          {/* Model Assumptions Card */}
-          <Card className="border bg-card/50">
+          {/* Model Assumptions Card - Enhanced */}
+          <Card className="border bg-card/50 hover:border-primary/30 hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Settings2 className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle className="flex items-center gap-3 text-base">
+                <div className="p-1.5 rounded-md bg-primary/10">
+                  <Settings2 className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
                   Model Assumptions
                 </span>
               </CardTitle>
@@ -1166,23 +1175,26 @@ function ForecastPlaygroundContent() {
           </Card>
         </div>
 
-        {/* Run Action - Prominent CTA */}
-        <div className={`transition-opacity duration-200 ${loading ? "opacity-70" : "opacity-100"}`}>
+        {/* Run Action - Premium CTA */}
+        <div className={`transition-all duration-300 ${loading ? "opacity-80" : "opacity-100"}`}>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full sm:w-auto min-w-[200px] h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full sm:w-auto min-w-[220px] h-14 text-base font-bold shadow-lg hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-r from-primary to-primary/90"
             size="lg"
           >
             {loading ? (
               <>
-                <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-3" />
                 <span className="animate-pulse">Simulating scenarios...</span>
               </>
             ) : (
               <>
-                <Play className="h-5 w-5 mr-2" />
+                <div className="p-1 rounded-md bg-white/10 mr-3">
+                  <Play className="h-5 w-5" />
+                </div>
                 Run Forecast
+                <Zap className="h-4 w-4 ml-2 opacity-70" />
               </>
             )}
           </Button>
@@ -1211,16 +1223,21 @@ function ForecastPlaygroundContent() {
           </Card>
         )}
 
-        {/* Results display */}
+        {/* Results display - Enhanced */}
         {result && requestInfo && !loading && (
-          <Card>
-            <CardHeader>
+          <Card className="border-primary/10 shadow-lg animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+            <CardHeader className="bg-gradient-to-r from-muted/50 via-transparent to-transparent border-b border-border/50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <CardTitle>Forecast Results</CardTitle>
+                <div className="space-y-1">
+                  <CardTitle className="text-xl font-bold flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-emerald-500/10">
+                      <Target className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    Forecast Results
+                  </CardTitle>
                   <CardDescription className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    Completed in {requestInfo.duration.toFixed(0)}ms at{" "}
+                    Completed in <span className="font-mono font-semibold text-foreground">{requestInfo.duration.toFixed(0)}ms</span> at{" "}
                     {new Date(requestInfo.timestamp).toLocaleTimeString()}
                   </CardDescription>
                 </div>
@@ -1377,13 +1394,13 @@ function ForecastPlaygroundContent() {
                 </div>
               )}
 
-              {/* Existing Tabs - Updated to include Risk Surface */}
+              {/* Existing Tabs - Premium Styling */}
               <Tabs defaultValue="risk-surface" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 text-xs sm:text-sm">
-                  <TabsTrigger value="predictions">Predictions</TabsTrigger>
-                  <TabsTrigger value="risk-surface">Risk Surface</TabsTrigger>
-                  <TabsTrigger value="request">Request Info</TabsTrigger>
-                  <TabsTrigger value="raw">Raw Response</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-4 text-xs sm:text-sm h-11 p-1 bg-muted/50">
+                  <TabsTrigger value="predictions" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Predictions</TabsTrigger>
+                  <TabsTrigger value="risk-surface" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-semibold">Risk Surface</TabsTrigger>
+                  <TabsTrigger value="request" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Request Info</TabsTrigger>
+                  <TabsTrigger value="raw" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">Raw Response</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="predictions" className="mt-4">

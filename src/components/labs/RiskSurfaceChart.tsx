@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Target, TrendingUp, TrendingDown, AlertCircle, MousePointer } from "lucide-react";
+import { Target, TrendingUp, TrendingDown, AlertCircle, MousePointer, DollarSign, Activity, Sigma } from "lucide-react";
 import {
   pipSizeForSymbol,
   pipUnitLabel,
@@ -272,46 +272,67 @@ export function RiskSurfaceChart({
 
   return (
     <div className="space-y-6">
-      {/* Header with Entry Info - Institutional Grade */}
-      <Card className="border-0 bg-gradient-to-r from-card to-muted/20">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <Target className="h-5 w-5 text-primary" />
+      {/* Header with Entry Info - Institutional Grade Premium */}
+      <Card className="border-0 bg-gradient-to-r from-card via-card to-muted/30 shadow-sm">
+        <CardHeader className="pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+            <div className="space-y-2">
+              <CardTitle className="flex items-center gap-3 text-xl font-bold">
+                <div className="p-2 rounded-lg bg-primary/10 ring-1 ring-primary/20">
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
                 Risk / Reward Surface
               </CardTitle>
-              <CardDescription className="text-sm max-w-md">
+              <CardDescription className="text-sm max-w-md text-muted-foreground/80">
                 Probability-adjusted take-profit as a function of stop-loss intensity
               </CardDescription>
             </div>
-            <div className="flex flex-wrap gap-2">
+            {/* Premium Key Indicators */}
+            <div className="flex flex-wrap gap-3">
               {symbol && (
-                <Badge variant="outline" className="font-mono text-xs">
-                  {symbol}
-                </Badge>
+                <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg bg-primary/5 border border-primary/20 transition-all duration-200 hover:bg-primary/10 hover:border-primary/30">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Symbol</span>
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-mono text-base font-bold text-foreground">{symbol}</span>
+                  </div>
+                </div>
               )}
-              <Badge variant="secondary" className="font-mono text-xs" title="Entry price for scenario calculations">
-                Entry: {formatPrice(data.entry_price)}
-              </Badge>
+              <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg bg-amber-500/5 border border-amber-500/20 transition-all duration-200 hover:bg-amber-500/10 hover:border-amber-500/30" title="Entry price for scenario calculations">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Entry Price</span>
+                <div className="flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                  <span className="font-mono text-base font-bold text-foreground">{formatPrice(data.entry_price)}</span>
+                </div>
+              </div>
               {data.atr != null && data.atr > 0 && (
-                <Badge className="font-mono text-xs bg-emerald-600 hover:bg-emerald-700" title="ATR(14) - Average True Range in price units">
-                  ATR: {data.atr.toFixed(5)}
-                </Badge>
+                <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 transition-all duration-200 hover:bg-emerald-500/10 hover:border-emerald-500/30" title="ATR(14) - Average True Range in price units">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">ATR(14)</span>
+                  <div className="flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-mono text-base font-bold text-foreground">{data.atr.toFixed(5)}</span>
+                  </div>
+                </div>
               )}
-              <Badge variant="outline" className="font-mono text-xs" title="Reference volatility (standard deviation)">
-                σ ref: {data.sigma_ref.toFixed(6)}
-              </Badge>
+              <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg bg-violet-500/5 border border-violet-500/20 transition-all duration-200 hover:bg-violet-500/10 hover:border-violet-500/30" title="Reference volatility (standard deviation)">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">σ Ref</span>
+                <div className="flex items-center gap-1.5">
+                  <Sigma className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                  <span className="font-mono text-base font-bold text-foreground">{data.sigma_ref.toFixed(6)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      {/* 3D Surface Chart - Enhanced Container */}
-      <Card className="overflow-hidden">
+      {/* 3D Surface Chart - Premium Interactive Container */}
+      <Card className="overflow-hidden border-primary/10 shadow-lg shadow-primary/5 ring-1 ring-primary/5">
         <CardContent className="p-0">
-          <div className="bg-gradient-to-b from-background to-muted/10 p-4 sm:p-6">
-            <div className="relative w-full rounded-lg overflow-hidden" style={{ height: "480px" }}>
+          <div className="relative bg-gradient-to-br from-slate-950/50 via-background to-primary/5 p-4 sm:p-6">
+            {/* Subtle glow effect behind chart */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
+            <div className="relative w-full rounded-xl overflow-hidden ring-1 ring-white/5 shadow-xl" style={{ height: "500px" }}>
               <Plot
                 data={plotData}
                 layout={layout}
@@ -327,99 +348,130 @@ export function RiskSurfaceChart({
               />
             </div>
           </div>
-          <div className="flex items-center justify-center gap-2 py-3 border-t bg-muted/20">
-            <MousePointer className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Click on the surface to select a trade scenario</span>
+          {/* Interactive CTA - More Engaging */}
+          <div className="flex items-center justify-center gap-3 py-4 border-t bg-gradient-to-r from-primary/5 via-muted/30 to-primary/5">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 border border-primary/20 shadow-sm">
+              <MousePointer className="h-4 w-4 text-primary animate-pulse" />
+              <span className="text-sm">
+                <span className="text-muted-foreground">Click anywhere</span>
+                <span className="text-primary font-medium ml-1">to explore risk scenarios</span>
+              </span>
+            </div>
+            <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary/80">
+              Interactive 3D
+            </Badge>
           </div>
         </CardContent>
       </Card>
 
-      {/* Selected Point Panel - Professional Scenario Insight */}
+      {/* Selected Point Panel - Premium Decision Commitment */}
       {selectedPoint && (
-        <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent animate-in fade-in-50 duration-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              Selected Trade Scenario
+        <Card className="border-l-4 border-l-primary border-primary/20 bg-gradient-to-br from-primary/5 via-background to-transparent shadow-lg animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <CardHeader className="pb-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-primary/15 ring-1 ring-primary/30">
+                  <Target className="h-5 w-5 text-primary animate-pulse" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70 block mb-0.5">Selected Scenario</span>
+                  <CardTitle className="text-lg font-bold">Your Trade Configuration</CardTitle>
+                </div>
+              </div>
               {selectedPoint.calculationMethod && (
                 <Badge 
                   variant={selectedPoint.calculationMethod === "ATR" ? "default" : "outline"} 
                   className={selectedPoint.calculationMethod === "ATR" 
-                    ? "ml-1 text-xs font-mono bg-emerald-600 hover:bg-emerald-700" 
-                    : "ml-1 text-xs font-mono"
+                    ? "text-xs font-mono bg-emerald-600 hover:bg-emerald-700 shadow-sm" 
+                    : "text-xs font-mono"
                   }
                 >
                   {selectedPoint.calculationMethod === "ATR" ? "ATR-based" : "σ-based"}
                 </Badge>
               )}
-            </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Main Metrics Grid */}
+          <CardContent className="space-y-5 pt-5">
+            {/* Main Metrics Grid - Enhanced Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Stop-Loss Card */}
-              <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-2">
+              <div className="p-5 rounded-xl bg-rose-500/5 border border-rose-500/20 shadow-md hover:shadow-lg hover:border-rose-500/30 transition-all duration-200 space-y-3">
                 <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-rose-500" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400">Stop-Loss</span>
+                  <div className="p-1.5 rounded-md bg-rose-500/10">
+                    <TrendingDown className="h-4 w-4 text-rose-500" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Stop-Loss</span>
                 </div>
-                <div className="font-mono text-xl font-bold" title="Stop-loss in standard deviations">
+                <div className="font-mono text-2xl sm:text-3xl font-bold text-foreground" title="Stop-loss in standard deviations">
                   {formatSigma(selectedPoint.slSigma)}σ
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5 pt-2 border-t border-rose-500/10">
                   <div className="text-xs text-muted-foreground">
-                    SL Price: <span className="font-mono">{formatPrice(selectedPoint.slPrice)}</span>
+                    Price: <span className="font-mono font-medium text-foreground">{formatPrice(selectedPoint.slPrice)}</span>
                   </div>
                   {selectedPoint.slPips != null && (
-                    <div className="text-base font-mono font-bold text-rose-600 dark:text-rose-400">
-                      {selectedPoint.slPips.toFixed(1)} <span className="text-xs font-normal">{selectedPoint.pipUnit}</span>
+                    <div className="text-lg font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {selectedPoint.slPips.toFixed(1)} <span className="text-xs font-normal opacity-70">{selectedPoint.pipUnit}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Take-Profit Card */}
-              <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+              <div className="p-5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 shadow-md hover:shadow-lg hover:border-emerald-500/30 transition-all duration-200 space-y-3">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Take-Profit</span>
+                  <div className="p-1.5 rounded-md bg-emerald-500/10">
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Take-Profit</span>
                 </div>
-                <div className="font-mono text-xl font-bold" title="Take-profit in standard deviations">
+                <div className="font-mono text-2xl sm:text-3xl font-bold text-foreground" title="Take-profit in standard deviations">
                   {formatSigma(selectedPoint.tpSigma)}σ
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5 pt-2 border-t border-emerald-500/10">
                   <div className="text-xs text-muted-foreground">
-                    TP Price: <span className="font-mono">{formatPrice(selectedPoint.tpPrice)}</span>
+                    Price: <span className="font-mono font-medium text-foreground">{formatPrice(selectedPoint.tpPrice)}</span>
                   </div>
                   {selectedPoint.tpPips != null && (
-                    <div className="text-base font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {selectedPoint.tpPips.toFixed(1)} <span className="text-xs font-normal">{selectedPoint.pipUnit}</span>
+                    <div className="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      {selectedPoint.tpPips.toFixed(1)} <span className="text-xs font-normal opacity-70">{selectedPoint.pipUnit}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Probability Card */}
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
+              {/* Probability & R/R Card */}
+              <div className="p-5 rounded-xl bg-primary/5 border border-primary/20 shadow-md hover:shadow-lg hover:border-primary/30 transition-all duration-200 space-y-3">
                 <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-primary">Target Probability</span>
+                  <div className="p-1.5 rounded-md bg-primary/10">
+                    <Target className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary">Probability</span>
                 </div>
-                <div className="font-mono text-xl font-bold" title="Probability of hitting TP before SL">
+                <div className="font-mono text-2xl sm:text-3xl font-bold text-foreground" title="Probability of hitting TP before SL">
                   {formatPercent(selectedPoint.targetProb)}
                 </div>
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">
-                    R/R Ratio: <span className="font-mono font-semibold">{(selectedPoint.tpSigma / selectedPoint.slSigma).toFixed(2)}</span>
+                <div className="space-y-1.5 pt-2 border-t border-primary/10">
+                  <div className="text-xs text-muted-foreground">Risk/Reward Ratio</div>
+                  <div className="text-lg font-mono font-bold text-primary">
+                    {(selectedPoint.tpSigma / selectedPoint.slSigma).toFixed(2)} <span className="text-xs font-normal opacity-70">R/R</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Footer with Entry Context */}
-            <div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs text-muted-foreground">
-              <span>Entry Price: <span className="font-mono font-medium text-foreground">{formatPrice(data.entry_price)}</span></span>
-              {symbol && <span>Symbol: <span className="font-medium text-foreground">{symbol}</span></span>}
+            {/* Footer with Entry Context - More Visible */}
+            <div className="flex items-center justify-between pt-4 border-t-2 border-border/30 text-sm">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Entry:</span>
+                <span className="font-mono font-semibold text-foreground">{formatPrice(data.entry_price)}</span>
+              </div>
+              {symbol && (
+                <Badge variant="outline" className="font-medium">
+                  {symbol}
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>
