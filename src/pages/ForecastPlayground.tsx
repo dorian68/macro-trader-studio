@@ -740,7 +740,7 @@ function ForecastPlaygroundContent() {
   // Form state
   const [symbol, setSymbol] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15min");
-  const [horizons, setHorizons] = useState("1, 3, 6");
+  const [horizons, setHorizons] = useState("3");
 
   const [useMonteCarlo, setUseMonteCarlo] = useState(true);
   const [paths, setPaths] = useState(3000);
