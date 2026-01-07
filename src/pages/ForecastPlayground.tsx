@@ -828,9 +828,9 @@ function ForecastPlaygroundContent() {
     };
     
     // ONLY add surface_mode if explicitly selected (not undefined)
-    if (surfaceMode !== undefined) {
-      surfacePayload.surface_mode = surfaceMode;
-    }
+        if (surfaceMode !== undefined) {
+          surfacePayload.methodology = surfaceMode;
+        }
 
     const surfacePromise = fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
       method: "POST",

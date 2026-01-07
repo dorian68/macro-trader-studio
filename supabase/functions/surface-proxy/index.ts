@@ -50,8 +50,8 @@ Deno.serve(async (req) => {
       dof: body.dof ?? 3.0,
       target_prob: body.target_prob ?? { min: 0.05, max: 0.95, steps: 30 },
       sl_sigma: body.sl_sigma ?? { min: 0.1, max: 8.0, steps: 30 },
-      // Pass surface_mode ONLY if present in request (optional field)
-      ...(body.surface_mode && { surface_mode: body.surface_mode }),
+      // Pass methodology ONLY if present in request (optional field)
+      ...(body.methodology && { methodology: body.methodology }),
     };
 
     console.log("[surface-proxy] Forwarding to Surface API:", SURFACE_API_URL);
