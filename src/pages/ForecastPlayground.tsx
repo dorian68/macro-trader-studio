@@ -763,9 +763,9 @@ function ForecastPlaygroundContent() {
   const [surfaceError, setSurfaceError] = useState<string | null>(null);
 
   // Optional enhancement toggles (disabled by default)
-  const [showChart, setShowChart] = useState(false);
+  const [showChart, setShowChart] = useState(true);
   const [showStyledJson, setShowStyledJson] = useState(false);
-  const [showDetailedView, setShowDetailedView] = useState(false);
+  const [showDetailedView, setShowDetailedView] = useState(true);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -1378,7 +1378,7 @@ function ForecastPlaygroundContent() {
               )}
 
               {/* Existing Tabs - Updated to include Risk Surface */}
-              <Tabs defaultValue="predictions" className="w-full">
+              <Tabs defaultValue="risk-surface" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 text-xs sm:text-sm">
                   <TabsTrigger value="predictions">Predictions</TabsTrigger>
                   <TabsTrigger value="risk-surface">Risk Surface</TabsTrigger>
