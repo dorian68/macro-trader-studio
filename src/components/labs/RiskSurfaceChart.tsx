@@ -332,7 +332,7 @@ export function RiskSurfaceChart({
         {/* 3D Surface Chart - Premium Interactive Container */}
         <div className={cn(
           "flex-1 transition-all duration-300 ease-out",
-          selectedPoint ? "lg:max-w-[calc(100%-340px)]" : "w-full"
+          selectedPoint ? "lg:max-w-[calc(100%-280px)]" : "w-full"
         )}>
           <Card className="overflow-hidden border-primary/10 shadow-lg shadow-primary/5 ring-1 ring-primary/5 h-full">
             <CardContent className="p-0">
@@ -374,7 +374,7 @@ export function RiskSurfaceChart({
 
         {/* Selected Point Panel - Slide-in from Right */}
         {selectedPoint && (
-          <div className="w-full lg:w-[324px] flex-shrink-0 animate-in slide-in-from-right-8 fade-in-0 duration-300">
+          <div className="w-full lg:w-fit lg:min-w-[240px] lg:max-w-[280px] flex-shrink-0 animate-in slide-in-from-right-8 fade-in-0 duration-300">
             <Card className="border-l-4 border-l-primary border-primary/20 bg-gradient-to-br from-primary/5 via-background to-transparent shadow-lg h-full">
               <CardHeader className="pb-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-t-lg">
                 <div className="flex items-center justify-between">
