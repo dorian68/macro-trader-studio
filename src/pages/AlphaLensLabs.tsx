@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { mockTrades, MockTrade } from '@/data/mockPortfolio';
 import { cn } from '@/lib/utils';
+import { SuperUserGuard } from '@/components/SuperUserGuard';
+import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
 
-export default function AlphaLensLabs() {
+function AlphaLensLabsContent() {
   const navigate = useNavigate();
   const [isAURAExpanded, setIsAURAExpanded] = useState(false);
 
@@ -134,5 +136,22 @@ export default function AlphaLensLabs() {
         />
       </div>
     </Layout>
+  );
+}
+
+export default function AlphaLensLabs() {
+  return (
+    <SuperUserGuard 
+      fallback={
+        <Layout>
+          <LabsComingSoon 
+            title="AlphaLens Labs" 
+            description="This experimental workspace is currently in private beta and reserved for selected users."
+          />
+        </Layout>
+      }
+    >
+      <AlphaLensLabsContent />
+    </SuperUserGuard>
   );
 }

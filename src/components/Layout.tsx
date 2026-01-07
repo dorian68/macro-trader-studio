@@ -90,15 +90,17 @@ export default function Layout({
 
             {/* Desktop Navigation Items */}
             <div className="hidden lg:flex items-center gap-1">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/alphalens-labs')}
-                className="h-8 px-3"
-              >
-                <Calculator className="h-4 w-4 mr-2" />
-                AlphaLens Labs
-              </Button>
+              {isSuperUser && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/alphalens-labs')}
+                  className="h-8 px-3"
+                >
+                  <Calculator className="h-4 w-4 mr-2" />
+                  AlphaLens Labs
+                </Button>
+              )}
             </div>
 
             {/* Mobile Navigation + Auth + Status */}
@@ -202,13 +204,15 @@ export default function Layout({
                     <FileText className="h-4 w-4 mr-2" />
                     {t('nav.contact')}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => {
-                navigate('/alphalens-labs');
-                setIsMobileMenuOpen(false);
-              }} className="justify-start text-sm">
-                    <Calculator className="h-4 w-4 mr-2" />
-                    AlphaLens Labs
-                  </Button>
+                  {isSuperUser && (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      navigate('/alphalens-labs');
+                      setIsMobileMenuOpen(false);
+                    }} className="justify-start text-sm">
+                      <Calculator className="h-4 w-4 mr-2" />
+                      AlphaLens Labs
+                    </Button>
+                  )}
                   
                   {/* App navigation items for authenticated users */}
                   {user && <>
