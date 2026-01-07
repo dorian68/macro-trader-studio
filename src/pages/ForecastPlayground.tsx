@@ -765,7 +765,7 @@ function ForecastPlaygroundContent() {
   const [surfaceError, setSurfaceError] = useState<string | null>(null);
 
   // Optional enhancement toggles (disabled by default)
-  const [showChart, setShowChart] = useState(true);
+  const [showChart, setShowChart] = useState(false);
   const [showStyledJson, setShowStyledJson] = useState(false);
   const [showDetailedView, setShowDetailedView] = useState(true);
 
