@@ -746,6 +746,8 @@ function ForecastPlaygroundContent() {
   const [paths, setPaths] = useState(3000);
   // Skew parameter for Surface API: 0 = symmetric, >0 = right skew (bullish), <0 = left skew (bearish)
   const [skew, setSkew] = useState(0.0);
+  // Surface methodology: undefined = don't send (default behavior), 'legacy' | 'research' = explicit choice
+  const [surfaceMode, setSurfaceMode] = useState<'legacy' | 'research' | undefined>(undefined);
   const [includePredictions, setIncludePredictions] = useState(true);
   const [includeMetadata, setIncludeMetadata] = useState(false);
   const [includeModelInfo, setIncludeModelInfo] = useState(false);
@@ -813,19 +815,27 @@ function ForecastPlaygroundContent() {
       body: JSON.stringify(requestBody),
     });
 
+    // Build surface payload - only add surface_mode if explicitly selected
+    const surfacePayload: Record<string, unknown> = {
+      symbol,
+      timeframe,
+      horizon_hours: parsedHorizons,
+      skew, // Skew parameter: 0 = symmetric, >0 = right skew, <0 = left skew
+      paths: 1000,
+      dof: 3.0,
+      target_prob: { min: 0.05, max: 0.95, steps: 50 },
+      sl_sigma: { min: 0.1, max: 8.0, steps: 50 },
+    };
+    
+    // ONLY add surface_mode if explicitly selected (not undefined)
+    if (surfaceMode !== undefined) {
+      surfacePayload.surface_mode = surfaceMode;
+    }
+
     const surfacePromise = fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        symbol,
-        timeframe,
-        horizon_hours: parsedHorizons,
-        skew, // Skew parameter: 0 = symmetric, >0 = right skew, <0 = left skew
-        paths: 1000,
-        dof: 3.0,
-        target_prob: { min: 0.05, max: 0.95, steps: 50 },
-        sl_sigma: { min: 0.1, max: 8.0, steps: 50 },
-      }),
+      body: JSON.stringify(surfacePayload),
     });
 
     // Handle forecast API (existing behavior preserved)
@@ -1168,6 +1178,59 @@ function ForecastPlaygroundContent() {
                       className="w-full max-w-[140px] h-8 font-mono"
                     />
                     <p className="text-xs text-muted-foreground">Controls tail risk assumptions</p>
+                  </div>
+
+                  {/* Surface Methodology - Risk Surface only */}
+                  <div className="space-y-3 pt-3 border-t border-border/50">
+                    <Label className="flex items-center gap-2 text-sm">
+                      <Layers className="h-4 w-4 text-muted-foreground" />
+                      Risk Surface Methodology
+                      {surfaceMode && (
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs font-mono ${surfaceMode === 'research' ? 'border-amber-500/50 text-amber-600' : ''}`}
+                        >
+                          {surfaceMode === 'research' ? 'Experimental' : 'Production'}
+                        </Badge>
+                      )}
+                    </Label>
+                    
+                    <RadioGroup
+                      value={surfaceMode ?? 'default'}
+                      onValueChange={(value) => {
+                        if (value === 'default') {
+                          setSurfaceMode(undefined);
+                        } else {
+                          setSurfaceMode(value as 'legacy' | 'research');
+                        }
+                      }}
+                      className="flex flex-wrap gap-3"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="default" id="mode-default" />
+                        <Label htmlFor="mode-default" className="text-sm cursor-pointer font-normal">
+                          Default
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="legacy" id="mode-legacy" />
+                        <Label htmlFor="mode-legacy" className="text-sm cursor-pointer font-normal">
+                          Legacy
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="research" id="mode-research" />
+                        <Label htmlFor="mode-research" className="text-sm cursor-pointer font-normal text-amber-600">
+                          Research
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    
+                    <p className="text-xs text-muted-foreground">
+                      {surfaceMode === 'research' 
+                        ? 'Research enables experimental risk geometry.' 
+                        : 'Legacy uses the production-validated surface model.'}
+                    </p>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
