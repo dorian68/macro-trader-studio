@@ -108,7 +108,7 @@ const App = () => {
                       <Route path="/documentation" element={<Documentation />} />
                       <Route path="/help-center" element={<HelpCenter />} />
                       <Route path="/api" element={<API />} />
-                      <Route path="/alphalens-labs" element={<AlphaLensLabs />} />
+                      <Route path="/alphalens-labs" element={<AuthGuard requireApproval><AlphaLensLabs /></AuthGuard>} />
                       <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
                       <Route path="/labs/scenario-simulator" element={<ScenarioSimulator />} />
                       <Route path="/labs/backtester" element={<Backtester />} />
