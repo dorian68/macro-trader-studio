@@ -53,6 +53,49 @@ const ALLOWED_ASSETS = ["AUD/USD", "EUR/USD", "BTC/USD", "ETH/USD", "XAU/USD", "
 
 const TIMEFRAMES = ["15min", "30min", "1h", "4h"];
 
+// Horizon exploitability configuration per timeframe (all values in hours)
+const HORIZON_CONFIG: Record<string, {
+  exploitable: { min: number; max: number };
+  contextOnly: { min: number; max: number };
+  recommendation: string;
+}> = {
+  "15min": {
+    exploitable: { min: 1, max: 12 },
+    contextOnly: { min: 12, max: 48 },
+    recommendation: "1h – 12h"
+  },
+  "30min": {
+    exploitable: { min: 2, max: 24 },
+    contextOnly: { min: 24, max: 72 },
+    recommendation: "2h – 24h"
+  },
+  "1h": {
+    exploitable: { min: 4, max: 24 },
+    contextOnly: { min: 24, max: 72 },
+    recommendation: "4h – 24h"
+  },
+  "4h": {
+    exploitable: { min: 24, max: 120 },
+    contextOnly: { min: 120, max: 504 },
+    recommendation: "1d – 5d (24h – 120h)"
+  }
+};
+
+type HorizonStatus = 'exploitable' | 'context' | 'invalid';
+
+const getHorizonStatus = (horizonValue: number, timeframe: string): HorizonStatus => {
+  const config = HORIZON_CONFIG[timeframe];
+  if (!config) return 'context';
+  
+  if (horizonValue >= config.exploitable.min && horizonValue <= config.exploitable.max) {
+    return 'exploitable';
+  }
+  if (horizonValue > config.exploitable.max && horizonValue <= config.contextOnly.max) {
+    return 'context';
+  }
+  return 'invalid';
+};
+
 interface RequestInfo {
   params: Record<string, unknown>;
   timestamp: string;
@@ -1064,7 +1107,20 @@ function ForecastPlaygroundContent() {
                 </div>
               </div>
 
-              {/* Horizons input */}
+              {/* Horizon guidance based on timeframe */}
+              <div className="col-span-2">
+                <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10">
+                  <Target className="h-4 w-4 text-primary flex-shrink-0" />
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Recommended horizon: </span>
+                    <span className="font-semibold text-primary">
+                      {HORIZON_CONFIG[timeframe]?.recommendation || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Horizons input with visual feedback */}
               <div className="space-y-2">
                 <Label htmlFor="horizons" className="text-xs font-medium">
                   Horizons
@@ -1073,10 +1129,90 @@ function ForecastPlaygroundContent() {
                   id="horizons"
                   value={horizons}
                   onChange={(e) => setHorizons(e.target.value)}
-                  placeholder="3"
+                  placeholder="24"
                   className="h-9 font-mono"
                 />
                 <p className="text-xs text-muted-foreground">Forecast horizons in hours (comma-separated)</p>
+                
+                {/* Visual horizon status badges */}
+                {horizons.trim() && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {horizons.split(",").map((h, idx) => {
+                      const value = parseInt(h.trim(), 10);
+                      if (isNaN(value) || value <= 0) return null;
+                      const status = getHorizonStatus(value, timeframe);
+                      
+                      return (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className={
+                            status === 'exploitable' 
+                              ? "text-xs font-mono border-emerald-500/50 bg-emerald-50/50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                              : status === 'context'
+                              ? "text-xs font-mono border-amber-500/50 bg-amber-50/50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                              : "text-xs font-mono border-rose-500/50 bg-rose-50/50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400"
+                          }
+                        >
+                          {status === 'exploitable' && "✓"}
+                          {status === 'context' && "⚠"}
+                          {status === 'invalid' && "✗"}
+                          {" "}{value}h
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Soft warning for non-exploitable horizons */}
+                {horizons.trim() && (() => {
+                  const parsed = horizons.split(",")
+                    .map(h => parseInt(h.trim(), 10))
+                    .filter(h => !isNaN(h) && h > 0);
+                  
+                  const hasContextOnly = parsed.some(h => getHorizonStatus(h, timeframe) === 'context');
+                  const hasInvalid = parsed.some(h => getHorizonStatus(h, timeframe) === 'invalid');
+                  
+                  if (hasInvalid) {
+                    return (
+                      <Alert variant="destructive" className="mt-3 py-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          Beyond {HORIZON_CONFIG[timeframe]?.contextOnly.max || 72}h, NeuralProphet forecasts mainly replay seasonality and should be interpreted as structural context, not trade signals.
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  
+                  if (hasContextOnly) {
+                    return (
+                      <Alert className="mt-3 py-2 border-amber-500/50 bg-amber-50/30 dark:bg-amber-950/20">
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="text-xs text-amber-700 dark:text-amber-400">
+                          Some horizons are in context-only zone. Forecasts reflect seasonality patterns rather than high-conviction trade signals.
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  
+                  return null;
+                })()}
+
+                {/* Horizon zone legend */}
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-2 border-t mt-3">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Exploitable
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                    Context-only
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    Non-exploitable
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
