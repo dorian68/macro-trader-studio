@@ -51,7 +51,7 @@ import {
 
 const ALLOWED_ASSETS = ["AUD/USD", "EUR/USD", "BTC/USD", "ETH/USD", "XAU/USD", "XLM/USD"];
 
-const TIMEFRAMES = ["15min"];
+const TIMEFRAMES = ["15min", "30min", "1h", "4h"];
 
 interface RequestInfo {
   params: Record<string, unknown>;
