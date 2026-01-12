@@ -50,9 +50,10 @@ import {
   computeSteps,
 } from "@/lib/forecastUtils";
 import {
-  getMarketFrictionSigma,
+  getAsymmetricFriction,
   getAssetClassLabel,
-  FRICTION_TOOLTIP,
+  ASYMMETRIC_FRICTION_TOOLTIP,
+  DEFAULT_TRADING_STYLE,
 } from "@/lib/marketFrictions";
 import {
   interpolateProbability,
@@ -322,35 +323,38 @@ function RiskProfilesPanel({
   const pipSize = symbol ? pipSizeForSymbol(symbol) : 0.0001;
   const pipUnit = symbol ? pipUnitLabel(symbol) : "pips";
 
-  // NEW: Market Friction calculation
+  // NEW: Asymmetric Market Friction calculation
   const frictionInfo = symbol && timeframe 
-    ? getMarketFrictionSigma(symbol, timeframe) 
-    : { frictionSigma: 0, enabled: false, assetClass: 'fx_major' as const };
-  const frictionSigma = frictionInfo.enabled ? frictionInfo.frictionSigma : 0;
+    ? getAsymmetricFriction(symbol, timeframe, DEFAULT_TRADING_STYLE) 
+    : { slFriction: 0, tpFriction: 0, alpha: 0.20, enabled: false, assetClass: 'fx_major' as const, tradingStyle: 'intraday' as const, baseFriction: 0 };
+  
+  const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
+  const tpFriction = frictionInfo.enabled ? frictionInfo.tpFriction : 0;
 
-  // Calculate profiles using ATR (priority) or sigma (fallback) WITH FRICTION
+  // Calculate profiles using ATR (priority) or sigma (fallback) WITH ASYMMETRIC FRICTION
   const profiles = Object.entries(RISK_PROFILES).map(([key, profile]) => {
     let tpPrice: number, slPrice: number, tpDistance: number, slDistance: number;
     
-    // Apply friction to SL sigma (wider SL to account for market microstructure)
-    const slSigmaWithFriction = profile.slSigma + frictionSigma;
+    // Apply ASYMMETRIC friction: 100% to SL, α to TP
+    const slSigmaWithFriction = profile.slSigma + slFriction;
+    const tpSigmaWithFriction = profile.tpSigma + tpFriction;
 
     if (useATR) {
-      // NEW: Use ATR-based calculation (priority) with friction
+      // NEW: Use ATR-based calculation (priority) with asymmetric friction
       const result = tpSlFromATR(
         entryPrice,
         direction,
         atr as number,
-        profile.tpSigma, // TP unchanged
-        slSigmaWithFriction, // SL with friction applied
+        tpSigmaWithFriction, // TP with α × friction
+        slSigmaWithFriction, // SL with 100% friction
       );
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
       tpDistance = result.tpDistance;
       slDistance = result.slDistance;
     } else {
-      // FALLBACK: Existing sigma-based logic with friction
-      const result = tpSlFromSigmas(entryPrice, direction, sigmaH as number, profile.tpSigma, slSigmaWithFriction);
+      // FALLBACK: Existing sigma-based logic with asymmetric friction
+      const result = tpSlFromSigmas(entryPrice, direction, sigmaH as number, tpSigmaWithFriction, slSigmaWithFriction);
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
       tpDistance = result.tpDistance;
@@ -361,8 +365,8 @@ function RiskProfilesPanel({
     const slPips = priceDistanceToPips(slDistance, pipSize);
     const riskReward = slDistance > 0 ? tpDistance / slDistance : 0;
 
-    // NEW: Interpolate probability from Risk Surface with effective SL
-    const interpolationResult = interpolateProbability(surface, slSigmaWithFriction, profile.tpSigma);
+    // NEW: Interpolate probability from Risk Surface with BOTH effective levels
+    const interpolationResult = interpolateProbability(surface, slSigmaWithFriction, tpSigmaWithFriction);
     
     // Use interpolated probability if available, otherwise fall back to strategic
     const effectiveProb = interpolationResult.isInterpolated 
@@ -374,6 +378,8 @@ function RiskProfilesPanel({
       ...profile,
       slSigmaBase: profile.slSigma,
       slSigmaFinal: slSigmaWithFriction,
+      tpSigmaBase: profile.tpSigma,
+      tpSigmaFinal: tpSigmaWithFriction,
       tpPrice,
       slPrice,
       tpPips,
@@ -412,8 +418,8 @@ function RiskProfilesPanel({
           <span className="text-sm font-semibold">Suggested TP/SL based on risk appetite</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Friction Badge */}
-          {frictionInfo.enabled && frictionSigma > 0 && (
+          {/* Asymmetric Friction Badge */}
+          {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -421,11 +427,11 @@ function RiskProfilesPanel({
                     variant="outline" 
                     className="text-xs font-mono border-amber-500/50 text-amber-600 bg-amber-500/10 dark:text-amber-400"
                   >
-                    +{frictionSigma.toFixed(2)}σ Friction ({getAssetClassLabel(frictionInfo.assetClass)})
+                    +{slFriction.toFixed(2)}σ SL / +{tpFriction.toFixed(2)}σ TP (α={frictionInfo.alpha.toFixed(2)}, {getAssetClassLabel(frictionInfo.assetClass)})
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
-                  <p className="text-xs">{FRICTION_TOOLTIP}</p>
+                  <p className="text-xs">{ASYMMETRIC_FRICTION_TOOLTIP}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -457,29 +463,45 @@ function RiskProfilesPanel({
                       <Info className="h-3 w-3 text-muted-foreground" />
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">Probability recalculated from risk surface using effective SL (with friction). ✓ = interpolated, ⚠ = strategic fallback.</p>
+                      <p className="text-xs">Probability recalculated from risk surface using effective SL & TP (with asymmetric friction). ✓ = interpolated, ⚠ = strategic fallback.</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Base (σ)</TableHead>
-              {frictionInfo.enabled && frictionSigma > 0 && (
+              {frictionInfo.enabled && slFriction > 0 && (
                 <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger className="flex items-center gap-1 justify-end">
-                        +Friction
+                        +SL Friction
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
-                        <p className="text-xs">{FRICTION_TOOLTIP}</p>
+                        <p className="text-xs">{ASYMMETRIC_FRICTION_TOOLTIP}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </TableHead>
               )}
-              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Final (σ)</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP (σ)</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Eff. (σ)</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Base (σ)</TableHead>
+              {frictionInfo.enabled && tpFriction > 0 && (
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1 justify-end">
+                        +TP Friction (α)
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">TP friction = α × base friction (α={frictionInfo.alpha.toFixed(2)})</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+              )}
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Eff. (σ)</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Price</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Price</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL ({pipUnit})</TableHead>
@@ -520,16 +542,24 @@ function RiskProfilesPanel({
                 <TableCell className="text-right font-mono text-muted-foreground">
                   {p.slSigmaBase.toFixed(2)}
                 </TableCell>
-                {frictionInfo.enabled && frictionSigma > 0 && (
+                {frictionInfo.enabled && slFriction > 0 && (
                   <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
-                    +{frictionSigma.toFixed(2)}
+                    +{slFriction.toFixed(2)}
                   </TableCell>
                 )}
                 <TableCell className="text-right font-mono text-rose-600 dark:text-rose-400 font-semibold">
                   {p.slSigmaFinal.toFixed(2)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
-                  {p.tpSigma.toFixed(2)}
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {p.tpSigmaBase.toFixed(2)}
+                </TableCell>
+                {frictionInfo.enabled && tpFriction > 0 && (
+                  <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
+                    +{tpFriction.toFixed(2)}
+                  </TableCell>
+                )}
+                <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                  {p.tpSigmaFinal.toFixed(2)}
                 </TableCell>
                 <TableCell className="text-right font-mono text-rose-600 dark:text-rose-400">
                   {formatPrice(p.slPrice)}
@@ -552,7 +582,7 @@ function RiskProfilesPanel({
       <p className="text-xs text-muted-foreground italic">
         {direction === "long" ? "LONG" : "SHORT"} position: TP {direction === "long" ? "above" : "below"} entry, SL{" "}
         {direction === "long" ? "below" : "above"} entry
-        {frictionInfo.enabled && frictionSigma > 0 && ` • SL includes +${frictionSigma.toFixed(2)}σ market friction buffer`}
+        {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && ` • Asymmetric friction: +${slFriction.toFixed(2)}σ SL / +${tpFriction.toFixed(2)}σ TP (α=${frictionInfo.alpha.toFixed(2)})`}
         {surface && " • Probability interpolated from risk surface"}
       </p>
     </div>

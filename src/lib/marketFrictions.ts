@@ -17,6 +17,27 @@ export const ENABLE_FRICTION_ADJUSTMENT = true;
 // ============ TYPES ============
 export type AssetClass = 'fx_major' | 'crypto_major' | 'altcoin';
 
+/**
+ * Trading style for asymmetric TP friction coefficient (α)
+ * - scalping: Very tight TP, minimal friction → α = 0.10
+ * - intraday: Standard mean reversion → α = 0.20 (default)
+ * - breakout: Trend following, wider moves → α = 0.30
+ */
+export type TradingStyle = 'scalping' | 'intraday' | 'breakout';
+
+/**
+ * TP friction coefficient (α) by trading style
+ * Controls how much of the base friction applies to TP
+ * α ∈ [0.10, 0.30] — never exceeds 0.30 per specification
+ */
+export const TP_FRICTION_ALPHA: Record<TradingStyle, number> = {
+  scalping: 0.10,
+  intraday: 0.20,
+  breakout: 0.30,
+};
+
+export const DEFAULT_TRADING_STYLE: TradingStyle = 'intraday';
+
 export interface FrictionResult {
   assetClass: AssetClass;
   frictionSigma: number;
@@ -29,6 +50,20 @@ export interface SLWithFriction {
   frictionSigma: number;
   finalSL: number;
   assetClass: AssetClass;
+}
+
+/**
+ * Asymmetric friction result for SL and TP
+ * SL receives 100% of friction, TP receives α × friction
+ */
+export interface AsymmetricFrictionResult {
+  slFriction: number;      // 100% of σ_friction (applied to SL)
+  tpFriction: number;      // α × σ_friction (applied to TP)
+  alpha: number;           // Coefficient used for TP
+  tradingStyle: TradingStyle;
+  assetClass: AssetClass;
+  baseFriction: number;    // Raw σ_friction before asymmetric split
+  enabled: boolean;
 }
 
 // ============ FRICTION CONFIGURATION ============
@@ -191,7 +226,61 @@ export function getFrictionDisplayString(symbol: string, timeframe: string): str
 }
 
 /**
+ * Get asymmetric friction adjustments for SL and TP
+ * 
+ * SL_effective = SL_strat + σ_friction (100% friction)
+ * TP_effective = TP_strat + α × σ_friction (partial friction)
+ * 
+ * @param symbol - Trading symbol for asset classification
+ * @param timeframe - Timeframe for friction lookup
+ * @param tradingStyle - Trading style to determine α coefficient (default: intraday)
+ * @returns AsymmetricFrictionResult with SL and TP friction values
+ */
+export function getAsymmetricFriction(
+  symbol: string,
+  timeframe: string,
+  tradingStyle: TradingStyle = DEFAULT_TRADING_STYLE
+): AsymmetricFrictionResult {
+  const baseFriction = getMarketFrictionSigma(symbol, timeframe);
+  const alpha = TP_FRICTION_ALPHA[tradingStyle];
+  
+  return {
+    slFriction: baseFriction.frictionSigma, // 100% to SL
+    tpFriction: baseFriction.frictionSigma * alpha, // α% to TP
+    alpha,
+    tradingStyle,
+    assetClass: baseFriction.assetClass,
+    baseFriction: baseFriction.frictionSigma,
+    enabled: baseFriction.enabled,
+  };
+}
+
+/**
+ * Get asymmetric friction display string
+ * Example: "+0.80σ SL / +0.16σ TP (α=0.20, Intraday)"
+ */
+export function getAsymmetricFrictionDisplayString(
+  symbol: string, 
+  timeframe: string,
+  tradingStyle: TradingStyle = DEFAULT_TRADING_STYLE
+): string {
+  const friction = getAsymmetricFriction(symbol, timeframe, tradingStyle);
+  if (!friction.enabled) return '';
+  
+  const styleLabel = tradingStyle.charAt(0).toUpperCase() + tradingStyle.slice(1);
+  return `+${friction.slFriction.toFixed(2)}σ SL / +${friction.tpFriction.toFixed(2)}σ TP (α=${friction.alpha.toFixed(2)}, ${styleLabel})`;
+}
+
+/**
  * Tooltip content explaining market frictions
  */
 export const FRICTION_TOOLTIP = 
   "This adjustment accounts for spread, slippage, and market noise. It is fully reflected in the probability via the risk surface, ensuring consistency between execution and forecast.";
+
+/**
+ * Tooltip content explaining asymmetric frictions
+ */
+export const ASYMMETRIC_FRICTION_TOOLTIP = 
+  "Market frictions (spread, slippage, and intrabar noise) are applied asymmetrically: " +
+  "primarily to the stop-loss and marginally to the take-profit. " +
+  "All probabilities are recomputed using the effective levels via the risk surface.";
