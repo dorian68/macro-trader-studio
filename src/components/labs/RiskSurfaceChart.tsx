@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Target, TrendingUp, TrendingDown, AlertCircle, MousePointer, DollarSign, Activity, Sigma, X } from "lucide-react";
+import { Target, TrendingUp, TrendingDown, AlertCircle, MousePointer, DollarSign, Activity, Sigma, X, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   pipSizeForSymbol,
@@ -14,6 +14,18 @@ import {
   sigmaHFromSigmaRef,
   priceDistanceToPips
 } from "@/lib/forecastUtils";
+import {
+  getMarketFrictionSigma,
+  getAssetClassLabel,
+  FRICTION_TOOLTIP,
+  ENABLE_FRICTION_ADJUSTMENT,
+} from "@/lib/marketFrictions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Interface for Surface API response
 export interface SurfaceApiResponse {
@@ -32,15 +44,18 @@ export interface SurfaceApiResponse {
 }
 
 interface SelectedPoint {
-  slSigma: number;
+  slSigma: number;           // Base SL sigma from surface click
+  frictionSigma: number;     // Market friction adjustment (σ)
+  slSigmaFinal: number;      // Final SL = base + friction
   tpSigma: number;
   targetProb: number;
-  slPrice: number;
+  slPrice: number;           // Price calculated with finalSL
   tpPrice: number;
-  slPips?: number;
+  slPips?: number;           // Pips calculated with finalSL
   tpPips?: number;
   pipUnit?: string;
-  calculationMethod?: "ATR" | "σ";  // Indicates which method was used for price/pip calculation
+  calculationMethod?: "ATR" | "σ";
+  assetClass?: string;       // For display (e.g., "FX Major")
 }
 
 interface RiskSurfaceChartProps {
@@ -81,18 +96,26 @@ export function RiskSurfaceChart({
     if (!data || !event.points || event.points.length === 0) return;
     
     const point = event.points[0];
-    const slSigma = point.x as number;      // X is now Stop-Loss
+    const slSigma = point.x as number;      // X is now Stop-Loss (base)
     const targetProb = point.y as number;   // Y is now Target Probability
     const pointData = point as unknown as { z: number };
     const tpSigma = pointData.z;
 
     if (typeof tpSigma !== 'number') return;
 
+    // Get market friction adjustment
+    const frictionInfo = symbol && timeframe 
+      ? getMarketFrictionSigma(symbol, timeframe)
+      : { frictionSigma: 0, assetClass: 'fx_major' as const, enabled: false };
+    
+    const frictionSigma = frictionInfo.enabled ? frictionInfo.frictionSigma : 0;
+    const slSigmaFinal = slSigma + frictionSigma;
+
     // Determine calculation method: ATR (priority) or sigma (fallback)
     const useATR = data.atr != null && data.atr > 0;
 
-    // Calculate SL/TP prices using ATR or sigma_ref
-    const slPrice = calculatePrice(slSigma, data.entry_price, data.sigma_ref, data.atr, true);
+    // Calculate SL/TP prices using final SL (with friction) for ATR or sigma_ref
+    const slPrice = calculatePrice(slSigmaFinal, data.entry_price, data.sigma_ref, data.atr, true);
     const tpPrice = calculatePrice(tpSigma, data.entry_price, data.sigma_ref, data.atr, false);
 
     // Calculate pips if symbol is available
@@ -106,18 +129,18 @@ export function RiskSurfaceChart({
       pipUnit = pipUnitLabel(symbol);
       
       if (useATR && data.atr) {
-        // ATR-based calculation
-        const slDistance = slSigma * data.atr;
+        // ATR-based calculation with final SL
+        const slDistance = slSigmaFinal * data.atr;
         const tpDistance = tpSigma * data.atr;
         slPips = priceDistanceToPips(slDistance, pipSize);
         tpPips = priceDistanceToPips(tpDistance, pipSize);
         calculationMethod = "ATR";
       } else if (timeframe && data.sigma_ref) {
-        // Fallback: Sigma-based calculation
+        // Fallback: Sigma-based calculation with final SL
         const horizon = horizonHours ?? 1;
         const steps = computeSteps(horizon, timeframe);
         const sigmaH = sigmaHFromSigmaRef(data.sigma_ref, steps);
-        const slDistance = data.entry_price * (slSigma * sigmaH);
+        const slDistance = data.entry_price * (slSigmaFinal * sigmaH);
         const tpDistance = data.entry_price * (tpSigma * sigmaH);
         slPips = priceDistanceToPips(slDistance, pipSize);
         tpPips = priceDistanceToPips(tpDistance, pipSize);
@@ -127,6 +150,8 @@ export function RiskSurfaceChart({
 
     setSelectedPoint({
       slSigma,
+      frictionSigma,
+      slSigmaFinal,
       tpSigma,
       targetProb,
       slPrice,
@@ -135,6 +160,7 @@ export function RiskSurfaceChart({
       tpPips,
       pipUnit,
       calculationMethod,
+      assetClass: frictionInfo.enabled ? getAssetClassLabel(frictionInfo.assetClass) : undefined,
     });
   }, [data, calculatePrice, symbol, timeframe, horizonHours]);
 
@@ -410,17 +436,53 @@ export function RiskSurfaceChart({
                 )}
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
-                {/* Stop-Loss Card */}
+                {/* Stop-Loss Card - With Friction Breakdown */}
                 <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-md bg-rose-500/10">
-                      <TrendingDown className="h-4 w-4 text-rose-500" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-md bg-rose-500/10">
+                        <TrendingDown className="h-4 w-4 text-rose-500" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Stop-Loss</span>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Stop-Loss</span>
+                    {selectedPoint.frictionSigma > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-[10px] font-mono bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
+                              +{selectedPoint.frictionSigma.toFixed(2)}σ friction
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-xs text-sm">
+                            {FRICTION_TOOLTIP}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
-                  <div className="font-mono text-2xl font-bold text-foreground" title="Stop-loss in standard deviations">
-                    {formatSigma(selectedPoint.slSigma)}σ
-                  </div>
+                  
+                  {/* Sigma breakdown */}
+                  {selectedPoint.frictionSigma > 0 ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Base</span>
+                        <span className="font-mono text-muted-foreground">{formatSigma(selectedPoint.slSigma)}σ</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-amber-600 dark:text-amber-400">+ Friction</span>
+                        <span className="font-mono text-amber-600 dark:text-amber-400">+{formatSigma(selectedPoint.frictionSigma)}σ</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-rose-500/20">
+                        <span className="font-semibold text-rose-600 dark:text-rose-400">Final</span>
+                        <span className="font-mono text-2xl font-bold text-foreground">{formatSigma(selectedPoint.slSigmaFinal)}σ</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="font-mono text-2xl font-bold text-foreground" title="Stop-loss in standard deviations">
+                      {formatSigma(selectedPoint.slSigma)}σ
+                    </div>
+                  )}
+                  
                   <div className="space-y-1 pt-2 border-t border-rose-500/10">
                     <div className="text-xs text-muted-foreground">
                       Price: <span className="font-mono font-medium text-foreground">{formatPrice(selectedPoint.slPrice)}</span>
@@ -470,7 +532,7 @@ export function RiskSurfaceChart({
                   <div className="space-y-1 pt-2 border-t border-primary/10">
                     <div className="text-xs text-muted-foreground">Risk/Reward Ratio</div>
                     <div className="text-base font-mono font-bold text-primary">
-                      {(selectedPoint.tpSigma / selectedPoint.slSigma).toFixed(2)} <span className="text-xs font-normal opacity-70">R/R</span>
+                      {(selectedPoint.tpSigma / selectedPoint.slSigmaFinal).toFixed(2)} <span className="text-xs font-normal opacity-70">R/R</span>
                     </div>
                   </div>
                 </div>

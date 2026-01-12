@@ -34,9 +34,10 @@ import {
   Zap,
   Target,
   Layers,
+  Info,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from "recharts";
 import {
   RISK_PROFILES,
   pipSizeForSymbol,
@@ -44,10 +45,21 @@ import {
   sigmaHProxyFromQuantiles,
   sigmaHFromSigmaRef,
   tpSlFromSigmas,
-  tpSlFromATR, // NEW: ATR-based TP/SL calculation
+  tpSlFromATR,
   priceDistanceToPips,
   computeSteps,
 } from "@/lib/forecastUtils";
+import {
+  getMarketFrictionSigma,
+  getAssetClassLabel,
+  FRICTION_TOOLTIP,
+} from "@/lib/marketFrictions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ALLOWED_ASSETS = ["AUD/USD", "EUR/USD", "BTC/USD", "ETH/USD", "XAU/USD", "XLM/USD"];
 
@@ -1490,7 +1502,7 @@ function ForecastPlaygroundContent() {
                               domain={["auto", "auto"]}
                               width={70}
                             />
-                            <Tooltip
+                            <RechartsTooltip
                               contentStyle={{
                                 backgroundColor: "hsl(var(--card))",
                                 border: "1px solid hsl(var(--border))",
