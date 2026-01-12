@@ -364,14 +364,10 @@ function RiskProfilesPanel({
     const slPips = priceDistanceToPips(slDistance, pipSize);
     const riskReward = slDistance > 0 ? tpDistance / slDistance : 0;
 
-    // CRITICAL: Interpolate probability from Risk Surface using BASE levels (friction-free)
-    // This ensures probability remains stable and model-consistent
-    const interpolationResult = interpolateProbability(surface, profile.slSigma, profile.tpSigma);
-    
-    // Use interpolated probability if available, otherwise fall back to strategic
-    const effectiveProb = interpolationResult.isInterpolated 
-      ? interpolationResult.probability 
-      : profile.targetProb;
+    // Risk Profiles use their STRATEGIC targetProb (source of truth)
+    // These are predefined profiles with intentional risk philosophy
+    // Interpolation is NOT used here - it's for interactive surface exploration only
+    const effectiveProb = profile.targetProb;
     
     return {
       key,
@@ -386,8 +382,8 @@ function RiskProfilesPanel({
       slPips,
       riskReward,
       effectiveProb,
-      isInterpolated: interpolationResult.isInterpolated,
-      interpolationDescription: getInterpolationDescription(interpolationResult),
+      isInterpolated: false,
+      interpolationDescription: "Strategic probability (profile design)",
     };
   });
 
