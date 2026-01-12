@@ -316,26 +316,35 @@ function RiskProfilesPanel({
   const pipSize = symbol ? pipSizeForSymbol(symbol) : 0.0001;
   const pipUnit = symbol ? pipUnitLabel(symbol) : "pips";
 
-  // Calculate profiles using ATR (priority) or sigma (fallback)
+  // NEW: Market Friction calculation
+  const frictionInfo = symbol && timeframe 
+    ? getMarketFrictionSigma(symbol, timeframe) 
+    : { frictionSigma: 0, enabled: false, assetClass: 'fx_major' as const };
+  const frictionSigma = frictionInfo.enabled ? frictionInfo.frictionSigma : 0;
+
+  // Calculate profiles using ATR (priority) or sigma (fallback) WITH FRICTION
   const profiles = Object.entries(RISK_PROFILES).map(([key, profile]) => {
     let tpPrice: number, slPrice: number, tpDistance: number, slDistance: number;
+    
+    // Apply friction to SL sigma (wider SL to account for market microstructure)
+    const slSigmaWithFriction = profile.slSigma + frictionSigma;
 
     if (useATR) {
-      // NEW: Use ATR-based calculation (priority)
+      // NEW: Use ATR-based calculation (priority) with friction
       const result = tpSlFromATR(
         entryPrice,
         direction,
         atr as number,
-        profile.tpSigma, // Use same multipliers as sigma (k_TP)
-        profile.slSigma, // k_SL
+        profile.tpSigma, // TP unchanged
+        slSigmaWithFriction, // SL with friction applied
       );
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
       tpDistance = result.tpDistance;
       slDistance = result.slDistance;
     } else {
-      // FALLBACK: Existing sigma-based logic (unchanged)
-      const result = tpSlFromSigmas(entryPrice, direction, sigmaH as number, profile.tpSigma, profile.slSigma);
+      // FALLBACK: Existing sigma-based logic with friction
+      const result = tpSlFromSigmas(entryPrice, direction, sigmaH as number, profile.tpSigma, slSigmaWithFriction);
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
       tpDistance = result.tpDistance;
@@ -349,6 +358,8 @@ function RiskProfilesPanel({
     return {
       key,
       ...profile,
+      slSigmaBase: profile.slSigma,
+      slSigmaFinal: slSigmaWithFriction,
       tpPrice,
       slPrice,
       tpPips,
@@ -378,23 +389,43 @@ function RiskProfilesPanel({
 
   return (
     <div className="p-4 space-y-3 bg-gradient-to-b from-muted/30 to-muted/10 animate-in slide-in-from-top-2 duration-200">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">Suggested TP/SL based on risk appetite</span>
         </div>
-        {useATR ? (
-          <Badge
-            className="text-xs font-mono bg-emerald-600 hover:bg-emerald-700"
-            title="Using ATR(14) for TP/SL calculation"
-          >
-            {calculationLabel}
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="text-xs font-mono" title="Using sigma-based calculation">
-            {calculationLabel}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Friction Badge */}
+          {frictionInfo.enabled && frictionSigma > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs font-mono border-amber-500/50 text-amber-600 bg-amber-500/10 dark:text-amber-400"
+                  >
+                    +{frictionSigma.toFixed(2)}σ Friction ({getAssetClassLabel(frictionInfo.assetClass)})
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-xs">{FRICTION_TOOLTIP}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {useATR ? (
+            <Badge
+              className="text-xs font-mono bg-emerald-600 hover:bg-emerald-700"
+              title="Using ATR(14) for TP/SL calculation"
+            >
+              {calculationLabel}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs font-mono" title="Using sigma-based calculation">
+              {calculationLabel}
+            </Badge>
+          )}
+        </div>
       </div>
       <div className="rounded-lg border overflow-x-auto bg-background/80 backdrop-blur-sm">
         <Table className="text-sm">
@@ -402,7 +433,23 @@ function RiskProfilesPanel({
             <TableRow className="bg-muted/30 border-b">
               <TableHead className="text-xs font-semibold uppercase tracking-wide">Profile</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-center">Target Prob</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL (σ)</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Base (σ)</TableHead>
+              {frictionInfo.enabled && frictionSigma > 0 && (
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1 justify-end">
+                        +Friction
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">{FRICTION_TOOLTIP}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+              )}
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Final (σ)</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP (σ)</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Price</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Price</TableHead>
@@ -420,8 +467,16 @@ function RiskProfilesPanel({
                   </Badge>
                 </TableCell>
                 <TableCell className="font-mono text-center">{(p.targetProb * 100).toFixed(0)}%</TableCell>
-                <TableCell className="text-right font-mono text-rose-600 dark:text-rose-400">
-                  {p.slSigma.toFixed(2)}
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {p.slSigmaBase.toFixed(2)}
+                </TableCell>
+                {frictionInfo.enabled && frictionSigma > 0 && (
+                  <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
+                    +{frictionSigma.toFixed(2)}
+                  </TableCell>
+                )}
+                <TableCell className="text-right font-mono text-rose-600 dark:text-rose-400 font-semibold">
+                  {p.slSigmaFinal.toFixed(2)}
                 </TableCell>
                 <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
                   {p.tpSigma.toFixed(2)}
@@ -447,6 +502,7 @@ function RiskProfilesPanel({
       <p className="text-xs text-muted-foreground italic">
         {direction === "long" ? "LONG" : "SHORT"} position: TP {direction === "long" ? "above" : "below"} entry, SL{" "}
         {direction === "long" ? "below" : "above"} entry
+        {frictionInfo.enabled && frictionSigma > 0 && ` • SL includes +${frictionSigma.toFixed(2)}σ market friction buffer`}
       </p>
     </div>
   );
@@ -558,7 +614,17 @@ function ForecastSummaryTable({
                 TP
               </TableHead>
               <TableHead className="font-semibold text-xs uppercase tracking-wide text-right whitespace-nowrap">
-                SL
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="flex items-center gap-1 justify-end">
+                      SL (strat.)
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">Strategic SL from API. Expand row to see Risk Profiles with Market Frictions applied.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </TableHead>
               <TableHead className="font-semibold text-xs uppercase tracking-wide text-right whitespace-nowrap">
                 R/R
@@ -706,6 +772,14 @@ function ForecastSummaryTable({
             })}
           </TableBody>
         </Table>
+      </div>
+      
+      {/* Friction note */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Info className="h-3.5 w-3.5" />
+        <span>
+          TP/SL values above are strategic (from API). <strong>Expand rows</strong> to view Risk Profiles with Market Frictions applied.
+        </span>
       </div>
     </div>
   );
