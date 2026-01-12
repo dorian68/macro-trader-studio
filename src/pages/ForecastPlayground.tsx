@@ -50,12 +50,9 @@ import {
   computeSteps,
 } from "@/lib/forecastUtils";
 import {
-  getAsymmetricFriction,
+  getSymmetricFriction,
   getAssetClassLabel,
-  ASYMMETRIC_FRICTION_TOOLTIP,
-  DEFAULT_TRADING_STYLE,
-  TP_FRICTION_ALPHA,
-  type TradingStyle,
+  SYMMETRIC_FRICTION_TOOLTIP,
 } from "@/lib/marketFrictions";
 import {
   interpolateProbability,
@@ -278,7 +275,6 @@ function RiskProfilesPanel({
   timeframe,
   atr, // NEW: ATR from surface API (optional)
   surface, // NEW: Risk surface data for probability interpolation
-  tradingStyle = DEFAULT_TRADING_STYLE, // Trading style for asymmetric friction
 }: {
   horizonData: HorizonForecast;
   symbol?: string;
@@ -286,7 +282,6 @@ function RiskProfilesPanel({
   timeframe?: string;
   atr?: number; // NEW: ATR(14) in price units
   surface?: SurfaceApiResponse['surface']; // NEW: For probability interpolation
-  tradingStyle?: TradingStyle; // Trading style (scalping/intraday/breakout)
 }) {
   const entryPrice = horizonData.entry_price;
   const direction = (horizonData.direction?.toLowerCase() || "long") as "long" | "short";
@@ -327,37 +322,37 @@ function RiskProfilesPanel({
   const pipSize = symbol ? pipSizeForSymbol(symbol) : 0.0001;
   const pipUnit = symbol ? pipUnitLabel(symbol) : "pips";
 
-  // NEW: Asymmetric Market Friction calculation
+  // NEW: SYMMETRIC Market Friction calculation (50%/50% split)
   const frictionInfo = symbol && timeframe 
-    ? getAsymmetricFriction(symbol, timeframe, tradingStyle)
-    : { slFriction: 0, tpFriction: 0, alpha: 0.20, enabled: false, assetClass: 'fx_major' as const, tradingStyle: 'intraday' as const, baseFriction: 0 };
+    ? getSymmetricFriction(symbol, timeframe)
+    : { slFriction: 0, tpFriction: 0, enabled: false, assetClass: 'fx_major' as const, baseFriction: 0 };
   
   const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
   const tpFriction = frictionInfo.enabled ? frictionInfo.tpFriction : 0;
 
-  // Calculate profiles using ATR (priority) or sigma (fallback) WITH ASYMMETRIC FRICTION
+  // Calculate profiles using ATR (priority) or sigma (fallback) WITH SYMMETRIC FRICTION
   const profiles = Object.entries(RISK_PROFILES).map(([key, profile]) => {
     let tpPrice: number, slPrice: number, tpDistance: number, slDistance: number;
     
-    // Apply ASYMMETRIC friction: 100% to SL, α to TP
+    // Apply SYMMETRIC friction: 50% to SL, 50% to TP (for DISPLAY/EXECUTION only)
     const slSigmaWithFriction = profile.slSigma + slFriction;
     const tpSigmaWithFriction = profile.tpSigma + tpFriction;
 
     if (useATR) {
-      // NEW: Use ATR-based calculation (priority) with asymmetric friction
+      // Use ATR-based calculation (priority) with symmetric friction for prices
       const result = tpSlFromATR(
         entryPrice,
         direction,
         atr as number,
-        tpSigmaWithFriction, // TP with α × friction
-        slSigmaWithFriction, // SL with 100% friction
+        tpSigmaWithFriction, // TP with 50% friction (display)
+        slSigmaWithFriction, // SL with 50% friction (display)
       );
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
       tpDistance = result.tpDistance;
       slDistance = result.slDistance;
     } else {
-      // FALLBACK: Existing sigma-based logic with asymmetric friction
+      // FALLBACK: Sigma-based logic with symmetric friction for prices
       const result = tpSlFromSigmas(entryPrice, direction, sigmaH as number, tpSigmaWithFriction, slSigmaWithFriction);
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
@@ -369,8 +364,9 @@ function RiskProfilesPanel({
     const slPips = priceDistanceToPips(slDistance, pipSize);
     const riskReward = slDistance > 0 ? tpDistance / slDistance : 0;
 
-    // NEW: Interpolate probability from Risk Surface with BOTH effective levels
-    const interpolationResult = interpolateProbability(surface, slSigmaWithFriction, tpSigmaWithFriction);
+    // CRITICAL: Interpolate probability from Risk Surface using BASE levels (friction-free)
+    // This ensures probability remains stable and model-consistent
+    const interpolationResult = interpolateProbability(surface, profile.slSigma, profile.tpSigma);
     
     // Use interpolated probability if available, otherwise fall back to strategic
     const effectiveProb = interpolationResult.isInterpolated 
@@ -422,7 +418,7 @@ function RiskProfilesPanel({
           <span className="text-sm font-semibold">Suggested TP/SL based on risk appetite</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Asymmetric Friction Badge */}
+          {/* Symmetric Friction Badge */}
           {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && (
             <TooltipProvider>
               <Tooltip>
@@ -431,11 +427,11 @@ function RiskProfilesPanel({
                     variant="outline" 
                     className="text-xs font-mono border-amber-500/50 text-amber-600 bg-amber-500/10 dark:text-amber-400"
                   >
-                    +{slFriction.toFixed(2)}σ SL / +{tpFriction.toFixed(2)}σ TP (α={frictionInfo.alpha.toFixed(2)}, {getAssetClassLabel(frictionInfo.assetClass)})
+                    +{slFriction.toFixed(2)}σ SL / +{tpFriction.toFixed(2)}σ TP ({getAssetClassLabel(frictionInfo.assetClass)})
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
-                  <p className="text-xs">{ASYMMETRIC_FRICTION_TOOLTIP}</p>
+                  <p className="text-xs">{SYMMETRIC_FRICTION_TOOLTIP}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -482,7 +478,7 @@ function RiskProfilesPanel({
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
-                        <p className="text-xs">{ASYMMETRIC_FRICTION_TOOLTIP}</p>
+                        <p className="text-xs">{SYMMETRIC_FRICTION_TOOLTIP}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -495,11 +491,11 @@ function RiskProfilesPanel({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger className="flex items-center gap-1 justify-end">
-                        +TP Friction (α)
+                        +TP Friction
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
-                        <p className="text-xs">TP friction = α × base friction (α={frictionInfo.alpha.toFixed(2)})</p>
+                        <p className="text-xs">{SYMMETRIC_FRICTION_TOOLTIP}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -586,8 +582,8 @@ function RiskProfilesPanel({
       <p className="text-xs text-muted-foreground italic">
         {direction === "long" ? "LONG" : "SHORT"} position: TP {direction === "long" ? "above" : "below"} entry, SL{" "}
         {direction === "long" ? "below" : "above"} entry
-        {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && ` • Asymmetric friction: +${slFriction.toFixed(2)}σ SL / +${tpFriction.toFixed(2)}σ TP (α=${frictionInfo.alpha.toFixed(2)})`}
-        {surface && " • Probability interpolated from risk surface"}
+        {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && ` • Symmetric friction: +${slFriction.toFixed(2)}σ SL / +${tpFriction.toFixed(2)}σ TP`}
+        {surface && " • Probability computed on base levels (friction-free)"}
       </p>
     </div>
   );
@@ -601,7 +597,6 @@ function ForecastSummaryTable({
   timeframe,
   atr, // NEW: ATR from surface API (optional)
   surface, // NEW: Risk surface data for probability interpolation
-  tradingStyle = DEFAULT_TRADING_STYLE, // Trading style for asymmetric friction
 }: {
   horizons: HorizonForecast[] | Record<string, HorizonForecast>;
   symbol?: string;
@@ -609,7 +604,6 @@ function ForecastSummaryTable({
   timeframe?: string;
   atr?: number; // NEW: ATR(14) in price units
   surface?: SurfaceApiResponse['surface']; // NEW: For probability interpolation
-  tradingStyle?: TradingStyle; // Trading style (scalping/intraday/breakout)
 }) {
   // NEW: Expandable rows state
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -853,7 +847,6 @@ function ForecastSummaryTable({
                           timeframe={timeframe}
                           atr={atr}
                           surface={surface}
-                          tradingStyle={tradingStyle}
                         />
                       </TableCell>
                     </TableRow>
@@ -968,8 +961,7 @@ function ForecastPlaygroundContent() {
   const [skew, setSkew] = useState(0.0);
   // Surface methodology: undefined = don't send (default behavior), 'legacy' | 'research' = explicit choice
   const [surfaceMode, setSurfaceMode] = useState<'legacy' | 'research' | undefined>(undefined);
-  // Trading style for asymmetric friction coefficient (α)
-  const [tradingStyle, setTradingStyle] = useState<TradingStyle>(DEFAULT_TRADING_STYLE);
+  // Trading style removed - using symmetric friction (50%/50%) now
   const [includePredictions, setIncludePredictions] = useState(true);
   const [includeMetadata, setIncludeMetadata] = useState(false);
   const [includeModelInfo, setIncludeModelInfo] = useState(false);
@@ -1576,48 +1568,6 @@ function ForecastPlaygroundContent() {
                         : 'Legacy uses the production-validated surface model.'}
                     </p>
                   </div>
-
-                  {/* Trading Style - Controls asymmetric TP friction coefficient (α) */}
-                  <div className="space-y-3 pt-3 border-t border-border/50">
-                    <Label className="flex items-center gap-2 text-sm">
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                      Trading Style
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs font-mono border-primary/30"
-                      >
-                        α = {TP_FRICTION_ALPHA[tradingStyle].toFixed(2)}
-                      </Badge>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Controls how TP friction is applied (α × base friction)
-                    </p>
-                    
-                    <RadioGroup
-                      value={tradingStyle}
-                      onValueChange={(value) => setTradingStyle(value as TradingStyle)}
-                      className="flex flex-wrap gap-3"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="scalping" id="style-scalping" />
-                        <Label htmlFor="style-scalping" className="text-sm cursor-pointer font-normal">
-                          Scalping <span className="text-xs text-muted-foreground">(α=0.10)</span>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="intraday" id="style-intraday" />
-                        <Label htmlFor="style-intraday" className="text-sm cursor-pointer font-normal">
-                          Intraday <span className="text-xs text-muted-foreground">(α=0.20)</span>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="breakout" id="style-breakout" />
-                        <Label htmlFor="style-breakout" className="text-sm cursor-pointer font-normal">
-                          Breakout <span className="text-xs text-muted-foreground">(α=0.30)</span>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
                 </CollapsibleContent>
               </Collapsible>
             </CardContent>
@@ -1796,7 +1746,6 @@ function ForecastPlaygroundContent() {
                       timeframe={timeframe}
                       atr={surfaceResult?.atr}
                       surface={surfaceResult?.surface}
-                      tradingStyle={tradingStyle}
                     />
                   )}
 
@@ -1892,7 +1841,6 @@ function ForecastPlaygroundContent() {
                         .map((h) => parseInt(h.trim(), 10))
                         .filter((h) => !isNaN(h) && h > 0)[0] ?? 1
                     }
-                    tradingStyle={tradingStyle}
                   />
                 </TabsContent>
 

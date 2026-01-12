@@ -278,9 +278,72 @@ export const FRICTION_TOOLTIP =
   "This adjustment accounts for spread, slippage, and market noise. It is fully reflected in the probability via the risk surface, ensuring consistency between execution and forecast.";
 
 /**
- * Tooltip content explaining asymmetric frictions
+ * Tooltip content explaining asymmetric frictions (legacy)
  */
 export const ASYMMETRIC_FRICTION_TOOLTIP = 
   "Market frictions (spread, slippage, and intrabar noise) are applied asymmetrically: " +
   "primarily to the stop-loss and marginally to the take-profit. " +
   "All probabilities are recomputed using the effective levels via the risk surface.";
+
+// ============ SYMMETRIC FRICTION (NEW) ============
+
+/**
+ * Symmetric friction result for SL and TP (50%/50% split)
+ * Used for display/execution layer - probability stays on base levels
+ */
+export interface SymmetricFrictionResult {
+  slFriction: number;      // 50% of σ_friction (applied to SL)
+  tpFriction: number;      // 50% of σ_friction (applied to TP)
+  assetClass: AssetClass;
+  baseFriction: number;    // Raw σ_friction before split
+  enabled: boolean;
+}
+
+/**
+ * Get SYMMETRIC friction adjustments for SL and TP (50%/50%)
+ * 
+ * NEW RULE: Friction is split evenly between SL and TP
+ * SL_effective = SL_base + 0.5 × σ_friction
+ * TP_effective = TP_base + 0.5 × σ_friction
+ * 
+ * IMPORTANT: This affects DISPLAY ONLY. Probability is calculated on BASE levels.
+ */
+export function getSymmetricFriction(
+  symbol: string,
+  timeframe: string
+): SymmetricFrictionResult {
+  const baseFriction = getMarketFrictionSigma(symbol, timeframe);
+  const halfFriction = baseFriction.frictionSigma * 0.5;
+  
+  return {
+    slFriction: halfFriction,  // 50% to SL
+    tpFriction: halfFriction,  // 50% to TP
+    assetClass: baseFriction.assetClass,
+    baseFriction: baseFriction.frictionSigma,
+    enabled: baseFriction.enabled,
+  };
+}
+
+/**
+ * Get symmetric friction display string
+ * Example: "+0.40σ SL / +0.40σ TP (50/50 split)"
+ */
+export function getSymmetricFrictionDisplayString(
+  symbol: string, 
+  timeframe: string
+): string {
+  const friction = getSymmetricFriction(symbol, timeframe);
+  if (!friction.enabled) return '';
+  
+  const classLabel = getAssetClassLabel(friction.assetClass);
+  return `+${friction.slFriction.toFixed(2)}σ SL / +${friction.tpFriction.toFixed(2)}σ TP (${classLabel})`;
+}
+
+/**
+ * Tooltip content explaining symmetric frictions (NEW)
+ * Clarifies that probabilities are computed on base levels
+ */
+export const SYMMETRIC_FRICTION_TOOLTIP = 
+  "Market frictions (spread, slippage, noise buffer) are applied symmetrically " +
+  "(50% to SL, 50% to TP) for execution realism. " +
+  "Probabilities are computed on base levels (friction-free) for model consistency.";

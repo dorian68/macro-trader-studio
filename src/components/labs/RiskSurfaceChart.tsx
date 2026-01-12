@@ -18,12 +18,10 @@ import {
   priceDistanceToPips
 } from "@/lib/forecastUtils";
 import {
-  getAsymmetricFriction,
+  getSymmetricFriction,
   getAssetClassLabel,
-  ASYMMETRIC_FRICTION_TOOLTIP,
+  SYMMETRIC_FRICTION_TOOLTIP,
   ENABLE_FRICTION_ADJUSTMENT,
-  type TradingStyle,
-  DEFAULT_TRADING_STYLE,
 } from "@/lib/marketFrictions";
 import {
   interpolateProbability,
@@ -54,10 +52,10 @@ export interface SurfaceApiResponse {
 
 interface SelectedPoint {
   slSigma: number;           // Base SL sigma from surface click
-  slFriction: number;        // SL friction adjustment (100% of σ_friction)
+  slFriction: number;        // SL friction adjustment (50% of σ_friction)
   slSigmaFinal: number;      // Final SL = base + slFriction
   tpSigma: number;           // Base TP sigma from surface click
-  tpFriction: number;        // TP friction adjustment (α × σ_friction)
+  tpFriction: number;        // TP friction adjustment (50% of σ_friction)
   tpSigmaFinal: number;      // Final TP = base + tpFriction
   targetProb: number;
   slPrice: number;           // Price calculated with finalSL
@@ -67,18 +65,15 @@ interface SelectedPoint {
   pipUnit?: string;
   calculationMethod?: "ATR" | "σ";
   assetClass?: string;       // For display (e.g., "FX Major")
-  alpha?: number;            // TP friction coefficient
-  tradingStyle?: TradingStyle;
 }
 
 interface RiskSurfaceChartProps {
   data: SurfaceApiResponse | null;
   loading?: boolean;
   error?: string | null;
-  symbol?: string;       // NEW: for pip calculation
-  timeframe?: string;    // NEW: for horizon scaling
-  horizonHours?: number; // NEW: for horizon scaling
-  tradingStyle?: TradingStyle; // NEW: trading style for asymmetric friction
+  symbol?: string;       // for pip calculation
+  timeframe?: string;    // for horizon scaling
+  horizonHours?: number; // for horizon scaling
 }
 
 export function RiskSurfaceChart({ 
@@ -87,8 +82,7 @@ export function RiskSurfaceChart({
   error,
   symbol,
   timeframe,
-  horizonHours,
-  tradingStyle = DEFAULT_TRADING_STYLE
+  horizonHours
 }: RiskSurfaceChartProps) {
   // Editable inputs state (strings for controlled input)
   const [editableSlSigma, setEditableSlSigma] = useState<string>("");
@@ -124,10 +118,10 @@ export function RiskSurfaceChart({
 
     if (typeof tpSigma !== 'number') return;
 
-    // Get ASYMMETRIC market friction adjustment
+    // Get SYMMETRIC market friction adjustment (50%/50% split)
     const frictionInfo = symbol && timeframe 
-      ? getAsymmetricFriction(symbol, timeframe, tradingStyle)
-      : { slFriction: 0, tpFriction: 0, alpha: 0.20, assetClass: 'fx_major' as const, enabled: false, tradingStyle: 'intraday' as TradingStyle, baseFriction: 0 };
+      ? getSymmetricFriction(symbol, timeframe)
+      : { slFriction: 0, tpFriction: 0, assetClass: 'fx_major' as const, enabled: false, baseFriction: 0 };
     
     const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
     const tpFriction = frictionInfo.enabled ? frictionInfo.tpFriction : 0;
@@ -186,25 +180,21 @@ export function RiskSurfaceChart({
       pipUnit,
       calculationMethod,
       assetClass: frictionInfo.enabled ? getAssetClassLabel(frictionInfo.assetClass) : undefined,
-      alpha: frictionInfo.alpha,
-      tradingStyle: frictionInfo.tradingStyle,
     });
     
     // Also populate editable inputs and open panel
     setEditableSlSigma(slSigma.toFixed(2));
     setEditableTpSigma(tpSigma.toFixed(2));
     setIsPanelOpen(true);
-  }, [data, calculatePrice, symbol, timeframe, horizonHours, tradingStyle]);
+  }, [data, calculatePrice, symbol, timeframe, horizonHours]);
 
-  // Live interpolation from editable inputs with ASYMMETRIC friction
+  // Live interpolation from editable inputs with SYMMETRIC friction
   const liveInterpolation = useMemo((): {
     result: InterpolationResult | null;
     slBase: number;
     tpBase: number;
     slFriction: number;
     tpFriction: number;
-    alpha: number;
-    tradingStyle: TradingStyle;
     slFinal: number;
     tpFinal: number;
     slPrice: number;
@@ -223,20 +213,20 @@ export function RiskSurfaceChart({
       return null;
     }
     
-    // Get ASYMMETRIC friction
+    // Get SYMMETRIC friction (50%/50% split)
     const frictionInfo = symbol && timeframe 
-      ? getAsymmetricFriction(symbol, timeframe, tradingStyle)
-      : { slFriction: 0, tpFriction: 0, alpha: 0.20, tradingStyle: 'intraday' as TradingStyle, assetClass: 'fx_major' as const, enabled: false, baseFriction: 0 };
+      ? getSymmetricFriction(symbol, timeframe)
+      : { slFriction: 0, tpFriction: 0, assetClass: 'fx_major' as const, enabled: false, baseFriction: 0 };
     
     const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
     const tpFriction = frictionInfo.enabled ? frictionInfo.tpFriction : 0;
     const slFinal = sl + slFriction;
     const tpFinal = tp + tpFriction;
     
-    // Interpolate probability with BOTH effective levels (SL_eff, TP_eff)
-    const result = interpolateProbability(data.surface, slFinal, tpFinal);
+    // CRITICAL: Interpolate probability with BASE levels (friction-free) for model consistency
+    const result = interpolateProbability(data.surface, sl, tp);
     
-    // Calculate prices using EFFECTIVE values
+    // Calculate prices using EFFECTIVE values (for display/execution realism)
     const useATR = data.atr != null && data.atr > 0;
     const slPrice = useATR 
       ? data.entry_price - (slFinal * data.atr)
@@ -282,8 +272,6 @@ export function RiskSurfaceChart({
       tpBase: tp,
       slFriction,
       tpFriction,
-      alpha: frictionInfo.alpha,
-      tradingStyle: frictionInfo.tradingStyle,
       slFinal,
       tpFinal,
       slPrice,
@@ -295,7 +283,7 @@ export function RiskSurfaceChart({
       rrRatio,
       assetClass: frictionInfo.enabled ? getAssetClassLabel(frictionInfo.assetClass) : null,
     };
-  }, [editableSlSigma, editableTpSigma, data, symbol, timeframe, horizonHours, tradingStyle]);
+  }, [editableSlSigma, editableTpSigma, data, symbol, timeframe, horizonHours]);
 
   // Helper to open panel for manual entry
   const handleOpenManualEntry = useCallback(() => {
@@ -367,14 +355,15 @@ export function RiskSurfaceChart({
     ];
 
     // ADD: 3D marker for manually selected point (if valid interpolation within domain)
+    // Use BASE levels for marker position since probability was computed on base levels
     if (liveInterpolation?.result?.isInterpolated && !liveInterpolation.result.isOutOfDomain) {
       const markerTrace: Data = {
         type: "scatter3d",
         mode: "markers",
         name: "Selected Scenario",
-        x: [liveInterpolation.slFinal],                    // X = SL effective (σ)
-        y: [liveInterpolation.result.probability],         // Y = Probability (interpolated)
-        z: [liveInterpolation.tpFinal],                    // Z = TP effective (σ)
+        x: [liveInterpolation.slBase],                     // X = SL BASE (σ) - matches probability calculation
+        y: [liveInterpolation.result.probability],         // Y = Probability (interpolated from base levels)
+        z: [liveInterpolation.tpBase],                     // Z = TP BASE (σ) - matches probability calculation
         marker: {
           size: 12,
           color: "#22c55e",           // Emerald green for high visibility
@@ -386,9 +375,9 @@ export function RiskSurfaceChart({
         },
         hovertemplate:
           "<b>📍 Selected Scenario</b><br>" +
-          "<b>SL Eff:</b> %{x:.2f}σ<br>" +
+          "<b>SL Base:</b> %{x:.2f}σ<br>" +
           "<b>Prob:</b> %{y:.1%}<br>" +
-          "<b>TP Eff:</b> %{z:.2f}σ<br>" +
+          "<b>TP Base:</b> %{z:.2f}σ<br>" +
           "<extra></extra>",
         showlegend: false,
       };
@@ -648,7 +637,7 @@ export function RiskSurfaceChart({
                     placeholder="Ex: 1.50"
                   />
                   
-                  {/* SL Friction breakdown (100% of friction) */}
+                  {/* SL Friction breakdown (50% of friction) */}
                   {liveInterpolation && liveInterpolation.slFriction > 0 && (
                     <div className="space-y-1 pt-2 border-t border-rose-500/20">
                       <div className="flex items-center justify-between text-sm">
@@ -661,7 +650,7 @@ export function RiskSurfaceChart({
                               </span>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="max-w-xs text-sm">
-                              {ASYMMETRIC_FRICTION_TOOLTIP}
+                              {SYMMETRIC_FRICTION_TOOLTIP}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -716,7 +705,7 @@ export function RiskSurfaceChart({
                     placeholder="Ex: 2.50"
                   />
                   
-                  {/* TP Friction breakdown (α × friction) */}
+                  {/* TP Friction breakdown (50% of friction) */}
                   {liveInterpolation && liveInterpolation.tpFriction > 0 && (
                     <div className="space-y-1 pt-2 border-t border-emerald-500/20">
                       <div className="flex items-center justify-between text-sm">
@@ -725,11 +714,11 @@ export function RiskSurfaceChart({
                             <TooltipTrigger asChild>
                               <span className="text-amber-600 dark:text-amber-400 cursor-help flex items-center gap-1">
                                 <Info className="h-3 w-3" />
-                                + TP Friction (α={liveInterpolation.alpha.toFixed(2)})
+                                + TP Friction
                               </span>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="max-w-xs text-sm">
-                              {ASYMMETRIC_FRICTION_TOOLTIP}
+                              {SYMMETRIC_FRICTION_TOOLTIP}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
