@@ -366,6 +366,35 @@ export function RiskSurfaceChart({
       } as Data,
     ];
 
+    // ADD: 3D marker for manually selected point (if valid interpolation within domain)
+    if (liveInterpolation?.result?.isInterpolated && !liveInterpolation.result.isOutOfDomain) {
+      const markerTrace: Data = {
+        type: "scatter3d",
+        mode: "markers",
+        name: "Selected Scenario",
+        x: [liveInterpolation.slFinal],                    // X = SL effective (σ)
+        y: [liveInterpolation.result.probability],         // Y = Probability (interpolated)
+        z: [liveInterpolation.tpFinal],                    // Z = TP effective (σ)
+        marker: {
+          size: 12,
+          color: "#22c55e",           // Emerald green for high visibility
+          symbol: "diamond",          // Distinct shape
+          line: {
+            color: "#ffffff",
+            width: 2,
+          },
+        },
+        hovertemplate:
+          "<b>📍 Selected Scenario</b><br>" +
+          "<b>SL Eff:</b> %{x:.2f}σ<br>" +
+          "<b>Prob:</b> %{y:.1%}<br>" +
+          "<b>TP Eff:</b> %{z:.2f}σ<br>" +
+          "<extra></extra>",
+        showlegend: false,
+      };
+      plotData.push(markerTrace);
+    }
+
     const layout: Partial<Layout> = {
       autosize: true,
       margin: { l: 0, r: 0, t: 30, b: 0 },
@@ -402,7 +431,7 @@ export function RiskSurfaceChart({
     };
 
     return { plotData, layout };
-  }, [data]);
+  }, [data, liveInterpolation]);
 
   if (loading) {
     return (
