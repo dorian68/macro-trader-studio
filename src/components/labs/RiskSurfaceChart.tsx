@@ -5,7 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Target, TrendingUp, TrendingDown, AlertCircle, MousePointer, DollarSign, Activity, Sigma, X, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Target, TrendingUp, TrendingDown, AlertCircle, MousePointer, DollarSign, Activity, Sigma, X, Info, Settings2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   pipSizeForSymbol,
@@ -20,6 +23,10 @@ import {
   FRICTION_TOOLTIP,
   ENABLE_FRICTION_ADJUSTMENT,
 } from "@/lib/marketFrictions";
+import {
+  interpolateProbability,
+  type InterpolationResult,
+} from "@/lib/surfaceInterpolation";
 import {
   Tooltip,
   TooltipContent,
@@ -75,6 +82,12 @@ export function RiskSurfaceChart({
   timeframe,
   horizonHours
 }: RiskSurfaceChartProps) {
+  // Editable inputs state (strings for controlled input)
+  const [editableSlSigma, setEditableSlSigma] = useState<string>("");
+  const [editableTpSigma, setEditableTpSigma] = useState<string>("");
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  
+  // Legacy selectedPoint for backward compatibility with click data
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
 
   // Calculate price from multiplier - supports ATR (priority) or sigma_ref (fallback)
@@ -162,7 +175,116 @@ export function RiskSurfaceChart({
       calculationMethod,
       assetClass: frictionInfo.enabled ? getAssetClassLabel(frictionInfo.assetClass) : undefined,
     });
+    
+    // Also populate editable inputs and open panel
+    setEditableSlSigma(slSigma.toFixed(2));
+    setEditableTpSigma(tpSigma.toFixed(2));
+    setIsPanelOpen(true);
   }, [data, calculatePrice, symbol, timeframe, horizonHours]);
+
+  // Live interpolation from editable inputs
+  const liveInterpolation = useMemo((): {
+    result: InterpolationResult | null;
+    slBase: number;
+    tpSigma: number;
+    frictionSigma: number;
+    slFinal: number;
+    slPrice: number;
+    tpPrice: number;
+    slPips: number | null;
+    tpPips: number | null;
+    pipUnit: string;
+    calculationMethod: "ATR" | "σ" | null;
+    rrRatio: number | null;
+  } | null => {
+    const sl = parseFloat(editableSlSigma);
+    const tp = parseFloat(editableTpSigma);
+    
+    if (isNaN(sl) || isNaN(tp) || sl <= 0 || tp <= 0 || !data) {
+      return null;
+    }
+    
+    // Get friction
+    const frictionInfo = symbol && timeframe 
+      ? getMarketFrictionSigma(symbol, timeframe)
+      : { frictionSigma: 0, assetClass: 'fx_major' as const, enabled: false };
+    
+    const frictionSigma = frictionInfo.enabled ? frictionInfo.frictionSigma : 0;
+    const slFinal = sl + frictionSigma;
+    
+    // Interpolate probability with effective SL
+    const result = interpolateProbability(data.surface, slFinal, tp);
+    
+    // Calculate prices
+    const useATR = data.atr != null && data.atr > 0;
+    const slPrice = useATR 
+      ? data.entry_price - (slFinal * data.atr)
+      : data.entry_price - (slFinal * data.sigma_ref);
+    const tpPrice = useATR 
+      ? data.entry_price + (tp * data.atr)
+      : data.entry_price + (tp * data.sigma_ref);
+    
+    // Calculate pips
+    let slPips: number | null = null;
+    let tpPips: number | null = null;
+    let pipUnit = "pips";
+    let calculationMethod: "ATR" | "σ" | null = null;
+    
+    if (symbol) {
+      const pipSize = pipSizeForSymbol(symbol);
+      pipUnit = pipUnitLabel(symbol);
+      
+      if (useATR && data.atr) {
+        const slDistance = slFinal * data.atr;
+        const tpDistance = tp * data.atr;
+        slPips = priceDistanceToPips(slDistance, pipSize);
+        tpPips = priceDistanceToPips(tpDistance, pipSize);
+        calculationMethod = "ATR";
+      } else if (timeframe && data.sigma_ref) {
+        const horizon = horizonHours ?? 1;
+        const steps = computeSteps(horizon, timeframe);
+        const sigmaH = sigmaHFromSigmaRef(data.sigma_ref, steps);
+        const slDistance = data.entry_price * (slFinal * sigmaH);
+        const tpDistance = data.entry_price * (tp * sigmaH);
+        slPips = priceDistanceToPips(slDistance, pipSize);
+        tpPips = priceDistanceToPips(tpDistance, pipSize);
+        calculationMethod = "σ";
+      }
+    }
+    
+    const rrRatio = slFinal > 0 ? tp / slFinal : null;
+    
+    return {
+      result,
+      slBase: sl,
+      tpSigma: tp,
+      frictionSigma,
+      slFinal,
+      slPrice,
+      tpPrice,
+      slPips,
+      tpPips,
+      pipUnit,
+      calculationMethod,
+      rrRatio,
+    };
+  }, [editableSlSigma, editableTpSigma, data, symbol, timeframe, horizonHours]);
+
+  // Helper to open panel for manual entry
+  const handleOpenManualEntry = useCallback(() => {
+    if (!editableSlSigma && !editableTpSigma) {
+      // Pre-fill with sensible defaults
+      setEditableSlSigma("1.50");
+      setEditableTpSigma("2.50");
+    }
+    setIsPanelOpen(true);
+  }, [editableSlSigma, editableTpSigma]);
+
+  // Close panel handler
+  const handleClosePanel = useCallback(() => {
+    setIsPanelOpen(false);
+    setSelectedPoint(null);
+  }, []);
 
   // Memoize plot data and layout
   const { plotData, layout } = useMemo(() => {
@@ -382,7 +504,7 @@ export function RiskSurfaceChart({
                 </div>
               </div>
               {/* Interactive CTA - More Engaging */}
-              <div className="flex items-center justify-center gap-3 py-4 border-t bg-gradient-to-r from-primary/5 via-muted/30 to-primary/5">
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 border-t bg-gradient-to-r from-primary/5 via-muted/30 to-primary/5">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 border border-primary/20 shadow-sm">
                   <MousePointer className="h-4 w-4 text-primary animate-pulse" />
                   <span className="text-sm">
@@ -390,6 +512,15 @@ export function RiskSurfaceChart({
                     <span className="text-primary font-medium ml-1">to explore risk scenarios</span>
                   </span>
                 </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleOpenManualEntry}
+                  className="border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  Manual Entry
+                </Button>
                 <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary/80">
                   Interactive 3D
                 </Badge>
@@ -398,127 +529,153 @@ export function RiskSurfaceChart({
           </Card>
         </div>
 
-        {/* Selected Point Panel - Slide-in from Right */}
-        {selectedPoint && (
-          <div className="w-full lg:w-fit lg:min-w-[240px] lg:max-w-[280px] flex-shrink-0 animate-in slide-in-from-right-8 fade-in-0 duration-300">
+        {/* Editable Trade Configuration Panel - Slide-in from Right */}
+        {isPanelOpen && (
+          <div className="w-full lg:w-fit lg:min-w-[260px] lg:max-w-[300px] flex-shrink-0 animate-in slide-in-from-right-8 fade-in-0 duration-300">
             <Card className="border-l-4 border-l-primary border-primary/20 bg-gradient-to-br from-primary/5 via-background to-transparent shadow-lg h-full">
               <CardHeader className="pb-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-t-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-primary/15 ring-1 ring-primary/30">
-                      <Target className="h-4 w-4 text-primary" />
+                      <Settings2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70 block mb-0.5">Selected Scenario</span>
-                      <CardTitle className="text-base font-bold">Trade Configuration</CardTitle>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70 block mb-0.5">Trade Configuration</span>
+                      <CardTitle className="text-base font-bold">Edit Scenario</CardTitle>
                     </div>
                   </div>
                   <button
-                    onClick={() => setSelectedPoint(null)}
+                    onClick={handleClosePanel}
                     className="p-1.5 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
                     title="Close panel"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                {selectedPoint.calculationMethod && (
+                {liveInterpolation?.calculationMethod && (
                   <Badge 
-                    variant={selectedPoint.calculationMethod === "ATR" ? "default" : "outline"} 
+                    variant={liveInterpolation.calculationMethod === "ATR" ? "default" : "outline"} 
                     className={cn(
                       "text-xs font-mono mt-2 w-fit",
-                      selectedPoint.calculationMethod === "ATR" 
+                      liveInterpolation.calculationMethod === "ATR" 
                         ? "bg-emerald-600 hover:bg-emerald-700 shadow-sm" 
                         : ""
                     )}
                   >
-                    {selectedPoint.calculationMethod === "ATR" ? "ATR-based" : "σ-based"}
+                    {liveInterpolation.calculationMethod === "ATR" ? "ATR-based" : "σ-based"}
                   </Badge>
                 )}
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
-                {/* Stop-Loss Card - With Friction Breakdown */}
-                <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-2">
+                {/* Stop-Loss Input Card */}
+                <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-md bg-rose-500/10">
                         <TrendingDown className="h-4 w-4 text-rose-500" />
                       </div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Stop-Loss</span>
+                      <Label htmlFor="sl-input" className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                        SL Base (σ)
+                      </Label>
                     </div>
-                    {selectedPoint.frictionSigma > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="text-[10px] font-mono bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
-                              +{selectedPoint.frictionSigma.toFixed(2)}σ friction
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" className="max-w-xs text-sm">
-                            {FRICTION_TOOLTIP}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
                   </div>
                   
-                  {/* Sigma breakdown */}
-                  {selectedPoint.frictionSigma > 0 ? (
-                    <div className="space-y-1">
+                  <Input
+                    id="sl-input"
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="10"
+                    value={editableSlSigma}
+                    onChange={(e) => setEditableSlSigma(e.target.value)}
+                    className="font-mono text-lg h-12 bg-background/50 border-rose-500/30 focus:border-rose-500"
+                    placeholder="Ex: 1.50"
+                  />
+                  
+                  {/* Friction breakdown */}
+                  {liveInterpolation && liveInterpolation.frictionSigma > 0 && (
+                    <div className="space-y-1 pt-2 border-t border-rose-500/20">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Base</span>
-                        <span className="font-mono text-muted-foreground">{formatSigma(selectedPoint.slSigma)}σ</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-amber-600 dark:text-amber-400 cursor-help flex items-center gap-1">
+                                <Info className="h-3 w-3" />
+                                + Friction
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-xs text-sm">
+                              {FRICTION_TOOLTIP}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <span className="font-mono text-amber-600 dark:text-amber-400">
+                          +{liveInterpolation.frictionSigma.toFixed(2)}σ
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-amber-600 dark:text-amber-400">+ Friction</span>
-                        <span className="font-mono text-amber-600 dark:text-amber-400">+{formatSigma(selectedPoint.frictionSigma)}σ</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-rose-600 dark:text-rose-400">Final SL</span>
+                        <span className="font-mono text-xl font-bold text-foreground">
+                          {liveInterpolation.slFinal.toFixed(2)}σ
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between pt-1 border-t border-rose-500/20">
-                        <span className="font-semibold text-rose-600 dark:text-rose-400">Final</span>
-                        <span className="font-mono text-2xl font-bold text-foreground">{formatSigma(selectedPoint.slSigmaFinal)}σ</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="font-mono text-2xl font-bold text-foreground" title="Stop-loss in standard deviations">
-                      {formatSigma(selectedPoint.slSigma)}σ
                     </div>
                   )}
                   
-                  <div className="space-y-1 pt-2 border-t border-rose-500/10">
-                    <div className="text-xs text-muted-foreground">
-                      Price: <span className="font-mono font-medium text-foreground">{formatPrice(selectedPoint.slPrice)}</span>
-                    </div>
-                    {selectedPoint.slPips != null && (
-                      <div className="text-base font-mono font-bold text-rose-600 dark:text-rose-400">
-                        {selectedPoint.slPips.toFixed(1)} <span className="text-xs font-normal opacity-70">{selectedPoint.pipUnit}</span>
+                  {/* Price & Pips */}
+                  {liveInterpolation && (
+                    <div className="space-y-1 pt-2 border-t border-rose-500/10">
+                      <div className="text-xs text-muted-foreground">
+                        Price: <span className="font-mono font-medium text-foreground">{liveInterpolation.slPrice.toFixed(5)}</span>
                       </div>
-                    )}
-                  </div>
+                      {liveInterpolation.slPips != null && (
+                        <div className="text-base font-mono font-bold text-rose-600 dark:text-rose-400">
+                          {liveInterpolation.slPips.toFixed(1)} <span className="text-xs font-normal opacity-70">{liveInterpolation.pipUnit}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Take-Profit Card */}
-                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                {/* Take-Profit Input Card */}
+                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-md bg-emerald-500/10">
                       <TrendingUp className="h-4 w-4 text-emerald-500" />
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Take-Profit</span>
+                    <Label htmlFor="tp-input" className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                      Take-Profit (σ)
+                    </Label>
                   </div>
-                  <div className="font-mono text-2xl font-bold text-foreground" title="Take-profit in standard deviations">
-                    {formatSigma(selectedPoint.tpSigma)}σ
-                  </div>
-                  <div className="space-y-1 pt-2 border-t border-emerald-500/10">
-                    <div className="text-xs text-muted-foreground">
-                      Price: <span className="font-mono font-medium text-foreground">{formatPrice(selectedPoint.tpPrice)}</span>
-                    </div>
-                    {selectedPoint.tpPips != null && (
-                      <div className="text-base font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {selectedPoint.tpPips.toFixed(1)} <span className="text-xs font-normal opacity-70">{selectedPoint.pipUnit}</span>
+                  
+                  <Input
+                    id="tp-input"
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="15"
+                    value={editableTpSigma}
+                    onChange={(e) => setEditableTpSigma(e.target.value)}
+                    className="font-mono text-lg h-12 bg-background/50 border-emerald-500/30 focus:border-emerald-500"
+                    placeholder="Ex: 2.50"
+                  />
+                  
+                  {/* Price & Pips */}
+                  {liveInterpolation && (
+                    <div className="space-y-1 pt-2 border-t border-emerald-500/10">
+                      <div className="text-xs text-muted-foreground">
+                        Price: <span className="font-mono font-medium text-foreground">{liveInterpolation.tpPrice.toFixed(5)}</span>
                       </div>
-                    )}
-                  </div>
+                      {liveInterpolation.tpPips != null && (
+                        <div className="text-base font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          {liveInterpolation.tpPips.toFixed(1)} <span className="text-xs font-normal opacity-70">{liveInterpolation.pipUnit}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Probability & R/R Card */}
+                {/* Live Probability Card */}
                 <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -527,35 +684,49 @@ export function RiskSurfaceChart({
                       </div>
                       <span className="text-xs font-bold uppercase tracking-wider text-primary">Probability</span>
                     </div>
-                    {selectedPoint.frictionSigma > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
-                              <Info className="h-3 w-3 mr-1" />
-                              Base SL
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" className="max-w-xs text-sm">
-                            <p className="font-medium mb-1">Surface Probability</p>
-                            <p className="text-muted-foreground">
-                              This probability corresponds to the base SL ({selectedPoint.slSigma.toFixed(2)}σ) from the surface. 
-                              The effective SL ({selectedPoint.slSigmaFinal.toFixed(2)}σ) with friction provides a wider stop.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    {liveInterpolation?.result && (
+                      <Badge 
+                        variant={liveInterpolation.result.isInterpolated ? "default" : "outline"} 
+                        className={cn(
+                          "text-[10px] font-mono",
+                          liveInterpolation.result.isInterpolated 
+                            ? "bg-emerald-600 hover:bg-emerald-700" 
+                            : "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                        )}
+                      >
+                        {liveInterpolation.result.isInterpolated ? (
+                          <>
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Interpolated
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Outside domain
+                          </>
+                        )}
+                      </Badge>
                     )}
                   </div>
-                  <div className="font-mono text-2xl font-bold text-foreground" title="Probability of hitting TP before SL (based on surface click)">
-                    {formatPercent(selectedPoint.targetProb)}
-                  </div>
-                  <div className="space-y-1 pt-2 border-t border-primary/10">
-                    <div className="text-xs text-muted-foreground">Risk/Reward Ratio</div>
-                    <div className="text-base font-mono font-bold text-primary">
-                      {(selectedPoint.tpSigma / selectedPoint.slSigmaFinal).toFixed(2)} <span className="text-xs font-normal opacity-70">R/R</span>
+                  
+                  {liveInterpolation?.result ? (
+                    <div className="font-mono text-2xl font-bold text-foreground">
+                      {(liveInterpolation.result.probability * 100).toFixed(1)}%
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-muted-foreground text-sm italic">
+                      Enter SL and TP values to see probability
+                    </div>
+                  )}
+                  
+                  {liveInterpolation?.rrRatio && (
+                    <div className="space-y-1 pt-2 border-t border-primary/10">
+                      <div className="text-xs text-muted-foreground">Risk/Reward Ratio</div>
+                      <div className="text-base font-mono font-bold text-primary">
+                        {liveInterpolation.rrRatio.toFixed(2)} <span className="text-xs font-normal opacity-70">R/R</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Footer with Entry Context */}
@@ -563,7 +734,7 @@ export function RiskSurfaceChart({
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Entry:</span>
-                    <span className="font-mono font-semibold text-foreground">{formatPrice(data.entry_price)}</span>
+                    <span className="font-mono font-semibold text-foreground">{data ? data.entry_price.toFixed(5) : "—"}</span>
                   </div>
                   {symbol && (
                     <Badge variant="outline" className="font-medium text-xs">
