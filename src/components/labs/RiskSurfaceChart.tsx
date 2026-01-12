@@ -78,6 +78,7 @@ interface RiskSurfaceChartProps {
   symbol?: string;       // NEW: for pip calculation
   timeframe?: string;    // NEW: for horizon scaling
   horizonHours?: number; // NEW: for horizon scaling
+  tradingStyle?: TradingStyle; // NEW: trading style for asymmetric friction
 }
 
 export function RiskSurfaceChart({ 
@@ -86,7 +87,8 @@ export function RiskSurfaceChart({
   error,
   symbol,
   timeframe,
-  horizonHours
+  horizonHours,
+  tradingStyle = DEFAULT_TRADING_STYLE
 }: RiskSurfaceChartProps) {
   // Editable inputs state (strings for controlled input)
   const [editableSlSigma, setEditableSlSigma] = useState<string>("");
@@ -124,7 +126,7 @@ export function RiskSurfaceChart({
 
     // Get ASYMMETRIC market friction adjustment
     const frictionInfo = symbol && timeframe 
-      ? getAsymmetricFriction(symbol, timeframe, DEFAULT_TRADING_STYLE)
+      ? getAsymmetricFriction(symbol, timeframe, tradingStyle)
       : { slFriction: 0, tpFriction: 0, alpha: 0.20, assetClass: 'fx_major' as const, enabled: false, tradingStyle: 'intraday' as TradingStyle, baseFriction: 0 };
     
     const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
@@ -192,7 +194,7 @@ export function RiskSurfaceChart({
     setEditableSlSigma(slSigma.toFixed(2));
     setEditableTpSigma(tpSigma.toFixed(2));
     setIsPanelOpen(true);
-  }, [data, calculatePrice, symbol, timeframe, horizonHours]);
+  }, [data, calculatePrice, symbol, timeframe, horizonHours, tradingStyle]);
 
   // Live interpolation from editable inputs with ASYMMETRIC friction
   const liveInterpolation = useMemo((): {
@@ -223,7 +225,7 @@ export function RiskSurfaceChart({
     
     // Get ASYMMETRIC friction
     const frictionInfo = symbol && timeframe 
-      ? getAsymmetricFriction(symbol, timeframe, DEFAULT_TRADING_STYLE)
+      ? getAsymmetricFriction(symbol, timeframe, tradingStyle)
       : { slFriction: 0, tpFriction: 0, alpha: 0.20, tradingStyle: 'intraday' as TradingStyle, assetClass: 'fx_major' as const, enabled: false, baseFriction: 0 };
     
     const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
@@ -293,7 +295,7 @@ export function RiskSurfaceChart({
       rrRatio,
       assetClass: frictionInfo.enabled ? getAssetClassLabel(frictionInfo.assetClass) : null,
     };
-  }, [editableSlSigma, editableTpSigma, data, symbol, timeframe, horizonHours]);
+  }, [editableSlSigma, editableTpSigma, data, symbol, timeframe, horizonHours, tradingStyle]);
 
   // Helper to open panel for manual entry
   const handleOpenManualEntry = useCallback(() => {

@@ -54,6 +54,8 @@ import {
   getAssetClassLabel,
   ASYMMETRIC_FRICTION_TOOLTIP,
   DEFAULT_TRADING_STYLE,
+  TP_FRICTION_ALPHA,
+  type TradingStyle,
 } from "@/lib/marketFrictions";
 import {
   interpolateProbability,
@@ -276,6 +278,7 @@ function RiskProfilesPanel({
   timeframe,
   atr, // NEW: ATR from surface API (optional)
   surface, // NEW: Risk surface data for probability interpolation
+  tradingStyle = DEFAULT_TRADING_STYLE, // Trading style for asymmetric friction
 }: {
   horizonData: HorizonForecast;
   symbol?: string;
@@ -283,6 +286,7 @@ function RiskProfilesPanel({
   timeframe?: string;
   atr?: number; // NEW: ATR(14) in price units
   surface?: SurfaceApiResponse['surface']; // NEW: For probability interpolation
+  tradingStyle?: TradingStyle; // Trading style (scalping/intraday/breakout)
 }) {
   const entryPrice = horizonData.entry_price;
   const direction = (horizonData.direction?.toLowerCase() || "long") as "long" | "short";
@@ -325,7 +329,7 @@ function RiskProfilesPanel({
 
   // NEW: Asymmetric Market Friction calculation
   const frictionInfo = symbol && timeframe 
-    ? getAsymmetricFriction(symbol, timeframe, DEFAULT_TRADING_STYLE) 
+    ? getAsymmetricFriction(symbol, timeframe, tradingStyle)
     : { slFriction: 0, tpFriction: 0, alpha: 0.20, enabled: false, assetClass: 'fx_major' as const, tradingStyle: 'intraday' as const, baseFriction: 0 };
   
   const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
@@ -597,6 +601,7 @@ function ForecastSummaryTable({
   timeframe,
   atr, // NEW: ATR from surface API (optional)
   surface, // NEW: Risk surface data for probability interpolation
+  tradingStyle = DEFAULT_TRADING_STYLE, // Trading style for asymmetric friction
 }: {
   horizons: HorizonForecast[] | Record<string, HorizonForecast>;
   symbol?: string;
@@ -604,6 +609,7 @@ function ForecastSummaryTable({
   timeframe?: string;
   atr?: number; // NEW: ATR(14) in price units
   surface?: SurfaceApiResponse['surface']; // NEW: For probability interpolation
+  tradingStyle?: TradingStyle; // Trading style (scalping/intraday/breakout)
 }) {
   // NEW: Expandable rows state
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -847,6 +853,7 @@ function ForecastSummaryTable({
                           timeframe={timeframe}
                           atr={atr}
                           surface={surface}
+                          tradingStyle={tradingStyle}
                         />
                       </TableCell>
                     </TableRow>
@@ -961,6 +968,8 @@ function ForecastPlaygroundContent() {
   const [skew, setSkew] = useState(0.0);
   // Surface methodology: undefined = don't send (default behavior), 'legacy' | 'research' = explicit choice
   const [surfaceMode, setSurfaceMode] = useState<'legacy' | 'research' | undefined>(undefined);
+  // Trading style for asymmetric friction coefficient (α)
+  const [tradingStyle, setTradingStyle] = useState<TradingStyle>(DEFAULT_TRADING_STYLE);
   const [includePredictions, setIncludePredictions] = useState(true);
   const [includeMetadata, setIncludeMetadata] = useState(false);
   const [includeModelInfo, setIncludeModelInfo] = useState(false);
@@ -1538,6 +1547,48 @@ function ForecastPlaygroundContent() {
                         : 'Legacy uses the production-validated surface model.'}
                     </p>
                   </div>
+
+                  {/* Trading Style - Controls asymmetric TP friction coefficient (α) */}
+                  <div className="space-y-3 pt-3 border-t border-border/50">
+                    <Label className="flex items-center gap-2 text-sm">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      Trading Style
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs font-mono border-primary/30"
+                      >
+                        α = {TP_FRICTION_ALPHA[tradingStyle].toFixed(2)}
+                      </Badge>
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Controls how TP friction is applied (α × base friction)
+                    </p>
+                    
+                    <RadioGroup
+                      value={tradingStyle}
+                      onValueChange={(value) => setTradingStyle(value as TradingStyle)}
+                      className="flex flex-wrap gap-3"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="scalping" id="style-scalping" />
+                        <Label htmlFor="style-scalping" className="text-sm cursor-pointer font-normal">
+                          Scalping <span className="text-xs text-muted-foreground">(α=0.10)</span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="intraday" id="style-intraday" />
+                        <Label htmlFor="style-intraday" className="text-sm cursor-pointer font-normal">
+                          Intraday <span className="text-xs text-muted-foreground">(α=0.20)</span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="breakout" id="style-breakout" />
+                        <Label htmlFor="style-breakout" className="text-sm cursor-pointer font-normal">
+                          Breakout <span className="text-xs text-muted-foreground">(α=0.30)</span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
                 </CollapsibleContent>
               </Collapsible>
             </CardContent>
@@ -1716,6 +1767,7 @@ function ForecastPlaygroundContent() {
                       timeframe={timeframe}
                       atr={surfaceResult?.atr}
                       surface={surfaceResult?.surface}
+                      tradingStyle={tradingStyle}
                     />
                   )}
 
@@ -1811,6 +1863,7 @@ function ForecastPlaygroundContent() {
                         .map((h) => parseInt(h.trim(), 10))
                         .filter((h) => !isNaN(h) && h > 0)[0] ?? 1
                     }
+                    tradingStyle={tradingStyle}
                   />
                 </TabsContent>
 
