@@ -1030,60 +1030,88 @@ function ForecastPlaygroundContent() {
       requestBody.paths = paths;
     }
 
-    // Execute BOTH API calls in parallel (forecast + surface)
-    const forecastPromise = fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/forecast-proxy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
+    // ════════════════════════════════════════════════════════════════════════════
+    // STEP 1: Call Forecast API FIRST to get entry_price as single source of truth
+    // ════════════════════════════════════════════════════════════════════════════
+    let forecastEntryPrice: number | undefined;
 
-    // Build surface payload - only add surface_mode if explicitly selected
-    const surfacePayload: Record<string, unknown> = {
-      symbol,
-      timeframe,
-      horizon_hours: parsedHorizons,
-      skew, // Skew parameter: 0 = symmetric, >0 = right skew, <0 = left skew
-      paths: 1000,
-      dof: 3.0,
-      target_prob: { min: 0.05, max: 0.95, steps: 50 },
-      sl_sigma: { min: 0.1, max: 8.0, steps: 50 },
-    };
-    
-    // ONLY add surface_mode if explicitly selected (not undefined)
-        if (surfaceMode !== undefined) {
-          surfacePayload.methodology = surfaceMode;
-        }
-
-    const surfacePromise = fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(surfacePayload),
-    });
-
-    // Handle forecast API (existing behavior preserved)
     try {
-      const response = await forecastPromise;
+      const forecastResponse = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/forecast-proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
 
-      if (!response.ok) {
-        throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+      if (!forecastResponse.ok) {
+        throw new Error(`Backend error: ${forecastResponse.status} ${forecastResponse.statusText}`);
       }
 
-      const data = await response.json();
-      setResult(data);
+      const forecastData = await forecastResponse.json();
+      setResult(forecastData);
       setRequestInfo({
         params: requestBody,
         timestamp: new Date().toISOString(),
         duration: performance.now() - startTime,
       });
+
+      // ════════════════════════════════════════════════════════════════════════════
+      // STEP 2: Extract entry_price from forecast response as SINGLE SOURCE OF TRUTH
+      // Robust extraction with multiple fallback paths
+      // ════════════════════════════════════════════════════════════════════════════
+      forecastEntryPrice =
+        forecastData?.data?.payload?.entry_price ??
+        forecastData?.data?.payload?.horizons?.[0]?.entry_price ??
+        forecastData?.payload?.entry_price ??
+        forecastData?.payload?.horizons?.[0]?.entry_price ??
+        // Also try object-style horizons (Record<string, HorizonForecast>)
+        (forecastData?.data?.payload?.horizons && typeof forecastData.data.payload.horizons === 'object' && !Array.isArray(forecastData.data.payload.horizons)
+          ? (Object.values(forecastData.data.payload.horizons) as HorizonForecast[])?.[0]?.entry_price
+          : undefined) ??
+        (forecastData?.payload?.horizons && typeof forecastData.payload.horizons === 'object' && !Array.isArray(forecastData.payload.horizons)
+          ? (Object.values(forecastData.payload.horizons) as HorizonForecast[])?.[0]?.entry_price
+          : undefined);
+
+      console.log("[ForecastPlayground] Extracted entry_price from forecast:", forecastEntryPrice);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setLoading(false);
     }
 
-    // Handle surface API (NEW - additive, independent error handling)
+    // ════════════════════════════════════════════════════════════════════════════
+    // STEP 3: Call Surface API AFTER forecast, using entry_price from forecast
+    // This ensures semantic consistency between forecast scenario and risk surface
+    // ════════════════════════════════════════════════════════════════════════════
     try {
-      const surfaceResponse = await surfacePromise;
+      const surfacePayload: Record<string, unknown> = {
+        symbol,
+        timeframe,
+        horizon_hours: parsedHorizons,
+        skew, // Skew parameter: 0 = symmetric, >0 = right skew, <0 = left skew
+        paths: 1000,
+        dof: 3.0,
+        target_prob: { min: 0.05, max: 0.95, steps: 50 },
+        sl_sigma: { min: 0.1, max: 8.0, steps: 50 },
+      };
+
+      // CRITICAL: Pass entry_price from forecast response as single source of truth
+      // This ensures surface API operates on the exact same market entry point
+      if (forecastEntryPrice !== undefined) {
+        surfacePayload.entry_price = forecastEntryPrice;
+        console.log("[ForecastPlayground] Passing entry_price to surface API:", forecastEntryPrice);
+      }
+
+      // ONLY add methodology if explicitly selected (not undefined)
+      if (surfaceMode !== undefined) {
+        surfacePayload.methodology = surfaceMode;
+      }
+
+      const surfaceResponse = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(surfacePayload),
+      });
 
       if (!surfaceResponse.ok) {
         throw new Error(`Surface API error: ${surfaceResponse.status}`);
@@ -1091,6 +1119,7 @@ function ForecastPlaygroundContent() {
 
       const surfaceData = await surfaceResponse.json();
       setSurfaceResult(surfaceData);
+
     } catch (err) {
       console.error("[Surface API] Error:", err);
       setSurfaceError(err instanceof Error ? err.message : "Surface API error");

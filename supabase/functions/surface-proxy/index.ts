@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       ? body.horizon_hours[0] 
       : (body.horizon_hours ?? 1);
 
-    const surfacePayload = {
+    const surfacePayload: Record<string, unknown> = {
       symbol: body.symbol,
       timeframe: body.timeframe,
       horizon_hours: horizonHours,
@@ -50,9 +50,19 @@ Deno.serve(async (req) => {
       dof: body.dof ?? 3.0,
       target_prob: body.target_prob ?? { min: 0.05, max: 0.95, steps: 30 },
       sl_sigma: body.sl_sigma ?? { min: 0.1, max: 8.0, steps: 30 },
-      // Pass methodology ONLY if present in request (optional field)
-      ...(body.methodology && { methodology: body.methodology }),
     };
+    
+    // CRITICAL: Pass entry_price from forecast response as single source of truth
+    // This ensures the risk surface is computed using the same market entry point as the forecast
+    if (body.entry_price !== undefined) {
+      surfacePayload.entry_price = body.entry_price;
+      console.log("[surface-proxy] Using entry_price from forecast:", body.entry_price);
+    }
+    
+    // Pass methodology ONLY if present in request (optional field)
+    if (body.methodology) {
+      surfacePayload.methodology = body.methodology;
+    }
 
     console.log("[surface-proxy] Forwarding to Surface API:", SURFACE_API_URL);
     console.log("[surface-proxy] Payload:", JSON.stringify(surfacePayload));
