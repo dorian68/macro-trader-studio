@@ -62,10 +62,10 @@ export default function ForecastPlaygroundHub() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Brain className="h-5 w-5 text-primary" />
-                  Macro Analysis (Copy)
+                  Macro Lab
                 </CardTitle>
                 <CardDescription>
-                  Copie à l’identique de Macro Analysis (Macro Commentary), version hub Forecast Playground.
+                  Copie Macro Analysis pour tests (webhook dédié).
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">

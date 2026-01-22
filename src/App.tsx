@@ -62,7 +62,7 @@ const ScenarioSimulator = lazy(() => import("./pages/labs/ScenarioSimulator"));
 const Backtester = lazy(() => import("./pages/labs/Backtester"));
 const ForecastPlayground = lazy(() => import("./pages/ForecastPlayground"));
 const ForecastPlaygroundTool = lazy(() => import("./pages/ForecastPlaygroundTool"));
-const ForecastPlaygroundMacroCommentary = lazy(() => import("./pages/ForecastPlaygroundMacroCommentary"));
+const ForecastMacroLab = lazy(() => import("./pages/ForecastMacroLab"));
 
 const queryClient = new QueryClient();
 // Force rebuild after PersistentNotificationProvider interface update
@@ -116,7 +116,7 @@ const App = () => {
                       <Route path="/labs/backtester" element={<Backtester />} />
                       <Route path="/forecast-playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
                       <Route path="/forecast-playground/tool" element={<AuthGuard requireApproval><ForecastPlaygroundTool /></AuthGuard>} />
-                      <Route path="/forecast-playground/macro-commentary" element={<AuthGuard requireApproval><ForecastPlaygroundMacroCommentary /></AuthGuard>} />
+                      <Route path="/forecast-playground/macro-commentary" element={<AuthGuard requireApproval><ForecastMacroLab /></AuthGuard>} />
                       <Route path="/coming-soon" element={<ComingSoon />} />
                       <Route path="/product" element={<ProductPresentation />} />
                       <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />

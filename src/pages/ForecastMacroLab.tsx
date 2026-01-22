@@ -72,7 +72,7 @@ interface AssetInfo {
   tradingViewSymbol: string;
 }
 
-export default function ForecastPlaygroundMacroCommentary() {
+export default function ForecastMacroLab() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
