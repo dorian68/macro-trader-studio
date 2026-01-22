@@ -60,7 +60,6 @@ export async function safePostRequest(url: string, payload: any, headers: Record
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
           ...headers
         },
         body,
@@ -91,7 +90,6 @@ export async function safePostRequest(url: string, payload: any, headers: Record
     mode: 'cors',
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
       ...headers
     },
     body
