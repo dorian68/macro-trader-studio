@@ -91,6 +91,25 @@ export default function ForecastMacroLab() {
   const [jobStatus, setJobStatus] = useState<string>("");
   const [timeframe, setTimeframe] = useState("1h");
 
+   const [lastHttpDebug, setLastHttpDebug] = useState<
+     | {
+         at: string;
+         url: string;
+         jobId: string;
+         ok: boolean;
+         status: number;
+         statusText: string;
+         bodyText: string;
+       }
+     | {
+         at: string;
+         url: string;
+         jobId: string | null;
+         error: string;
+       }
+     | null
+   >(null);
+
   // Check for pending results from persistent notifications
   useEffect(() => {
     const pendingResult = sessionStorage.getItem("pendingResult");
@@ -336,6 +355,7 @@ export default function ForecastMacroLab() {
 
     setIsGenerating(true);
     setJobStatus("running");
+    setLastHttpDebug(null);
 
     try {
       const payload = {
@@ -420,6 +440,24 @@ export default function ForecastMacroLab() {
         jobId: responseJobId,
       });
 
+      let bodyText = "";
+      try {
+        // Best-effort: proxy might return empty body; realtime is still the source of truth.
+        bodyText = await response.clone().text();
+      } catch {
+        bodyText = "";
+      }
+
+      setLastHttpDebug({
+        at: new Date().toISOString(),
+        url: FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL,
+        jobId: responseJobId,
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        bodyText,
+      });
+
       try {
         if (response.ok) {
           // intentionally ignore HTTP body; WebSocket is the source of truth
@@ -432,6 +470,14 @@ export default function ForecastMacroLab() {
       }
     } catch (error) {
       console.error("Analysis error:", error);
+
+      setLastHttpDebug({
+        at: new Date().toISOString(),
+        url: FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL,
+        jobId: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
       setIsGenerating(false);
       setJobStatus("error");
       toast({
@@ -553,6 +599,61 @@ export default function ForecastMacroLab() {
               </div>
             </CardContent>
           </Card>
+
+          {lastHttpDebug && (
+            <Card className="rounded-2xl border">
+              <CardHeader className="py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="text-sm font-semibold text-foreground">Debug — dernière réponse HTTP</CardTitle>
+                  {"bodyText" in lastHttpDebug && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(lastHttpDebug.bodyText || "");
+                          toast({ title: t("toasts:common.copied", { defaultValue: "Copied" }) });
+                        } catch {
+                          toast({
+                            title: t("toasts:common.error", { defaultValue: "Error" }),
+                            description: "Impossible de copier le contenu.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-xs text-muted-foreground space-y-2">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <span>at: {lastHttpDebug.at}</span>
+                    <span>url: {lastHttpDebug.url}</span>
+                    {lastHttpDebug.jobId ? <span>jobId: {lastHttpDebug.jobId}</span> : null}
+                    {"status" in lastHttpDebug ? (
+                      <span>
+                        status: {lastHttpDebug.status} {lastHttpDebug.statusText}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {"error" in lastHttpDebug ? (
+                    <div className="whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-foreground">
+                      {lastHttpDebug.error}
+                    </div>
+                  ) : (
+                    <div className="max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-foreground">
+                      {lastHttpDebug.bodyText?.trim() ? lastHttpDebug.bodyText : "(body vide)"}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {analyses.length > 0 && (
             <div className="space-y-6">
