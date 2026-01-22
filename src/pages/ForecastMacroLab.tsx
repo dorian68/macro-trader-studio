@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft,
   Brain,
@@ -94,6 +95,8 @@ export default function ForecastMacroLab() {
   });
   const [jobStatus, setJobStatus] = useState<string>("");
   const [timeframe, setTimeframe] = useState("1h");
+
+  const [showHttpDebug, setShowHttpDebug] = useState(false);
 
    const [lastHttpDebug, setLastHttpDebug] = useState<
      | {
@@ -536,6 +539,14 @@ export default function ForecastMacroLab() {
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">{t("dashboard:macro.title")}</h1>
               <p className="text-sm sm:text-base text-muted-foreground break-words">{t("dashboard:macro.subtitle")}</p>
             </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-sm text-muted-foreground">HTTP debug</span>
+              <Switch
+                checked={showHttpDebug}
+                onCheckedChange={setShowHttpDebug}
+                aria-label="Toggle HTTP debug"
+              />
+            </div>
           </div>
 
           <Card className="gradient-card shadow-lg rounded-2xl border">
@@ -604,7 +615,7 @@ export default function ForecastMacroLab() {
             </CardContent>
           </Card>
 
-          {lastHttpDebug && (
+          {showHttpDebug && lastHttpDebug && (
             <Card className="rounded-2xl border">
               <CardHeader className="py-3">
                 <div className="flex items-center justify-between gap-3">
