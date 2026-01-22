@@ -33,6 +33,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
+import { useForceLanguage } from "@/hooks/useForceLanguage";
 
 const { useState, useEffect } = React;
 
@@ -78,6 +79,9 @@ export default function ForecastMacroLab() {
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
   const { t } = useTranslation(["dashboard", "toasts", "common"]);
+
+  // Forecast Playground is an internal tool: keep UI in English.
+  useForceLanguage("en");
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
@@ -604,7 +608,7 @@ export default function ForecastMacroLab() {
             <Card className="rounded-2xl border">
               <CardHeader className="py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-sm font-semibold text-foreground">Debug — dernière réponse HTTP</CardTitle>
+                  <CardTitle className="text-sm font-semibold text-foreground">Debug — last HTTP response</CardTitle>
                   {"bodyText" in lastHttpDebug && (
                     <Button
                       type="button"
@@ -617,7 +621,7 @@ export default function ForecastMacroLab() {
                         } catch {
                           toast({
                             title: t("toasts:common.error", { defaultValue: "Error" }),
-                            description: "Impossible de copier le contenu.",
+                            description: "Unable to copy content.",
                             variant: "destructive",
                           });
                         }
@@ -647,7 +651,7 @@ export default function ForecastMacroLab() {
                     </div>
                   ) : (
                     <div className="max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-foreground">
-                      {lastHttpDebug.bodyText?.trim() ? lastHttpDebug.bodyText : "(body vide)"}
+                      {lastHttpDebug.bodyText?.trim() ? lastHttpDebug.bodyText : "(empty body)"}
                     </div>
                   )}
                 </div>

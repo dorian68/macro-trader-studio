@@ -64,6 +64,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useForceLanguage } from "@/hooks/useForceLanguage";
 
 const ALLOWED_ASSETS = ["AUD/USD", "EUR/USD", "BTC/USD", "ETH/USD", "XAU/USD", "XLM/USD"];
 
@@ -946,6 +947,9 @@ function ModelStatusCard({ status }: { status: ModelStatus }) {
 }
 
 function ForecastPlaygroundContent() {
+  // Forecast Playground is an internal tool: keep UI in English.
+  useForceLanguage("en");
+
   // Form state
   const [symbol, setSymbol] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15min");

@@ -6,9 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FlaskConical, ArrowRight, Brain } from "lucide-react";
+import { useForceLanguage } from "@/hooks/useForceLanguage";
 
 export default function ForecastPlaygroundHub() {
   const navigate = useNavigate();
+
+  // Forecast Playground is an internal tool: keep UI in English.
+  useForceLanguage("en");
 
   return (
     <SuperUserGuard fallback={<LabsComingSoon title="Forecast Playground" description="This feature is currently in private beta." />}>
@@ -22,7 +26,7 @@ export default function ForecastPlaygroundHub() {
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Forecast Playground</h1>
                 <p className="text-sm sm:text-base text-muted-foreground">
-                  Hub interne — lance l’outil de forecasting et ses visualisations.
+                  Internal hub — launch the forecasting tools and visualizations.
                 </p>
               </div>
             </div>
@@ -40,12 +44,12 @@ export default function ForecastPlaygroundHub() {
                   Forecast Playground
                 </CardTitle>
                 <CardDescription>
-                  Accès à l’outil complet (forecast-proxy + surface-proxy) tel qu’il existait avant.
+                  Access the full tool (forecast-proxy + surface-proxy) as it existed previously.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <Button onClick={() => navigate("/forecast-playground/tool")} className="w-full">
-                  Ouvrir l’outil
+                  Open tool
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
                 <Button
@@ -53,7 +57,7 @@ export default function ForecastPlaygroundHub() {
                   onClick={() => window.open("/forecast-playground/tool", "_blank")}
                   className="w-full"
                 >
-                  Ouvrir dans un nouvel onglet
+                  Open in new tab
                 </Button>
               </CardContent>
             </Card>
@@ -65,12 +69,12 @@ export default function ForecastPlaygroundHub() {
                   Macro Lab
                 </CardTitle>
                 <CardDescription>
-                  Copie Macro Analysis pour tests (webhook dédié).
+                  Macro Analysis copy for testing (dedicated webhook).
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <Button onClick={() => navigate("/forecast-playground/macro-commentary")} className="w-full">
-                  Ouvrir l’outil
+                  Open tool
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
                 <Button
@@ -78,7 +82,7 @@ export default function ForecastPlaygroundHub() {
                   onClick={() => window.open("/forecast-playground/macro-commentary", "_blank")}
                   className="w-full"
                 >
-                  Ouvrir dans un nouvel onglet
+                  Open in new tab
                 </Button>
               </CardContent>
             </Card>
