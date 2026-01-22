@@ -30,7 +30,6 @@ import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreditEngagement } from "@/hooks/useCreditEngagement";
 import { useTranslation } from "react-i18next";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
@@ -78,7 +77,6 @@ export default function ForecastMacroLab() {
   const { user } = useAuth();
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
-  const { tryEngageCredit } = useCreditEngagement();
   const { t } = useTranslation(["dashboard", "toasts", "common"]);
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -359,18 +357,8 @@ export default function ForecastMacroLab() {
 
       const responseJobId = await createJob("macro_analysis", selectedAsset.symbol, payload, "Macro Commentary");
 
-      const creditResult = await tryEngageCredit("queries", responseJobId);
-      if (!creditResult.success) {
-        await supabase.from("jobs").delete().eq("id", responseJobId);
-
-        toast({
-          title: "Insufficient Credits",
-          description: "You've run out of credits. Please recharge to continue using AlphaLens.",
-          variant: "destructive",
-        });
-        setIsGenerating(false);
-        return;
-      }
+      // Macro Lab is a superuser-only testing tool: do NOT require credits on this page.
+      // (Credits remain enforced everywhere else.)
 
       const realtimeChannel = supabase
         .channel(`macro-analysis-${responseJobId}`)
