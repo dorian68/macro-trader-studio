@@ -5,7 +5,7 @@ import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FlaskConical, ArrowRight } from "lucide-react";
+import { FlaskConical, ArrowRight, Brain } from "lucide-react";
 
 export default function ForecastPlaygroundHub() {
   const navigate = useNavigate();
@@ -51,6 +51,31 @@ export default function ForecastPlaygroundHub() {
                 <Button
                   variant="outline"
                   onClick={() => window.open("/forecast-playground/tool", "_blank")}
+                  className="w-full"
+                >
+                  Ouvrir dans un nouvel onglet
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-primary" />
+                  Macro Analysis (Copy)
+                </CardTitle>
+                <CardDescription>
+                  Copie à l’identique de Macro Analysis (Macro Commentary), version hub Forecast Playground.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <Button onClick={() => navigate("/forecast-playground/macro-commentary")} className="w-full">
+                  Ouvrir l’outil
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open("/forecast-playground/macro-commentary", "_blank")}
                   className="w-full"
                 >
                   Ouvrir dans un nouvel onglet
