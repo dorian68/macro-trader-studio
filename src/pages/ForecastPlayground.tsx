@@ -5,7 +5,7 @@ import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FlaskConical, ArrowRight, Brain } from "lucide-react";
+import { FlaskConical, ArrowRight, Brain, Zap } from "lucide-react";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
 
 export default function ForecastPlaygroundHub() {
@@ -36,7 +36,7 @@ export default function ForecastPlaygroundHub() {
             </div>
           </header>
 
-          <section className="grid gap-4 md:grid-cols-2">
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="rounded-2xl border shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -80,6 +80,31 @@ export default function ForecastPlaygroundHub() {
                 <Button
                   variant="outline"
                   onClick={() => window.open("/forecast-playground/macro-commentary", "_blank")}
+                  className="w-full"
+                >
+                  Open in new tab
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  Trade Generator
+                </CardTitle>
+                <CardDescription>
+                  Combines Forecast + AI Setup in one unified workflow.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <Button onClick={() => navigate("/forecast-playground/trade-generator")} className="w-full">
+                  Open tool
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open("/forecast-playground/trade-generator", "_blank")}
                   className="w-full"
                 >
                   Open in new tab
