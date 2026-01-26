@@ -152,6 +152,15 @@ function normalizeN8n(raw: unknown): N8nTradeResult | null {
       }
     }
     
+    // Parse JSON strings (backend may return stringified JSON in final_answer)
+    if (typeof maybeContent === "string") {
+      try {
+        maybeContent = JSON.parse(maybeContent);
+      } catch {
+        return null;
+      }
+    }
+    
     if (!maybeContent || typeof maybeContent !== "object") return null;
     const c = maybeContent as Record<string, unknown>;
     const r: N8nTradeResult = {
