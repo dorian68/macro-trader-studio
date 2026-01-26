@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
+import { RiskSurfaceChart, SurfaceApiResponse } from "@/components/labs/RiskSurfaceChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   FlaskConical,
   ChevronDown,
   ChevronRight,
@@ -28,10 +35,31 @@ import {
   TrendingUp,
   TrendingDown,
   Zap,
+  Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  RISK_PROFILES,
+  pipSizeForSymbol,
+  pipUnitLabel,
+  sigmaHProxyFromQuantiles,
+  sigmaHFromSigmaRef,
+  tpSlFromSigmas,
+  tpSlFromATR,
+  priceDistanceToPips,
+  computeSteps,
+} from "@/lib/forecastUtils";
+import {
+  getSymmetricFriction,
+  getAssetClassLabel,
+  SYMMETRIC_FRICTION_TOOLTIP,
+} from "@/lib/marketFrictions";
+import {
+  interpolateProbability,
+} from "@/lib/surfaceInterpolation";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // TYPES
@@ -413,10 +441,233 @@ function TradeSetupCard({ setup, index }: { setup: N8nSetup; index: number }) {
 }
 
 // ============================================================================
-// FORECAST DATA TABLE (simplified from ForecastPlaygroundTool)
+// RISK PROFILES PANEL (ported from ForecastPlaygroundTool)
 // ============================================================================
 
-function ForecastDataTable({ horizons }: { horizons: ForecastHorizon[] }) {
+interface RiskProfilesPanelProps {
+  horizonData: ForecastHorizon;
+  symbol?: string;
+  sigmaRef?: number;
+  timeframe?: string;
+  atr?: number;
+  surface?: SurfaceApiResponse['surface'];
+}
+
+function RiskProfilesPanel({
+  horizonData,
+  symbol,
+  sigmaRef,
+  timeframe,
+  atr,
+  surface,
+}: RiskProfilesPanelProps) {
+  const entryPrice = horizonData.entry_price;
+  const direction = (horizonData.direction?.toLowerCase() || "long") as "long" | "short";
+  const p20 = horizonData.forecast?.p20;
+  const p80 = horizonData.forecast?.p80;
+
+  // Determine calculation method: ATR (priority) or Sigma (fallback)
+  const useATR = atr != null && atr > 0;
+
+  // Calculate sigma_h for this horizon (fallback + analytics display)
+  let sigmaH: number | null = null;
+  let sigmaSource = "";
+
+  if (p20 != null && p80 != null && entryPrice) {
+    sigmaH = sigmaHProxyFromQuantiles(p20, p80) / entryPrice;
+    sigmaSource = "quantiles";
+  } else if (sigmaRef != null && timeframe) {
+    const horizonMatch = horizonData.h?.match(/^(\d+)/);
+    const horizonHours = horizonMatch ? parseInt(horizonMatch[1], 10) : 1;
+    const steps = computeSteps(horizonHours, timeframe);
+    sigmaH = sigmaHFromSigmaRef(sigmaRef, steps);
+    sigmaSource = "sigma_ref";
+  }
+
+  if (!entryPrice || (!useATR && sigmaH == null)) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        Insufficient data to calculate risk profiles (need entry price and ATR or volatility estimate)
+      </div>
+    );
+  }
+
+  const pipSize = symbol ? pipSizeForSymbol(symbol) : 0.0001;
+  const pipUnit = symbol ? pipUnitLabel(symbol) : "pips";
+
+  // SYMMETRIC Market Friction calculation (50%/50% split)
+  const frictionInfo = symbol && timeframe 
+    ? getSymmetricFriction(symbol, timeframe)
+    : { slFriction: 0, tpFriction: 0, enabled: false, assetClass: 'fx_major' as const, baseFriction: 0 };
+  
+  const slFriction = frictionInfo.enabled ? frictionInfo.slFriction : 0;
+  const tpFriction = frictionInfo.enabled ? frictionInfo.tpFriction : 0;
+
+  // Calculate profiles using ATR (priority) or sigma (fallback) WITH SYMMETRIC FRICTION
+  const profiles = Object.entries(RISK_PROFILES).map(([key, profile]) => {
+    let tpPrice: number, slPrice: number, tpDistance: number, slDistance: number;
+    
+    const slSigmaWithFriction = profile.slSigma + slFriction;
+    const tpSigmaWithFriction = profile.tpSigma + tpFriction;
+
+    if (useATR) {
+      const result = tpSlFromATR(
+        entryPrice,
+        direction,
+        atr as number,
+        tpSigmaWithFriction,
+        slSigmaWithFriction,
+      );
+      tpPrice = result.tpPrice;
+      slPrice = result.slPrice;
+      tpDistance = result.tpDistance;
+      slDistance = result.slDistance;
+    } else {
+      const result = tpSlFromSigmas(entryPrice, direction, sigmaH as number, tpSigmaWithFriction, slSigmaWithFriction);
+      tpPrice = result.tpPrice;
+      slPrice = result.slPrice;
+      tpDistance = result.tpDistance;
+      slDistance = result.slDistance;
+    }
+
+    const tpPips = priceDistanceToPips(tpDistance, pipSize);
+    const slPips = priceDistanceToPips(slDistance, pipSize);
+    const riskReward = slDistance > 0 ? tpDistance / slDistance : 0;
+
+    return {
+      key,
+      ...profile,
+      slSigmaBase: profile.slSigma,
+      slSigmaFinal: slSigmaWithFriction,
+      tpSigmaBase: profile.tpSigma,
+      tpSigmaFinal: tpSigmaWithFriction,
+      tpPrice,
+      slPrice,
+      tpPips,
+      slPips,
+      riskReward,
+      effectiveProb: profile.targetProb,
+    };
+  });
+
+  const formatPriceValue = (val: number) => val.toFixed(5);
+  const calculationLabel = useATR ? `ATR: ${atr?.toFixed(5)}` : `σ: ${sigmaSource}`;
+
+  const getProfileStyles = (key: string) => {
+    switch (key) {
+      case "conservative":
+        return "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400";
+      case "moderate":
+        return "bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400";
+      case "aggressive":
+        return "bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400";
+      default:
+        return "";
+    }
+  };
+
+  return (
+    <div className="p-4 space-y-3 bg-gradient-to-b from-muted/30 to-muted/10 animate-in slide-in-from-top-2 duration-200">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold">Suggested TP/SL based on risk appetite</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs font-mono border-amber-500/50 text-amber-600 bg-amber-500/10 dark:text-amber-400"
+                  >
+                    +{slFriction.toFixed(2)}σ SL / +{tpFriction.toFixed(2)}σ TP ({getAssetClassLabel(frictionInfo.assetClass)})
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-xs">{SYMMETRIC_FRICTION_TOOLTIP}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {useATR ? (
+            <Badge
+              className="text-xs font-mono bg-emerald-600 hover:bg-emerald-700"
+              title="Using ATR(14) for TP/SL calculation"
+            >
+              {calculationLabel}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs font-mono" title="Using sigma-based calculation">
+              {calculationLabel}
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="rounded-lg border overflow-x-auto bg-background/80 backdrop-blur-sm">
+        <Table className="text-sm">
+          <TableHeader>
+            <TableRow className="bg-muted/30 border-b">
+              <TableHead className="text-xs font-semibold uppercase tracking-wide">Profile</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-center">Prob</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL (σ)</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Price</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL ({pipUnit})</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP (σ)</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Price</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP ({pipUnit})</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">R/R</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {profiles.map((profile) => (
+              <TableRow key={profile.key} className="hover:bg-muted/20 transition-colors">
+                <TableCell>
+                  <Badge variant="outline" className={cn("text-xs capitalize", getProfileStyles(profile.key))}>
+                    {profile.name}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-center font-mono text-xs">
+                  {(profile.effectiveProb * 100).toFixed(0)}%
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs">{profile.slSigmaFinal.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-xs text-rose-600">{formatPriceValue(profile.slPrice)}</TableCell>
+                <TableCell className="text-right font-mono text-xs text-rose-500">{profile.slPips.toFixed(1)}</TableCell>
+                <TableCell className="text-right font-mono text-xs">{profile.tpSigmaFinal.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-xs text-emerald-600">{formatPriceValue(profile.tpPrice)}</TableCell>
+                <TableCell className="text-right font-mono text-xs text-emerald-500">{profile.tpPips.toFixed(1)}</TableCell>
+                <TableCell className="text-right font-mono text-xs font-semibold">{profile.riskReward.toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ENHANCED FORECAST DATA TABLE (with expandable Risk Profiles rows)
+// ============================================================================
+
+interface EnhancedForecastTableProps {
+  horizons: ForecastHorizon[];
+  symbol: string;
+  timeframe: string;
+  surfaceResult: SurfaceApiResponse | null;
+  expandedRows: Set<string>;
+  onToggleRow: (key: string) => void;
+}
+
+function EnhancedForecastTable({ 
+  horizons, 
+  symbol, 
+  timeframe, 
+  surfaceResult,
+  expandedRows,
+  onToggleRow,
+}: EnhancedForecastTableProps) {
   if (horizons.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -427,52 +678,100 @@ function ForecastDataTable({ horizons }: { horizons: ForecastHorizon[] }) {
   }
 
   return (
-    <div className="rounded-lg border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/30">
-            <TableHead className="font-semibold text-xs uppercase">Horizon</TableHead>
-            <TableHead className="font-semibold text-xs uppercase">Direction</TableHead>
-            <TableHead className="font-semibold text-xs uppercase text-right">Entry</TableHead>
-            <TableHead className="font-semibold text-xs uppercase text-right">Forecast (Med)</TableHead>
-            <TableHead className="font-semibold text-xs uppercase text-right">TP</TableHead>
-            <TableHead className="font-semibold text-xs uppercase text-right">SL</TableHead>
-            <TableHead className="font-semibold text-xs uppercase text-right">R/R</TableHead>
-            <TableHead className="font-semibold text-xs uppercase text-right">Prob TP</TableHead>
-            <TableHead className="font-semibold text-xs uppercase text-right">Conf.</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {horizons.map((h, idx) => (
-            <TableRow key={h.h || idx} className={idx % 2 === 0 ? "bg-transparent" : "bg-muted/20"}>
-              <TableCell className="font-mono font-medium">{h.h}</TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={
-                    h.direction?.toLowerCase() === "long"
-                      ? "border-emerald-500/50 text-emerald-600 bg-emerald-500/10"
-                      : h.direction?.toLowerCase() === "short"
-                        ? "border-rose-500/50 text-rose-600 bg-rose-500/10"
-                        : ""
-                  }
-                >
-                  {h.direction?.toLowerCase() === "long" && <TrendingUp className="h-3 w-3 mr-1" />}
-                  {h.direction?.toLowerCase() === "short" && <TrendingDown className="h-3 w-3 mr-1" />}
-                  {h.direction || "—"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right font-mono text-primary font-semibold">{formatPrice(h.entry_price)}</TableCell>
-              <TableCell className="text-right font-mono">{formatPrice(h.forecast?.medianPrice)}</TableCell>
-              <TableCell className="text-right font-mono text-emerald-600">{formatPrice(h.tp)}</TableCell>
-              <TableCell className="text-right font-mono text-rose-600">{formatPrice(h.sl)}</TableCell>
-              <TableCell className="text-right font-mono">{formatRatio(h.riskReward)}</TableCell>
-              <TableCell className="text-right font-mono">{formatPercent(h.prob_hit_tp_before_sl)}</TableCell>
-              <TableCell className="text-right font-mono">{formatPercent(h.confidence)}</TableCell>
+    <div className="space-y-1">
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30">
+              <TableHead className="w-8"></TableHead>
+              <TableHead className="font-semibold text-xs uppercase">Horizon</TableHead>
+              <TableHead className="font-semibold text-xs uppercase">Direction</TableHead>
+              <TableHead className="font-semibold text-xs uppercase text-right">Entry</TableHead>
+              <TableHead className="font-semibold text-xs uppercase text-right">Forecast (Med)</TableHead>
+              <TableHead className="font-semibold text-xs uppercase text-right">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="flex items-center gap-1 justify-end">
+                      SL (strat.)
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">Strategic SL from API. Expand row to see Risk Profiles with effective levels (Market Frictions applied).</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </TableHead>
+              <TableHead className="font-semibold text-xs uppercase text-right">TP (strat.)</TableHead>
+              <TableHead className="font-semibold text-xs uppercase text-right">R/R</TableHead>
+              <TableHead className="font-semibold text-xs uppercase text-right">Prob TP</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {horizons.map((h, idx) => {
+              const rowKey = h.h || String(idx);
+              const isExpanded = expandedRows.has(rowKey);
+              
+              return (
+                <React.Fragment key={rowKey}>
+                  <TableRow 
+                    className={cn(
+                      idx % 2 === 0 ? "bg-transparent" : "bg-muted/20",
+                      "cursor-pointer hover:bg-muted/40 transition-colors"
+                    )}
+                    onClick={() => onToggleRow(rowKey)}
+                  >
+                    <TableCell className="w-8 px-2">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="font-mono font-medium">{h.h}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          h.direction?.toLowerCase() === "long"
+                            ? "border-emerald-500/50 text-emerald-600 bg-emerald-500/10"
+                            : h.direction?.toLowerCase() === "short"
+                              ? "border-rose-500/50 text-rose-600 bg-rose-500/10"
+                              : ""
+                        }
+                      >
+                        {h.direction?.toLowerCase() === "long" && <TrendingUp className="h-3 w-3 mr-1" />}
+                        {h.direction?.toLowerCase() === "short" && <TrendingDown className="h-3 w-3 mr-1" />}
+                        {h.direction || "—"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-primary font-semibold">{formatPrice(h.entry_price)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatPrice(h.forecast?.medianPrice)}</TableCell>
+                    <TableCell className="text-right font-mono text-rose-600">{formatPrice(h.sl)}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-600">{formatPrice(h.tp)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatRatio(h.riskReward)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatPercent(h.prob_hit_tp_before_sl)}</TableCell>
+                  </TableRow>
+                  {isExpanded && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="p-0 border-t-0">
+                        <RiskProfilesPanel
+                          horizonData={h}
+                          symbol={symbol}
+                          sigmaRef={surfaceResult?.sigma_ref}
+                          timeframe={timeframe}
+                          atr={surfaceResult?.atr}
+                          surface={surfaceResult?.surface}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <p className="text-xs text-muted-foreground italic px-1">
+        💡 Click on a row to expand Risk Profiles with Conservative, Moderate, and Aggressive TP/SL suggestions.
+      </p>
     </div>
   );
 }
@@ -511,6 +810,14 @@ function ForecastTradeGeneratorContent() {
   const [forecastHorizons, setForecastHorizons] = useState<ForecastHorizon[]>([]);
   const [requestDuration, setRequestDuration] = useState<number | null>(null);
 
+  // Surface API state
+  const [surfaceResult, setSurfaceResult] = useState<SurfaceApiResponse | null>(null);
+  const [surfaceLoading, setSurfaceLoading] = useState(false);
+  const [surfaceError, setSurfaceError] = useState<string | null>(null);
+
+  // Expanded rows state for Risk Profiles
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
   // Debug toggle
   const [showDebug, setShowDebug] = useState(false);
 
@@ -521,6 +828,9 @@ function ForecastTradeGeneratorContent() {
     setAiSetupResult(null);
     setForecastHorizons([]);
     setRequestDuration(null);
+    setSurfaceResult(null);
+    setSurfaceError(null);
+    setExpandedRows(new Set());
 
     const startTime = performance.now();
 
@@ -587,11 +897,65 @@ function ForecastTradeGeneratorContent() {
       // Parse Forecast data - try multiple paths
       const horizonsData = getPayloadHorizons(data);
       setForecastHorizons(horizonsData);
+
+      // Extract entry_price from forecast for Surface API call
+      let forecastEntryPrice: number | undefined;
+      const innerData = (data as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+      const payload = innerData?.payload as Record<string, unknown> | undefined;
+      forecastEntryPrice = payload?.entry_price as number | undefined;
+      
+      // Fallback: get from first horizon if not at payload level
+      if (!forecastEntryPrice && horizonsData.length > 0) {
+        forecastEntryPrice = horizonsData[0].entry_price;
+      }
+
+      // Call Surface API if we have entry_price
+      if (forecastEntryPrice && parsedHorizons.length > 0) {
+        setSurfaceLoading(true);
+        try {
+          const surfaceResponse = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              symbol,
+              timeframe,
+              horizon_hours: [parsedHorizons[0]], // Use first horizon for surface
+              paths: useMonteCarlo ? paths : 1000,
+              dof: 3.0,
+              skew: skew,
+              entry_price: forecastEntryPrice, // Chain from forecast response
+            }),
+          });
+
+          if (surfaceResponse.ok) {
+            const surfaceData = await surfaceResponse.json();
+            setSurfaceResult(surfaceData);
+          } else {
+            setSurfaceError(`Surface API error: ${surfaceResponse.status}`);
+          }
+        } catch (surfaceErr) {
+          setSurfaceError(surfaceErr instanceof Error ? surfaceErr.message : "Surface API error");
+        } finally {
+          setSurfaceLoading(false);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleRowExpanded = (horizonKey: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(horizonKey)) {
+        next.delete(horizonKey);
+      } else {
+        next.add(horizonKey);
+      }
+      return next;
+    });
   };
 
   const hasResults = aiSetupResult || forecastHorizons.length > 0;
@@ -896,15 +1260,27 @@ function ForecastTradeGeneratorContent() {
                   )}
                 </>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No AI trade setup data in response</p>
+                <div className="text-center py-12 text-muted-foreground space-y-4">
+                  <Target className="h-12 w-12 mx-auto opacity-50" />
+                  <div className="max-w-md mx-auto space-y-2">
+                    <p className="font-medium">AI Trade Setup not available</p>
+                    <p className="text-xs">
+                      The backend currently returns forecast data only. AI Setup integration 
+                      (with <code className="px-1 py-0.5 bg-muted rounded">output.final_answer</code>) 
+                      requires a backend update to the <code className="px-1 py-0.5 bg-muted rounded">mode: "trade_generation"</code> handler.
+                    </p>
+                    <p className="text-xs">
+                      In the meantime, use the <strong>Forecast Data</strong> tab which includes 
+                      Risk Profiles and the Risk Surface visualization.
+                    </p>
+                  </div>
                 </div>
               )}
             </TabsContent>
 
             {/* Forecast Data Tab */}
-            <TabsContent value="forecast-data" className="space-y-4">
+            <TabsContent value="forecast-data" className="space-y-6">
+              {/* Enhanced Forecast Table with Risk Profiles */}
               <Card className="rounded-xl border shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -912,13 +1288,51 @@ function ForecastTradeGeneratorContent() {
                     Forecast Summary by Horizon
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Quantitative forecast data from trade_setup field
+                    Click on a row to expand Risk Profiles (Conservative / Moderate / Aggressive)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ForecastDataTable horizons={forecastHorizons} />
+                  <EnhancedForecastTable 
+                    horizons={forecastHorizons} 
+                    symbol={symbol}
+                    timeframe={timeframe}
+                    surfaceResult={surfaceResult}
+                    expandedRows={expandedRows}
+                    onToggleRow={toggleRowExpanded}
+                  />
                 </CardContent>
               </Card>
+
+              {/* Risk Surface Chart */}
+              {(surfaceResult || surfaceLoading) && (
+                <Card className="rounded-xl border shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Target className="h-4 w-4 text-primary" />
+                      Risk / Reward Surface
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      3D visualization of probability-adjusted TP as a function of SL intensity
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {surfaceError && (
+                      <Alert variant="destructive" className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{surfaceError}</AlertDescription>
+                      </Alert>
+                    )}
+                    <RiskSurfaceChart
+                      data={surfaceResult}
+                      loading={surfaceLoading}
+                      error={surfaceError}
+                      symbol={symbol}
+                      timeframe={timeframe}
+                      horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
+                    />
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Debug Tab */}
