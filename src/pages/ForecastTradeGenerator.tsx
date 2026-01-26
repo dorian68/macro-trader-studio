@@ -129,15 +129,29 @@ const STRATEGIES = [
 function normalizeN8n(raw: unknown): N8nTradeResult | null {
   try {
     let maybeContent: unknown;
-    if (Array.isArray(raw) && (raw[0] as { message?: { content?: unknown } })?.message?.content) {
-      maybeContent = (raw[0] as { message: { content: unknown } }).message.content;
-    } else if (Array.isArray(raw) && (raw[0] as { content?: unknown })?.content) {
-      maybeContent = (raw[0] as { content: unknown }).content;
-    } else if ((raw as { content?: unknown })?.content) {
-      maybeContent = (raw as { content: unknown }).content;
-    } else {
-      maybeContent = raw;
+    const rawObj = raw as Record<string, unknown>;
+    
+    // Priority 1: output.final_answer (Trade Generator response format)
+    if (rawObj?.output && typeof rawObj.output === "object") {
+      const output = rawObj.output as Record<string, unknown>;
+      if (output?.final_answer) {
+        maybeContent = output.final_answer;
+      }
     }
+    
+    // Fallback paths for other formats
+    if (!maybeContent) {
+      if (Array.isArray(raw) && (raw[0] as { message?: { content?: unknown } })?.message?.content) {
+        maybeContent = (raw[0] as { message: { content: unknown } }).message.content;
+      } else if (Array.isArray(raw) && (raw[0] as { content?: unknown })?.content) {
+        maybeContent = (raw[0] as { content: unknown }).content;
+      } else if (rawObj?.content) {
+        maybeContent = rawObj.content;
+      } else {
+        maybeContent = raw;
+      }
+    }
+    
     if (!maybeContent || typeof maybeContent !== "object") return null;
     const c = maybeContent as Record<string, unknown>;
     const r: N8nTradeResult = {
