@@ -192,11 +192,34 @@ function normalizeN8n(raw: unknown): N8nTradeResult | null {
     let maybeContent: unknown;
     const rawObj = raw as Record<string, unknown>;
     
-    // Priority 1: output.final_answer (Trade Generator response format)
-    if (rawObj?.output && typeof rawObj.output === "object") {
+    // Priority 1: body.message.message.content.content.final_answer (actual API response)
+    try {
+      const body = rawObj?.body as Record<string, unknown>;
+      const message1 = body?.message as Record<string, unknown>;
+      const message2 = message1?.message as Record<string, unknown>;
+      const content1 = message2?.content as Record<string, unknown>;
+      const content2 = content1?.content as Record<string, unknown>;
+      if (typeof content2?.final_answer === "string") {
+        maybeContent = content2.final_answer;
+      }
+    } catch {}
+    
+    // Priority 2: output.final_answer (Trade Generator response format)
+    if (!maybeContent && rawObj?.output && typeof rawObj.output === "object") {
       const output = rawObj.output as Record<string, unknown>;
       if (output?.final_answer) {
         maybeContent = output.final_answer;
+      }
+    }
+    
+    // Priority 3: output.trade_generation_output.final_answer
+    if (!maybeContent && rawObj?.output && typeof rawObj.output === "object") {
+      const output = rawObj.output as Record<string, unknown>;
+      if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
+        const tgo = output.trade_generation_output as Record<string, unknown>;
+        if (tgo?.final_answer) {
+          maybeContent = tgo.final_answer;
+        }
       }
     }
     
@@ -293,7 +316,31 @@ function getPayloadHorizons(responseData: unknown): ForecastHorizon[] {
 function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
   const obj = raw as Record<string, unknown>;
   
-  // Path 1: output.trade_generation_output.trade_setup
+  // Path 1: body.message.message.content.content.trade_setup (actual API response)
+  try {
+    const body = obj?.body as Record<string, unknown>;
+    const message1 = body?.message as Record<string, unknown>;
+    const message2 = message1?.message as Record<string, unknown>;
+    const content1 = message2?.content as Record<string, unknown>;
+    const content2 = content1?.content as Record<string, unknown>;
+    if (content2?.trade_setup) {
+      let setup = content2.trade_setup;
+      // Handle array format (API returns array of stringified JSON)
+      if (Array.isArray(setup) && setup.length > 0) {
+        const first = setup[0];
+        if (typeof first === "string") {
+          try { setup = JSON.parse(first); } catch { return null; }
+        } else {
+          setup = first;
+        }
+      } else if (typeof setup === "string") {
+        try { setup = JSON.parse(setup); } catch { return null; }
+      }
+      return setup as TradeSetupResponse;
+    }
+  } catch {}
+  
+  // Path 2: output.trade_generation_output.trade_setup
   if (obj?.output && typeof obj.output === "object") {
     const output = obj.output as Record<string, unknown>;
     if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
@@ -308,7 +355,7 @@ function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
     }
   }
   
-  // Path 2: Direct trade_generation_output.trade_setup
+  // Path 3: Direct trade_generation_output.trade_setup
   if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
     const tgo = obj.trade_generation_output as Record<string, unknown>;
     if (tgo?.trade_setup) {
@@ -330,7 +377,23 @@ function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
 function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
   const obj = raw as Record<string, unknown>;
   
-  // Path 1: output.trade_generation_output.risk_surface
+  // Path 1: body.message.message.content.content.risk_surface (actual API response)
+  try {
+    const body = obj?.body as Record<string, unknown>;
+    const message1 = body?.message as Record<string, unknown>;
+    const message2 = message1?.message as Record<string, unknown>;
+    const content1 = message2?.content as Record<string, unknown>;
+    const content2 = content1?.content as Record<string, unknown>;
+    if (content2?.risk_surface) {
+      let surface = content2.risk_surface;
+      if (typeof surface === "string") {
+        try { surface = JSON.parse(surface); } catch { return null; }
+      }
+      return surface as SurfaceApiResponse;
+    }
+  } catch {}
+  
+  // Path 2: output.trade_generation_output.risk_surface
   if (obj?.output && typeof obj.output === "object") {
     const output = obj.output as Record<string, unknown>;
     if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
@@ -345,7 +408,7 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     }
   }
   
-  // Path 2: Direct trade_generation_output.risk_surface
+  // Path 3: Direct trade_generation_output.risk_surface
   if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
     const tgo = obj.trade_generation_output as Record<string, unknown>;
     if (tgo?.risk_surface) {
@@ -366,7 +429,19 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
 function extractFinalAnswer(raw: unknown): string | null {
   const obj = raw as Record<string, unknown>;
   
-  // Path 1: output.trade_generation_output.final_answer
+  // Path 1: body.message.message.content.content.final_answer (actual API response)
+  try {
+    const body = obj?.body as Record<string, unknown>;
+    const message1 = body?.message as Record<string, unknown>;
+    const message2 = message1?.message as Record<string, unknown>;
+    const content1 = message2?.content as Record<string, unknown>;
+    const content2 = content1?.content as Record<string, unknown>;
+    if (typeof content2?.final_answer === "string") {
+      return content2.final_answer;
+    }
+  } catch {}
+  
+  // Path 2: output.trade_generation_output.final_answer
   if (obj?.output && typeof obj.output === "object") {
     const output = obj.output as Record<string, unknown>;
     if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
@@ -377,7 +452,7 @@ function extractFinalAnswer(raw: unknown): string | null {
     }
   }
   
-  // Path 2: Direct trade_generation_output.final_answer
+  // Path 3: Direct trade_generation_output.final_answer
   if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
     const tgo = obj.trade_generation_output as Record<string, unknown>;
     if (typeof tgo?.final_answer === "string") {
@@ -394,7 +469,19 @@ function extractFinalAnswer(raw: unknown): string | null {
 function extractConfidenceNote(raw: unknown): string | null {
   const obj = raw as Record<string, unknown>;
   
-  // Path 1: output.trade_generation_output.confidence_note
+  // Path 1: body.message.message.content.content.confidence_note (actual API response)
+  try {
+    const body = obj?.body as Record<string, unknown>;
+    const message1 = body?.message as Record<string, unknown>;
+    const message2 = message1?.message as Record<string, unknown>;
+    const content1 = message2?.content as Record<string, unknown>;
+    const content2 = content1?.content as Record<string, unknown>;
+    if (typeof content2?.confidence_note === "string") {
+      return content2.confidence_note;
+    }
+  } catch {}
+  
+  // Path 2: output.trade_generation_output.confidence_note
   if (obj?.output && typeof obj.output === "object") {
     const output = obj.output as Record<string, unknown>;
     if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
@@ -405,7 +492,7 @@ function extractConfidenceNote(raw: unknown): string | null {
     }
   }
   
-  // Path 2: Direct trade_generation_output.confidence_note
+  // Path 3: Direct trade_generation_output.confidence_note
   if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
     const tgo = obj.trade_generation_output as Record<string, unknown>;
     if (typeof tgo?.confidence_note === "string") {
