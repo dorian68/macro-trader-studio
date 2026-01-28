@@ -890,7 +890,7 @@ function ForecastTradeGeneratorContent() {
       // === SINGLE API CALL: macro-lab-proxy with RAG format (same as AISetup) ===
       const macroPayload = {
         type: "RAG",
-        mode: "run",
+        mode: "trade_generation",
         instrument: symbol,
         question: buildQuestion({
           instrument: symbol,
