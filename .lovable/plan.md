@@ -1,238 +1,235 @@
 
-# Plan: Corriger les Extracteurs de Données Trade Generator
 
-## Diagnostic du Problème
+# Plan: Améliorer le Styling du Debug HTTP
 
-L'API renvoie un status 200 avec les données, mais les extracteurs ne trouvent pas les données car le chemin est different:
+## Contexte
 
-**Chemin actuel (que les extracteurs cherchent):**
-```
-output.trade_generation_output.final_answer
-output.trade_generation_output.trade_setup
-output.trade_generation_output.risk_surface
-output.trade_generation_output.confidence_note
-```
+Actuellement, les deux pages affichent le debug HTTP de manière différente:
+- **Trade Generator**: utilise `StyledJsonViewer` avec syntax highlighting coloré et niveaux collapsibles
+- **Macro Lab**: affiche le JSON en texte brut (plain text) dans une simple div
 
-**Chemin réel dans la réponse API (vu dans les network logs):**
-```
-body.message.message.content.content.final_answer
-body.message.message.content.content.trade_setup
-body.message.message.content.content.risk_surface
-```
+L'objectif est d'harmoniser l'affichage avec un styling professionnel sur les deux pages.
 
-La structure reçue est:
-```json
-{
-  "statusCode": 200,
-  "body": {
-    "message": {
-      "status": "done",
-      "message": {
-        "content": {
-          "content": {
-            "final_answer": "{ JSON stringified }",
-            "trade_setup": [{ ... }],
-            ...
-          }
-        }
-      }
-    }
+---
+
+## Solution Technique
+
+### 1. Créer un Composant Partagé `StyledJsonViewer`
+
+Extraire le composant dans un fichier partagé pour éviter la duplication:
+
+**Fichier:** `src/components/ui/styled-json-viewer.tsx`
+
+```typescript
+import React, { useState } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
+
+interface StyledJsonViewerProps {
+  data: unknown;
+  depth?: number;
+  initialExpanded?: boolean;
+}
+
+export function StyledJsonViewer({ 
+  data, 
+  depth = 0, 
+  initialExpanded = true 
+}: StyledJsonViewerProps) {
+  const [collapsed, setCollapsed] = useState(depth > 1 && !initialExpanded);
+
+  // null
+  if (data === null) {
+    return <span className="text-muted-foreground italic">null</span>;
   }
+
+  // boolean
+  if (typeof data === "boolean") {
+    return (
+      <span className={data ? "text-emerald-500" : "text-rose-500"}>
+        {String(data)}
+      </span>
+    );
+  }
+
+  // number
+  if (typeof data === "number") {
+    return <span className="text-amber-500">{data}</span>;
+  }
+
+  // string
+  if (typeof data === "string") {
+    // Long strings: truncate with tooltip
+    const isLong = data.length > 80;
+    const displayText = isLong ? data.slice(0, 80) + "..." : data;
+    return (
+      <span className="text-emerald-400" title={isLong ? data : undefined}>
+        "{displayText}"
+      </span>
+    );
+  }
+
+  // Array
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return <span className="text-muted-foreground">[]</span>;
+    }
+    return (
+      <div className="inline">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="inline-flex items-center text-muted-foreground 
+                     hover:text-foreground transition-colors"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+          <span className="ml-1 text-xs text-sky-400">
+            Array({data.length})
+          </span>
+        </button>
+        {!collapsed && (
+          <div className="ml-4 border-l border-border/50 pl-3">
+            {data.map((item, index) => (
+              <div key={index} className="py-0.5">
+                <span className="text-muted-foreground mr-2 text-xs">
+                  {index}:
+                </span>
+                <StyledJsonViewer data={item} depth={depth + 1} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Object
+  if (typeof data === "object") {
+    const entries = Object.entries(data);
+    if (entries.length === 0) {
+      return <span className="text-muted-foreground">{"{}"}</span>;
+    }
+    return (
+      <div className="inline">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="inline-flex items-center text-muted-foreground 
+                     hover:text-foreground transition-colors"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+          <span className="ml-1 text-xs text-violet-400">
+            Object({entries.length})
+          </span>
+        </button>
+        {!collapsed && (
+          <div className="ml-4 border-l border-border/50 pl-3">
+            {entries.map(([key, value]) => (
+              <div key={key} className="py-0.5">
+                <span className="text-primary font-medium">"{key}"</span>
+                <span className="text-muted-foreground">: </span>
+                <StyledJsonViewer data={value} depth={depth + 1} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return <span>{String(data)}</span>;
 }
 ```
 
 ---
 
-## Modifications Techniques
+### 2. Mise à Jour de Macro Lab (`ForecastMacroLab.tsx`)
 
-### Fichier: `src/pages/ForecastTradeGenerator.tsx`
+Remplacer l'affichage brut par le composant stylé:
 
-#### 1. Mettre à jour `extractFinalAnswer` pour chercher dans le bon chemin
-
-```typescript
-function extractFinalAnswer(raw: unknown): string | null {
-  const obj = raw as Record<string, unknown>;
-  
-  // Path 1: body.message.message.content.content.final_answer (actual API response)
-  try {
-    const body = obj?.body as Record<string, unknown>;
-    const message1 = body?.message as Record<string, unknown>;
-    const message2 = message1?.message as Record<string, unknown>;
-    const content1 = message2?.content as Record<string, unknown>;
-    const content2 = content1?.content as Record<string, unknown>;
-    if (typeof content2?.final_answer === "string") {
-      return content2.final_answer;
-    }
-  } catch {}
-  
-  // Path 2: output.trade_generation_output.final_answer (legacy/expected)
-  if (obj?.output && typeof obj.output === "object") {
-    const output = obj.output as Record<string, unknown>;
-    if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
-      const tgo = output.trade_generation_output as Record<string, unknown>;
-      if (typeof tgo?.final_answer === "string") {
-        return tgo.final_answer;
-      }
-    }
-  }
-  
-  return null;
-}
+**Avant (lignes 659-667):**
+```tsx
+{"error" in lastHttpDebug ? (
+  <div className="whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-foreground">
+    {lastHttpDebug.error}
+  </div>
+) : (
+  <div className="max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-foreground">
+    {lastHttpDebug.bodyText?.trim() ? lastHttpDebug.bodyText : "(empty body)"}
+  </div>
+)}
 ```
 
-#### 2. Mettre à jour `extractTradeSetup` pour le nouveau chemin
+**Après:**
+```tsx
+import { StyledJsonViewer } from "@/components/ui/styled-json-viewer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-```typescript
-function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
-  const obj = raw as Record<string, unknown>;
-  
-  // Path 1: body.message.message.content.content.trade_setup (actual API)
-  try {
-    const body = obj?.body as Record<string, unknown>;
-    const message1 = body?.message as Record<string, unknown>;
-    const message2 = message1?.message as Record<string, unknown>;
-    const content1 = message2?.content as Record<string, unknown>;
-    const content2 = content1?.content as Record<string, unknown>;
-    if (content2?.trade_setup) {
-      let setup = content2.trade_setup;
-      // Handle array format (API returns array of stringified JSON)
-      if (Array.isArray(setup) && setup.length > 0) {
-        const first = setup[0];
-        if (typeof first === "string") {
-          try { setup = JSON.parse(first); } catch { return null; }
-        } else {
-          setup = first;
+// Dans le JSX:
+{"error" in lastHttpDebug ? (
+  <div className="whitespace-pre-wrap rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-rose-600">
+    {lastHttpDebug.error}
+  </div>
+) : (
+  <ScrollArea className="h-[250px]">
+    <div className="font-mono text-xs p-3 bg-muted/30 rounded-lg">
+      {(() => {
+        try {
+          const parsed = JSON.parse(lastHttpDebug.bodyText || "{}");
+          return <StyledJsonViewer data={parsed} />;
+        } catch {
+          // Fallback to raw text if not valid JSON
+          return (
+            <pre className="whitespace-pre-wrap text-muted-foreground">
+              {lastHttpDebug.bodyText?.trim() || "(empty body)"}
+            </pre>
+          );
         }
-      } else if (typeof setup === "string") {
-        try { setup = JSON.parse(setup); } catch { return null; }
-      }
-      return setup as TradeSetupResponse;
-    }
-  } catch {}
-  
-  // Path 2: Legacy paths...
-  // (keep existing code as fallback)
-  
-  return null;
-}
-```
-
-#### 3. Mettre à jour `extractRiskSurface` pour le nouveau chemin
-
-```typescript
-function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
-  const obj = raw as Record<string, unknown>;
-  
-  // Path 1: body.message.message.content.content.risk_surface (actual API)
-  try {
-    const body = obj?.body as Record<string, unknown>;
-    const message1 = body?.message as Record<string, unknown>;
-    const message2 = message1?.message as Record<string, unknown>;
-    const content1 = message2?.content as Record<string, unknown>;
-    const content2 = content1?.content as Record<string, unknown>;
-    if (content2?.risk_surface) {
-      let surface = content2.risk_surface;
-      if (typeof surface === "string") {
-        try { surface = JSON.parse(surface); } catch { return null; }
-      }
-      return surface as SurfaceApiResponse;
-    }
-  } catch {}
-  
-  // Legacy fallback...
-  return null;
-}
-```
-
-#### 4. Mettre à jour `extractConfidenceNote` pour le nouveau chemin
-
-Appliquer la même logique de chemin pour `confidence_note`.
-
-#### 5. Mettre à jour `normalizeN8n` pour parser le `final_answer` correctement
-
-Le `final_answer` est un JSON stringifié qui contient les `setups` pour le tab "Trade Setup". Le code actuel essaie de le parser mais ne trouve pas le bon chemin.
-
-```typescript
-function normalizeN8n(raw: unknown): N8nTradeResult | null {
-  try {
-    // Try new path first: body.message.message.content.content.final_answer
-    const obj = raw as Record<string, unknown>;
-    let finalAnswerStr: string | null = null;
-    
-    try {
-      const body = obj?.body as Record<string, unknown>;
-      const message1 = body?.message as Record<string, unknown>;
-      const message2 = message1?.message as Record<string, unknown>;
-      const content1 = message2?.content as Record<string, unknown>;
-      const content2 = content1?.content as Record<string, unknown>;
-      if (typeof content2?.final_answer === "string") {
-        finalAnswerStr = content2.final_answer;
-      }
-    } catch {}
-    
-    if (finalAnswerStr) {
-      try {
-        const parsed = JSON.parse(finalAnswerStr);
-        // parsed contains: instrument, setups, market_commentary_anchor, etc.
-        return {
-          instrument: parsed.instrument,
-          asOf: parsed.asOf,
-          market_commentary_anchor: parsed.market_commentary_anchor,
-          setups: Array.isArray(parsed.setups) ? parsed.setups : [],
-          disclaimer: parsed.disclaimer || "Illustrative ideas, not investment advice.",
-        };
-      } catch {}
-    }
-    
-    // Fallback to legacy paths...
-  } catch {
-    return null;
-  }
-}
+      })()}
+    </div>
+  </ScrollArea>
+)}
 ```
 
 ---
 
-## Structure de Données Attendue (après parsing)
+### 3. Mise à Jour de Trade Generator (`ForecastTradeGenerator.tsx`)
 
-### `final_answer` (stringified JSON) contient:
-```json
-{
-  "instrument": "EUR/USD",
-  "asOf": "2026-01-28T22:00:00Z",
-  "market_commentary_anchor": {
-    "summary": "...",
-    "key_drivers": [...]
-  },
-  "setups": [{
-    "horizon": "intraday",
-    "direction": "long",
-    "entryPrice": 1.1949,
-    "stopLoss": 1.1925,
-    "takeProfits": [1.1975, 1.1995],
-    ...
-  }],
-  "disclaimer": "..."
+Remplacer le composant local par l'import du composant partagé:
+
+**Avant (ligne 539-594):**
+```tsx
+function StyledJsonViewer({ data, depth = 0 }: { data: unknown; depth?: number }) {
+  // ... local implementation
 }
 ```
 
-### `trade_setup` (array[0] is stringified JSON) contient:
-```json
-{
-  "status": "success",
-  "data": {
-    "payload": {
-      "horizons": [{
-        "h": "12h",
-        "direction": "short",
-        "entry_price": 1.1923,
-        "forecast": { "medianPrice": ..., "p20": ..., "p80": ... },
-        ...
-      }]
-    }
-  }
-}
+**Après:**
+```tsx
+import { StyledJsonViewer } from "@/components/ui/styled-json-viewer";
+
+// Supprimer la définition locale du composant
 ```
+
+---
+
+### 4. Améliorations Visuelles Appliquées
+
+| Element | Style |
+|---------|-------|
+| Clés JSON | `text-primary` (bleu AlphaLens) |
+| Strings | `text-emerald-400` (vert) |
+| Numbers | `text-amber-500` (orange) |
+| Booleans | `text-emerald-500` / `text-rose-500` |
+| Array label | `text-sky-400` + count |
+| Object label | `text-violet-400` + count |
+| Collapse icons | Chevrons interactifs |
+| Nesting | Bordure verticale `border-l` |
 
 ---
 
@@ -240,13 +237,16 @@ function normalizeN8n(raw: unknown): N8nTradeResult | null {
 
 | Fichier | Changements |
 |---------|-------------|
-| `src/pages/ForecastTradeGenerator.tsx` | Mise à jour des 5 fonctions extracteurs pour utiliser le chemin `body.message.message.content.content.*` |
+| `src/components/ui/styled-json-viewer.tsx` | **NOUVEAU** - Composant partagé |
+| `src/pages/ForecastMacroLab.tsx` | Import + utilisation du StyledJsonViewer |
+| `src/pages/ForecastTradeGenerator.tsx` | Suppression du composant local, import du partagé |
 
 ---
 
 ## Garanties
 
-1. **Zero Régression**: Les chemins legacy sont conservés en fallback
-2. **Compatibilité**: Le code gère les formats JSON stringifiés dans la réponse
-3. **Robustesse**: Try/catch autour des accès aux chemins profonds pour éviter les crashes
-4. **Debug Fonctionnel**: Le debug JSON affiche toujours la réponse brute pour diagnostiquer
+1. **Zero Régression**: Les fonctionnalités debug existantes restent intactes
+2. **Fallback Sécurisé**: Si le JSON est invalide, affichage en texte brut
+3. **Performance**: Collapsible nodes pour les gros objets
+4. **Cohérence**: Même style sur les deux pages
+
