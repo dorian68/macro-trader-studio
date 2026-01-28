@@ -161,6 +161,32 @@ const STRATEGIES = [
 // HELPERS
 // ============================================================================
 
+/**
+ * Builds the question field required by the backend RAG API
+ * Matches the pattern used in AISetup.tsx
+ */
+function buildQuestion(p: {
+  instrument: string;
+  timeframe: string;
+  riskLevel: string;
+  strategy: string;
+  customNotes: string;
+  horizons: number[];
+}) {
+  const lines = [
+    `Provide an institutional macro outlook and risks for ${p.instrument}, then a macro-grounded trade idea (entry/SL/TP).`,
+    `Prioritize central banks / Bloomberg / Reuters; ignore low-authority sources unless they synthesize institutional research.`,
+    `Focus on policy divergence, inflation, growth, labor, real yields, financial conditions.`,
+    `Use technicals only to refine entries after macro.`
+  ];
+  if (p?.timeframe) lines.push(`User timeframe: ${p.timeframe}.`);
+  if (p?.riskLevel) lines.push(`User risk: ${p.riskLevel}.`);
+  if (p?.strategy) lines.push(`Strategy: ${p.strategy}.`);
+  if (p?.horizons?.length) lines.push(`Forecast horizons: ${p.horizons.join(', ')} hours.`);
+  if (p?.customNotes) lines.push(`Note: ${p.customNotes}.`);
+  return lines.join(' ');
+}
+
 function normalizeN8n(raw: unknown): N8nTradeResult | null {
   try {
     let maybeContent: unknown;
@@ -859,20 +885,28 @@ function ForecastTradeGeneratorContent() {
     }
 
     try {
-      // === SINGLE API CALL: macro-lab-proxy with mode: "trade_generation" ===
+      // === SINGLE API CALL: macro-lab-proxy with RAG format (same as AISetup) ===
       const macroPayload = {
-        mode: "trade_generation",  // CRITICAL: Mode identifier for backend
-        type: "trade_setup",
+        type: "RAG",
+        mode: "run",
         instrument: symbol,
+        question: buildQuestion({
+          instrument: symbol,
+          timeframe,
+          riskLevel,
+          strategy,
+          customNotes,
+          horizons: parsedHorizons
+        }),
+        user_email: null,
+        isTradeQuery: true,
         timeframe: timeframe,
-        horizons: parsedHorizons,
         riskLevel: riskLevel,
         strategy: strategy,
         customNotes: customNotes,
-        // Model options
+        horizons: parsedHorizons,
         use_montecarlo: useMonteCarlo,
-        paths: useMonteCarlo ? paths : undefined,
-        skew: skew,
+        ...(useMonteCarlo && { paths: paths, skew: skew })
       };
 
       const response = await fetch(MACRO_LAB_PROXY_URL, {

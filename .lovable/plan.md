@@ -1,6 +1,8 @@
 
 # Plan : Ajouter le champ `question` généré automatiquement dans Trade Generator
 
+## ✅ IMPLÉMENTÉ
+
 ## Analyse du problème
 
 L'API à `http://3.137.115.96:9000/run` (via `macro-lab-proxy`) exige un champ `question` dans le payload. Actuellement, le Trade Generator n'envoie pas ce champ, ce qui provoque l'erreur `{"error": "'question'"}`.
