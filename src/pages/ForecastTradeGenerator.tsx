@@ -858,145 +858,47 @@ function ForecastTradeGeneratorContent() {
       return;
     }
 
-    // Build combined payload
-    const requestBody: Record<string, unknown> = {
-      // Forecast Playground params
-      symbol,
-      timeframe,
-      horizons: parsedHorizons,
-      trade_mode: "forward",
-      use_montecarlo: useMonteCarlo,
-      paths: useMonteCarlo ? paths : undefined,
-      include_predictions: includePredictions,
-      include_metadata: includeMetadata,
-      include_model_info: false,
-      skew,
-
-      // AI Setup params
-      instrument: symbol,
-      riskLevel,
-      strategy,
-      customNotes,
-
-      // CRITICAL: Mode identifier for backend
-      mode: "trade_generation",
-    };
-
     try {
-      const response = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/forecast-proxy", {
+      // === SINGLE API CALL: macro-lab-proxy with mode: "trade_generation" ===
+      const macroPayload = {
+        mode: "trade_generation",  // CRITICAL: Mode identifier for backend
+        type: "trade_setup",
+        instrument: symbol,
+        timeframe: timeframe,
+        horizons: parsedHorizons,
+        riskLevel: riskLevel,
+        strategy: strategy,
+        customNotes: customNotes,
+        // Model options
+        use_montecarlo: useMonteCarlo,
+        paths: useMonteCarlo ? paths : undefined,
+        skew: skew,
+      };
+
+      const response = await fetch(MACRO_LAB_PROXY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(macroPayload),
       });
 
+      setRequestDuration(performance.now() - startTime);
+
       if (!response.ok) {
-        throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       setRawResponse(data);
-      setRequestDuration(performance.now() - startTime);
 
-      // Parse AI Setup data (root level or from setups field)
+      // Parse AI Setup data
       const normalized = normalizeN8n(data);
       if (normalized && normalized.setups && normalized.setups.length > 0) {
         setAiSetupResult(normalized);
-      } else {
-        // No AI Setup data in response yet (backend might not support combined mode)
-        setAiSetupResult(null);
       }
 
-      // Parse Forecast data - try multiple paths
+      // Parse Forecast data if available in response
       const horizonsData = getPayloadHorizons(data);
       setForecastHorizons(horizonsData);
-
-      // Extract entry_price from forecast for Surface API call
-      let forecastEntryPrice: number | undefined;
-      const innerData = (data as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
-      const payload = innerData?.payload as Record<string, unknown> | undefined;
-      forecastEntryPrice = payload?.entry_price as number | undefined;
-      
-      // Fallback: get from first horizon if not at payload level
-      if (!forecastEntryPrice && horizonsData.length > 0) {
-        forecastEntryPrice = horizonsData[0].entry_price;
-      }
-
-      // Call Surface API if we have entry_price
-      if (forecastEntryPrice && parsedHorizons.length > 0) {
-        setSurfaceLoading(true);
-        try {
-          const surfaceResponse = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              symbol,
-              timeframe,
-              horizon_hours: [parsedHorizons[0]], // Use first horizon for surface
-              paths: useMonteCarlo ? paths : 1000,
-              dof: 3.0,
-              skew: skew,
-              entry_price: forecastEntryPrice, // Chain from forecast response
-            }),
-          });
-
-          if (surfaceResponse.ok) {
-            const surfaceData = await surfaceResponse.json();
-            setSurfaceResult(surfaceData);
-          } else {
-            setSurfaceError(`Surface API error: ${surfaceResponse.status}`);
-          }
-        } catch (surfaceErr) {
-          setSurfaceError(surfaceErr instanceof Error ? surfaceErr.message : "Surface API error");
-        } finally {
-          setSurfaceLoading(false);
-        }
-      }
-
-      // === STEP 3: Call macro-lab-proxy for AI Trade Setups ===
-      setAiSetupLoading(true);
-      
-      try {
-        const macroPayload = {
-          mode: "trade_generation",  // CRITICAL: Mode identifier for backend
-          type: "trade_setup",
-          instrument: symbol,
-          timeframe: timeframe,
-          horizons: parsedHorizons,
-          riskLevel: riskLevel,
-          strategy: strategy,
-          customNotes: customNotes,
-          forecast_context: {
-            entry_price: forecastEntryPrice,
-            direction: horizonsData[0]?.direction,
-            horizons: horizonsData.map(h => ({
-              h: h.h,
-              tp: h.tp,
-              sl: h.sl,
-              direction: h.direction
-            }))
-          }
-        };
-
-        const macroResponse = await fetch(MACRO_LAB_PROXY_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(macroPayload),
-        });
-
-        if (macroResponse.ok) {
-          const macroData = await macroResponse.json();
-          const normalized = normalizeN8n(macroData);
-          if (normalized && normalized.setups && normalized.setups.length > 0) {
-            setAiSetupResult(normalized);
-          }
-        } else {
-          setAiSetupError(`AI Setup API error: ${macroResponse.status}`);
-        }
-      } catch (macroErr) {
-        setAiSetupError(macroErr instanceof Error ? macroErr.message : "AI Setup API error");
-      } finally {
-        setAiSetupLoading(false);
-      }
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
