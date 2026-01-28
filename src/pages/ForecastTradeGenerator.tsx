@@ -282,6 +282,154 @@ function getPayloadHorizons(responseData: unknown): ForecastHorizon[] {
   }));
 }
 
+// ============================================================================
+// TRADE GENERATION OUTPUT EXTRACTORS
+// ============================================================================
+
+/**
+ * Extract trade_setup from trade_generation_output
+ * Contains forecast horizons data for the EnhancedForecastTable
+ */
+function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
+  const obj = raw as Record<string, unknown>;
+  
+  // Path 1: output.trade_generation_output.trade_setup
+  if (obj?.output && typeof obj.output === "object") {
+    const output = obj.output as Record<string, unknown>;
+    if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
+      const tgo = output.trade_generation_output as Record<string, unknown>;
+      if (tgo?.trade_setup) {
+        let setup = tgo.trade_setup;
+        if (typeof setup === "string") {
+          try { setup = JSON.parse(setup); } catch { return null; }
+        }
+        return setup as TradeSetupResponse;
+      }
+    }
+  }
+  
+  // Path 2: Direct trade_generation_output.trade_setup
+  if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
+    const tgo = obj.trade_generation_output as Record<string, unknown>;
+    if (tgo?.trade_setup) {
+      let setup = tgo.trade_setup;
+      if (typeof setup === "string") {
+        try { setup = JSON.parse(setup); } catch { return null; }
+      }
+      return setup as TradeSetupResponse;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extract risk_surface from trade_generation_output
+ * Contains data for the 3D RiskSurfaceChart (sigma_ref, surface, atr)
+ */
+function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
+  const obj = raw as Record<string, unknown>;
+  
+  // Path 1: output.trade_generation_output.risk_surface
+  if (obj?.output && typeof obj.output === "object") {
+    const output = obj.output as Record<string, unknown>;
+    if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
+      const tgo = output.trade_generation_output as Record<string, unknown>;
+      if (tgo?.risk_surface) {
+        let surface = tgo.risk_surface;
+        if (typeof surface === "string") {
+          try { surface = JSON.parse(surface); } catch { return null; }
+        }
+        return surface as SurfaceApiResponse;
+      }
+    }
+  }
+  
+  // Path 2: Direct trade_generation_output.risk_surface
+  if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
+    const tgo = obj.trade_generation_output as Record<string, unknown>;
+    if (tgo?.risk_surface) {
+      let surface = tgo.risk_surface;
+      if (typeof surface === "string") {
+        try { surface = JSON.parse(surface); } catch { return null; }
+      }
+      return surface as SurfaceApiResponse;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extract final_answer (AI textual analysis) from trade_generation_output
+ */
+function extractFinalAnswer(raw: unknown): string | null {
+  const obj = raw as Record<string, unknown>;
+  
+  // Path 1: output.trade_generation_output.final_answer
+  if (obj?.output && typeof obj.output === "object") {
+    const output = obj.output as Record<string, unknown>;
+    if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
+      const tgo = output.trade_generation_output as Record<string, unknown>;
+      if (typeof tgo?.final_answer === "string") {
+        return tgo.final_answer;
+      }
+    }
+  }
+  
+  // Path 2: Direct trade_generation_output.final_answer
+  if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
+    const tgo = obj.trade_generation_output as Record<string, unknown>;
+    if (typeof tgo?.final_answer === "string") {
+      return tgo.final_answer;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extract confidence_note from trade_generation_output
+ */
+function extractConfidenceNote(raw: unknown): string | null {
+  const obj = raw as Record<string, unknown>;
+  
+  // Path 1: output.trade_generation_output.confidence_note
+  if (obj?.output && typeof obj.output === "object") {
+    const output = obj.output as Record<string, unknown>;
+    if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
+      const tgo = output.trade_generation_output as Record<string, unknown>;
+      if (typeof tgo?.confidence_note === "string") {
+        return tgo.confidence_note;
+      }
+    }
+  }
+  
+  // Path 2: Direct trade_generation_output.confidence_note
+  if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
+    const tgo = obj.trade_generation_output as Record<string, unknown>;
+    if (typeof tgo?.confidence_note === "string") {
+      return tgo.confidence_note;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extract horizons from a TradeSetupResponse object
+ */
+function getHorizonsFromTradeSetup(setup: TradeSetupResponse): ForecastHorizon[] {
+  const horizons = setup?.payload?.horizons;
+  if (!horizons) return [];
+  if (Array.isArray(horizons)) return horizons;
+  // Object format
+  return Object.entries(horizons).map(([key, val]) => ({
+    ...val,
+    h: val.h || key,
+  }));
+}
+
 function formatPrice(val?: number): string {
   if (val == null || isNaN(val)) return "—";
   return val.toFixed(5);
@@ -843,10 +991,10 @@ function ForecastTradeGeneratorContent() {
   const [forecastHorizons, setForecastHorizons] = useState<ForecastHorizon[]>([]);
   const [requestDuration, setRequestDuration] = useState<number | null>(null);
 
-  // Surface API state
-  const [surfaceResult, setSurfaceResult] = useState<SurfaceApiResponse | null>(null);
-  const [surfaceLoading, setSurfaceLoading] = useState(false);
-  const [surfaceError, setSurfaceError] = useState<string | null>(null);
+  // NEW: Trade Generation Output states (from trade_generation_output)
+  const [riskSurfaceData, setRiskSurfaceData] = useState<SurfaceApiResponse | null>(null);
+  const [finalAnswer, setFinalAnswer] = useState<string | null>(null);
+  const [confidenceNote, setConfidenceNote] = useState<string | null>(null);
 
   // AI Setup API state (macro-lab-proxy)
   const [aiSetupLoading, setAiSetupLoading] = useState(false);
@@ -867,8 +1015,9 @@ function ForecastTradeGeneratorContent() {
     setAiSetupResult(null);
     setForecastHorizons([]);
     setRequestDuration(null);
-    setSurfaceResult(null);
-    setSurfaceError(null);
+    setRiskSurfaceData(null);
+    setFinalAnswer(null);
+    setConfidenceNote(null);
     setAiSetupError(null);
     setExpandedRows(new Set());
 
@@ -932,15 +1081,45 @@ function ForecastTradeGeneratorContent() {
       const data = await response.json();
       setRawResponse(data);
 
-      // Parse AI Setup data
+      // Parse AI Setup data (legacy format)
       const normalized = normalizeN8n(data);
       if (normalized && normalized.setups && normalized.setups.length > 0) {
         setAiSetupResult(normalized);
       }
 
-      // Parse Forecast data if available in response
-      const horizonsData = getPayloadHorizons(data);
-      setForecastHorizons(horizonsData);
+      // NEW: Extract trade_generation_output fields
+      // Extract trade_setup (forecast_data) -> horizons for table
+      const tradeSetup = extractTradeSetup(data);
+      if (tradeSetup) {
+        const horizonsFromSetup = getHorizonsFromTradeSetup(tradeSetup);
+        if (horizonsFromSetup.length > 0) {
+          setForecastHorizons(horizonsFromSetup);
+        }
+      }
+      
+      // Fallback: try legacy path if trade_setup didn't have horizons
+      if (forecastHorizons.length === 0) {
+        const horizonsData = getPayloadHorizons(data);
+        if (horizonsData.length > 0) {
+          setForecastHorizons(horizonsData);
+        }
+      }
+
+      // Extract risk_surface -> 3D chart data
+      const surface = extractRiskSurface(data);
+      if (surface) {
+        setRiskSurfaceData(surface);
+      }
+
+      // Extract final_answer -> AI textual analysis
+      const answer = extractFinalAnswer(data);
+      if (answer) {
+        setFinalAnswer(answer);
+      }
+
+      // Extract confidence_note
+      const note = extractConfidenceNote(data);
+      setConfidenceNote(note);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
@@ -961,7 +1140,7 @@ function ForecastTradeGeneratorContent() {
     });
   };
 
-  const hasResults = aiSetupResult || forecastHorizons.length > 0;
+  const hasResults = aiSetupResult || forecastHorizons.length > 0 || finalAnswer || riskSurfaceData;
 
   return (
     <Layout>
@@ -1289,6 +1468,38 @@ function ForecastTradeGeneratorContent() {
           </Card>
         )}
 
+        {/* AI Market Analysis Card - Final Answer with Confidence Note */}
+        {finalAnswer && !loading && (
+          <Card className="rounded-xl border shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                AI Market Analysis
+                {confidenceNote && (
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "ml-auto text-xs",
+                      confidenceNote.toLowerCase().includes("integrated") 
+                        ? "border-emerald-500/50 text-emerald-600 bg-emerald-500/10" 
+                        : "border-amber-500/50 text-amber-600 bg-amber-500/10"
+                    )}
+                  >
+                    {confidenceNote}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  {finalAnswer}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Results Section */}
         {hasResults && !loading && (
           <Tabs defaultValue="trade-setup" className="space-y-4">
@@ -1390,15 +1601,15 @@ function ForecastTradeGeneratorContent() {
                     horizons={forecastHorizons} 
                     symbol={symbol}
                     timeframe={timeframe}
-                    surfaceResult={surfaceResult}
+                    surfaceResult={riskSurfaceData}
                     expandedRows={expandedRows}
                     onToggleRow={toggleRowExpanded}
                   />
                 </CardContent>
               </Card>
 
-              {/* Risk Surface Chart */}
-              {(surfaceResult || surfaceLoading) && (
+              {/* Risk Surface Chart - Source: risk_surface field from trade_generation_output */}
+              {riskSurfaceData && (
                 <Card className="rounded-xl border shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -1410,16 +1621,10 @@ function ForecastTradeGeneratorContent() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {surfaceError && (
-                      <Alert variant="destructive" className="mb-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{surfaceError}</AlertDescription>
-                      </Alert>
-                    )}
                     <RiskSurfaceChart
-                      data={surfaceResult}
-                      loading={surfaceLoading}
-                      error={surfaceError}
+                      data={riskSurfaceData}
+                      loading={false}
+                      error={null}
                       symbol={symbol}
                       timeframe={timeframe}
                       horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
