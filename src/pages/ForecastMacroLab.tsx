@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
+import { StyledJsonViewer } from "@/components/ui/styled-json-viewer";
 import {
   ArrowLeft,
   Brain,
@@ -657,12 +658,25 @@ export default function ForecastMacroLab() {
                   </div>
 
                   {"error" in lastHttpDebug ? (
-                    <div className="whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-foreground">
+                    <div className="whitespace-pre-wrap rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-rose-400">
                       {lastHttpDebug.error}
                     </div>
                   ) : (
-                    <div className="max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-foreground">
-                      {lastHttpDebug.bodyText?.trim() ? lastHttpDebug.bodyText : "(empty body)"}
+                    <div className="max-h-64 overflow-auto rounded-lg border bg-muted/30 p-3">
+                      <div className="font-mono text-xs">
+                        {(() => {
+                          try {
+                            const parsed = JSON.parse(lastHttpDebug.bodyText || "{}");
+                            return <StyledJsonViewer data={parsed} />;
+                          } catch {
+                            return (
+                              <pre className="whitespace-pre-wrap text-muted-foreground">
+                                {lastHttpDebug.bodyText?.trim() || "(empty body)"}
+                              </pre>
+                            );
+                          }
+                        })()}
+                      </div>
                     </div>
                   )}
                 </div>

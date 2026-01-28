@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { StyledJsonViewer } from "@/components/ui/styled-json-viewer";
 import {
   Tooltip,
   TooltipContent,
@@ -532,66 +533,7 @@ function formatRatio(val?: number): string {
   return val.toFixed(2);
 }
 
-// ============================================================================
-// STYLED JSON VIEWER
-// ============================================================================
-
-function StyledJsonViewer({ data, depth = 0 }: { data: unknown; depth?: number }) {
-  const [collapsed, setCollapsed] = useState(depth > 1);
-
-  if (data === null) return <span className="text-muted-foreground italic">null</span>;
-  if (typeof data === "boolean") return <span className={data ? "text-emerald-500" : "text-rose-500"}>{String(data)}</span>;
-  if (typeof data === "number") return <span className="text-amber-500">{data}</span>;
-  if (typeof data === "string") return <span className="text-emerald-400">"{data}"</span>;
-
-  if (Array.isArray(data)) {
-    if (data.length === 0) return <span className="text-muted-foreground">[]</span>;
-    return (
-      <div className="inline">
-        <button onClick={() => setCollapsed(!collapsed)} className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
-          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          <span className="ml-1 text-xs">Array({data.length})</span>
-        </button>
-        {!collapsed && (
-          <div className="ml-4 border-l border-border pl-3">
-            {data.map((item, index) => (
-              <div key={index} className="py-0.5">
-                <span className="text-muted-foreground mr-2">{index}:</span>
-                <StyledJsonViewer data={item} depth={depth + 1} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (typeof data === "object") {
-    const entries = Object.entries(data);
-    if (entries.length === 0) return <span className="text-muted-foreground">{"{}"}</span>;
-    return (
-      <div className="inline">
-        <button onClick={() => setCollapsed(!collapsed)} className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
-          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          <span className="ml-1 text-xs">Object({entries.length})</span>
-        </button>
-        {!collapsed && (
-          <div className="ml-4 border-l border-border pl-3">
-            {entries.map(([key, value]) => (
-              <div key={key} className="py-0.5">
-                <span className="text-primary font-medium">"{key}"</span>
-                <span className="text-muted-foreground">: </span>
-                <StyledJsonViewer data={value} depth={depth + 1} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return <span>{String(data)}</span>;
-}
+// StyledJsonViewer is now imported from shared component
 
 // ============================================================================
 // TRADE SETUP CARD (from AI Setup display)
