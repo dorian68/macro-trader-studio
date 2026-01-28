@@ -855,8 +855,10 @@ function ForecastTradeGeneratorContent() {
   // Expanded rows state for Risk Profiles
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  // Debug toggle
+  // Debug toggle and last sent payload
   const [showDebug, setShowDebug] = useState(false);
+  const [lastPayload, setLastPayload] = useState<Record<string, unknown> | null>(null);
+  const [lastHttpStatus, setLastHttpStatus] = useState<number | null>(null);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -909,6 +911,9 @@ function ForecastTradeGeneratorContent() {
         ...(useMonteCarlo && { paths: paths, skew: skew })
       };
 
+      // Store payload for debug display
+      setLastPayload(macroPayload);
+
       const response = await fetch(MACRO_LAB_PROXY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -916,8 +921,11 @@ function ForecastTradeGeneratorContent() {
       });
 
       setRequestDuration(performance.now() - startTime);
+      setLastHttpStatus(response.status);
 
       if (!response.ok) {
+        const errorBody = await response.text();
+        setRawResponse({ error: errorBody } as unknown as CombinedResponse);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
@@ -1201,13 +1209,92 @@ function ForecastTradeGeneratorContent() {
           </div>
         )}
 
+        {/* Debug Card - Always visible when toggle is ON and we have data */}
+        {showDebug && (lastPayload || rawResponse) && (
+          <Card className="rounded-xl border border-amber-500/50 bg-amber-500/5 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                <FlaskConical className="h-4 w-4" />
+                HTTP Debug
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Request/Response details for technical audit
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Request Metadata */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-2 rounded-lg bg-muted/30">
+                  <p className="text-muted-foreground mb-1">Endpoint</p>
+                  <p className="font-mono break-all">{MACRO_LAB_PROXY_URL}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-muted/30">
+                  <p className="text-muted-foreground mb-1">HTTP Status</p>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "font-mono",
+                      lastHttpStatus && lastHttpStatus >= 200 && lastHttpStatus < 300
+                        ? "border-emerald-500/50 text-emerald-600 bg-emerald-500/10"
+                        : "border-rose-500/50 text-rose-600 bg-rose-500/10"
+                    )}
+                  >
+                    {lastHttpStatus || "—"}
+                  </Badge>
+                </div>
+                <div className="p-2 rounded-lg bg-muted/30">
+                  <p className="text-muted-foreground mb-1">Duration</p>
+                  <p className="font-mono">{requestDuration ? `${(requestDuration / 1000).toFixed(2)}s` : "—"}</p>
+                </div>
+              </div>
+
+              {/* Request Payload */}
+              {lastPayload && (
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-xs">
+                      <span>Request Payload</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ScrollArea className="h-[200px] mt-2">
+                      <div className="font-mono text-xs p-3 bg-muted/30 rounded-lg">
+                        <StyledJsonViewer data={lastPayload} />
+                      </div>
+                    </ScrollArea>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Response Body */}
+              {rawResponse && (
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-xs">
+                      <span>Response Body</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ScrollArea className="h-[300px] mt-2">
+                      <div className="font-mono text-xs p-3 bg-muted/30 rounded-lg">
+                        <StyledJsonViewer data={rawResponse} />
+                      </div>
+                    </ScrollArea>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Results Section */}
         {hasResults && !loading && (
           <Tabs defaultValue="trade-setup" className="space-y-4">
             <TabsList>
               <TabsTrigger value="trade-setup">Trade Setup</TabsTrigger>
               <TabsTrigger value="forecast-data">Forecast Data</TabsTrigger>
-              {showDebug && <TabsTrigger value="debug">Debug JSON</TabsTrigger>}
             </TabsList>
 
             {/* Trade Setup Tab (AI Setup format) */}
@@ -1341,24 +1428,6 @@ function ForecastTradeGeneratorContent() {
                 </Card>
               )}
             </TabsContent>
-
-            {/* Debug Tab */}
-            {showDebug && (
-              <TabsContent value="debug">
-                <Card className="rounded-xl border shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Raw Response</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px]">
-                      <div className="font-mono text-xs p-4 bg-muted/30 rounded-lg">
-                        <StyledJsonViewer data={rawResponse} />
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
           </Tabs>
         )}
       </main>
