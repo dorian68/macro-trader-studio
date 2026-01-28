@@ -60,6 +60,13 @@ import {
   interpolateProbability,
 } from "@/lib/surfaceInterpolation";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+
+// ============================================================================
+// CONSTANTS - API ENDPOINTS
+// ============================================================================
+
+const MACRO_LAB_PROXY_URL = "https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/macro-lab-proxy";
 
 // ============================================================================
 // TYPES
@@ -815,6 +822,10 @@ function ForecastTradeGeneratorContent() {
   const [surfaceLoading, setSurfaceLoading] = useState(false);
   const [surfaceError, setSurfaceError] = useState<string | null>(null);
 
+  // AI Setup API state (macro-lab-proxy)
+  const [aiSetupLoading, setAiSetupLoading] = useState(false);
+  const [aiSetupError, setAiSetupError] = useState<string | null>(null);
+
   // Expanded rows state for Risk Profiles
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
@@ -830,6 +841,7 @@ function ForecastTradeGeneratorContent() {
     setRequestDuration(null);
     setSurfaceResult(null);
     setSurfaceError(null);
+    setAiSetupError(null);
     setExpandedRows(new Set());
 
     const startTime = performance.now();
@@ -939,6 +951,53 @@ function ForecastTradeGeneratorContent() {
           setSurfaceLoading(false);
         }
       }
+
+      // === STEP 3: Call macro-lab-proxy for AI Trade Setups ===
+      setAiSetupLoading(true);
+      
+      try {
+        const macroPayload = {
+          mode: "trade_generation",  // CRITICAL: Mode identifier for backend
+          type: "trade_setup",
+          instrument: symbol,
+          timeframe: timeframe,
+          horizons: parsedHorizons,
+          riskLevel: riskLevel,
+          strategy: strategy,
+          customNotes: customNotes,
+          forecast_context: {
+            entry_price: forecastEntryPrice,
+            direction: horizonsData[0]?.direction,
+            horizons: horizonsData.map(h => ({
+              h: h.h,
+              tp: h.tp,
+              sl: h.sl,
+              direction: h.direction
+            }))
+          }
+        };
+
+        const macroResponse = await fetch(MACRO_LAB_PROXY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(macroPayload),
+        });
+
+        if (macroResponse.ok) {
+          const macroData = await macroResponse.json();
+          const normalized = normalizeN8n(macroData);
+          if (normalized && normalized.setups && normalized.setups.length > 0) {
+            setAiSetupResult(normalized);
+          }
+        } else {
+          setAiSetupError(`AI Setup API error: ${macroResponse.status}`);
+        }
+      } catch (macroErr) {
+        setAiSetupError(macroErr instanceof Error ? macroErr.message : "AI Setup API error");
+      } finally {
+        setAiSetupLoading(false);
+      }
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
@@ -1217,7 +1276,27 @@ function ForecastTradeGeneratorContent() {
 
             {/* Trade Setup Tab (AI Setup format) */}
             <TabsContent value="trade-setup" className="space-y-4">
-              {aiSetupResult ? (
+              {aiSetupLoading ? (
+                <Card className="rounded-xl border shadow-sm">
+                  <CardContent className="py-12">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <span className="text-muted-foreground font-medium">
+                        Generating AI Trade Setup...
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        Calling macro-lab-proxy with mode: trade_generation
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : aiSetupError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>AI Setup Error</AlertTitle>
+                  <AlertDescription>{aiSetupError}</AlertDescription>
+                </Alert>
+              ) : aiSetupResult ? (
                 <>
                   {/* Market Commentary */}
                   {aiSetupResult.market_commentary_anchor?.summary && (
@@ -1260,21 +1339,13 @@ function ForecastTradeGeneratorContent() {
                   )}
                 </>
               ) : (
-                <div className="text-center py-12 text-muted-foreground space-y-4">
-                  <Target className="h-12 w-12 mx-auto opacity-50" />
-                  <div className="max-w-md mx-auto space-y-2">
-                    <p className="font-medium">AI Trade Setup not available</p>
-                    <p className="text-xs">
-                      The backend currently returns forecast data only. AI Setup integration 
-                      (with <code className="px-1 py-0.5 bg-muted rounded">output.final_answer</code>) 
-                      requires a backend update to the <code className="px-1 py-0.5 bg-muted rounded">mode: "trade_generation"</code> handler.
-                    </p>
-                    <p className="text-xs">
-                      In the meantime, use the <strong>Forecast Data</strong> tab which includes 
-                      Risk Profiles and the Risk Surface visualization.
-                    </p>
-                  </div>
-                </div>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>No AI Setup Data</AlertTitle>
+                  <AlertDescription>
+                    Click "Generate Trade" to fetch AI Trade Setups from macro-lab-proxy.
+                  </AlertDescription>
+                </Alert>
               )}
             </TabsContent>
 
