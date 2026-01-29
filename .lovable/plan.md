@@ -1,107 +1,155 @@
 
-# Plan: Corriger l'extraction du champ "content" pour le Macro Lab
+# Plan: Corriger l'extraction du champ `risk_surface` pour le Trade Generator
 
-## Diagnostic Final
+## Problème Identifié
 
-La réponse API a cette structure exacte (confirmée par les network logs) :
+La réponse API du Trade Generator contient un champ `risk_surface` avec une structure **doublement imbriquée** :
 
-```
-body.message.message.content.content = "{\"content\": \"## Executive Summary...\\n...\", \"request\": {...}}"
-```
-
-Le champ `content.content` est une **string JSON** qui doit être parsée. Une fois parsée, elle contient :
 ```json
 {
-  "content": "## Executive Summary\nThe current macroeconomic...",
-  "request": { "user_query": "...", ... }
+  "status": "ok",
+  "surface": {
+    "symbol": "EUR/USD",
+    "sigma_ref": 0.00028271,
+    "atr": 0.001394,
+    "entry_price": 1.19276,
+    "methodology": "research",
+    "surface": {          // <-- Niveau supplémentaire !
+      "target_probs": [...],
+      "sl_sigma": [...],
+      "tp_sigma": [...]
+    }
+  }
 }
 ```
 
-Le vrai contenu textuel à afficher est dans `parsedObject.content` (le texte Markdown).
+Le composant `RiskSurfaceChart` attend `data.surface.target_probs`, `data.surface.sl_sigma`, `data.surface.tp_sigma`.
 
-## Problème Actuel
-
-Le code actuel (lignes 560-566) détecte que `content2` est une string, mais au lieu de parser cette string JSON pour extraire le champ `content` interne, il la passe telle quelle à `handleRealtimeResponse`. Le résultat : tout le JSON est affiché au lieu du contenu formaté.
+Or, avec la structure actuelle, les données sont dans `risk_surface.surface.surface.target_probs` au lieu de `risk_surface.surface.target_probs`.
 
 ## Solution
 
-Modifier le code d'extraction (lignes 560-566) pour :
-1. Parser la string JSON quand `content2` est une string
-2. Extraire le champ `.content` de l'objet parsé
-3. Passer uniquement ce contenu textuel à `handleRealtimeResponse`
+Modifier la fonction `extractRiskSurface` dans `ForecastTradeGenerator.tsx` pour :
+1. Détecter la structure imbriquée `risk_surface.surface` où `surface` contient les métadonnées (`symbol`, `sigma_ref`, etc.)
+2. Extraire les propriétés de premier niveau (`sigma_ref`, `entry_price`, `atr`, `symbol`)
+3. Aplatir la structure pour que `surface.target_probs` soit directement accessible
 
-### Fichier: `src/pages/ForecastMacroLab.tsx`
+---
 
-#### Modification des lignes 560-567
+## Modifications Techniques
 
-**Code actuel :**
+### Fichier: `src/pages/ForecastTradeGenerator.tsx`
+
+#### Modifier la fonction `parseSurface` (lignes 432-465)
+
+La fonction doit gérer 3 formats :
+
+| Format | Structure | Action |
+|--------|-----------|--------|
+| 1 | `{ surface: { target_probs, sl_sigma, tp_sigma } }` | Déjà supporté |
+| 2 | `{ target_probs, sl_sigma, tp_sigma, sigma_ref, ... }` | Déjà supporté |
+| 3 (NOUVEAU) | `{ surface: { sigma_ref, entry_price, surface: { target_probs, ... } } }` | À ajouter |
+
+**Nouveau code `parseSurface` :**
+
 ```typescript
-if (content2 != null) {
-  if (typeof content2 === "string") {
-    extractedContent = content2;
-  } else if (typeof content2 === "object") {
-    extractedContent = JSON.stringify(content2, null, 2);
+const parseSurface = (surface: unknown): SurfaceApiResponse | null => {
+  if (!surface) return null;
+  
+  let parsed = surface;
+  
+  // Handle stringified JSON
+  if (typeof surface === "string") {
+    try { 
+      parsed = JSON.parse(surface);
+      console.log("[extractRiskSurface] Parsed string successfully");
+    } catch { 
+      console.log("[extractRiskSurface] Failed to parse string");
+      return null; 
+    }
   }
-  console.log("✅ [HTTP] Extracted content via path: body.message.message.content.content");
-}
-```
-
-**Nouveau code :**
-```typescript
-if (content2 != null) {
-  if (typeof content2 === "string") {
-    // content2 is a JSON string that contains { "content": "...", "request": {...} }
-    // Parse it and extract the inner "content" field
-    try {
-      const innerParsed = JSON.parse(content2);
-      if (innerParsed && typeof innerParsed === "object" && innerParsed.content) {
-        extractedContent = innerParsed.content;
-        console.log("✅ [HTTP] Extracted inner content field from JSON string");
-      } else {
-        extractedContent = content2;
+  
+  if (typeof parsed !== "object" || parsed === null) {
+    console.log("[extractRiskSurface] Not an object");
+    return null;
+  }
+  
+  const s = parsed as Record<string, unknown>;
+  
+  // NEW FORMAT: { status, surface: { sigma_ref, entry_price, surface: { target_probs, sl_sigma, tp_sigma } } }
+  // This is the actual API response format from the backend
+  if (s?.surface && typeof s.surface === "object") {
+    const outerSurface = s.surface as Record<string, unknown>;
+    
+    // Check if this outer surface has a nested "surface" with the actual arrays
+    if (outerSurface?.surface && typeof outerSurface.surface === "object") {
+      const innerSurface = outerSurface.surface as Record<string, unknown>;
+      
+      // Validate the inner surface has the required arrays
+      if (innerSurface?.target_probs && innerSurface?.sl_sigma && innerSurface?.tp_sigma) {
+        console.log("[extractRiskSurface] Detected nested surface.surface structure - flattening");
+        
+        // Flatten the structure: merge outer metadata with inner surface
+        return {
+          sigma_ref: outerSurface.sigma_ref as number,
+          entry_price: outerSurface.entry_price as number,
+          atr: outerSurface.atr as number | undefined,
+          symbol: outerSurface.symbol as string | undefined,
+          timeframe: outerSurface.timeframe as string | undefined,
+          methodology: outerSurface.methodology as string | undefined,
+          surface: {
+            target_probs: innerSurface.target_probs as number[],
+            sl_sigma: innerSurface.sl_sigma as number[],
+            tp_sigma: innerSurface.tp_sigma as number[][],
+          },
+        } as SurfaceApiResponse;
       }
-    } catch {
-      // Not valid JSON, use as-is
-      extractedContent = content2;
     }
-  } else if (typeof content2 === "object") {
-    // Already an object, extract the content field if present
-    const contentObj = content2 as Record<string, unknown>;
-    if (contentObj.content && typeof contentObj.content === "string") {
-      extractedContent = contentObj.content;
-    } else {
-      extractedContent = JSON.stringify(content2, null, 2);
+    
+    // Standard format: outer surface has the arrays directly
+    if (outerSurface?.target_probs || outerSurface?.sl_sigma || outerSurface?.tp_sigma) {
+      console.log("[extractRiskSurface] Valid surface structure detected (nested surface object)");
+      return parsed as SurfaceApiResponse;
     }
   }
-  console.log("✅ [HTTP] Extracted content via path: body.message.message.content.content");
-}
+  
+  // Direct properties format
+  if (s?.target_probs || s?.sl_sigma || s?.tp_sigma || s?.sigma_ref || s?.atr) {
+    console.log("[extractRiskSurface] Valid surface structure detected (direct properties)");
+    return s as SurfaceApiResponse;
+  }
+  
+  console.log("[extractRiskSurface] Invalid surface structure");
+  return null;
+};
 ```
 
-#### Appliquer la même logique aux Paths 2 et 3
-
-Les mêmes modifications doivent être appliquées :
-- **Path 2** (lignes 577-584) : `message.content.content`
-- **Path 3** (lignes 597-604) : `[0].message.message.content.content`
+---
 
 ## Résumé des Modifications
 
 | Lignes | Changement |
 |--------|------------|
-| 560-567 | Parser la string JSON et extraire le champ `.content` interne (Path 1) |
-| 577-584 | Même logique pour Path 2 |
-| 597-604 | Même logique pour Path 3 |
+| 432-465 | Réécriture de `parseSurface` pour gérer la structure `surface.surface` imbriquée |
+
+---
 
 ## Garanties Zero Régression
 
-1. **Try/catch** : Si le parsing échoue, le contenu brut est conservé
-2. **Vérification de structure** : Ne modifie que si le champ `content` existe dans l'objet parsé
-3. **HTTP Debug** : Le panneau debug continue d'afficher le JSON brut complet (non impacté)
-4. **Autres pages** : Aucune modification
+1. **Compatibilité arrière** : Les 2 formats précédents restent supportés
+2. **Logging détaillé** : Les console.log permettent de tracer le chemin d'extraction
+3. **Même composant** : `RiskSurfaceChart` reste inchangé, seul le format de données en entrée est normalisé
+4. **Autres pages** : Aucune modification à `ForecastPlaygroundTool.tsx` qui utilise une API différente
+
+---
 
 ## Résultat Attendu
 
-Au lieu de voir le JSON complet avec `content`, `request`, etc., l'utilisateur verra les cartes formatées :
-- **Executive Summary** avec le résumé textuel
-- **Fundamental Analysis** avec les bullet points
-- **Directional Bias** avec badge Bullish/Bearish + confiance %
-- **Key Levels** avec Support (vert) et Resistance (rouge)
+Après cette modification :
+1. Le champ `risk_surface` sera correctement extrait de la réponse API
+2. Les données seront aplaties pour correspondre au format attendu par `RiskSurfaceChart`
+3. La surface 3D s'affichera dans l'onglet "Forecast Data" avec :
+   - X-axis : Stop-Loss (σ)
+   - Y-axis : Target Probability (%)
+   - Z-axis : Take-Profit (σ)
+4. Le panneau "Selected Trade Scenario" sera interactif pour explorer les scénarios
