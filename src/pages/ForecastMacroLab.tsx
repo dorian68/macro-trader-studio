@@ -36,6 +36,7 @@ import { useTranslation } from "react-i18next";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
+import { MacroCommentaryDisplay } from "@/components/MacroCommentaryDisplay";
 
 const { useState, useEffect } = React;
 
@@ -785,7 +786,7 @@ export default function ForecastMacroLab() {
                             <CollapsibleContent className="animate-accordion-down">
                               <div className="bg-muted/20 p-4 rounded-lg border">
                                 {typeof section.content === "object" ? (
-                                  <StyledJsonViewer data={section.content} initialExpanded={true} maxDepth={4} />
+                                  <MacroCommentaryDisplay data={section.content} originalQuery={analysis.query} />
                                 ) : (
                                   <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
                                     {section.content}
