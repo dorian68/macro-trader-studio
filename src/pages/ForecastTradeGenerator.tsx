@@ -484,14 +484,19 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     
     const s = parsed as Record<string, unknown>;
     
+    // DEBUG: Log the structure we're trying to parse
+    console.log("[parseSurface] Input keys:", Object.keys(s));
+    
     // NEW FORMAT: { status, surface: { sigma_ref, entry_price, surface: { target_probs, sl_sigma, tp_sigma } } }
     // This is the actual API response format from the backend with doubly nested surface
     if (s?.surface && typeof s.surface === "object") {
       const outerSurface = s.surface as Record<string, unknown>;
+      console.log("[parseSurface] Found s.surface, keys:", Object.keys(outerSurface));
       
       // Check if this outer surface has a nested "surface" with the actual arrays
       if (outerSurface?.surface && typeof outerSurface.surface === "object") {
         const innerSurface = outerSurface.surface as Record<string, unknown>;
+        console.log("[parseSurface] Found s.surface.surface, keys:", Object.keys(innerSurface));
         
         // Validate the inner surface has the required arrays
         if (innerSurface?.target_probs && innerSurface?.sl_sigma && innerSurface?.tp_sigma) {
@@ -511,6 +516,12 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
               tp_sigma: innerSurface.tp_sigma as number[][],
             },
           } as SurfaceApiResponse;
+        } else {
+          console.log("[parseSurface] s.surface.surface missing required arrays:", {
+            hasTargetProbs: !!innerSurface?.target_probs,
+            hasSlSigma: !!innerSurface?.sl_sigma,
+            hasTpSigma: !!innerSurface?.tp_sigma
+          });
         }
       }
       
@@ -518,7 +529,11 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
       if (outerSurface?.target_probs || outerSurface?.sl_sigma || outerSurface?.tp_sigma) {
         console.log("[extractRiskSurface] Valid surface structure detected (nested surface object)");
         return parsed as SurfaceApiResponse;
+      } else {
+        console.log("[parseSurface] s.surface missing arrays, checking for direct props");
       }
+    } else {
+      console.log("[parseSurface] No s.surface found, checking direct properties");
     }
     
     // Direct properties format
@@ -527,7 +542,8 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
       return s as unknown as SurfaceApiResponse;
     }
     
-    console.log("[extractRiskSurface] Invalid surface structure");
+    console.log("[extractRiskSurface] Invalid surface structure - no matching format found");
+    console.log("[parseSurface] Sample of input:", JSON.stringify(s, null, 2).slice(0, 800));
     return null;
   };
   
@@ -543,10 +559,21 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     console.log("[extractRiskSurface] parsed content2 keys:", content2 ? Object.keys(content2) : "null");
     if (content2?.risk_surface) {
       console.log("[extractRiskSurface] Found risk_surface in content.content!");
+      // DEBUG: Log the raw risk_surface structure before parsing
+      console.log("[extractRiskSurface] risk_surface type:", typeof content2.risk_surface);
+      console.log("[extractRiskSurface] risk_surface keys:", 
+        typeof content2.risk_surface === "object" && content2.risk_surface !== null 
+          ? Object.keys(content2.risk_surface as object) 
+          : "N/A"
+      );
+      console.log("[extractRiskSurface] risk_surface sample:", JSON.stringify(content2.risk_surface, null, 2).slice(0, 800));
+      
       const result = parseSurface(content2.risk_surface);
       if (result) {
         console.log("[extractRiskSurface] Found via Path 1 (body.message.message.content.content)");
         return result;
+      } else {
+        console.log("[extractRiskSurface] parseSurface returned null for risk_surface");
       }
     }
   } catch (e) {
