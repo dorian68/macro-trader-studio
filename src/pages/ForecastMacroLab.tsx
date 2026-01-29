@@ -44,7 +44,7 @@ const FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL = "https://jqrlegdulnnrpiixiecf.supa
 
 interface AnalysisSection {
   title: string;
-  content: string;
+  content: string | object;  // Accepte JSON ou string
   type: "overview" | "technical" | "fundamental" | "outlook";
   expanded: boolean;
 }
@@ -148,42 +148,22 @@ export default function ForecastMacroLab() {
   const handleRealtimeResponse = async (responsePayload: any, jobId: string) => {
     console.log("📩 [Realtime] Processing response payload:", responsePayload);
 
-    let analysisContent = "";
-    const extractStringContent = (obj: any): string => {
-      if (typeof obj === "string") return obj;
-      if (obj && typeof obj === "object") {
-        if ((obj as any)._type === "MaxDepthReached" && (obj as any).value) {
-          return String((obj as any).value);
-        }
-        if ((obj as any).content) {
-          return extractStringContent((obj as any).content);
-        }
-        if ((obj as any).weekly_outlook && (obj as any).trade_idea) {
-          let content = String((obj as any).weekly_outlook);
-          if ((obj as any).trade_idea && typeof (obj as any).trade_idea === "object") {
-            content += "\n\nTrade Idea:\n";
-            Object.entries((obj as any).trade_idea).forEach(([key, value]) => {
-              if (value && typeof value === "object" && (value as any)._type === "MaxDepthReached") {
-                content += `${key}: ${(value as any).value}\n`;
-              } else {
-                content += `${key}: ${value}\n`;
-              }
-            });
-          }
-          return content;
-        }
-        return JSON.stringify(obj, null, 2);
-      }
-      return String(obj);
-    };
+    // Conserver le format original (object ou string) au lieu de forcer la conversion en string
+    let analysisContent: string | object = "";
 
+    // Extraction du contenu profond - on garde l'objet si c'est un objet
     if (Array.isArray(responsePayload) && responsePayload.length > 0) {
       const deepContent = (responsePayload as any)[0]?.message?.message?.content?.content;
-      analysisContent = extractStringContent(deepContent);
+      analysisContent = deepContent !== undefined ? deepContent : responsePayload;
     } else if (responsePayload?.message?.content?.content) {
-      analysisContent = extractStringContent(responsePayload.message.content.content);
+      analysisContent = responsePayload.message.content.content;
     } else {
-      analysisContent = extractStringContent(responsePayload);
+      analysisContent = responsePayload;
+    }
+
+    // Si c'est toujours undefined ou null, fallback sur le payload entier
+    if (analysisContent === undefined || analysisContent === null) {
+      analysisContent = responsePayload;
     }
 
     const realAnalysis: MacroAnalysis = {
@@ -775,8 +755,14 @@ export default function ForecastMacroLab() {
                             </CollapsibleTrigger>
 
                             <CollapsibleContent className="animate-accordion-down">
-                              <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed bg-muted/20 p-4 rounded-lg border">
-                                {section.content}
+                              <div className="bg-muted/20 p-4 rounded-lg border">
+                                {typeof section.content === "object" ? (
+                                  <StyledJsonViewer data={section.content} initialExpanded={true} maxDepth={4} />
+                                ) : (
+                                  <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
+                                    {section.content}
+                                  </div>
+                                )}
                               </div>
                             </CollapsibleContent>
                           </div>
