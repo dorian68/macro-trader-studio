@@ -163,6 +163,34 @@ const STRATEGIES = [
 // ============================================================================
 
 /**
+ * Parse content.content which may be an object or a JSON string
+ * CRITICAL: The API sometimes returns content.content as a stringified JSON
+ */
+function parseContentContent(content: unknown): Record<string, unknown> | null {
+  if (!content) return null;
+  
+  // Already an object
+  if (typeof content === "object" && content !== null) {
+    return content as Record<string, unknown>;
+  }
+  
+  // JSON string - parse it
+  if (typeof content === "string") {
+    try {
+      const parsed = JSON.parse(content);
+      if (typeof parsed === "object" && parsed !== null) {
+        console.log("[parseContentContent] Parsed JSON string successfully, keys:", Object.keys(parsed));
+        return parsed as Record<string, unknown>;
+      }
+    } catch (e) {
+      console.log("[parseContentContent] Failed to parse JSON string:", e);
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Builds the question field required by the backend RAG API
  * Matches the pattern used in AISetup.tsx
  */
@@ -199,7 +227,9 @@ function normalizeN8n(raw: unknown): N8nTradeResult | null {
       const message1 = body?.message as Record<string, unknown>;
       const message2 = message1?.message as Record<string, unknown>;
       const content1 = message2?.content as Record<string, unknown>;
-      const content2 = content1?.content as Record<string, unknown>;
+      // CRITICAL: content1.content may be a JSON string, not an object
+      const content2 = parseContentContent(content1?.content);
+      console.log("[normalizeN8n] content1.content type:", typeof content1?.content, "parsed keys:", content2 ? Object.keys(content2) : "null");
       if (typeof content2?.final_answer === "string") {
         maybeContent = content2.final_answer;
       }
@@ -369,7 +399,9 @@ function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
     const message1 = body?.message as Record<string, unknown>;
     const message2 = message1?.message as Record<string, unknown>;
     const content1 = message2?.content as Record<string, unknown>;
-    const content2 = content1?.content as Record<string, unknown>;
+    // CRITICAL: content1.content may be a JSON string, not an object
+    const content2 = parseContentContent(content1?.content);
+    console.log("[extractTradeSetup] content1.content type:", typeof content1?.content, "parsed keys:", content2 ? Object.keys(content2) : "null");
     if (content2?.trade_setup) {
       const result = parseSetup(content2.trade_setup);
       if (result) {
@@ -505,8 +537,12 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     const message1 = body?.message as Record<string, unknown>;
     const message2 = message1?.message as Record<string, unknown>;
     const content1 = message2?.content as Record<string, unknown>;
-    const content2 = content1?.content as Record<string, unknown>;
+    // CRITICAL: content1.content may be a JSON string, not an object
+    console.log("[extractRiskSurface] content1.content type:", typeof content1?.content);
+    const content2 = parseContentContent(content1?.content);
+    console.log("[extractRiskSurface] parsed content2 keys:", content2 ? Object.keys(content2) : "null");
     if (content2?.risk_surface) {
+      console.log("[extractRiskSurface] Found risk_surface in content.content!");
       const result = parseSurface(content2.risk_surface);
       if (result) {
         console.log("[extractRiskSurface] Found via Path 1 (body.message.message.content.content)");
@@ -623,7 +659,8 @@ function extractFinalAnswer(raw: unknown): string | null {
     const message1 = body?.message as Record<string, unknown>;
     const message2 = message1?.message as Record<string, unknown>;
     const content1 = message2?.content as Record<string, unknown>;
-    const content2 = content1?.content as Record<string, unknown>;
+    // CRITICAL: content1.content may be a JSON string, not an object
+    const content2 = parseContentContent(content1?.content);
     if (typeof content2?.final_answer === "string") {
       return content2.final_answer;
     }
@@ -663,7 +700,8 @@ function extractConfidenceNote(raw: unknown): string | null {
     const message1 = body?.message as Record<string, unknown>;
     const message2 = message1?.message as Record<string, unknown>;
     const content1 = message2?.content as Record<string, unknown>;
-    const content2 = content1?.content as Record<string, unknown>;
+    // CRITICAL: content1.content may be a JSON string, not an object
+    const content2 = parseContentContent(content1?.content);
     if (typeof content2?.confidence_note === "string") {
       return content2.confidence_note;
     }
