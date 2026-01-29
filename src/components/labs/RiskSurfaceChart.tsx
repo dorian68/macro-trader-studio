@@ -460,9 +460,9 @@ export function RiskSurfaceChart({
     );
   }
 
-  const formatPrice = (price: number) => price.toFixed(5);
-  const formatSigma = (sigma: number) => sigma.toFixed(2);
-  const formatPercent = (prob: number) => `${(prob * 100).toFixed(1)}%`;
+  const formatPrice = (price: number | undefined | null) => price != null ? price.toFixed(5) : "—";
+  const formatSigma = (sigma: number | undefined | null) => sigma != null ? sigma.toFixed(2) : "—";
+  const formatPercent = (prob: number | undefined | null) => prob != null ? `${(prob * 100).toFixed(1)}%` : "—";
 
   return (
     <div className="space-y-6">
