@@ -559,9 +559,28 @@ export default function ForecastMacroLab() {
         
         if (content2 != null) {
           if (typeof content2 === "string") {
-            extractedContent = content2;
+            // content2 is a JSON string that contains { "content": "...", "request": {...} }
+            // Parse it and extract the inner "content" field
+            try {
+              const innerParsed = JSON.parse(content2);
+              if (innerParsed && typeof innerParsed === "object" && innerParsed.content) {
+                extractedContent = innerParsed.content;
+                console.log("✅ [HTTP] Extracted inner content field from JSON string");
+              } else {
+                extractedContent = content2;
+              }
+            } catch {
+              // Not valid JSON, use as-is
+              extractedContent = content2;
+            }
           } else if (typeof content2 === "object") {
-            extractedContent = JSON.stringify(content2, null, 2);
+            // Already an object, extract the content field if present
+            const contentObj = content2 as Record<string, unknown>;
+            if (contentObj.content && typeof contentObj.content === "string") {
+              extractedContent = contentObj.content;
+            } else {
+              extractedContent = JSON.stringify(content2, null, 2);
+            }
           }
           console.log("✅ [HTTP] Extracted content via path: body.message.message.content.content");
         }
@@ -576,9 +595,24 @@ export default function ForecastMacroLab() {
           
           if (content2 != null) {
             if (typeof content2 === "string") {
-              extractedContent = content2;
+              try {
+                const innerParsed = JSON.parse(content2);
+                if (innerParsed && typeof innerParsed === "object" && innerParsed.content) {
+                  extractedContent = innerParsed.content;
+                  console.log("✅ [HTTP] Extracted inner content field from JSON string (path 2)");
+                } else {
+                  extractedContent = content2;
+                }
+              } catch {
+                extractedContent = content2;
+              }
             } else if (typeof content2 === "object") {
-              extractedContent = JSON.stringify(content2, null, 2);
+              const contentObj = content2 as Record<string, unknown>;
+              if (contentObj.content && typeof contentObj.content === "string") {
+                extractedContent = contentObj.content;
+              } else {
+                extractedContent = JSON.stringify(content2, null, 2);
+              }
             }
             console.log("✅ [HTTP] Extracted content via path: message.content.content");
           }
@@ -596,9 +630,24 @@ export default function ForecastMacroLab() {
           
           if (content2 != null) {
             if (typeof content2 === "string") {
-              extractedContent = content2;
+              try {
+                const innerParsed = JSON.parse(content2);
+                if (innerParsed && typeof innerParsed === "object" && innerParsed.content) {
+                  extractedContent = innerParsed.content;
+                  console.log("✅ [HTTP] Extracted inner content field from JSON string (path 3)");
+                } else {
+                  extractedContent = content2;
+                }
+              } catch {
+                extractedContent = content2;
+              }
             } else if (typeof content2 === "object") {
-              extractedContent = JSON.stringify(content2, null, 2);
+              const contentObj = content2 as Record<string, unknown>;
+              if (contentObj.content && typeof contentObj.content === "string") {
+                extractedContent = contentObj.content;
+              } else {
+                extractedContent = JSON.stringify(content2, null, 2);
+              }
             }
             console.log("✅ [HTTP] Extracted content via path: [0].message.message.content.content");
           }
