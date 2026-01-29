@@ -1,87 +1,129 @@
 
 
-# Plan: Ajouter des logs de debug pour diagnostiquer la structure de `risk_surface`
+# Plan: Corriger l'extraction de `risk_surface` - Parsing string manquant
 
-## Problème Actuel
+## Analyse du Problème
 
-Les logs montrent :
-```
-[extractRiskSurface] Found risk_surface in content.content!
-[handleSubmit] risk_surface details: { hasSurface: false, source: "fallback_from_trade_setup" }
-```
-
-Le champ `risk_surface` **EST trouvé**, mais `parseSurface()` retourne `null` et le système utilise le fallback. Cela signifie que la structure réelle de `risk_surface` ne correspond à aucun format supporté.
-
-## Cause Probable
-
-La fonction `parseSurface` vérifie 3 formats :
-1. `s.surface.surface.target_probs` (doublement imbriqué)
-2. `s.surface.target_probs` (simplement imbriqué)  
-3. `s.target_probs` (propriétés directes)
-
-Mais aucun ne matche → le `risk_surface` de l'API a probablement une 4ème structure non gérée.
-
----
-
-## Solution: Ajouter des logs détaillés
-
-### Fichier: `src/pages/ForecastTradeGenerator.tsx`
-
-#### Modification ligne 545-546
-
-Ajouter un log pour afficher le contenu de `risk_surface` AVANT d'appeler `parseSurface` :
-
-```typescript
-if (content2?.risk_surface) {
-  console.log("[extractRiskSurface] Found risk_surface in content.content!");
-  // NEW: Log the actual structure to diagnose why parseSurface fails
-  console.log("[extractRiskSurface] risk_surface type:", typeof content2.risk_surface);
-  console.log("[extractRiskSurface] risk_surface keys:", 
-    typeof content2.risk_surface === "object" && content2.risk_surface !== null 
-      ? Object.keys(content2.risk_surface as object) 
-      : "N/A"
-  );
-  console.log("[extractRiskSurface] risk_surface sample:", JSON.stringify(content2.risk_surface, null, 2).slice(0, 500));
-  
-  const result = parseSurface(content2.risk_surface);
-  // ...
-}
-```
-
-#### Modification dans `parseSurface` (lignes 485-530)
-
-Ajouter des logs à chaque étape de validation :
-
-```typescript
-const s = parsed as Record<string, unknown>;
-console.log("[parseSurface] Checking structure, keys:", Object.keys(s));
-
-if (s?.surface && typeof s.surface === "object") {
-  const outerSurface = s.surface as Record<string, unknown>;
-  console.log("[parseSurface] Found s.surface, keys:", Object.keys(outerSurface));
-  
-  if (outerSurface?.surface && typeof outerSurface.surface === "object") {
-    const innerSurface = outerSurface.surface as Record<string, unknown>;
-    console.log("[parseSurface] Found s.surface.surface, keys:", Object.keys(innerSurface));
-    // ... rest
+La structure fournie est parfaitement correcte et devrait fonctionner :
+```json
+{
+  "status": "ok",
+  "surface": {
+    "sigma_ref": 0.00028271,
+    "entry_price": 1.19276,
+    "atr": 0.001394,
+    "surface": {
+      "target_probs": [...],
+      "sl_sigma": [...],
+      "tp_sigma": [[...]]
+    }
   }
 }
 ```
 
+**Hypothèse** : Le champ `risk_surface` dans `content.content` est probablement retourné comme une **string JSON** (doublement sérialisée) au lieu d'un objet direct.
+
+Par exemple :
+```typescript
+content2.risk_surface = '{"status":"ok","surface":{...}}'  // STRING !
+```
+
+Or, `parseSurface` tente de parser cela, mais le chemin échoue car il ne gère pas correctement tous les cas de parsing string.
+
 ---
 
-## Résumé
+## Solution Technique
 
-| Ligne | Changement |
-|-------|------------|
-| 545-546 | Log du type, des clés et d'un échantillon de `risk_surface` |
-| 485-530 | Logs à chaque étape de validation dans `parseSurface` |
+### Fichier: `src/pages/ForecastTradeGenerator.tsx`
+
+#### 1. Modifier l'appel à `parseSurface` dans Path 1 (ligne 560-577)
+
+Ajouter un parsing explicite si `risk_surface` est une string :
+
+```typescript
+if (content2?.risk_surface) {
+  console.log("[extractRiskSurface] Found risk_surface in content.content!");
+  
+  // CRITICAL: risk_surface itself might be a JSON string
+  let riskSurfaceObj = content2.risk_surface;
+  if (typeof riskSurfaceObj === "string") {
+    try {
+      riskSurfaceObj = JSON.parse(riskSurfaceObj);
+      console.log("[extractRiskSurface] Parsed risk_surface from string");
+    } catch (e) {
+      console.log("[extractRiskSurface] Failed to parse risk_surface string:", e);
+    }
+  }
+  
+  console.log("[extractRiskSurface] risk_surface type:", typeof riskSurfaceObj);
+  console.log("[extractRiskSurface] risk_surface keys:", 
+    typeof riskSurfaceObj === "object" && riskSurfaceObj !== null 
+      ? Object.keys(riskSurfaceObj as object) 
+      : "N/A"
+  );
+  
+  const result = parseSurface(riskSurfaceObj);
+  if (result) {
+    console.log("[extractRiskSurface] SUCCESS via Path 1");
+    return result;
+  }
+}
+```
+
+#### 2. Renforcer la robustesse de `parseSurface` (lignes 462-548)
+
+Ajouter une gestion plus explicite au début de la fonction :
+
+```typescript
+const parseSurface = (surface: unknown): SurfaceApiResponse | null => {
+  if (!surface) {
+    console.log("[parseSurface] Input is null/undefined");
+    return null;
+  }
+  
+  let parsed = surface;
+  
+  // Handle stringified JSON (potentially double-encoded)
+  while (typeof parsed === "string") {
+    try { 
+      const temp = JSON.parse(parsed);
+      console.log("[parseSurface] Parsed string layer");
+      parsed = temp;
+    } catch { 
+      console.log("[parseSurface] Failed to parse string");
+      return null; 
+    }
+  }
+  
+  // ... rest of the validation
+};
+```
+
+L'utilisation d'une boucle `while` permet de gérer les cas de double-encoding (string dans string).
+
+---
+
+## Résumé des Modifications
+
+| Lignes | Changement |
+|--------|------------|
+| 560-577 | Parsing explicite de `risk_surface` avant appel à `parseSurface` |
+| 462-478 | Boucle `while` pour dé-stringifier multi-niveaux |
+
+---
 
 ## Résultat Attendu
 
-Après cette modification, les logs de la console afficheront :
-- La structure exacte de `risk_surface` reçu de l'API
-- Le chemin où la validation échoue dans `parseSurface`
+1. `risk_surface` sera correctement dé-stringifié si nécessaire
+2. `parseSurface` détectera la structure `s.surface.surface.target_probs`
+3. L'objet aplati sera retourné avec `surface.target_probs`
+4. Le graphique 3D s'affichera dans `RiskSurfaceChart`
 
-Cela permettra d'identifier précisément quel format l'API utilise et d'adapter `parseSurface` en conséquence.
+---
+
+## Garanties Zero Régression
+
+1. Si `risk_surface` est déjà un objet, le code le traite normalement
+2. Les autres extracteurs ne sont pas modifiés
+3. Le composant `RiskSurfaceChart` reste inchangé
 
