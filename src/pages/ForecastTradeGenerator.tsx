@@ -315,7 +315,53 @@ function getPayloadHorizons(responseData: unknown): ForecastHorizon[] {
  * Contains forecast horizons data for the EnhancedForecastTable
  */
 function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
+  console.log("[extractTradeSetup] Starting extraction...");
   const obj = raw as Record<string, unknown>;
+  
+  // Helper to parse stringified JSON or arrays of JSON strings
+  const parseSetup = (setup: unknown): TradeSetupResponse | null => {
+    if (!setup) return null;
+    
+    // Handle array of JSON strings (API sometimes returns ["{ ... }"])
+    if (Array.isArray(setup)) {
+      if (setup.length === 0) return null;
+      const first = setup[0];
+      if (typeof first === "string") {
+        try { 
+          const parsed = JSON.parse(first);
+          console.log("[extractTradeSetup] Parsed array[0] string successfully");
+          return parsed as TradeSetupResponse;
+        } catch { 
+          console.log("[extractTradeSetup] Failed to parse array[0] string");
+          return null; 
+        }
+      } else if (typeof first === "object" && first !== null) {
+        console.log("[extractTradeSetup] Using array[0] object directly");
+        return first as TradeSetupResponse;
+      }
+      return null;
+    }
+    
+    // Handle stringified JSON
+    if (typeof setup === "string") {
+      try { 
+        const parsed = JSON.parse(setup);
+        console.log("[extractTradeSetup] Parsed string successfully");
+        return parsed as TradeSetupResponse;
+      } catch { 
+        console.log("[extractTradeSetup] Failed to parse string");
+        return null; 
+      }
+    }
+    
+    // Direct object
+    if (typeof setup === "object" && setup !== null) {
+      console.log("[extractTradeSetup] Using object directly");
+      return setup as TradeSetupResponse;
+    }
+    
+    return null;
+  };
   
   // Path 1: body.message.message.content.content.trade_setup (actual API response)
   try {
@@ -325,49 +371,52 @@ function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
     const content1 = message2?.content as Record<string, unknown>;
     const content2 = content1?.content as Record<string, unknown>;
     if (content2?.trade_setup) {
-      let setup = content2.trade_setup;
-      // Handle array format (API returns array of stringified JSON)
-      if (Array.isArray(setup) && setup.length > 0) {
-        const first = setup[0];
-        if (typeof first === "string") {
-          try { setup = JSON.parse(first); } catch { return null; }
-        } else {
-          setup = first;
-        }
-      } else if (typeof setup === "string") {
-        try { setup = JSON.parse(setup); } catch { return null; }
+      const result = parseSetup(content2.trade_setup);
+      if (result) {
+        console.log("[extractTradeSetup] Found via Path 1 (body.message.message.content.content)");
+        return result;
       }
-      return setup as TradeSetupResponse;
     }
-  } catch {}
+  } catch (e) {
+    console.log("[extractTradeSetup] Path 1 failed:", e);
+  }
   
   // Path 2: output.trade_generation_output.trade_setup
-  if (obj?.output && typeof obj.output === "object") {
-    const output = obj.output as Record<string, unknown>;
-    if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
-      const tgo = output.trade_generation_output as Record<string, unknown>;
-      if (tgo?.trade_setup) {
-        let setup = tgo.trade_setup;
-        if (typeof setup === "string") {
-          try { setup = JSON.parse(setup); } catch { return null; }
+  try {
+    if (obj?.output && typeof obj.output === "object") {
+      const output = obj.output as Record<string, unknown>;
+      if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
+        const tgo = output.trade_generation_output as Record<string, unknown>;
+        if (tgo?.trade_setup) {
+          const result = parseSetup(tgo.trade_setup);
+          if (result) {
+            console.log("[extractTradeSetup] Found via Path 2 (output.trade_generation_output)");
+            return result;
+          }
         }
-        return setup as TradeSetupResponse;
       }
     }
+  } catch (e) {
+    console.log("[extractTradeSetup] Path 2 failed:", e);
   }
   
   // Path 3: Direct trade_generation_output.trade_setup
-  if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
-    const tgo = obj.trade_generation_output as Record<string, unknown>;
-    if (tgo?.trade_setup) {
-      let setup = tgo.trade_setup;
-      if (typeof setup === "string") {
-        try { setup = JSON.parse(setup); } catch { return null; }
+  try {
+    if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
+      const tgo = obj.trade_generation_output as Record<string, unknown>;
+      if (tgo?.trade_setup) {
+        const result = parseSetup(tgo.trade_setup);
+        if (result) {
+          console.log("[extractTradeSetup] Found via Path 3 (direct trade_generation_output)");
+          return result;
+        }
       }
-      return setup as TradeSetupResponse;
     }
+  } catch (e) {
+    console.log("[extractTradeSetup] Path 3 failed:", e);
   }
   
+  console.log("[extractTradeSetup] No valid trade_setup found in any path");
   return null;
 }
 
@@ -376,7 +425,44 @@ function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
  * Contains data for the 3D RiskSurfaceChart (sigma_ref, surface, atr)
  */
 function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
+  console.log("[extractRiskSurface] Starting extraction...");
   const obj = raw as Record<string, unknown>;
+  
+  // Helper to parse and validate surface data
+  const parseSurface = (surface: unknown): SurfaceApiResponse | null => {
+    if (!surface) return null;
+    
+    let parsed = surface;
+    
+    // Handle stringified JSON
+    if (typeof surface === "string") {
+      try { 
+        parsed = JSON.parse(surface);
+        console.log("[extractRiskSurface] Parsed string successfully");
+      } catch { 
+        console.log("[extractRiskSurface] Failed to parse string");
+        return null; 
+      }
+    }
+    
+    // Validate structure: must have surface object with expected properties
+    if (typeof parsed === "object" && parsed !== null) {
+      const s = parsed as Record<string, unknown>;
+      // Check for required fields: surface object OR direct surface arrays
+      if (s?.surface && typeof s.surface === "object") {
+        console.log("[extractRiskSurface] Valid surface structure detected (nested surface object)");
+        return parsed as SurfaceApiResponse;
+      }
+      // Also check if it's a direct SurfaceApiResponse with target_probs, sl_sigma, tp_sigma
+      if (s?.target_probs || s?.sl_sigma || s?.tp_sigma || s?.sigma_ref || s?.atr) {
+        console.log("[extractRiskSurface] Valid surface structure detected (direct properties)");
+        return parsed as SurfaceApiResponse;
+      }
+    }
+    
+    console.log("[extractRiskSurface] Invalid surface structure");
+    return null;
+  };
   
   // Path 1: body.message.message.content.content.risk_surface (actual API response)
   try {
@@ -386,41 +472,52 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     const content1 = message2?.content as Record<string, unknown>;
     const content2 = content1?.content as Record<string, unknown>;
     if (content2?.risk_surface) {
-      let surface = content2.risk_surface;
-      if (typeof surface === "string") {
-        try { surface = JSON.parse(surface); } catch { return null; }
+      const result = parseSurface(content2.risk_surface);
+      if (result) {
+        console.log("[extractRiskSurface] Found via Path 1 (body.message.message.content.content)");
+        return result;
       }
-      return surface as SurfaceApiResponse;
     }
-  } catch {}
+  } catch (e) {
+    console.log("[extractRiskSurface] Path 1 failed:", e);
+  }
   
   // Path 2: output.trade_generation_output.risk_surface
-  if (obj?.output && typeof obj.output === "object") {
-    const output = obj.output as Record<string, unknown>;
-    if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
-      const tgo = output.trade_generation_output as Record<string, unknown>;
-      if (tgo?.risk_surface) {
-        let surface = tgo.risk_surface;
-        if (typeof surface === "string") {
-          try { surface = JSON.parse(surface); } catch { return null; }
+  try {
+    if (obj?.output && typeof obj.output === "object") {
+      const output = obj.output as Record<string, unknown>;
+      if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
+        const tgo = output.trade_generation_output as Record<string, unknown>;
+        if (tgo?.risk_surface) {
+          const result = parseSurface(tgo.risk_surface);
+          if (result) {
+            console.log("[extractRiskSurface] Found via Path 2 (output.trade_generation_output)");
+            return result;
+          }
         }
-        return surface as SurfaceApiResponse;
       }
     }
+  } catch (e) {
+    console.log("[extractRiskSurface] Path 2 failed:", e);
   }
   
   // Path 3: Direct trade_generation_output.risk_surface
-  if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
-    const tgo = obj.trade_generation_output as Record<string, unknown>;
-    if (tgo?.risk_surface) {
-      let surface = tgo.risk_surface;
-      if (typeof surface === "string") {
-        try { surface = JSON.parse(surface); } catch { return null; }
+  try {
+    if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
+      const tgo = obj.trade_generation_output as Record<string, unknown>;
+      if (tgo?.risk_surface) {
+        const result = parseSurface(tgo.risk_surface);
+        if (result) {
+          console.log("[extractRiskSurface] Found via Path 3 (direct trade_generation_output)");
+          return result;
+        }
       }
-      return surface as SurfaceApiResponse;
     }
+  } catch (e) {
+    console.log("[extractRiskSurface] Path 3 failed:", e);
   }
   
+  console.log("[extractRiskSurface] No valid risk_surface found in any path");
   return null;
 }
 
@@ -1119,26 +1216,27 @@ function ForecastTradeGeneratorContent() {
       // NEW: Extract trade_generation_output fields
       // Extract trade_setup (forecast_data) -> horizons for table
       const tradeSetup = extractTradeSetup(data);
+      console.log("[handleSubmit] Extracted trade_setup:", tradeSetup);
+      
+      let horizonsExtracted: ForecastHorizon[] = [];
       if (tradeSetup) {
-        const horizonsFromSetup = getHorizonsFromTradeSetup(tradeSetup);
-        if (horizonsFromSetup.length > 0) {
-          setForecastHorizons(horizonsFromSetup);
-        }
+        horizonsExtracted = getHorizonsFromTradeSetup(tradeSetup);
+        console.log("[handleSubmit] Horizons from trade_setup:", horizonsExtracted.length);
       }
       
       // Fallback: try legacy path if trade_setup didn't have horizons
-      if (forecastHorizons.length === 0) {
-        const horizonsData = getPayloadHorizons(data);
-        if (horizonsData.length > 0) {
-          setForecastHorizons(horizonsData);
-        }
+      if (horizonsExtracted.length === 0) {
+        horizonsExtracted = getPayloadHorizons(data);
+        console.log("[handleSubmit] Horizons from legacy path:", horizonsExtracted.length);
       }
+      
+      // Set state ONCE after all extraction attempts (avoid stale state issue)
+      setForecastHorizons(horizonsExtracted);
 
       // Extract risk_surface -> 3D chart data
       const surface = extractRiskSurface(data);
-      if (surface) {
-        setRiskSurfaceData(surface);
-      }
+      console.log("[handleSubmit] Extracted risk_surface:", surface ? "OK" : "null");
+      setRiskSurfaceData(surface);
 
       // Extract final_answer -> AI textual analysis
       const answer = extractFinalAnswer(data);
