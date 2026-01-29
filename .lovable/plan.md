@@ -1,129 +1,166 @@
 
+# Plan: Ajouter le `job_id` aux requêtes API du Forecast Playground Hub
 
-# Plan: Corriger l'extraction de `risk_surface` - Parsing string manquant
+## Contexte
 
-## Analyse du Problème
+Les 3 outils du hub Forecast Playground (`/forecast-playground`) envoient des requêtes API sans inclure le champ `job_id` dans le payload. Ce champ est essentiel pour le suivi backend et la synchronisation Realtime via Supabase.
 
-La structure fournie est parfaitement correcte et devrait fonctionner :
-```json
-{
-  "status": "ok",
-  "surface": {
-    "sigma_ref": 0.00028271,
-    "entry_price": 1.19276,
-    "atr": 0.001394,
-    "surface": {
-      "target_probs": [...],
-      "sl_sigma": [...],
-      "tp_sigma": [[...]]
-    }
-  }
-}
-```
+## Problèmes Identifiés
 
-**Hypothèse** : Le champ `risk_surface` dans `content.content` est probablement retourné comme une **string JSON** (doublement sérialisée) au lieu d'un objet direct.
-
-Par exemple :
-```typescript
-content2.risk_surface = '{"status":"ok","surface":{...}}'  // STRING !
-```
-
-Or, `parseSurface` tente de parser cela, mais le chemin échoue car il ne gère pas correctement tous les cas de parsing string.
-
----
+| Page | Fichier | État Actuel |
+|------|---------|-------------|
+| Macro Lab | `ForecastMacroLab.tsx` | `createJob()` appelé mais `job_id` absent du payload |
+| Forecast Tool | `ForecastPlaygroundTool.tsx` | Aucun `job_id` dans les requêtes `forecast-proxy` / `surface-proxy` |
+| Trade Generator | `ForecastTradeGenerator.tsx` | Aucun `job_id` dans la requête `macro-lab-proxy` |
 
 ## Solution Technique
 
-### Fichier: `src/pages/ForecastTradeGenerator.tsx`
+### 1. Macro Lab (`src/pages/ForecastMacroLab.tsx`)
 
-#### 1. Modifier l'appel à `parseSurface` dans Path 1 (ligne 560-577)
+**Ligne 477-514**: Ajouter le `job_id` au payload avant l'envoi.
 
-Ajouter un parsing explicite si `risk_surface` est une string :
+```text
+Avant:
+  const payload = {
+    type: "RAG",
+    question: queryParams.query,
+    mode: "run",
+    ...
+  };
 
-```typescript
-if (content2?.risk_surface) {
-  console.log("[extractRiskSurface] Found risk_surface in content.content!");
-  
-  // CRITICAL: risk_surface itself might be a JSON string
-  let riskSurfaceObj = content2.risk_surface;
-  if (typeof riskSurfaceObj === "string") {
-    try {
-      riskSurfaceObj = JSON.parse(riskSurfaceObj);
-      console.log("[extractRiskSurface] Parsed risk_surface from string");
-    } catch (e) {
-      console.log("[extractRiskSurface] Failed to parse risk_surface string:", e);
-    }
-  }
-  
-  console.log("[extractRiskSurface] risk_surface type:", typeof riskSurfaceObj);
-  console.log("[extractRiskSurface] risk_surface keys:", 
-    typeof riskSurfaceObj === "object" && riskSurfaceObj !== null 
-      ? Object.keys(riskSurfaceObj as object) 
-      : "N/A"
-  );
-  
-  const result = parseSurface(riskSurfaceObj);
-  if (result) {
-    console.log("[extractRiskSurface] SUCCESS via Path 1");
-    return result;
-  }
-}
+Après:
+  const payload = {
+    type: "RAG",
+    question: queryParams.query,
+    mode: "run",
+    job_id: responseJobId,  // <-- AJOUT
+    ...
+  };
 ```
 
-#### 2. Renforcer la robustesse de `parseSurface` (lignes 462-548)
+**Modification**: Réorganiser le code pour créer le `job_id` AVANT de construire le payload.
 
-Ajouter une gestion plus explicite au début de la fonction :
+### 2. Forecast Tool (`src/pages/ForecastPlaygroundTool.tsx`)
 
-```typescript
-const parseSurface = (surface: unknown): SurfaceApiResponse | null => {
-  if (!surface) {
-    console.log("[parseSurface] Input is null/undefined");
-    return null;
-  }
-  
-  let parsed = surface;
-  
-  // Handle stringified JSON (potentially double-encoded)
-  while (typeof parsed === "string") {
-    try { 
-      const temp = JSON.parse(parsed);
-      console.log("[parseSurface] Parsed string layer");
-      parsed = temp;
-    } catch { 
-      console.log("[parseSurface] Failed to parse string");
-      return null; 
-    }
-  }
-  
-  // ... rest of the validation
+**Lignes 1010-1034 (forecast-proxy)** et **1079-1106 (surface-proxy)**:
+
+Ces outils sont des outils internes "Lab" qui n'utilisent pas le système de jobs standard. Cependant, pour la traçabilité, on peut ajouter un `job_id` généré localement via `uuid.v4()` sans créer d'enregistrement dans la table `jobs`.
+
+```text
+import { v4 as uuidv4 } from 'uuid';
+
+// Au début de handleSubmit:
+const jobId = uuidv4();
+
+// Dans requestBody pour forecast-proxy:
+const requestBody = {
+  job_id: jobId,  // <-- AJOUT (traçabilité uniquement)
+  symbol,
+  timeframe,
+  ...
+};
+
+// Dans surfacePayload pour surface-proxy:
+const surfacePayload = {
+  job_id: jobId,  // <-- AJOUT (traçabilité uniquement)
+  symbol,
+  timeframe,
+  ...
 };
 ```
 
-L'utilisation d'une boucle `while` permet de gérer les cas de double-encoding (string dans string).
+### 3. Trade Generator (`src/pages/ForecastTradeGenerator.tsx`)
 
----
+**Lignes 1497-1526**: Ajouter le `job_id` au payload.
 
-## Résumé des Modifications
+```text
+import { v4 as uuidv4 } from 'uuid';
 
-| Lignes | Changement |
-|--------|------------|
-| 560-577 | Parsing explicite de `risk_surface` avant appel à `parseSurface` |
-| 462-478 | Boucle `while` pour dé-stringifier multi-niveaux |
+// Au début de handleSubmit:
+const jobId = uuidv4();
 
----
+// Dans macroPayload:
+const macroPayload = {
+  job_id: jobId,  // <-- AJOUT
+  type: "RAG",
+  mode: "trade_generation",
+  instrument: symbol,
+  ...
+};
+```
 
-## Résultat Attendu
+## Détails Techniques
 
-1. `risk_surface` sera correctement dé-stringifié si nécessaire
-2. `parseSurface` détectera la structure `s.surface.surface.target_probs`
-3. L'objet aplati sera retourné avec `surface.target_probs`
-4. Le graphique 3D s'affichera dans `RiskSurfaceChart`
+### Fichier: `src/pages/ForecastMacroLab.tsx`
 
----
+**Modifications (lignes 469-514)**:
+
+1. Déplacer `createJob()` AVANT la construction du payload
+2. Ajouter `job_id: responseJobId` dans l'objet payload
+3. Le payload sera : `{ type: "RAG", job_id: "<uuid>", question: "...", ... }`
+
+### Fichier: `src/pages/ForecastPlaygroundTool.tsx`
+
+**Modifications**:
+1. Ajouter `import { v4 as uuidv4 } from 'uuid';` en haut du fichier
+2. Générer `const jobId = uuidv4();` au début de `handleSubmit()`
+3. Ajouter `job_id: jobId` dans `requestBody` (ligne ~1010)
+4. Ajouter `job_id: jobId` dans `surfacePayload` (ligne ~1079)
+
+### Fichier: `src/pages/ForecastTradeGenerator.tsx`
+
+**Modifications**:
+1. Ajouter `import { v4 as uuidv4 } from 'uuid';` en haut du fichier (si absent)
+2. Générer `const jobId = uuidv4();` au début de `handleSubmit()`
+3. Ajouter `job_id: jobId` dans `macroPayload` (ligne ~1497)
+
+## Structure Finale des Payloads
+
+### Macro Lab
+```json
+{
+  "type": "RAG",
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "question": "...",
+  "mode": "run",
+  "instrument": "EUR/USD",
+  ...
+}
+```
+
+### Forecast Tool (forecast-proxy)
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440001",
+  "symbol": "EUR/USD",
+  "timeframe": "15min",
+  "horizons": [24],
+  ...
+}
+```
+
+### Trade Generator
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440002",
+  "type": "RAG",
+  "mode": "trade_generation",
+  "instrument": "EUR/USD",
+  ...
+}
+```
 
 ## Garanties Zero Régression
 
-1. Si `risk_surface` est déjà un objet, le code le traite normalement
-2. Les autres extracteurs ne sont pas modifiés
-3. Le composant `RiskSurfaceChart` reste inchangé
+1. **Aucune modification de la logique d'extraction des réponses** - seul le payload d'envoi est modifié
+2. **Les outils Lab restent sans engagement de crédits** - uniquement traçabilité ajoutée
+3. **Backward compatible** - si le backend ignore `job_id`, aucun impact
+4. **Utilisation de uuid v4** - déjà installé et utilisé dans le projet
 
+## Résumé des Fichiers Modifiés
+
+| Fichier | Lignes Modifiées | Nature |
+|---------|------------------|--------|
+| `src/pages/ForecastMacroLab.tsx` | ~469-514 | Ajouter `job_id` au payload |
+| `src/pages/ForecastPlaygroundTool.tsx` | ~1, ~990-1110 | Import uuid + ajouter `job_id` aux 2 payloads |
+| `src/pages/ForecastTradeGenerator.tsx` | ~1, ~1495-1525 | Import uuid + ajouter `job_id` au payload |
