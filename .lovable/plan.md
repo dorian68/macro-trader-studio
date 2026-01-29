@@ -1,146 +1,107 @@
 
-# Plan: Parser le contenu textuel en structure pour MacroCommentaryDisplay
+# Plan: Corriger l'extraction du champ "content" pour le Macro Lab
 
-## Diagnostic Complet
+## Diagnostic Final
 
-L'API retourne un champ `content` qui est une **chaîne de texte** contenant les informations (pas un objet JSON structuré):
+La réponse API a cette structure exacte (confirmée par les network logs) :
 
 ```
-"content": "Executive Summary: The current market outlook... \n\nFundamental Analysis: \n- The U.S. trade deficit... \n\nDirectional Bias: Bullish, Confidence: \"60%\" \n\nKey Levels: \nSupport: \n1.1600 ..."
+body.message.message.content.content = "{\"content\": \"## Executive Summary...\\n...\", \"request\": {...}}"
 ```
 
-Le composant `MacroCommentaryDisplay` attend un **objet** avec des clés comme:
+Le champ `content.content` est une **string JSON** qui doit être parsée. Une fois parsée, elle contient :
 ```json
 {
-  "executive_summary": "...",
-  "fundamental_analysis": ["...", "..."],
-  "directional_bias": "Bullish",
-  "confidence": 60,
-  "key_levels": { "support": [...], "resistance": [...] }
+  "content": "## Executive Summary\nThe current macroeconomic...",
+  "request": { "user_query": "...", ... }
 }
 ```
 
-**Il faut donc parser le texte pour extraire ces sections et construire l'objet attendu.**
+Le vrai contenu textuel à afficher est dans `parsedObject.content` (le texte Markdown).
 
----
+## Problème Actuel
 
-## Solution Technique
+Le code actuel (lignes 560-566) détecte que `content2` est une string, mais au lieu de parser cette string JSON pour extraire le champ `content` interne, il la passe telle quelle à `handleRealtimeResponse`. Le résultat : tout le JSON est affiché au lieu du contenu formaté.
+
+## Solution
+
+Modifier le code d'extraction (lignes 560-566) pour :
+1. Parser la string JSON quand `content2` est une string
+2. Extraire le champ `.content` de l'objet parsé
+3. Passer uniquement ce contenu textuel à `handleRealtimeResponse`
 
 ### Fichier: `src/pages/ForecastMacroLab.tsx`
 
-#### 1. Créer une fonction de parsing du texte vers un objet structuré
+#### Modification des lignes 560-567
 
-Ajouter une nouvelle fonction `parseMacroContentToStructured` qui:
-- Détecte les sections par leurs titres ("Executive Summary:", "Fundamental Analysis:", etc.)
-- Extrait le contenu de chaque section
-- Retourne un objet structuré compatible avec `MacroCommentaryDisplay`
-
+**Code actuel :**
 ```typescript
-const parseMacroContentToStructured = (textContent: string): object | null => {
-  if (!textContent || typeof textContent !== 'string') return null;
-  
-  const result: any = {};
-  
-  // Extract Executive Summary
-  const execMatch = textContent.match(/Executive Summary:\s*([^]*?)(?=\n\n|\nFundamental Analysis:|$)/i);
-  if (execMatch) {
-    result.executive_summary = execMatch[1].trim();
+if (content2 != null) {
+  if (typeof content2 === "string") {
+    extractedContent = content2;
+  } else if (typeof content2 === "object") {
+    extractedContent = JSON.stringify(content2, null, 2);
   }
-  
-  // Extract Fundamental Analysis (bullet points)
-  const fundMatch = textContent.match(/Fundamental Analysis:\s*([^]*?)(?=\n\nDirectional Bias:|$)/i);
-  if (fundMatch) {
-    const points = fundMatch[1].split(/\n-\s*/).filter(p => p.trim());
-    result.fundamental_analysis = points.map(p => p.trim().replace(/^-\s*/, ''));
-  }
-  
-  // Extract Directional Bias and Confidence
-  const biasMatch = textContent.match(/Directional Bias:\s*(\w+),?\s*Confidence:\s*"?(\d+)%?"?/i);
-  if (biasMatch) {
-    result.directional_bias = biasMatch[1];
-    result.confidence = parseInt(biasMatch[2], 10);
-  }
-  
-  // Extract Key Levels
-  const supportMatch = textContent.match(/Support:\s*\n([\d.\s\n]+?)(?=Resistance:|$)/i);
-  const resistanceMatch = textContent.match(/Resistance:\s*\n([\d.\s\n]+?)(?=\n\n|AI Insights|$)/i);
-  if (supportMatch || resistanceMatch) {
-    result.key_levels = {
-      support: supportMatch ? supportMatch[1].trim().split('\n').filter(l => l.trim()) : [],
-      resistance: resistanceMatch ? resistanceMatch[1].trim().split('\n').filter(l => l.trim()) : []
-    };
-  }
-  
-  // Extract AI Insights
-  const gptMatch = textContent.match(/Toggle GPT:\s*([^]*?)(?=Toggle Curated:|Fundamentals:|$)/i);
-  const curatedMatch = textContent.match(/Toggle Curated:\s*([^]*?)(?=\n\nFundamentals:|$)/i);
-  if (gptMatch || curatedMatch) {
-    result.ai_insights_breakdown = {
-      toggle_gpt: gptMatch ? gptMatch[1].trim() : null,
-      toggle_curated: curatedMatch ? curatedMatch[1].trim() : null
-    };
-  }
-  
-  return Object.keys(result).length > 0 ? result : null;
-};
-```
-
-#### 2. Modifier `handleRealtimeResponse` pour utiliser ce parser
-
-Après avoir extrait `parsedContent`, vérifier si le champ `content` est une string textuelle et la parser:
-
-```typescript
-// Si parsedContent.content est une string (texte brut), la parser en structure
-if (parsedContent && typeof parsedContent === "object" && typeof parsedContent.content === "string") {
-  const structuredData = parseMacroContentToStructured(parsedContent.content);
-  if (structuredData) {
-    analysisContent = structuredData;
-    console.log("✅ [Realtime] Parsed text content to structured object:", structuredData);
-  } else {
-    // Fallback: garder la string brute
-    analysisContent = parsedContent.content;
-  }
-} else if (parsedContent && typeof parsedContent === "object") {
-  analysisContent = parsedContent;
-} else {
-  analysisContent = extractStringContent(rawContent);
+  console.log("✅ [HTTP] Extracted content via path: body.message.message.content.content");
 }
 ```
 
----
+**Nouveau code :**
+```typescript
+if (content2 != null) {
+  if (typeof content2 === "string") {
+    // content2 is a JSON string that contains { "content": "...", "request": {...} }
+    // Parse it and extract the inner "content" field
+    try {
+      const innerParsed = JSON.parse(content2);
+      if (innerParsed && typeof innerParsed === "object" && innerParsed.content) {
+        extractedContent = innerParsed.content;
+        console.log("✅ [HTTP] Extracted inner content field from JSON string");
+      } else {
+        extractedContent = content2;
+      }
+    } catch {
+      // Not valid JSON, use as-is
+      extractedContent = content2;
+    }
+  } else if (typeof content2 === "object") {
+    // Already an object, extract the content field if present
+    const contentObj = content2 as Record<string, unknown>;
+    if (contentObj.content && typeof contentObj.content === "string") {
+      extractedContent = contentObj.content;
+    } else {
+      extractedContent = JSON.stringify(content2, null, 2);
+    }
+  }
+  console.log("✅ [HTTP] Extracted content via path: body.message.message.content.content");
+}
+```
+
+#### Appliquer la même logique aux Paths 2 et 3
+
+Les mêmes modifications doivent être appliquées :
+- **Path 2** (lignes 577-584) : `message.content.content`
+- **Path 3** (lignes 597-604) : `[0].message.message.content.content`
 
 ## Résumé des Modifications
 
-| Localisation | Changement |
-|--------------|------------|
-| Après ligne ~145 | Ajouter fonction `parseMacroContentToStructured()` |
-| Lignes 203-212 | Modifier la logique pour détecter et parser les strings textuelles |
-
----
+| Lignes | Changement |
+|--------|------------|
+| 560-567 | Parser la string JSON et extraire le champ `.content` interne (Path 1) |
+| 577-584 | Même logique pour Path 2 |
+| 597-604 | Même logique pour Path 3 |
 
 ## Garanties Zero Régression
 
-1. **Fallback robuste** : Si le parsing échoue, le contenu textuel brut est affiché
-2. **Détection intelligente** : Ne parse que si `content` est une string (pas un objet déjà structuré)
-3. **Composant inchangé** : `MacroCommentaryDisplay` reste identique
+1. **Try/catch** : Si le parsing échoue, le contenu brut est conservé
+2. **Vérification de structure** : Ne modifie que si le champ `content` existe dans l'objet parsé
+3. **HTTP Debug** : Le panneau debug continue d'afficher le JSON brut complet (non impacté)
 4. **Autres pages** : Aucune modification
-
----
 
 ## Résultat Attendu
 
-Au lieu d'afficher le JSON brut:
-```json
-{
-  "content": "Executive Summary: The current market...",
-  "request": {...},
-  ...
-}
-```
-
-L'utilisateur verra des cartes formatées:
-- **Executive Summary** : Résumé textuel
-- **Fundamental Analysis** : Liste à puces
-- **Directional Bias** : Badge Bullish/Bearish + Confidence 60%
-- **Key Levels** : Grille Support (vert) / Resistance (rouge)
-- **AI Insights** : Sections dépliables GPT et Curated
+Au lieu de voir le JSON complet avec `content`, `request`, etc., l'utilisateur verra les cartes formatées :
+- **Executive Summary** avec le résumé textuel
+- **Fundamental Analysis** avec les bullet points
+- **Directional Bias** avec badge Bullish/Bearish + confiance %
+- **Key Levels** avec Support (vert) et Resistance (rouge)
