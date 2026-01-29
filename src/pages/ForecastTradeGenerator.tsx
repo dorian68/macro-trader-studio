@@ -445,19 +445,54 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
       }
     }
     
-    // Validate structure: must have surface object with expected properties
-    if (typeof parsed === "object" && parsed !== null) {
-      const s = parsed as Record<string, unknown>;
-      // Check for required fields: surface object OR direct surface arrays
-      if (s?.surface && typeof s.surface === "object") {
+    if (typeof parsed !== "object" || parsed === null) {
+      console.log("[extractRiskSurface] Not an object");
+      return null;
+    }
+    
+    const s = parsed as Record<string, unknown>;
+    
+    // NEW FORMAT: { status, surface: { sigma_ref, entry_price, surface: { target_probs, sl_sigma, tp_sigma } } }
+    // This is the actual API response format from the backend with doubly nested surface
+    if (s?.surface && typeof s.surface === "object") {
+      const outerSurface = s.surface as Record<string, unknown>;
+      
+      // Check if this outer surface has a nested "surface" with the actual arrays
+      if (outerSurface?.surface && typeof outerSurface.surface === "object") {
+        const innerSurface = outerSurface.surface as Record<string, unknown>;
+        
+        // Validate the inner surface has the required arrays
+        if (innerSurface?.target_probs && innerSurface?.sl_sigma && innerSurface?.tp_sigma) {
+          console.log("[extractRiskSurface] Detected nested surface.surface structure - flattening");
+          
+          // Flatten the structure: merge outer metadata with inner surface
+          return {
+            sigma_ref: outerSurface.sigma_ref as number,
+            entry_price: outerSurface.entry_price as number,
+            atr: outerSurface.atr as number | undefined,
+            symbol: outerSurface.symbol as string | undefined,
+            timeframe: outerSurface.timeframe as string | undefined,
+            methodology: outerSurface.methodology as string | undefined,
+            surface: {
+              target_probs: innerSurface.target_probs as number[],
+              sl_sigma: innerSurface.sl_sigma as number[],
+              tp_sigma: innerSurface.tp_sigma as number[][],
+            },
+          } as SurfaceApiResponse;
+        }
+      }
+      
+      // Standard format: outer surface has the arrays directly
+      if (outerSurface?.target_probs || outerSurface?.sl_sigma || outerSurface?.tp_sigma) {
         console.log("[extractRiskSurface] Valid surface structure detected (nested surface object)");
         return parsed as SurfaceApiResponse;
       }
-      // Also check if it's a direct SurfaceApiResponse with target_probs, sl_sigma, tp_sigma
-      if (s?.target_probs || s?.sl_sigma || s?.tp_sigma || s?.sigma_ref || s?.atr) {
-        console.log("[extractRiskSurface] Valid surface structure detected (direct properties)");
-        return parsed as SurfaceApiResponse;
-      }
+    }
+    
+    // Direct properties format
+    if (s?.target_probs || s?.sl_sigma || s?.tp_sigma || s?.sigma_ref || s?.atr) {
+      console.log("[extractRiskSurface] Valid surface structure detected (direct properties)");
+      return s as unknown as SurfaceApiResponse;
     }
     
     console.log("[extractRiskSurface] Invalid surface structure");
