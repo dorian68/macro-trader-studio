@@ -44,7 +44,7 @@ const FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL = "https://jqrlegdulnnrpiixiecf.supa
 
 interface AnalysisSection {
   title: string;
-  content: string;
+  content: string | object;
   type: "overview" | "technical" | "fundamental" | "outlook";
   expanded: boolean;
 }
@@ -177,13 +177,21 @@ export default function ForecastMacroLab() {
       return String(obj);
     };
 
+    // Extract the "content" field specifically
+    let rawContent: any = null;
     if (Array.isArray(responsePayload) && responsePayload.length > 0) {
-      const deepContent = (responsePayload as any)[0]?.message?.message?.content?.content;
-      analysisContent = extractStringContent(deepContent);
+      rawContent = (responsePayload as any)[0]?.message?.message?.content?.content;
     } else if (responsePayload?.message?.content?.content) {
-      analysisContent = extractStringContent(responsePayload.message.content.content);
+      rawContent = responsePayload.message.content.content;
     } else {
-      analysisContent = extractStringContent(responsePayload);
+      rawContent = responsePayload;
+    }
+    
+    // If rawContent is an object with a "content" field, extract it
+    if (rawContent && typeof rawContent === "object" && rawContent.content !== undefined) {
+      analysisContent = rawContent.content;
+    } else {
+      analysisContent = extractStringContent(rawContent);
     }
 
     const realAnalysis: MacroAnalysis = {
@@ -775,8 +783,14 @@ export default function ForecastMacroLab() {
                             </CollapsibleTrigger>
 
                             <CollapsibleContent className="animate-accordion-down">
-                              <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed bg-muted/20 p-4 rounded-lg border">
-                                {section.content}
+                              <div className="bg-muted/20 p-4 rounded-lg border">
+                                {typeof section.content === "object" ? (
+                                  <StyledJsonViewer data={section.content} initialExpanded={true} maxDepth={4} />
+                                ) : (
+                                  <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
+                                    {section.content}
+                                  </div>
+                                )}
                               </div>
                             </CollapsibleContent>
                           </div>
