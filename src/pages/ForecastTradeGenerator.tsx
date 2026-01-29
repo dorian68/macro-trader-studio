@@ -462,17 +462,22 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
   
   // Helper to parse and validate surface data
   const parseSurface = (surface: unknown): SurfaceApiResponse | null => {
-    if (!surface) return null;
+    if (!surface) {
+      console.log("[parseSurface] Input is null/undefined");
+      return null;
+    }
     
     let parsed = surface;
     
-    // Handle stringified JSON
-    if (typeof surface === "string") {
+    // Handle stringified JSON (potentially double-encoded)
+    // Use a loop to handle multiple levels of JSON string encoding
+    while (typeof parsed === "string") {
       try { 
-        parsed = JSON.parse(surface);
-        console.log("[extractRiskSurface] Parsed string successfully");
+        const temp = JSON.parse(parsed);
+        console.log("[parseSurface] Parsed string layer successfully");
+        parsed = temp;
       } catch { 
-        console.log("[extractRiskSurface] Failed to parse string");
+        console.log("[parseSurface] Failed to parse string layer");
         return null; 
       }
     }
@@ -559,18 +564,30 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     console.log("[extractRiskSurface] parsed content2 keys:", content2 ? Object.keys(content2) : "null");
     if (content2?.risk_surface) {
       console.log("[extractRiskSurface] Found risk_surface in content.content!");
-      // DEBUG: Log the raw risk_surface structure before parsing
-      console.log("[extractRiskSurface] risk_surface type:", typeof content2.risk_surface);
+      
+      // CRITICAL: risk_surface itself might be a JSON string (double-encoded)
+      let riskSurfaceObj = content2.risk_surface;
+      if (typeof riskSurfaceObj === "string") {
+        try {
+          riskSurfaceObj = JSON.parse(riskSurfaceObj);
+          console.log("[extractRiskSurface] Parsed risk_surface from string to object");
+        } catch (e) {
+          console.log("[extractRiskSurface] Failed to parse risk_surface string:", e);
+        }
+      }
+      
+      // DEBUG: Log the risk_surface structure after initial parsing
+      console.log("[extractRiskSurface] risk_surface type (after parse attempt):", typeof riskSurfaceObj);
       console.log("[extractRiskSurface] risk_surface keys:", 
-        typeof content2.risk_surface === "object" && content2.risk_surface !== null 
-          ? Object.keys(content2.risk_surface as object) 
+        typeof riskSurfaceObj === "object" && riskSurfaceObj !== null 
+          ? Object.keys(riskSurfaceObj as object) 
           : "N/A"
       );
-      console.log("[extractRiskSurface] risk_surface sample:", JSON.stringify(content2.risk_surface, null, 2).slice(0, 800));
+      console.log("[extractRiskSurface] risk_surface sample:", JSON.stringify(riskSurfaceObj, null, 2).slice(0, 800));
       
-      const result = parseSurface(content2.risk_surface);
+      const result = parseSurface(riskSurfaceObj);
       if (result) {
-        console.log("[extractRiskSurface] Found via Path 1 (body.message.message.content.content)");
+        console.log("[extractRiskSurface] SUCCESS via Path 1 (body.message.message.content.content)");
         return result;
       } else {
         console.log("[extractRiskSurface] parseSurface returned null for risk_surface");
