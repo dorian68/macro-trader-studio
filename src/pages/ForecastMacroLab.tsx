@@ -25,7 +25,7 @@ import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { enhancedPostRequest } from "@/lib/enhanced-request";
+// enhancedPostRequest removed - using direct fetch for HTTP response
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
@@ -388,69 +388,25 @@ export default function ForecastMacroLab() {
       // Macro Lab is a superuser-only testing tool: do NOT require credits on this page.
       // (Credits remain enforced everywhere else.)
 
-      const realtimeChannel = supabase
-        .channel(`macro-analysis-${responseJobId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "jobs",
-            filter: `user_id=eq.${user?.id}`,
-          },
-          (payload) => {
-            const job = (payload as any).new as any;
-            if (job && job.status && (job.id === responseJobId || job.request_payload?.job_id === responseJobId)) {
-              if (job.status === "completed" && job.response_payload) {
-                try {
-                  let parsedPayload = job.response_payload;
-                  if (typeof job.response_payload === "string") {
-                    parsedPayload = JSON.parse(job.response_payload);
-                  }
-                  handleRealtimeResponse(parsedPayload, responseJobId);
-                  supabase.removeChannel(realtimeChannel);
-                } catch (parseError) {
-                  console.error("❌ [Realtime] Error parsing response_payload:", parseError);
-                  handleRealtimeError("Invalid response format received");
-                  supabase.removeChannel(realtimeChannel);
-                }
-              } else if (job.status === "error") {
-                handleRealtimeError(job.error_message || "Analysis failed");
-                supabase.removeChannel(realtimeChannel);
-              } else if (job.status === "completed" && !job.response_payload) {
-                handleRealtimeError("No macro analysis available yet.");
-                supabase.removeChannel(realtimeChannel);
-              }
-            }
-          }
-        )
-        .subscribe();
-
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
-
-      console.log("📊 [ForecastPlaygroundMacroCommentary] Sending request:", {
+      // Macro Lab uses DIRECT HTTP response - no Supabase Realtime listener needed
+      // This page specifically waits for the HTTP response body which contains the full result
+      console.log("📊 [ForecastMacroLab] Sending request (HTTP direct mode):", {
         url: FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL,
         jobId: responseJobId,
-        hasJobId: !!responseJobId,
-        payloadContainsJobId: !!(payload as any).job_id,
         userId: user?.id,
-        sessionValid: !!currentSession,
         timestamp: new Date().toISOString(),
       });
 
-      const { response } = await enhancedPostRequest(FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL, payload, {
-        enableJobTracking: true,
-        jobType: "macro_analysis",
-        instrument: selectedAsset.symbol,
-        feature: "Macro Commentary",
-        jobId: responseJobId,
+      const response = await fetch(FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
       let bodyText = "";
       try {
-        // Best-effort: proxy might return empty body; realtime is still the source of truth.
         bodyText = await response.clone().text();
       } catch {
         bodyText = "";
@@ -466,16 +422,89 @@ export default function ForecastMacroLab() {
         bodyText,
       });
 
-      try {
-        if (response.ok) {
-          // intentionally ignore HTTP body; WebSocket is the source of truth
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      } catch (httpError) {
-        console.log("❌ [HTTP] Request failed, continuing to wait for Realtime:", httpError);
-        return;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+
+      // Parse the HTTP response directly - extract content from body.message.message.content.content
+      console.log("📩 [ForecastMacroLab] Processing HTTP response body...");
+      
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(bodyText);
+      } catch (parseError) {
+        console.error("❌ [HTTP] Failed to parse response body as JSON:", parseError);
+        throw new Error("Invalid JSON response from server");
+      }
+
+      // Extract content from the deep nested structure: body.message.message.content.content
+      const obj = parsedJson as Record<string, unknown>;
+      let extractedContent: string | null = null;
+      
+      // Path 1: body.message.message.content.content (actual API response format)
+      try {
+        const body = obj?.body as Record<string, unknown>;
+        const message1 = body?.message as Record<string, unknown>;
+        const message2 = message1?.message as Record<string, unknown>;
+        const content1 = message2?.content as Record<string, unknown>;
+        const content2 = content1?.content;
+        
+        if (content2 != null) {
+          if (typeof content2 === "string") {
+            extractedContent = content2;
+          } else if (typeof content2 === "object") {
+            extractedContent = JSON.stringify(content2, null, 2);
+          }
+          console.log("✅ [HTTP] Extracted content via path: body.message.message.content.content");
+        }
+      } catch {}
+
+      // Path 2: Direct message.content.content (alternative format)
+      if (!extractedContent) {
+        try {
+          const message = obj?.message as Record<string, unknown>;
+          const content1 = message?.content as Record<string, unknown>;
+          const content2 = content1?.content;
+          
+          if (content2 != null) {
+            if (typeof content2 === "string") {
+              extractedContent = content2;
+            } else if (typeof content2 === "object") {
+              extractedContent = JSON.stringify(content2, null, 2);
+            }
+            console.log("✅ [HTTP] Extracted content via path: message.content.content");
+          }
+        } catch {}
+      }
+
+      // Path 3: Array format [0].message.message.content.content
+      if (!extractedContent && Array.isArray(parsedJson)) {
+        try {
+          const first = (parsedJson as unknown[])[0] as Record<string, unknown>;
+          const message1 = first?.message as Record<string, unknown>;
+          const message2 = message1?.message as Record<string, unknown>;
+          const content1 = message2?.content as Record<string, unknown>;
+          const content2 = content1?.content;
+          
+          if (content2 != null) {
+            if (typeof content2 === "string") {
+              extractedContent = content2;
+            } else if (typeof content2 === "object") {
+              extractedContent = JSON.stringify(content2, null, 2);
+            }
+            console.log("✅ [HTTP] Extracted content via path: [0].message.message.content.content");
+          }
+        } catch {}
+      }
+
+      // Fallback: stringify the entire response
+      if (!extractedContent) {
+        console.warn("⚠️ [HTTP] Could not find content in expected paths, using raw response");
+        extractedContent = typeof parsedJson === "string" ? parsedJson : JSON.stringify(parsedJson, null, 2);
+      }
+
+      // Call the existing handler with the extracted content
+      handleRealtimeResponse({ message: { content: { content: extractedContent } } }, responseJobId);
     } catch (error) {
       console.error("Analysis error:", error);
 

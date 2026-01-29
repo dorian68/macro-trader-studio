@@ -917,22 +917,25 @@ function RiskProfilesPanel({
   const profiles = Object.entries(RISK_PROFILES).map(([key, profile]) => {
     let tpPrice: number, slPrice: number, tpDistance: number, slDistance: number;
     
+    // Apply SYMMETRIC friction: 50% to SL, 50% to TP (for DISPLAY/EXECUTION only)
     const slSigmaWithFriction = profile.slSigma + slFriction;
     const tpSigmaWithFriction = profile.tpSigma + tpFriction;
 
     if (useATR) {
+      // Use ATR-based calculation (priority) with symmetric friction for prices
       const result = tpSlFromATR(
         entryPrice,
         direction,
         atr as number,
-        tpSigmaWithFriction,
-        slSigmaWithFriction,
+        tpSigmaWithFriction, // TP with 50% friction (display)
+        slSigmaWithFriction, // SL with 50% friction (display)
       );
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
       tpDistance = result.tpDistance;
       slDistance = result.slDistance;
     } else {
+      // FALLBACK: Sigma-based logic with symmetric friction for prices
       const result = tpSlFromSigmas(entryPrice, direction, sigmaH as number, tpSigmaWithFriction, slSigmaWithFriction);
       tpPrice = result.tpPrice;
       slPrice = result.slPrice;
@@ -944,6 +947,11 @@ function RiskProfilesPanel({
     const slPips = priceDistanceToPips(slDistance, pipSize);
     const riskReward = slDistance > 0 ? tpDistance / slDistance : 0;
 
+    // Risk Profiles use their STRATEGIC targetProb (source of truth)
+    // These are predefined profiles with intentional risk philosophy
+    // Interpolation is NOT used here - it's for interactive surface exploration only
+    const effectiveProb = profile.targetProb;
+    
     return {
       key,
       ...profile,
@@ -956,13 +964,15 @@ function RiskProfilesPanel({
       tpPips,
       slPips,
       riskReward,
-      effectiveProb: profile.targetProb,
+      effectiveProb,
+      isInterpolated: false,
+      interpolationDescription: "Strategic probability (profile design)",
     };
   });
 
-  const formatPriceValue = (val: number) => val.toFixed(5);
-  const calculationLabel = useATR ? `ATR: ${atr?.toFixed(5)}` : `σ: ${sigmaSource}`;
+  const formatPrice = (val: number) => val.toFixed(5);
 
+  // Profile badge colors - institutional look
   const getProfileStyles = (key: string) => {
     switch (key) {
       case "conservative":
@@ -976,6 +986,9 @@ function RiskProfilesPanel({
     }
   };
 
+  // Calculation source label for display
+  const calculationLabel = useATR ? `ATR: ${atr?.toFixed(5)}` : `σ: ${sigmaSource}`;
+
   return (
     <div className="p-4 space-y-3 bg-gradient-to-b from-muted/30 to-muted/10 animate-in slide-in-from-top-2 duration-200">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -984,6 +997,7 @@ function RiskProfilesPanel({
           <span className="text-sm font-semibold">Suggested TP/SL based on risk appetite</span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Symmetric Friction Badge */}
           {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && (
             <TooltipProvider>
               <Tooltip>
@@ -1020,39 +1034,136 @@ function RiskProfilesPanel({
           <TableHeader>
             <TableRow className="bg-muted/30 border-b">
               <TableHead className="text-xs font-semibold uppercase tracking-wide">Profile</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wide text-center">Prob</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL (σ)</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-center">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="flex items-center gap-1 justify-center">
+                      Prob (eff.)
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">Probability recalculated from risk surface using effective SL & TP (with asymmetric friction). ✓ = interpolated, ⚠ = strategic fallback.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Base (σ)</TableHead>
+              {frictionInfo.enabled && slFriction > 0 && (
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1 justify-end">
+                        +SL Friction
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">{SYMMETRIC_FRICTION_TOOLTIP}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+              )}
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Eff. (σ)</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Base (σ)</TableHead>
+              {frictionInfo.enabled && tpFriction > 0 && (
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1 justify-end">
+                        +TP Friction
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">{SYMMETRIC_FRICTION_TOOLTIP}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+              )}
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Eff. (σ)</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL Price</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL ({pipUnit})</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP (σ)</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP Price</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">SL ({pipUnit})</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">TP ({pipUnit})</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wide text-right">R/R</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {profiles.map((profile) => (
-              <TableRow key={profile.key} className="hover:bg-muted/20 transition-colors">
-                <TableCell>
-                  <Badge variant="outline" className={cn("text-xs capitalize", getProfileStyles(profile.key))}>
-                    {profile.name}
+            {profiles.map((p) => (
+              <TableRow key={p.key} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="font-medium">
+                  <Badge variant="outline" className={getProfileStyles(p.key)}>
+                    {p.name}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-center font-mono text-xs">
-                  {(profile.effectiveProb * 100).toFixed(0)}%
+                <TableCell className="font-mono text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1 justify-center">
+                        <span className={p.isInterpolated ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                          {(p.effectiveProb * 100).toFixed(0)}%
+                        </span>
+                        {p.isInterpolated ? (
+                          <span className="text-emerald-500 text-xs">✓</span>
+                        ) : (
+                          <span className="text-amber-500 text-xs">⚠</span>
+                        )}
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">{p.interpolationDescription}</p>
+                        {!p.isInterpolated && (
+                          <p className="text-xs text-muted-foreground mt-1">Strategic: {(p.targetProb * 100).toFixed(0)}%</p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs">{profile.slSigmaFinal.toFixed(2)}</TableCell>
-                <TableCell className="text-right font-mono text-xs text-rose-600">{formatPriceValue(profile.slPrice)}</TableCell>
-                <TableCell className="text-right font-mono text-xs text-rose-500">{profile.slPips.toFixed(1)}</TableCell>
-                <TableCell className="text-right font-mono text-xs">{profile.tpSigmaFinal.toFixed(2)}</TableCell>
-                <TableCell className="text-right font-mono text-xs text-emerald-600">{formatPriceValue(profile.tpPrice)}</TableCell>
-                <TableCell className="text-right font-mono text-xs text-emerald-500">{profile.tpPips.toFixed(1)}</TableCell>
-                <TableCell className="text-right font-mono text-xs font-semibold">{profile.riskReward.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {p.slSigmaBase.toFixed(2)}
+                </TableCell>
+                {frictionInfo.enabled && slFriction > 0 && (
+                  <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
+                    +{slFriction.toFixed(2)}
+                  </TableCell>
+                )}
+                <TableCell className="text-right font-mono text-rose-600 dark:text-rose-400 font-semibold">
+                  {p.slSigmaFinal.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {p.tpSigmaBase.toFixed(2)}
+                </TableCell>
+                {frictionInfo.enabled && tpFriction > 0 && (
+                  <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
+                    +{tpFriction.toFixed(2)}
+                  </TableCell>
+                )}
+                <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                  {p.tpSigmaFinal.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-rose-600 dark:text-rose-400">
+                  {formatPrice(p.slPrice)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+                  {formatPrice(p.tpPrice)}
+                </TableCell>
+                <TableCell className="text-right font-mono font-semibold text-rose-600 dark:text-rose-400">
+                  {p.slPips.toFixed(1)}
+                </TableCell>
+                <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                  {p.tpPips.toFixed(1)}
+                </TableCell>
+                <TableCell className="text-right font-mono font-bold">{p.riskReward.toFixed(2)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+      <p className="text-xs text-muted-foreground italic">
+        {direction === "long" ? "LONG" : "SHORT"} position: TP {direction === "long" ? "above" : "below"} entry, SL{" "}
+        {direction === "long" ? "below" : "above"} entry
+        {frictionInfo.enabled && (slFriction > 0 || tpFriction > 0) && ` • Symmetric friction: +${slFriction.toFixed(2)}σ SL / +${tpFriction.toFixed(2)}σ TP`}
+        {surface && " • Probability computed on base levels (friction-free)"}
+      </p>
     </div>
   );
 }
@@ -1718,37 +1829,7 @@ function ForecastTradeGeneratorContent() {
           </Card>
         )}
 
-        {/* AI Market Analysis Card - Final Answer with Confidence Note */}
-        {finalAnswer && !loading && (
-          <Card className="rounded-xl border shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                AI Market Analysis
-                {confidenceNote && (
-                  <Badge 
-                    variant="outline" 
-                    className={cn(
-                      "ml-auto text-xs",
-                      confidenceNote.toLowerCase().includes("integrated") 
-                        ? "border-emerald-500/50 text-emerald-600 bg-emerald-500/10" 
-                        : "border-amber-500/50 text-amber-600 bg-amber-500/10"
-                    )}
-                  >
-                    {confidenceNote}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {finalAnswer}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* AI Market Analysis Card removed - content is shown in Trade Setup tab */}
 
         {/* Results Section */}
         {hasResults && !loading && (
