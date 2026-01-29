@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
@@ -1480,6 +1481,9 @@ function ForecastTradeGeneratorContent() {
 
     const startTime = performance.now();
 
+    // Generate job_id for traceability
+    const jobId = uuidv4();
+
     // Parse horizons
     const parsedHorizons = horizons
       .split(",")
@@ -1495,6 +1499,7 @@ function ForecastTradeGeneratorContent() {
     try {
       // === SINGLE API CALL: macro-lab-proxy with RAG format (same as AISetup) ===
       const macroPayload = {
+        job_id: jobId, // Include job_id for backend tracking
         type: "RAG",
         mode: "trade_generation",
         instrument: symbol,

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
@@ -994,6 +995,9 @@ function ForecastPlaygroundContent() {
 
     const startTime = performance.now();
 
+    // Generate job_id for traceability (no DB record needed for Lab tools)
+    const jobId = uuidv4();
+
     // Parse horizons
     const parsedHorizons = horizons
       .split(",")
@@ -1008,6 +1012,7 @@ function ForecastPlaygroundContent() {
     }
 
     const requestBody: Record<string, unknown> = {
+      job_id: jobId, // Include job_id for backend traceability
       symbol,
       timeframe,
       horizons: parsedHorizons,
@@ -1077,6 +1082,7 @@ function ForecastPlaygroundContent() {
     // ════════════════════════════════════════════════════════════════════════════
     try {
       const surfacePayload: Record<string, unknown> = {
+        job_id: jobId, // Same job_id for traceability across both API calls
         symbol,
         timeframe,
         horizon_hours: parsedHorizons,

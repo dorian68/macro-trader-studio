@@ -474,8 +474,12 @@ export default function ForecastMacroLab() {
     setLastHttpDebug(null);
 
     try {
+      // Create job FIRST to get job_id for payload
+      const responseJobId = await createJob("macro_analysis", selectedAsset.symbol, {}, "Macro Commentary");
+
       const payload = {
         type: "RAG",
+        job_id: responseJobId, // Include job_id for backend tracking
         question: queryParams.query,
         mode: "run",
         user_email: user?.email || null,
@@ -490,8 +494,6 @@ export default function ForecastMacroLab() {
         adresse: queryParams.adresse,
         isTradeQuery: false,
       };
-
-      const responseJobId = await createJob("macro_analysis", selectedAsset.symbol, payload, "Macro Commentary");
 
       // Macro Lab is a superuser-only testing tool: do NOT require credits on this page.
       // (Credits remain enforced everywhere else.)
