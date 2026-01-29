@@ -1,81 +1,78 @@
 
-# Plan: Afficher le champ "content" avec StyledJsonViewer dans Macro Commentary
 
-## Analyse du Problème
+# Plan: Afficher le champ "content" avec MacroCommentaryDisplay
 
-Actuellement dans la page `/forecast-playground/macro-commentary` :
+## Problème Actuel
 
-1. Le **HTTP Debug panel** affiche le JSON brut complet via `StyledJsonViewer` ✓
-2. Le **contenu extrait** depuis `body.message.message.content.content` est converti en string puis affiché en texte brut avec `whitespace-pre-wrap`
-3. Le problème : si `content` est un objet JSON structuré, il est affiché comme une chaîne de caractères au lieu d'utiliser le visualiseur JSON premium
+Dans la page `/forecast-playground/macro-commentary`, quand le `content` est un objet JSON contenant des champs structurés (`executive_summary`, `fundamental_analysis`, `directional_bias`, `key_levels`, etc.), il est actuellement affiché via `StyledJsonViewer` qui montre le JSON brut. Ce n'est pas optimal pour l'expérience utilisateur.
 
-## Solution Technique
+## Solution
+
+Utiliser le composant `MacroCommentaryDisplay` qui existe déjà et qui est conçu spécifiquement pour afficher ces données de manière formatée avec :
+- **Executive Summary** : Résumé textuel dans une carte
+- **Fundamental Analysis** : Liste à puces des points clés
+- **Directional Bias** : Badge avec icône (bullish/bearish) et niveau de confiance
+- **Key Levels** : Grille Support/Resistance avec couleurs sémantiques
+- **AI Insights Breakdown** : Sections dépliables pour GPT et insights curés
+
+## Modifications
 
 ### Fichier: `src/pages/ForecastMacroLab.tsx`
 
-#### 1. Modifier le type de `AnalysisSection.content` pour accepter JSON
-
-Changer le type de `string` à `string | object` pour permettre le stockage d'objets JSON :
+#### 1. Ajouter l'import de MacroCommentaryDisplay (ligne ~37)
 
 ```typescript
-interface AnalysisSection {
-  title: string;
-  content: string | object;  // Modifié pour accepter JSON
-  type: "overview" | "technical" | "fundamental" | "outlook";
-  expanded: boolean;
-}
+import { MacroCommentaryDisplay } from "@/components/MacroCommentaryDisplay";
 ```
 
-#### 2. Modifier `handleRealtimeResponse` pour conserver le format original
+#### 2. Modifier le rendu conditionnel des sections (lignes 785-793)
 
-Au lieu de toujours convertir en string, garder l'objet JSON si c'est un objet :
-
+Actuellement :
 ```typescript
-// Dans handleRealtimeResponse (vers ligne 180-186)
-if (Array.isArray(responsePayload) && responsePayload.length > 0) {
-  const deepContent = (responsePayload as any)[0]?.message?.message?.content?.content;
-  // Garder l'objet original au lieu de convertir en string
-  analysisContent = deepContent;
-} else if (responsePayload?.message?.content?.content) {
-  analysisContent = responsePayload.message.content.content;
-} else {
-  analysisContent = responsePayload;
-}
+<div className="bg-muted/20 p-4 rounded-lg border">
+  {typeof section.content === "object" ? (
+    <StyledJsonViewer data={section.content} initialExpanded={true} maxDepth={4} />
+  ) : (
+    <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
+      {section.content}
+    </div>
+  )}
+</div>
 ```
 
-#### 3. Modifier le rendu des sections pour utiliser `StyledJsonViewer`
-
-Remplacer l'affichage texte par un rendu conditionnel (vers lignes 778-780) :
-
+Nouveau code :
 ```typescript
-<CollapsibleContent className="animate-accordion-down">
-  <div className="bg-muted/20 p-4 rounded-lg border">
-    {typeof section.content === "object" ? (
-      <StyledJsonViewer data={section.content} initialExpanded={true} maxDepth={4} />
-    ) : (
-      <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
-        {section.content}
-      </div>
-    )}
-  </div>
-</CollapsibleContent>
+<div className="bg-muted/20 p-4 rounded-lg border">
+  {typeof section.content === "object" ? (
+    <MacroCommentaryDisplay data={section.content} originalQuery={analysis.query} />
+  ) : (
+    <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
+      {section.content}
+    </div>
+  )}
+</div>
 ```
 
----
+## Résumé des Changements
 
-## Résumé des Modifications
-
-| Ligne(s) | Changement |
-|----------|------------|
-| ~47 | Modifier `AnalysisSection.content` : `string` → `string \| object` |
-| ~151-187 | Modifier `handleRealtimeResponse` pour conserver le format JSON |
-| ~778-780 | Affichage conditionnel : `StyledJsonViewer` si objet, texte sinon |
-
----
+| Ligne | Changement |
+|-------|------------|
+| ~37 | Ajouter `import { MacroCommentaryDisplay }` |
+| ~788 | Remplacer `StyledJsonViewer` par `MacroCommentaryDisplay` |
 
 ## Garanties Zero Régression
 
 1. **Fallback texte** : Si le contenu est une string, l'affichage texte actuel est conservé
-2. **Autres pages** : Cette modification est isolée à `ForecastMacroLab.tsx`
-3. **HTTP Debug** : Inchangé (fonctionne déjà avec `StyledJsonViewer`)
-4. **Copie** : La fonction de copie continuera à fonctionner (conversion en string si besoin)
+2. **Composant existant** : `MacroCommentaryDisplay` est déjà testé et fonctionnel
+3. **Autres pages** : Aucun autre fichier modifié
+4. **HTTP Debug** : Le panneau debug continue d'utiliser `StyledJsonViewer` pour le JSON brut complet
+
+## Résultat Attendu
+
+Au lieu d'un arbre JSON brut, l'utilisateur verra :
+- Une carte "Executive Summary" avec le résumé
+- Une carte "Fundamental Analysis" avec des bullet points
+- Une carte "Directional Bias" avec badge bullish/bearish et confiance %
+- Une carte "Key Levels" avec Support (vert) et Resistance (rouge)
+- Des sections dépliables pour les insights AI
+
