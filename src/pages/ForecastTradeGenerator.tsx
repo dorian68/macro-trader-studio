@@ -517,6 +517,61 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     console.log("[extractRiskSurface] Path 3 failed:", e);
   }
   
+  // Path 4 (FALLBACK): Build minimal surface data from trade_setup metadata
+  // When backend doesn't return risk_surface, we can extract sigma_ref and entry_price
+  // from the trade_setup metadata to enable basic RiskSurfaceChart functionality
+  try {
+    console.log("[extractRiskSurface] Attempting fallback from trade_setup metadata...");
+    const tradeSetup = extractTradeSetup(raw);
+    if (tradeSetup) {
+      // Navigate to the deeply nested data structure
+      const innerData = (tradeSetup as any)?.data?.data;
+      const metadata = innerData?.metadata;
+      const payload = innerData?.payload;
+      
+      console.log("[extractRiskSurface] Fallback check - metadata:", !!metadata, "payload:", !!payload);
+      
+      if (metadata || payload) {
+        // Extract sigma_ref from multiple possible locations
+        const sigmaRef = metadata?.sigma_last || 
+                         metadata?.residual_std || 
+                         metadata?.sigma_ref ||
+                         (tradeSetup as any)?.sigma_ref;
+                         
+        const entryPrice = payload?.entry_price || 
+                           (tradeSetup as any)?.entry_price ||
+                           metadata?.entry_price;
+                           
+        const atr = payload?.atr || metadata?.atr;
+        const symbol = metadata?.symbol || payload?.symbol;
+        const timeframe = metadata?.timeframe || payload?.timeframe;
+        
+        console.log("[extractRiskSurface] Fallback values:", { sigmaRef, entryPrice, atr, symbol });
+        
+        if (sigmaRef || entryPrice) {
+          console.log("[extractRiskSurface] Building minimal surface from trade_setup metadata");
+          return {
+            sigma_ref: sigmaRef || null,
+            entry_price: entryPrice || null,
+            symbol: symbol || null,
+            timeframe: timeframe || null,
+            atr: atr || null,
+            // Surface data not available from backend - RiskSurfaceChart will show partial info
+            surface: null,
+            metadata: {
+              vol_model: metadata?.vol_model,
+              sigma_path_min: metadata?.sigma_path_min,
+              sigma_path_max: metadata?.sigma_path_max,
+              source: "fallback_from_trade_setup"
+            }
+          } as SurfaceApiResponse;
+        }
+      }
+    }
+  } catch (e) {
+    console.log("[extractRiskSurface] Fallback from trade_setup failed:", e);
+  }
+  
   console.log("[extractRiskSurface] No valid risk_surface found in any path");
   return null;
 }
@@ -603,15 +658,63 @@ function extractConfidenceNote(raw: unknown): string | null {
 
 /**
  * Extract horizons from a TradeSetupResponse object
+ * Handles multiple nesting patterns from the API response
  */
 function getHorizonsFromTradeSetup(setup: TradeSetupResponse): ForecastHorizon[] {
-  const horizons = setup?.payload?.horizons;
-  if (!horizons) return [];
-  if (Array.isArray(horizons)) return horizons;
-  // Object format
+  console.log("[getHorizonsFromTradeSetup] Starting extraction...", {
+    hasPayload: !!(setup as any)?.payload,
+    hasDataData: !!(setup as any)?.data?.data,
+    keys: setup ? Object.keys(setup) : []
+  });
+  
+  // Path 1: Direct payload.horizons (expected structure)
+  let horizons = setup?.payload?.horizons;
+  if (horizons) {
+    console.log("[getHorizonsFromTradeSetup] Found via Path 1 (direct payload.horizons)");
+  }
+  
+  // Path 2: Nested data.data.payload.horizons (actual API response)
+  if (!horizons) {
+    const innerData = (setup as any)?.data?.data?.payload;
+    horizons = innerData?.horizons;
+    if (horizons) {
+      console.log("[getHorizonsFromTradeSetup] Found via Path 2 (data.data.payload.horizons)");
+    }
+  }
+  
+  // Path 3: Alternative data.payload.horizons
+  if (!horizons) {
+    const altData = (setup as any)?.data?.payload;
+    horizons = altData?.horizons;
+    if (horizons) {
+      console.log("[getHorizonsFromTradeSetup] Found via Path 3 (data.payload.horizons)");
+    }
+  }
+  
+  // Path 4: Direct horizons on setup
+  if (!horizons) {
+    horizons = (setup as any)?.horizons;
+    if (horizons) {
+      console.log("[getHorizonsFromTradeSetup] Found via Path 4 (direct horizons)");
+    }
+  }
+  
+  if (!horizons) {
+    console.log("[getHorizonsFromTradeSetup] No horizons found in any path");
+    return [];
+  }
+  
+  // Handle array format (most common)
+  if (Array.isArray(horizons)) {
+    console.log("[getHorizonsFromTradeSetup] Returning array with", horizons.length, "horizons");
+    return horizons;
+  }
+  
+  // Handle object format (keyed by horizon name)
+  console.log("[getHorizonsFromTradeSetup] Converting object format to array");
   return Object.entries(horizons).map(([key, val]) => ({
-    ...val,
-    h: val.h || key,
+    ...(val as object),
+    h: (val as any).h || key,
   }));
 }
 
@@ -1217,11 +1320,21 @@ function ForecastTradeGeneratorContent() {
       // Extract trade_setup (forecast_data) -> horizons for table
       const tradeSetup = extractTradeSetup(data);
       console.log("[handleSubmit] Extracted trade_setup:", tradeSetup);
+      console.log("[handleSubmit] trade_setup structure:", {
+        hasPayload: !!(tradeSetup as any)?.payload,
+        hasDataData: !!(tradeSetup as any)?.data?.data,
+        hasDirectHorizons: !!(tradeSetup as any)?.horizons,
+        keys: tradeSetup ? Object.keys(tradeSetup) : [],
+        nestedKeys: (tradeSetup as any)?.data?.data ? Object.keys((tradeSetup as any).data.data) : []
+      });
       
       let horizonsExtracted: ForecastHorizon[] = [];
       if (tradeSetup) {
         horizonsExtracted = getHorizonsFromTradeSetup(tradeSetup);
         console.log("[handleSubmit] Horizons from trade_setup:", horizonsExtracted.length);
+        if (horizonsExtracted.length > 0) {
+          console.log("[handleSubmit] First horizon sample:", horizonsExtracted[0]);
+        }
       }
       
       // Fallback: try legacy path if trade_setup didn't have horizons
@@ -1232,10 +1345,20 @@ function ForecastTradeGeneratorContent() {
       
       // Set state ONCE after all extraction attempts (avoid stale state issue)
       setForecastHorizons(horizonsExtracted);
+      console.log("[handleSubmit] Final horizons set:", horizonsExtracted.length);
 
       // Extract risk_surface -> 3D chart data
       const surface = extractRiskSurface(data);
       console.log("[handleSubmit] Extracted risk_surface:", surface ? "OK" : "null");
+      if (surface) {
+        console.log("[handleSubmit] risk_surface details:", {
+          hasSurface: !!surface.surface,
+          sigmaRef: surface.sigma_ref,
+          entryPrice: surface.entry_price,
+          atr: surface.atr,
+          source: (surface as any)?.metadata?.source
+        });
+      }
       setRiskSurfaceData(surface);
 
       // Extract final_answer -> AI textual analysis
