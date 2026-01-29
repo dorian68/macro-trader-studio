@@ -1,192 +1,174 @@
 
 
-# Plan: Debug HTTP Premium - Style Institutionnel AlphaLens
+# Plan: Corriger le Mapping trade_setup → Forecast Table & risk_surface → Risk Surface Chart
 
-## Objectif
+## Analyse du Problème
 
-Transformer l'affichage debug HTTP d'un simple texte coloré vers une interface de grade professionnel alignée avec le design system AlphaLens (cards avec gradients, badges, bordures colorées, organisation visuelle structurée).
+La réponse API contient les champs `risk_surface` et `trade_setup` mais le mapping actuel ne les extrait pas toujours correctement vers les composants appropriés :
 
----
+- **`trade_setup`** → doit alimenter le tableau "Forecast Summary by Horizon" (`EnhancedForecastTable`)
+- **`risk_surface`** → doit alimenter le graphique 3D "Risk / Reward Surface" (`RiskSurfaceChart`)
 
-## Analyse du Style AlphaLens Existant
-
-Le site utilise un design "Institutional Grade" caractérisé par:
-
-- **Cards avec gradients subtils**: `bg-gradient-to-r from-card via-card to-muted/30`
-- **Badges indicateurs**: petites cartes avec icônes, labels uppercase, valeurs en `font-mono`
-- **Bordures colorées sémantiques**: `border-primary/20`, `border-emerald-500/20`, `border-amber-500/20`
-- **Effets hover**: transitions `hover:bg-primary/10 hover:border-primary/30`
-- **Ombres douces**: `shadow-soft`, `shadow-sm`, `ring-1 ring-primary/20`
-- **Structure hiérarchique**: Headers avec icônes dans conteneurs arrondis `p-2 rounded-lg bg-primary/10`
-
----
-
-## Nouveau Design du JSON Viewer
-
-### 1. Conteneur Principal (JSON Debug Panel)
+### Structure de Réponse API (chemin profond)
 
 ```text
-┌────────────────────────────────────────────────────────────────────┐
-│  ┌────┐  HTTP Response                                    [Copy]  │
-│  │ {} │  Macro Lab Proxy • 200 OK • 1.2s                          │
-│  └────┘                                                            │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  ┌─ Request ─────────────────────────────────────────────────────┐ │
-│  │  ▸ headers    Object(3)                                       │ │
-│  │  ▸ body       Object(5)                                       │ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                                                                    │
-│  ┌─ Response ────────────────────────────────────────────────────┐ │
-│  │  ┌ statusCode ─────────────────────────────────────┐          │ │
-│  │  │ 200                                    [number] │          │ │
-│  │  └─────────────────────────────────────────────────┘          │ │
-│  │                                                               │ │
-│  │  ▾ body                                      Object(2)        │ │
-│  │    │                                                          │ │
-│  │    ├── message ─────────────────────────────────────────────┤ │ │
-│  │    │   ┌ status ────────────────────────────────┐           │ │ │
-│  │    │   │ "done"                        [string] │           │ │ │
-│  │    │   └────────────────────────────────────────┘           │ │ │
-│  │    │                                                        │ │ │
-│  │    └── ▸ content                          Object(3)         │ │ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
+body.message.message.content.content
+├── final_answer     → AI Market Analysis Card (✓ fonctionne)
+├── confidence_note  → Badge de confiance (✓ fonctionne)
+├── trade_setup      → Forecast Table (⚠️ parsing incomplet)
+└── risk_surface     → Risk Surface Chart (⚠️ parsing incomplet)
 ```
 
-### 2. Composants Visuels Clés
+### Problèmes Identifiés
 
-**A. Noeud Primitif (string/number/boolean/null)**
-- Affichage dans une mini-card avec bordure colorée à gauche
-- Badge type sur la droite `[string]`, `[number]`, etc.
-- Background subtil selon le type
-
-```tsx
-<div className="flex items-center justify-between p-2 rounded-md bg-muted/30 border-l-2 border-emerald-500/50">
-  <span className="font-mono text-sm text-emerald-600">"value"</span>
-  <Badge variant="outline" className="text-[10px] px-1.5 text-muted-foreground">string</Badge>
-</div>
-```
-
-**B. Noeud Object/Array (Collapsible)**
-- Header cliquable avec chevron animé
-- Badge count: `Object(5)` ou `Array(3)`
-- Ligne verticale de connexion pour l'indentation
-- Background léger au hover
-
-```tsx
-<div className="group">
-  <button className="flex items-center gap-2 w-full p-2 rounded-md hover:bg-muted/50 transition-colors">
-    <ChevronRight className={cn("h-4 w-4 transition-transform", expanded && "rotate-90")} />
-    <span className="font-medium text-primary">"keyName"</span>
-    <Badge variant="outline" className="ml-auto text-xs">Object(5)</Badge>
-  </button>
-  {expanded && (
-    <div className="ml-4 pl-4 border-l-2 border-border/50 space-y-1">
-      {/* Children nodes */}
-    </div>
-  )}
-</div>
-```
-
-**C. Palette de Couleurs par Type**
-
-| Type | Bordure gauche | Texte | Badge |
-|------|----------------|-------|-------|
-| String | `border-emerald-500/50` | `text-emerald-600` | string |
-| Number | `border-amber-500/50` | `text-amber-600` | number |
-| Boolean | `border-sky-500/50` | `text-sky-600` | boolean |
-| Null | `border-slate-400/50` | `text-slate-500 italic` | null |
-| Object | `border-violet-500/50` | `text-primary` | Object(n) |
-| Array | `border-blue-500/50` | `text-blue-600` | Array(n) |
+1. **trade_setup peut être un tableau de strings JSON** : Le backend retourne parfois `["{ \"payload\": {...} }"]` au lieu d'un objet direct
+2. **risk_surface peut être stringifié** : Nécessite un `JSON.parse()` avant utilisation
+3. **Fallback manquant** : Quand le chemin principal échoue, pas de tentative sur des chemins alternatifs
+4. **Logs de debug absents** : Difficile de diagnostiquer les échecs d'extraction
 
 ---
 
-## Modifications Techniques
+## Solution Technique
 
-### Fichier: `src/components/ui/styled-json-viewer.tsx`
+### Fichier: `src/pages/ForecastTradeGenerator.tsx`
 
-Refonte complète du composant avec:
+#### 1. Renforcer `extractTradeSetup()` (lignes 317-372)
 
-1. **Interface enrichie**:
+Ajouter :
+- Support pour tableau de strings JSON (ex: `["{ ... }"]`)
+- Logs de debug pour tracer le chemin utilisé
+- Normalisation robuste de la structure `horizons`
+
 ```typescript
-interface StyledJsonViewerProps {
-  data: unknown;
-  depth?: number;
-  initialExpanded?: boolean;
-  maxDepth?: number;           // Limite d'expansion auto
-  showTypeLabels?: boolean;    // Afficher les badges de type
-  compactMode?: boolean;       // Mode condensé pour petits conteneurs
+function extractTradeSetup(raw: unknown): TradeSetupResponse | null {
+  const obj = raw as Record<string, unknown>;
+  
+  // Debug log
+  console.log("[extractTradeSetup] Starting extraction...");
+  
+  // Path 1: body.message.message.content.content.trade_setup
+  try {
+    const body = obj?.body as Record<string, unknown>;
+    const message1 = body?.message as Record<string, unknown>;
+    const message2 = message1?.message as Record<string, unknown>;
+    const content1 = message2?.content as Record<string, unknown>;
+    const content2 = content1?.content as Record<string, unknown>;
+    if (content2?.trade_setup) {
+      let setup = content2.trade_setup;
+      
+      // Handle array of JSON strings (API returns ["{ ... }"])
+      if (Array.isArray(setup)) {
+        if (setup.length > 0) {
+          const first = setup[0];
+          if (typeof first === "string") {
+            try { setup = JSON.parse(first); } 
+            catch { /* continue to next path */ }
+          } else {
+            setup = first;
+          }
+        }
+      } else if (typeof setup === "string") {
+        try { setup = JSON.parse(setup); } 
+        catch { return null; }
+      }
+      
+      console.log("[extractTradeSetup] Found via Path 1:", setup);
+      return setup as TradeSetupResponse;
+    }
+  } catch (e) {
+    console.log("[extractTradeSetup] Path 1 failed:", e);
+  }
+  
+  // ... autres paths inchangés
 }
 ```
 
-2. **Composants internes modulaires**:
-- `JsonPrimitive` - Pour string/number/boolean/null
-- `JsonObject` - Pour les objets avec collapse
-- `JsonArray` - Pour les tableaux avec collapse
-- `JsonKey` - Pour les clés avec style primary
+#### 2. Renforcer `extractRiskSurface()` (lignes 377-425)
 
-3. **Nouveaux éléments visuels**:
-- Mini-cards pour chaque valeur primitive
-- Badges de type alignés à droite
-- Bordure gauche colorée selon le type
-- Animation rotate sur les chevrons
-- Ligne verticale pour l'indentation (tree line)
-- Hover states avec `bg-muted/50`
+Même logique de parsing robuste :
 
-4. **Amélioration UX**:
-- Troncature intelligente des longues strings avec tooltip
-- Bouton "Expand All" / "Collapse All" en header
-- Compteur d'éléments pour objets/arrays
-- Support du copier-coller par noeud
+```typescript
+function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
+  const obj = raw as Record<string, unknown>;
+  
+  console.log("[extractRiskSurface] Starting extraction...");
+  
+  // Path 1: body.message.message.content.content.risk_surface
+  try {
+    const body = obj?.body as Record<string, unknown>;
+    const message1 = body?.message as Record<string, unknown>;
+    const message2 = message1?.message as Record<string, unknown>;
+    const content1 = message2?.content as Record<string, unknown>;
+    const content2 = content1?.content as Record<string, unknown>;
+    if (content2?.risk_surface) {
+      let surface = content2.risk_surface;
+      
+      // Handle stringified JSON
+      if (typeof surface === "string") {
+        try { surface = JSON.parse(surface); } 
+        catch { return null; }
+      }
+      
+      // Validate surface structure (must have target_probs, sl_sigma, tp_sigma)
+      const s = surface as Record<string, unknown>;
+      if (s?.surface && typeof s.surface === "object") {
+        console.log("[extractRiskSurface] Found valid surface via Path 1");
+        return surface as SurfaceApiResponse;
+      }
+    }
+  } catch (e) {
+    console.log("[extractRiskSurface] Path 1 failed:", e);
+  }
+  
+  // ... autres paths inchangés
+}
+```
+
+#### 3. Améliorer `handleSubmit()` (lignes 1119-1141)
+
+Ajouter des logs de debug et corriger le bug de state stale :
+
+```typescript
+// Extract trade_setup -> horizons for table
+const tradeSetup = extractTradeSetup(data);
+console.log("[handleSubmit] Extracted trade_setup:", tradeSetup);
+let horizonsExtracted: ForecastHorizon[] = [];
+if (tradeSetup) {
+  horizonsExtracted = getHorizonsFromTradeSetup(tradeSetup);
+  console.log("[handleSubmit] Horizons from trade_setup:", horizonsExtracted.length);
+}
+
+// Fallback: try legacy path if trade_setup didn't have horizons
+if (horizonsExtracted.length === 0) {
+  horizonsExtracted = getPayloadHorizons(data);
+  console.log("[handleSubmit] Horizons from legacy path:", horizonsExtracted.length);
+}
+
+// Set state ONCE after all extraction attempts
+setForecastHorizons(horizonsExtracted);
+
+// Extract risk_surface -> 3D chart data  
+const surface = extractRiskSurface(data);
+console.log("[handleSubmit] Extracted risk_surface:", surface ? "OK" : "null");
+setRiskSurfaceData(surface);
+```
 
 ---
 
-### Fichiers Modifiés
+## Résumé des Modifications
 
-| Fichier | Changements |
-|---------|-------------|
-| `src/components/ui/styled-json-viewer.tsx` | Refonte complète avec design AlphaLens premium |
-| `src/pages/ForecastMacroLab.tsx` | Ajustement du conteneur (déjà utilise le composant) |
-| `src/pages/ForecastTradeGenerator.tsx` | Ajustement du conteneur (déjà utilise le composant) |
-
----
-
-## Rendu Visuel Attendu
-
-### Avant (Texte brut coloré)
-```
-"statusCode": 200
-▸ Object(2)
-  "message": "done"
-  ▸ body Object(3)
-```
-
-### Après (Cards structurées style AlphaLens)
-```text
-┌──────────────────────────────────────────┐
-│ ● statusCode                    [number] │
-│   200                                    │
-└──────────────────────────────────────────┘
-
-┌ message ─────────────────────────────────┐
-│ ▾  body                       Object(3)  │
-│    │                                     │
-│    ├── ● status                 [string] │
-│    │   "done"                            │
-│    │                                     │
-│    └── ▸ content               Object(4) │
-└──────────────────────────────────────────┘
-```
+| Fichier | Changement |
+|---------|------------|
+| `src/pages/ForecastTradeGenerator.tsx` | Renforcer les extracteurs `extractTradeSetup` et `extractRiskSurface` avec parsing robuste |
+| `src/pages/ForecastTradeGenerator.tsx` | Corriger le bug de state stale dans `handleSubmit` |
+| `src/pages/ForecastTradeGenerator.tsx` | Ajouter des logs console pour le debug |
 
 ---
 
 ## Garanties
 
-1. **Zero Régression**: Fallback texte brut si JSON invalide
-2. **Performance**: Lazy rendering avec virtualisation pour gros objets
-3. **Cohérence**: Style aligné avec RiskSurfaceChart, TradeSetupDisplay, BacktesterSummary
-4. **Responsive**: Adapté mobile avec mode compact
-5. **Accessibilité**: Navigation clavier supportée
+1. **Zero Régression** : Les chemins existants restent fonctionnels, nouvelles logiques ajoutées en priorité
+2. **Fallback Chain** : Si le chemin principal échoue, les alternatives sont testées
+3. **Logs de Debug** : Visible dans la console pour tracer les échecs d'extraction
+4. **Validation de Structure** : Vérification que `surface` contient les champs requis avant utilisation
 
