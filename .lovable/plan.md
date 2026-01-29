@@ -1,78 +1,146 @@
 
+# Plan: Parser le contenu textuel en structure pour MacroCommentaryDisplay
 
-# Plan: Afficher le champ "content" avec MacroCommentaryDisplay
+## Diagnostic Complet
 
-## Problème Actuel
+L'API retourne un champ `content` qui est une **chaîne de texte** contenant les informations (pas un objet JSON structuré):
 
-Dans la page `/forecast-playground/macro-commentary`, quand le `content` est un objet JSON contenant des champs structurés (`executive_summary`, `fundamental_analysis`, `directional_bias`, `key_levels`, etc.), il est actuellement affiché via `StyledJsonViewer` qui montre le JSON brut. Ce n'est pas optimal pour l'expérience utilisateur.
+```
+"content": "Executive Summary: The current market outlook... \n\nFundamental Analysis: \n- The U.S. trade deficit... \n\nDirectional Bias: Bullish, Confidence: \"60%\" \n\nKey Levels: \nSupport: \n1.1600 ..."
+```
 
-## Solution
+Le composant `MacroCommentaryDisplay` attend un **objet** avec des clés comme:
+```json
+{
+  "executive_summary": "...",
+  "fundamental_analysis": ["...", "..."],
+  "directional_bias": "Bullish",
+  "confidence": 60,
+  "key_levels": { "support": [...], "resistance": [...] }
+}
+```
 
-Utiliser le composant `MacroCommentaryDisplay` qui existe déjà et qui est conçu spécifiquement pour afficher ces données de manière formatée avec :
-- **Executive Summary** : Résumé textuel dans une carte
-- **Fundamental Analysis** : Liste à puces des points clés
-- **Directional Bias** : Badge avec icône (bullish/bearish) et niveau de confiance
-- **Key Levels** : Grille Support/Resistance avec couleurs sémantiques
-- **AI Insights Breakdown** : Sections dépliables pour GPT et insights curés
+**Il faut donc parser le texte pour extraire ces sections et construire l'objet attendu.**
 
-## Modifications
+---
+
+## Solution Technique
 
 ### Fichier: `src/pages/ForecastMacroLab.tsx`
 
-#### 1. Ajouter l'import de MacroCommentaryDisplay (ligne ~37)
+#### 1. Créer une fonction de parsing du texte vers un objet structuré
+
+Ajouter une nouvelle fonction `parseMacroContentToStructured` qui:
+- Détecte les sections par leurs titres ("Executive Summary:", "Fundamental Analysis:", etc.)
+- Extrait le contenu de chaque section
+- Retourne un objet structuré compatible avec `MacroCommentaryDisplay`
 
 ```typescript
-import { MacroCommentaryDisplay } from "@/components/MacroCommentaryDisplay";
+const parseMacroContentToStructured = (textContent: string): object | null => {
+  if (!textContent || typeof textContent !== 'string') return null;
+  
+  const result: any = {};
+  
+  // Extract Executive Summary
+  const execMatch = textContent.match(/Executive Summary:\s*([^]*?)(?=\n\n|\nFundamental Analysis:|$)/i);
+  if (execMatch) {
+    result.executive_summary = execMatch[1].trim();
+  }
+  
+  // Extract Fundamental Analysis (bullet points)
+  const fundMatch = textContent.match(/Fundamental Analysis:\s*([^]*?)(?=\n\nDirectional Bias:|$)/i);
+  if (fundMatch) {
+    const points = fundMatch[1].split(/\n-\s*/).filter(p => p.trim());
+    result.fundamental_analysis = points.map(p => p.trim().replace(/^-\s*/, ''));
+  }
+  
+  // Extract Directional Bias and Confidence
+  const biasMatch = textContent.match(/Directional Bias:\s*(\w+),?\s*Confidence:\s*"?(\d+)%?"?/i);
+  if (biasMatch) {
+    result.directional_bias = biasMatch[1];
+    result.confidence = parseInt(biasMatch[2], 10);
+  }
+  
+  // Extract Key Levels
+  const supportMatch = textContent.match(/Support:\s*\n([\d.\s\n]+?)(?=Resistance:|$)/i);
+  const resistanceMatch = textContent.match(/Resistance:\s*\n([\d.\s\n]+?)(?=\n\n|AI Insights|$)/i);
+  if (supportMatch || resistanceMatch) {
+    result.key_levels = {
+      support: supportMatch ? supportMatch[1].trim().split('\n').filter(l => l.trim()) : [],
+      resistance: resistanceMatch ? resistanceMatch[1].trim().split('\n').filter(l => l.trim()) : []
+    };
+  }
+  
+  // Extract AI Insights
+  const gptMatch = textContent.match(/Toggle GPT:\s*([^]*?)(?=Toggle Curated:|Fundamentals:|$)/i);
+  const curatedMatch = textContent.match(/Toggle Curated:\s*([^]*?)(?=\n\nFundamentals:|$)/i);
+  if (gptMatch || curatedMatch) {
+    result.ai_insights_breakdown = {
+      toggle_gpt: gptMatch ? gptMatch[1].trim() : null,
+      toggle_curated: curatedMatch ? curatedMatch[1].trim() : null
+    };
+  }
+  
+  return Object.keys(result).length > 0 ? result : null;
+};
 ```
 
-#### 2. Modifier le rendu conditionnel des sections (lignes 785-793)
+#### 2. Modifier `handleRealtimeResponse` pour utiliser ce parser
 
-Actuellement :
+Après avoir extrait `parsedContent`, vérifier si le champ `content` est une string textuelle et la parser:
+
 ```typescript
-<div className="bg-muted/20 p-4 rounded-lg border">
-  {typeof section.content === "object" ? (
-    <StyledJsonViewer data={section.content} initialExpanded={true} maxDepth={4} />
-  ) : (
-    <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
-      {section.content}
-    </div>
-  )}
-</div>
+// Si parsedContent.content est une string (texte brut), la parser en structure
+if (parsedContent && typeof parsedContent === "object" && typeof parsedContent.content === "string") {
+  const structuredData = parseMacroContentToStructured(parsedContent.content);
+  if (structuredData) {
+    analysisContent = structuredData;
+    console.log("✅ [Realtime] Parsed text content to structured object:", structuredData);
+  } else {
+    // Fallback: garder la string brute
+    analysisContent = parsedContent.content;
+  }
+} else if (parsedContent && typeof parsedContent === "object") {
+  analysisContent = parsedContent;
+} else {
+  analysisContent = extractStringContent(rawContent);
+}
 ```
 
-Nouveau code :
-```typescript
-<div className="bg-muted/20 p-4 rounded-lg border">
-  {typeof section.content === "object" ? (
-    <MacroCommentaryDisplay data={section.content} originalQuery={analysis.query} />
-  ) : (
-    <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
-      {section.content}
-    </div>
-  )}
-</div>
-```
+---
 
-## Résumé des Changements
+## Résumé des Modifications
 
-| Ligne | Changement |
-|-------|------------|
-| ~37 | Ajouter `import { MacroCommentaryDisplay }` |
-| ~788 | Remplacer `StyledJsonViewer` par `MacroCommentaryDisplay` |
+| Localisation | Changement |
+|--------------|------------|
+| Après ligne ~145 | Ajouter fonction `parseMacroContentToStructured()` |
+| Lignes 203-212 | Modifier la logique pour détecter et parser les strings textuelles |
+
+---
 
 ## Garanties Zero Régression
 
-1. **Fallback texte** : Si le contenu est une string, l'affichage texte actuel est conservé
-2. **Composant existant** : `MacroCommentaryDisplay` est déjà testé et fonctionnel
-3. **Autres pages** : Aucun autre fichier modifié
-4. **HTTP Debug** : Le panneau debug continue d'utiliser `StyledJsonViewer` pour le JSON brut complet
+1. **Fallback robuste** : Si le parsing échoue, le contenu textuel brut est affiché
+2. **Détection intelligente** : Ne parse que si `content` est une string (pas un objet déjà structuré)
+3. **Composant inchangé** : `MacroCommentaryDisplay` reste identique
+4. **Autres pages** : Aucune modification
+
+---
 
 ## Résultat Attendu
 
-Au lieu d'un arbre JSON brut, l'utilisateur verra :
-- Une carte "Executive Summary" avec le résumé
-- Une carte "Fundamental Analysis" avec des bullet points
-- Une carte "Directional Bias" avec badge bullish/bearish et confiance %
-- Une carte "Key Levels" avec Support (vert) et Resistance (rouge)
-- Des sections dépliables pour les insights AI
+Au lieu d'afficher le JSON brut:
+```json
+{
+  "content": "Executive Summary: The current market...",
+  "request": {...},
+  ...
+}
+```
 
+L'utilisateur verra des cartes formatées:
+- **Executive Summary** : Résumé textuel
+- **Fundamental Analysis** : Liste à puces
+- **Directional Bias** : Badge Bullish/Bearish + Confidence 60%
+- **Key Levels** : Grille Support (vert) / Resistance (rouge)
+- **AI Insights** : Sections dépliables GPT et Curated
