@@ -566,9 +566,30 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     if (content2?.risk_surface) {
       console.log("[extractRiskSurface] Found risk_surface in content.content!");
       
-      // CRITICAL: risk_surface itself might be a JSON string (double-encoded)
+      // CRITICAL: risk_surface can be:
+      // 1. An array containing a JSON string: ["{ ... }"]
+      // 2. A JSON string directly: "{ ... }"
+      // 3. An object directly: { ... }
       let riskSurfaceObj = content2.risk_surface;
-      if (typeof riskSurfaceObj === "string") {
+      
+      // Handle ARRAY case first (backend returns risk_surface as array)
+      if (Array.isArray(riskSurfaceObj)) {
+        console.log("[extractRiskSurface] risk_surface is an array, extracting first element");
+        const firstElement = riskSurfaceObj[0];
+        if (typeof firstElement === "string") {
+          try {
+            riskSurfaceObj = JSON.parse(firstElement);
+            console.log("[extractRiskSurface] Parsed array[0] JSON string successfully");
+          } catch (e) {
+            console.log("[extractRiskSurface] Failed to parse array[0] string:", e);
+          }
+        } else if (typeof firstElement === "object" && firstElement !== null) {
+          riskSurfaceObj = firstElement;
+          console.log("[extractRiskSurface] Using array[0] object directly");
+        }
+      }
+      // Handle STRING case (double-encoded JSON)
+      else if (typeof riskSurfaceObj === "string") {
         try {
           riskSurfaceObj = JSON.parse(riskSurfaceObj);
           console.log("[extractRiskSurface] Parsed risk_surface from string to object");
@@ -605,7 +626,20 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
       if (output?.trade_generation_output && typeof output.trade_generation_output === "object") {
         const tgo = output.trade_generation_output as Record<string, unknown>;
         if (tgo?.risk_surface) {
-          const result = parseSurface(tgo.risk_surface);
+          // Handle array-wrapped risk_surface for Path 2
+          let riskSurfaceObj2 = tgo.risk_surface;
+          if (Array.isArray(riskSurfaceObj2)) {
+            console.log("[extractRiskSurface] Path 2: risk_surface is an array");
+            const firstEl = riskSurfaceObj2[0];
+            if (typeof firstEl === "string") {
+              try { riskSurfaceObj2 = JSON.parse(firstEl); } catch {}
+            } else if (typeof firstEl === "object" && firstEl !== null) {
+              riskSurfaceObj2 = firstEl;
+            }
+          } else if (typeof riskSurfaceObj2 === "string") {
+            try { riskSurfaceObj2 = JSON.parse(riskSurfaceObj2); } catch {}
+          }
+          const result = parseSurface(riskSurfaceObj2);
           if (result) {
             console.log("[extractRiskSurface] Found via Path 2 (output.trade_generation_output)");
             return result;
@@ -622,7 +656,20 @@ function extractRiskSurface(raw: unknown): SurfaceApiResponse | null {
     if (obj?.trade_generation_output && typeof obj.trade_generation_output === "object") {
       const tgo = obj.trade_generation_output as Record<string, unknown>;
       if (tgo?.risk_surface) {
-        const result = parseSurface(tgo.risk_surface);
+        // Handle array-wrapped risk_surface for Path 3
+        let riskSurfaceObj3 = tgo.risk_surface;
+        if (Array.isArray(riskSurfaceObj3)) {
+          console.log("[extractRiskSurface] Path 3: risk_surface is an array");
+          const firstEl = riskSurfaceObj3[0];
+          if (typeof firstEl === "string") {
+            try { riskSurfaceObj3 = JSON.parse(firstEl); } catch {}
+          } else if (typeof firstEl === "object" && firstEl !== null) {
+            riskSurfaceObj3 = firstEl;
+          }
+        } else if (typeof riskSurfaceObj3 === "string") {
+          try { riskSurfaceObj3 = JSON.parse(riskSurfaceObj3); } catch {}
+        }
+        const result = parseSurface(riskSurfaceObj3);
         if (result) {
           console.log("[extractRiskSurface] Found via Path 3 (direct trade_generation_output)");
           return result;
