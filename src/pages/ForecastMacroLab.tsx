@@ -204,6 +204,27 @@ export default function ForecastMacroLab() {
   const handleRealtimeResponse = async (responsePayload: any, jobId: string) => {
     console.log("📩 [Realtime] Processing response payload:", responsePayload);
 
+    // CRITICAL: Update the job status in Supabase so PersistentNotificationProvider stops the floating card
+    // This is necessary because the backend may not update the job status itself
+    try {
+      const { error: updateError } = await supabase
+        .from('jobs')
+        .update({ 
+          status: 'completed', 
+          response_payload: responsePayload,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+      
+      if (updateError) {
+        console.warn('⚠️ [ForecastMacroLab] Failed to update job status:', updateError);
+      } else {
+        console.log('✅ [ForecastMacroLab] Job status updated to completed in Supabase');
+      }
+    } catch (err) {
+      console.warn('⚠️ [ForecastMacroLab] Error updating job status:', err);
+    }
+
     let analysisContent: string | object = "";
     const extractStringContent = (obj: any): string => {
       if (typeof obj === "string") return obj;
