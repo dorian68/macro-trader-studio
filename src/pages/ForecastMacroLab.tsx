@@ -25,7 +25,6 @@ import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-// enhancedPostRequest removed - using direct fetch for HTTP response
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
@@ -473,6 +472,10 @@ export default function ForecastMacroLab() {
     setJobStatus("running");
     setLastHttpDebug(null);
 
+    // Track if we've already processed a result (to avoid duplicate processing from HTTP + Realtime)
+    let resultProcessed = false;
+    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
     try {
       // Create job FIRST to get job_id for payload
       const responseJobId = await createJob("macro_analysis", selectedAsset.symbol, {}, "Macro Commentary");
@@ -498,9 +501,74 @@ export default function ForecastMacroLab() {
       // Macro Lab is a superuser-only testing tool: do NOT require credits on this page.
       // (Credits remain enforced everywhere else.)
 
-      // Macro Lab uses DIRECT HTTP response - no Supabase Realtime listener needed
-      // This page specifically waits for the HTTP response body which contains the full result
-      console.log("📊 [ForecastMacroLab] Sending request (HTTP direct mode):", {
+      // HYBRID ARCHITECTURE: Subscribe to Realtime BEFORE sending POST request (fallback mechanism)
+      console.log("📡 [Realtime] Subscribing to jobs updates before POST (hybrid fallback)");
+      realtimeChannel = supabase.channel(`macro-lab-${responseJobId}`).on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'jobs',
+        filter: `user_id=eq.${user?.id}`
+      }, (realtimePayload) => {
+        console.log('📩 [Realtime Fallback] Payload received:', realtimePayload);
+        const job = realtimePayload.new as any;
+        
+        // Only process if this is for our specific job and we haven't already processed a result
+        if (job && job.status && (job.id === responseJobId || job.request_payload?.job_id === responseJobId)) {
+          console.log(`ℹ️ [Realtime Fallback] Event received - status: ${job.status}, resultProcessed: ${resultProcessed}`);
+          
+          if (resultProcessed) {
+            console.log('⏭️ [Realtime Fallback] Result already processed via HTTP, ignoring');
+            return;
+          }
+          
+          if (job.status === 'completed' && job.response_payload) {
+            console.log('📩 [Realtime Fallback] Processing completed response from websocket');
+            resultProcessed = true;
+            
+            try {
+              let parsedPayload = job.response_payload;
+              if (typeof job.response_payload === 'string') {
+                parsedPayload = JSON.parse(job.response_payload);
+              }
+              
+              handleRealtimeResponse(parsedPayload, responseJobId);
+              
+              // Cleanup realtime channel after successful processing
+              if (realtimeChannel) {
+                supabase.removeChannel(realtimeChannel);
+              }
+            } catch (parseError) {
+              console.error('❌ [Realtime Fallback] Error parsing response_payload:', parseError);
+              handleRealtimeError('Invalid response format received');
+              if (realtimeChannel) {
+                supabase.removeChannel(realtimeChannel);
+              }
+            }
+          } else if (job.status === 'error') {
+            if (!resultProcessed) {
+              resultProcessed = true;
+              console.log('❌ [Realtime Fallback] Job failed:', job.error_message);
+              handleRealtimeError(job.error_message || 'Analysis failed');
+            }
+            if (realtimeChannel) {
+              supabase.removeChannel(realtimeChannel);
+            }
+          } else if (job.status === 'completed' && !job.response_payload) {
+            if (!resultProcessed) {
+              resultProcessed = true;
+              console.log('⚠️ [Realtime Fallback] Job completed but no response_payload');
+              handleRealtimeError('No macro analysis available yet.');
+            }
+            if (realtimeChannel) {
+              supabase.removeChannel(realtimeChannel);
+            }
+          }
+        }
+      }).subscribe();
+      console.log('📡 [Realtime] Subscribed before POST (hybrid fallback active)');
+
+      // Now send the HTTP request (primary path)
+      console.log("📊 [ForecastMacroLab] Sending request (HTTP primary + Realtime fallback):", {
         url: FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL,
         jobId: responseJobId,
         userId: user?.id,
@@ -532,8 +600,20 @@ export default function ForecastMacroLab() {
         bodyText,
       });
 
+      // If HTTP fails, rely on Realtime fallback
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        console.log(`⚠️ [HTTP] Request failed with ${response.status}, waiting for Realtime fallback...`);
+        // Don't throw - let Realtime handle it
+        return;
+      }
+
+      // If we already got a result from Realtime, skip HTTP processing
+      if (resultProcessed) {
+        console.log('⏭️ [HTTP] Result already processed via Realtime, skipping HTTP body parsing');
+        if (realtimeChannel) {
+          supabase.removeChannel(realtimeChannel);
+        }
+        return;
       }
 
       // Parse the HTTP response directly - extract content from body.message.message.content.content
@@ -544,7 +624,9 @@ export default function ForecastMacroLab() {
         parsedJson = JSON.parse(bodyText);
       } catch (parseError) {
         console.error("❌ [HTTP] Failed to parse response body as JSON:", parseError);
-        throw new Error("Invalid JSON response from server");
+        // Fallback to Realtime
+        console.log("⚠️ [HTTP] JSON parse failed, waiting for Realtime fallback...");
+        return;
       }
 
       // Extract content from the deep nested structure: body.message.message.content.content
@@ -662,10 +744,28 @@ export default function ForecastMacroLab() {
         extractedContent = typeof parsedJson === "string" ? parsedJson : JSON.stringify(parsedJson, null, 2);
       }
 
+      // Mark as processed before calling handler to prevent Realtime from double-processing
+      resultProcessed = true;
+
       // Call the existing handler with the extracted content
       handleRealtimeResponse({ message: { content: { content: extractedContent } } }, responseJobId);
+
+      // Cleanup Realtime channel since HTTP succeeded
+      if (realtimeChannel) {
+        console.log('🧹 [Realtime] Cleaning up channel after HTTP success');
+        supabase.removeChannel(realtimeChannel);
+      }
     } catch (error) {
       console.error("Analysis error:", error);
+
+      // Cleanup Realtime channel on error (but don't prevent Realtime from completing if it's still active)
+      // Only cleanup if we haven't already processed a result
+      if (resultProcessed && realtimeChannel) {
+        console.log('🧹 [Realtime] Cleaning up channel after error (result was processed)');
+        supabase.removeChannel(realtimeChannel);
+      } else {
+        console.log('⏳ [Realtime] Keeping channel open for fallback after error');
+      }
 
       setLastHttpDebug({
         at: new Date().toISOString(),
@@ -674,13 +774,16 @@ export default function ForecastMacroLab() {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      setIsGenerating(false);
-      setJobStatus("error");
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Unable to complete analysis. Please retry.",
-        variant: "destructive",
-      });
+      // Only show error if Realtime hasn't already provided a result
+      if (!resultProcessed) {
+        setIsGenerating(false);
+        setJobStatus("error");
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Unable to complete analysis. Please retry.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
