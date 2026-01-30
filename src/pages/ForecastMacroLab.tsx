@@ -200,30 +200,11 @@ export default function ForecastMacroLab() {
     return Object.keys(result).length > 0 ? result : null;
   };
 
-  // Handler functions for Realtime responses
-  const handleRealtimeResponse = async (responsePayload: any, jobId: string) => {
-    console.log("📩 [Realtime] Processing response payload:", responsePayload);
-
-    // CRITICAL: Update the job status in Supabase so PersistentNotificationProvider stops the floating card
-    // This is necessary because the backend may not update the job status itself
-    try {
-      const { error: updateError } = await supabase
-        .from('jobs')
-        .update({ 
-          status: 'completed', 
-          response_payload: responsePayload,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', jobId);
-      
-      if (updateError) {
-        console.warn('⚠️ [ForecastMacroLab] Failed to update job status:', updateError);
-      } else {
-        console.log('✅ [ForecastMacroLab] Job status updated to completed in Supabase');
-      }
-    } catch (err) {
-      console.warn('⚠️ [ForecastMacroLab] Error updating job status:', err);
-    }
+  // Handler functions for Realtime responses - triggered by Supabase Realtime events
+  const handleRealtimeResponse = (responsePayload: any, jobId: string) => {
+    console.log("📩 [Realtime] Processing response payload from backend event:", responsePayload);
+    // No manual UPDATE needed - the backend updates the job status, 
+    // and PersistentNotificationProvider listens to those events automatically
 
     let analysisContent: string | object = "";
     const extractStringContent = (obj: any): string => {
@@ -343,7 +324,7 @@ export default function ForecastMacroLab() {
       description: t("toasts:macro.analysisCompletedDescription"),
     });
 
-    await logInteraction({
+    logInteraction({
       featureName: "market_commentary",
       userQuery: `${queryParams.query} for ${selectedAsset.display}`,
       aiResponse: realAnalysis,
