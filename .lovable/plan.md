@@ -1,166 +1,192 @@
 
-# Plan: Ajouter le `job_id` aux requêtes API du Forecast Playground Hub
+# Plan : Instrumentation robuste du job_id pour Macro Lab
 
-## Contexte
+## Contexte de l'audit
 
-Les 3 outils du hub Forecast Playground (`/forecast-playground`) envoient des requêtes API sans inclure le champ `job_id` dans le payload. Ce champ est essentiel pour le suivi backend et la synchronisation Realtime via Supabase.
+L'audit a confirmé que :
+- **Le code actuel est CORRECT** : `job_id` est inclus dans le payload (ligne 487)
+- **La production est désynchronisée** : alphalensai.com exécute une ancienne version sans `job_id`
+- **Le preview Lovable fonctionne** : les requêtes contiennent bien le `job_id`
 
-## Problèmes Identifiés
+## Objectif du plan
 
-| Page | Fichier | État Actuel |
-|------|---------|-------------|
-| Macro Lab | `ForecastMacroLab.tsx` | `createJob()` appelé mais `job_id` absent du payload |
-| Forecast Tool | `ForecastPlaygroundTool.tsx` | Aucun `job_id` dans les requêtes `forecast-proxy` / `surface-proxy` |
-| Trade Generator | `ForecastTradeGenerator.tsx` | Aucun `job_id` dans la requête `macro-lab-proxy` |
+Ajouter une instrumentation robuste pour :
+1. Garantir que `job_id` est toujours présent et valide
+2. Fournir des logs de diagnostic clairs
+3. Améliorer le debug panel avec les données du payload envoyé
+4. Prévenir toute régression future
 
-## Solution Technique
+## Modifications proposées
 
-### 1. Macro Lab (`src/pages/ForecastMacroLab.tsx`)
+### 1. Validation et logs avant le fetch (`src/pages/ForecastMacroLab.tsx`)
 
-**Ligne 477-514**: Ajouter le `job_id` au payload avant l'envoi.
-
-```text
-Avant:
-  const payload = {
-    type: "RAG",
-    question: queryParams.query,
-    mode: "run",
-    ...
-  };
-
-Après:
-  const payload = {
-    type: "RAG",
-    question: queryParams.query,
-    mode: "run",
-    job_id: responseJobId,  // <-- AJOUT
-    ...
-  };
-```
-
-**Modification**: Réorganiser le code pour créer le `job_id` AVANT de construire le payload.
-
-### 2. Forecast Tool (`src/pages/ForecastPlaygroundTool.tsx`)
-
-**Lignes 1010-1034 (forecast-proxy)** et **1079-1106 (surface-proxy)**:
-
-Ces outils sont des outils internes "Lab" qui n'utilisent pas le système de jobs standard. Cependant, pour la traçabilité, on peut ajouter un `job_id` généré localement via `uuid.v4()` sans créer d'enregistrement dans la table `jobs`.
+**Localisation** : Après la construction du payload (ligne ~501), avant le fetch (ligne ~580)
 
 ```text
-import { v4 as uuidv4 } from 'uuid';
+Ajouter entre les lignes 501-507 :
 
-// Au début de handleSubmit:
-const jobId = uuidv4();
+// ══════════════════════════════════════════════════════════════
+// CRITICAL: Validate job_id before sending request
+// ══════════════════════════════════════════════════════════════
+if (!responseJobId || typeof responseJobId !== "string") {
+  console.error("[MacroLabs] ❌ CRITICAL: job_id is missing or invalid", {
+    responseJobId,
+    typeofResponseJobId: typeof responseJobId,
+  });
+  toast({
+    title: "Error",
+    description: "Job ID missing - cannot send request",
+    variant: "destructive",
+  });
+  setIsGenerating(false);
+  setJobStatus("");
+  return;
+}
 
-// Dans requestBody pour forecast-proxy:
-const requestBody = {
-  job_id: jobId,  // <-- AJOUT (traçabilité uniquement)
-  symbol,
-  timeframe,
-  ...
-};
-
-// Dans surfacePayload pour surface-proxy:
-const surfacePayload = {
-  job_id: jobId,  // <-- AJOUT (traçabilité uniquement)
-  symbol,
-  timeframe,
-  ...
-};
+// Structured debug log for payload verification
+console.debug("[MacroLabs] 📤 Payload before POST", {
+  responseJobId,
+  payloadJobId: payload.job_id,
+  payloadKeys: Object.keys(payload),
+  payloadStringified: JSON.stringify(payload).substring(0, 500) + "...",
+  timestamp: new Date().toISOString(),
+});
 ```
 
-### 3. Trade Generator (`src/pages/ForecastTradeGenerator.tsx`)
+### 2. Extension du type `lastHttpDebug` pour inclure le payload
 
-**Lignes 1497-1526**: Ajouter le `job_id` au payload.
+**Localisation** : Lignes 102-119
 
 ```text
-import { v4 as uuidv4 } from 'uuid';
+Modifier le type pour ajouter payloadPreview et payloadJobId :
 
-// Au début de handleSubmit:
-const jobId = uuidv4();
-
-// Dans macroPayload:
-const macroPayload = {
-  job_id: jobId,  // <-- AJOUT
-  type: "RAG",
-  mode: "trade_generation",
-  instrument: symbol,
-  ...
-};
+const [lastHttpDebug, setLastHttpDebug] = useState<
+  | {
+      at: string;
+      url: string;
+      jobId: string;
+      payloadJobId: string;        // ← AJOUT
+      payloadPreview: string;      // ← AJOUT
+      ok: boolean;
+      status: number;
+      statusText: string;
+      bodyText: string;
+    }
+  | {
+      at: string;
+      url: string;
+      jobId: string | null;
+      payloadJobId: string | null;  // ← AJOUT
+      payloadPreview: string | null; // ← AJOUT
+      error: string;
+    }
+  | null
+>(null);
 ```
 
-## Détails Techniques
+### 3. Mise à jour de setLastHttpDebug pour inclure le payload
 
-### Fichier: `src/pages/ForecastMacroLab.tsx`
+**Localisation** : Lignes 595-603
 
-**Modifications (lignes 469-514)**:
+```text
+Modifier le setLastHttpDebug pour inclure les nouvelles données :
 
-1. Déplacer `createJob()` AVANT la construction du payload
-2. Ajouter `job_id: responseJobId` dans l'objet payload
-3. Le payload sera : `{ type: "RAG", job_id: "<uuid>", question: "...", ... }`
-
-### Fichier: `src/pages/ForecastPlaygroundTool.tsx`
-
-**Modifications**:
-1. Ajouter `import { v4 as uuidv4 } from 'uuid';` en haut du fichier
-2. Générer `const jobId = uuidv4();` au début de `handleSubmit()`
-3. Ajouter `job_id: jobId` dans `requestBody` (ligne ~1010)
-4. Ajouter `job_id: jobId` dans `surfacePayload` (ligne ~1079)
-
-### Fichier: `src/pages/ForecastTradeGenerator.tsx`
-
-**Modifications**:
-1. Ajouter `import { v4 as uuidv4 } from 'uuid';` en haut du fichier (si absent)
-2. Générer `const jobId = uuidv4();` au début de `handleSubmit()`
-3. Ajouter `job_id: jobId` dans `macroPayload` (ligne ~1497)
-
-## Structure Finale des Payloads
-
-### Macro Lab
-```json
-{
-  "type": "RAG",
-  "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "question": "...",
-  "mode": "run",
-  "instrument": "EUR/USD",
-  ...
-}
+setLastHttpDebug({
+  at: new Date().toISOString(),
+  url: FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL,
+  jobId: responseJobId,
+  payloadJobId: payload.job_id,                    // ← AJOUT
+  payloadPreview: JSON.stringify(payload),         // ← AJOUT
+  ok: response.ok,
+  status: response.status,
+  statusText: response.statusText,
+  bodyText,
+});
 ```
 
-### Forecast Tool (forecast-proxy)
-```json
-{
-  "job_id": "550e8400-e29b-41d4-a716-446655440001",
-  "symbol": "EUR/USD",
-  "timeframe": "15min",
-  "horizons": [24],
-  ...
-}
+### 4. Mise à jour du cas d'erreur setLastHttpDebug
+
+**Localisation** : Lignes 772-780 (dans le catch)
+
+```text
+Ajouter les nouveaux champs dans le cas d'erreur aussi :
+
+setLastHttpDebug({
+  at: new Date().toISOString(),
+  url: FORECAST_PLAYGROUND_MACRO_WEBHOOK_URL,
+  jobId: responseJobId,
+  payloadJobId: payload?.job_id || null,           // ← AJOUT
+  payloadPreview: payload ? JSON.stringify(payload) : null, // ← AJOUT
+  error: error instanceof Error ? error.message : String(error),
+});
 ```
 
-### Trade Generator
-```json
-{
-  "job_id": "550e8400-e29b-41d4-a716-446655440002",
-  "type": "RAG",
-  "mode": "trade_generation",
-  "instrument": "EUR/USD",
-  ...
-}
+### 5. Amélioration du debug panel UI
+
+**Localisation** : Lignes 940-950 (affichage du debug)
+
+```text
+Ajouter l'affichage du payload envoyé dans le debug panel :
+
+<div className="flex flex-wrap gap-x-4 gap-y-1">
+  <span>at: {lastHttpDebug.at}</span>
+  <span>url: {lastHttpDebug.url}</span>
+  {lastHttpDebug.jobId ? <span>jobId: {lastHttpDebug.jobId}</span> : null}
+  {lastHttpDebug.payloadJobId ? (                   // ← AJOUT BLOC
+    <span className="text-green-400">
+      payloadJobId: {lastHttpDebug.payloadJobId}
+    </span>
+  ) : (
+    <span className="text-red-400">payloadJobId: MISSING</span>
+  )}
+  {"status" in lastHttpDebug ? (
+    <span>
+      status: {lastHttpDebug.status} {lastHttpDebug.statusText}
+    </span>
+  ) : null}
+</div>
+
+{/* Section Payload envoyé */}
+{"payloadPreview" in lastHttpDebug && lastHttpDebug.payloadPreview && (
+  <Collapsible>
+    <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+      <ChevronDown className="h-3 w-3" />
+      <span>Payload sent</span>
+    </CollapsibleTrigger>
+    <CollapsibleContent>
+      <div className="max-h-[300px] overflow-auto rounded-lg border bg-muted/30 p-3">
+        {(() => {
+          try {
+            const parsed = JSON.parse(lastHttpDebug.payloadPreview);
+            return <StyledJsonViewer data={parsed} />;
+          } catch {
+            return (
+              <pre className="whitespace-pre-wrap text-muted-foreground text-xs">
+                {lastHttpDebug.payloadPreview}
+              </pre>
+            );
+          }
+        })()}
+      </div>
+    </CollapsibleContent>
+  </Collapsible>
+)}
 ```
 
-## Garanties Zero Régression
+## Résumé des fichiers modifiés
 
-1. **Aucune modification de la logique d'extraction des réponses** - seul le payload d'envoi est modifié
-2. **Les outils Lab restent sans engagement de crédits** - uniquement traçabilité ajoutée
-3. **Backward compatible** - si le backend ignore `job_id`, aucun impact
-4. **Utilisation de uuid v4** - déjà installé et utilisé dans le projet
+| Fichier | Modifications |
+|---------|--------------|
+| `src/pages/ForecastMacroLab.tsx` | Validation job_id, logs debug, extension type lastHttpDebug, affichage payload dans debug panel |
 
-## Résumé des Fichiers Modifiés
+## Garanties
 
-| Fichier | Lignes Modifiées | Nature |
-|---------|------------------|--------|
-| `src/pages/ForecastMacroLab.tsx` | ~469-514 | Ajouter `job_id` au payload |
-| `src/pages/ForecastPlaygroundTool.tsx` | ~1, ~990-1110 | Import uuid + ajouter `job_id` aux 2 payloads |
-| `src/pages/ForecastTradeGenerator.tsx` | ~1, ~1495-1525 | Import uuid + ajouter `job_id` au payload |
+- ✅ **Aucune régression** : la logique métier reste identique
+- ✅ **Realtime fallback préservé** : aucun changement sur la mécanique hybride
+- ✅ **Validation défensive** : arrêt propre si job_id manquant
+- ✅ **Debug visible** : le payload est désormais visible dans le debug panel
+- ✅ **Logs structurés** : traçabilité complète avant chaque POST
+
+## Action complémentaire requise
+
+**IMPORTANT** : Après approbation de ce plan, il faudra **publier le code en production** pour que alphalensai.com utilise la version avec le `job_id`. Le code actuel fonctionne déjà correctement dans le preview Lovable.
