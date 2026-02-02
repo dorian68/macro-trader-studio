@@ -73,7 +73,7 @@ export function JobStatusCard({ jobs, onViewResult, onDismiss, className }: JobS
 
   return (
     <div className={cn(
-      "fixed top-16 sm:top-20 left-2 sm:left-4 z-50 w-[calc(100vw-1rem)] sm:w-80 max-w-[calc(100vw-1rem)]",
+      "fixed top-20 sm:top-24 left-2 sm:left-4 z-50 w-[calc(100vw-1rem)] sm:w-80 max-w-[calc(100vw-1rem)]",
       className
     )}>
       <Card className="shadow-lg border-primary/20 bg-card/95 backdrop-blur-sm">

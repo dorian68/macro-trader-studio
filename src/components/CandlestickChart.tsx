@@ -172,18 +172,18 @@ const CandlestickChart = memo(function CandlestickChart({
           <CardHeader className="pb-6 border-b border-border/50 space-y-4">
             {/* Row 1: Trading Dashboard Title + Trading Controls & Price Widget */}
             {dashboardTitle && (
-              <div className="flex flex-col lg:flex-row items-start lg:items-start justify-between gap-4">
+              <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-4">
                 {/* Left: Dashboard Title */}
                 <div className="flex items-center gap-3">
                   <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
                     <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground tracking-tight">
                       {dashboardTitle}
                     </h1>
                     {dashboardSubtitle && (
-                      <p className="text-sm sm:text-base text-muted-foreground">
+                      <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
                         {dashboardSubtitle}
                       </p>
                     )}
@@ -191,20 +191,21 @@ const CandlestickChart = memo(function CandlestickChart({
                 </div>
 
                 {/* Right: Trading Controls + Price Widget */}
-                <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex flex-col items-start md:items-end gap-2 shrink-0 w-full md:w-auto">
                   {/* Top row: Instrument + Connection + Timeframe */}
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="border-primary/20 text-primary">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="border-primary/20 text-primary min-h-[32px] flex items-center">
                       {asset}
                     </Badge>
                     <Badge variant="outline" className={cn(
+                      "min-h-[32px] flex items-center",
                       isConnected && hasRealTimeData ? "border-success/20 text-success" : "border-warning/20 text-warning"
                     )}>
                       {isConnected && hasRealTimeData ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
                       {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
                     </Badge>
                     <Select value={timeframe} onValueChange={handleTimeframeChange}>
-                      <SelectTrigger className="w-28 h-8 bg-background/50 border-border-light text-xs">
+                      <SelectTrigger className="w-28 sm:w-32 h-9 bg-background/50 border-border-light text-xs sm:text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -221,7 +222,7 @@ const CandlestickChart = memo(function CandlestickChart({
                   {priceData && (
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-bold text-foreground font-mono">
+                        <span className="text-lg sm:text-xl md:text-2xl font-bold text-foreground font-mono">
                           ${priceData.price.toFixed(selectedAsset?.includes('JPY') ? 2 : 4)}
                         </span>
                         <div className={cn(
@@ -231,7 +232,7 @@ const CandlestickChart = memo(function CandlestickChart({
                       </div>
                       {priceData.change24h !== undefined && (
                         <div className={cn(
-                          "flex items-center gap-1 text-sm font-medium",
+                          "flex items-center gap-1 text-xs sm:text-sm font-medium",
                           priceData.change24h >= 0 ? "text-success" : "text-danger"
                         )}>
                           {priceData.change24h >= 0 ?
