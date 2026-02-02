@@ -42,9 +42,38 @@ serve(async (req) => {
 
     const body = await req.text();
 
-    console.log(`[macro-lab-proxy] forwarding`, {
+    // Parse body to extract and log critical fields for debugging
+    let parsedBody: any = null;
+    let jobIdFromPayload: string | null = null;
+    let requestType: string | null = null;
+    let instrument: string | null = null;
+
+    try {
+      parsedBody = JSON.parse(body);
+      jobIdFromPayload = parsedBody?.job_id || null;
+      requestType = parsedBody?.type || null;
+      instrument = parsedBody?.instrument || null;
+    } catch (parseError) {
+      console.log(`[macro-lab-proxy] body parse failed`, {
+        reqId,
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        bodyPreview: body.substring(0, 200),
+      });
+    }
+
+    console.log(`[macro-lab-proxy] payload inspection`, {
+      reqId,
+      job_id: jobIdFromPayload,
+      job_id_present: !!jobIdFromPayload,
+      type: requestType,
+      instrument: instrument,
+      bodyBytes: body.length,
+    });
+
+    console.log(`[macro-lab-proxy] forwarding to backend`, {
       reqId,
       target: TARGET_URL,
+      job_id: jobIdFromPayload,
       bodyBytes: body.length,
     });
 
@@ -57,11 +86,26 @@ serve(async (req) => {
 
     const upstreamText = await upstream.text();
 
+    // Parse upstream response to verify job_id echo
+    let upstreamJobId: string | null = null;
+    try {
+      const upstreamParsed = JSON.parse(upstreamText);
+      // Backend may return job_id at different paths
+      upstreamJobId = upstreamParsed?.job_id 
+        || upstreamParsed?.message?.job_id 
+        || upstreamParsed?.body?.message?.job_id 
+        || null;
+    } catch {
+      // Ignore parse errors for response logging
+    }
+
     console.log(`[macro-lab-proxy] upstream response`, {
       reqId,
       status: upstream.status,
       ms: Date.now() - startedAt,
       upstreamBodyBytes: upstreamText.length,
+      job_id_in_response: upstreamJobId,
+      job_id_roundtrip: jobIdFromPayload === upstreamJobId ? 'MATCH' : 'MISMATCH',
     });
 
     return new Response(upstreamText, {
