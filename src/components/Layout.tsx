@@ -173,28 +173,28 @@ export default function Layout({
               <Button variant="outline" size="sm" onClick={() => {
                 navigate('/about');
                 setIsMobileMenuOpen(false);
-              }} className="justify-start text-sm">
+              }} className="justify-start text-sm min-h-[44px]">
                 <Building2 className="h-4 w-4 mr-2" />
                 {t('nav.about')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => {
                 navigate('/features');
                 setIsMobileMenuOpen(false);
-              }} className="justify-start text-sm">
+              }} className="justify-start text-sm min-h-[44px]">
                 <Zap className="h-4 w-4 mr-2" />
                 {t('nav.features')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => {
                 navigate('/pricing');
                 setIsMobileMenuOpen(false);
-              }} className="justify-start text-sm">
+              }} className="justify-start text-sm min-h-[44px]">
                 <TrendingUp className="h-4 w-4 mr-2" />
                 {t('nav.pricing')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => {
                 navigate('/contact');
                 setIsMobileMenuOpen(false);
-              }} className="justify-start text-sm">
+              }} className="justify-start text-sm min-h-[44px]">
                 <FileText className="h-4 w-4 mr-2" />
                 {t('nav.contact')}
               </Button>
@@ -202,7 +202,7 @@ export default function Layout({
                 <Button variant="outline" size="sm" onClick={() => {
                   navigate('/alphalens-labs');
                   setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm">
+                }} className="justify-start text-sm min-h-[44px]">
                   <Calculator className="h-4 w-4 mr-2" />
                   AlphaLens Labs
                 </Button>
@@ -213,7 +213,7 @@ export default function Layout({
                 <Button variant="outline" size="sm" onClick={() => {
                   navigate('/dashboard');
                   setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm">
+                }} className="justify-start text-sm min-h-[44px]">
                   <Activity className="h-4 w-4 mr-2" />
                   {t('nav.dashboard')}
                 </Button>
@@ -221,35 +221,35 @@ export default function Layout({
                   navigate('/history');
                   markResultsAsSeen();
                   setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm relative">
+                }} className="justify-start text-sm relative min-h-[44px]">
                   <History className="h-4 w-4 mr-2" />
                   {t('nav.history', { defaultValue: 'History' })}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => {
                   navigate('/macro-analysis');
                   setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm">
+                }} className="justify-start text-sm min-h-[44px]">
                   <TrendingUp className="h-4 w-4 mr-2" />
                   {t('nav.macroAnalysis', { defaultValue: 'Macro Analysis' })}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => {
                   navigate('/reports');
                   setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm">
+                }} className="justify-start text-sm min-h-[44px]">
                   <Activity className="h-4 w-4 mr-2" />
                   {t('nav.reports', { defaultValue: 'Reports' })}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => {
                   onModuleChange?.("ai-setup");
                   setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm">
+                }} className="justify-start text-sm min-h-[44px]">
                   <Zap className="h-4 w-4 mr-2" />
                   {t('nav.aiSetup', { defaultValue: 'AI Setup' })}
                 </Button>
                 {(isAdmin || isSuperUser) && <Button variant="outline" size="sm" onClick={() => {
                   navigate('/admin');
                   setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm">
+                }} className="justify-start text-sm min-h-[44px]">
                   <Shield className="h-4 w-4 mr-2" />
                   {t('nav.adminPanel', { defaultValue: 'Admin Panel' })}
                 </Button>}

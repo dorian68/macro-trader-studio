@@ -357,6 +357,62 @@ export default function TradingDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Mobile Navigation Cards - visible only on mobile/tablet */}
+          <div className="lg:hidden mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* AI Trade Setup */}
+              <Card
+                className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
+                onClick={() => navigate('/ai-setup')}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="gradient-primary p-2 rounded-xl shrink-0">
+                    <Zap className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.aiTradeSetup')}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{t('dashboard:trading.intelligentTradeSetups')}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+                </CardContent>
+              </Card>
+
+              {/* Macro Commentary */}
+              <Card
+                className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
+                onClick={() => navigate('/macro-analysis')}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="gradient-primary p-2 rounded-xl shrink-0">
+                    <Activity className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.macroCommentary')}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{t('dashboard:trading.inDepthAnalysis')}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+                </CardContent>
+              </Card>
+
+              {/* Reports */}
+              <Card
+                className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
+                onClick={() => navigate('/reports')}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="gradient-primary p-2 rounded-xl shrink-0">
+                    <Activity className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.reports')}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{t('dashboard:trading.comprehensiveReports')}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
 
         {/* SECTION 3: Asset Info + Market News */}

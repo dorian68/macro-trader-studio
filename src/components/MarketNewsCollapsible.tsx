@@ -77,12 +77,12 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
             setCategory('general');
           }
         }}>
-          <TabsList className="grid w-full grid-cols-5 bg-muted/30 overflow-x-auto">
-            <TabsTrigger value="all" className="text-xs sm:text-sm">{t('dashboard:news.all')}</TabsTrigger>
-            <TabsTrigger value="general" className="text-xs sm:text-sm">{t('dashboard:news.general')}</TabsTrigger>
-            <TabsTrigger value="forex" className="text-xs sm:text-sm">{t('dashboard:news.forex')}</TabsTrigger>
-            <TabsTrigger value="crypto" className="text-xs sm:text-sm">{t('dashboard:news.crypto')}</TabsTrigger>
-            <TabsTrigger value="merger" className="text-xs sm:text-sm">{t('dashboard:news.merger')}</TabsTrigger>
+          <TabsList className="flex w-full bg-muted/30 overflow-x-auto gap-1 p-1">
+            <TabsTrigger value="all" className="flex-1 min-w-[60px] text-xs sm:text-sm min-h-[44px]">{t('dashboard:news.all')}</TabsTrigger>
+            <TabsTrigger value="general" className="flex-1 min-w-[60px] text-xs sm:text-sm min-h-[44px]">{t('dashboard:news.general')}</TabsTrigger>
+            <TabsTrigger value="forex" className="flex-1 min-w-[60px] text-xs sm:text-sm min-h-[44px]">{t('dashboard:news.forex')}</TabsTrigger>
+            <TabsTrigger value="crypto" className="flex-1 min-w-[60px] text-xs sm:text-sm min-h-[44px]">{t('dashboard:news.crypto')}</TabsTrigger>
+            <TabsTrigger value="merger" className="flex-1 min-w-[60px] text-xs sm:text-sm min-h-[44px]">{t('dashboard:news.merger')}</TabsTrigger>
           </TabsList>
         </Tabs>
       </CardHeader>
