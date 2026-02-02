@@ -74,7 +74,7 @@ export default function Features() {
     <div className="min-h-screen bg-background">
       <PublicNavbar />
 
-      <section className="py-20 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
+      <section className="pt-10 pb-8 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
             {t('hero.title')}
@@ -86,7 +86,7 @@ export default function Features() {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-background">
+      <section className="py-8 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 justify-items-center">
             {features.map((feature, index) => (
@@ -117,13 +117,13 @@ export default function Features() {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-secondary/5">
+      <section className="py-8 px-4 bg-secondary/5">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">{t('additional.title')}</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{t('additional.subtitle')}</p>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
             {additionalFeatures.map((feature, index) => (
               <Card key={index} className="p-6 text-center hover:shadow-lg transition-shadow border-border">
@@ -140,7 +140,7 @@ export default function Features() {
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
+      <section className="py-10 px-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-4xl font-bold mb-6">{t('cta.title')}</h2>
           <p className="text-xl mb-8 opacity-90">{t('cta.subtitle')}</p>

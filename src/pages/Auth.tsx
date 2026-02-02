@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import newLogo from '@/assets/new-logo.png';
+// import newLogo from '@/assets/new-logo.png'; // Removed unused import
 import PublicNavbar from '@/components/PublicNavbar';
 import { useBrokerActions } from '@/hooks/useBrokerActions';
 import { useCreditManager } from '@/hooks/useCreditManager';
@@ -22,6 +22,7 @@ const { useState, useEffect } = React;
 
 export default function Auth() {
   const { t } = useTranslation('auth');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,7 +46,7 @@ export default function Auth() {
   const { activateFreeTrial } = useCreditManager();
   const intent = searchParams.get('intent');
   const { fetchActiveBrokers } = useBrokerActions();
-  
+
   // ✅ Controlled tab state synchronized with URL query param
   const [tabValue, setTabValue] = useState<'signin' | 'signup'>(
     searchParams.get('tab') === 'signup' ? 'signup' : 'signin'
@@ -115,7 +116,7 @@ export default function Auth() {
       (event, session) => {
         console.log(`[Auth] onAuthStateChange event: ${event}, provider: ${session?.user?.app_metadata?.provider}`);
         setSession(session);
-        
+
         // Defer OAuth handling to prevent deadlock
         if (event === 'SIGNED_IN' && session?.user?.app_metadata?.provider === 'google') {
           setTimeout(() => {
@@ -138,7 +139,7 @@ export default function Auth() {
       const oauthStartedAt = localStorage.getItem('oauth_started_at');
       const isOAuthActive = oauthFlow && oauthStartedAt && (Date.now() - parseInt(oauthStartedAt)) < 300000; // 5min
       const hasOAuthParams = window.location.search.includes('code') || window.location.hash.includes('access_token');
-      
+
       if (session?.user && window.location.pathname === '/auth' && intent !== 'free_trial' && !isOAuthActive && !hasOAuthParams) {
         navigate('/dashboard');
       }
@@ -157,7 +158,7 @@ export default function Auth() {
           .select('user_id, broker_id, broker_name, status')
           .eq('user_id', session.user.id)
           .maybeSingle();
-        
+
         const isNewUser = !existingProfile;
         console.log('[Google Auth] Profile check:', { isNewUser, profile: existingProfile });
 
@@ -181,7 +182,7 @@ export default function Auth() {
         // ✅ FIX 3: Use localStorage instead of sessionStorage for OAuth popup compatibility
         let pendingBrokerId: string | null = null;
         let pendingBrokerName: string | null = null;
-        
+
         const storedBrokerData = localStorage.getItem('oauth_pending_broker');
         if (storedBrokerData) {
           try {
@@ -203,26 +204,11 @@ export default function Auth() {
 
         if (isNewUser) {
           console.log('[Google Auth] New user detected, waiting for trigger profile creation');
-          
+
           // No broker selected during signup - guide user to Sign Up tab
+          // No broker selected during signup - Allow proceeding without broker for direct registration
           if (!pendingBrokerId) {
-            console.error('[Google Auth] No broker selected - redirecting to Sign Up tab');
-            // ✅ FIX 4: Add detailed logout logging
-            console.error('[Google Auth] LOGOUT TRIGGERED:', {
-              reason: 'no_broker_selected_redirect_signup',
-              userId: session.user.id,
-              timestamp: new Date().toISOString()
-            });
-            toast({
-              title: t('errors.selectBrokerFirst'),
-              description: t('errors.selectBrokerBeforeSignup'),
-              variant: 'default'
-            });
-            await supabase.auth.signOut();
-            setProcessingOAuth(false);
-            setGoogleLoading(false);
-            navigate('/auth?tab=signup');
-            return;
+            console.log('[Google Auth] No broker selected - proceeding with direct registration');
           }
 
           // ✅ FIX 2: Increase timeout to 10 seconds (10 retries)
@@ -231,13 +217,13 @@ export default function Auth() {
           while (!profile && retries < 10) {
             console.log(`[Google Auth] Retry ${retries + 1}/10 - waiting for profile creation`);
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             const { data } = await supabase
               .from('profiles')
               .select('*')
               .eq('user_id', session.user.id)
               .maybeSingle();
-            
+
             profile = data;
             retries++;
           }
@@ -254,7 +240,7 @@ export default function Auth() {
               })
               .select()
               .single();
-            
+
             if (insertError) {
               console.error('[Google Auth] Failed to create profile manually:', insertError);
               console.error('[Google Auth] LOGOUT TRIGGERED:', {
@@ -272,38 +258,29 @@ export default function Auth() {
               setGoogleLoading(false);
               return;
             }
-            
+
             profile = newProfile;
             console.log('[Google Auth] Profile created manually:', profile);
           }
 
-          // Update profile with broker
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              broker_id: pendingBrokerId,
-              broker_name: pendingBrokerName,
-              status: 'pending'
-            })
-            .eq('user_id', session.user.id);
-          
-          if (updateError) {
-            console.error('[Google Auth] Failed to update profile with broker:', updateError);
-            // ✅ FIX 4: Add detailed logout logging
-            console.error('[Google Auth] LOGOUT TRIGGERED:', {
-              reason: 'profile_update_failed',
-              userId: session.user.id,
-              error: updateError,
-              timestamp: new Date().toISOString()
-            });
-            toast({
-              title: t('errors.accountCreationFailed'),
-              description: t('errors.profileUpdateFailed'),
-              variant: 'destructive'
-            });
-            await supabase.auth.signOut();
-            setProcessingOAuth(false);
-            return;
+          // Update profile with broker if one was selected
+          if (pendingBrokerId) {
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({
+                broker_id: pendingBrokerId,
+                broker_name: pendingBrokerName,
+                status: 'pending'
+              })
+              .eq('user_id', session.user.id);
+
+            if (updateError) {
+              console.error('[Google Auth] Failed to update profile with broker:', updateError);
+              // Log error but allow proceed for direct registration? 
+              // Or if broker was selected but failed, maybe we should just log.
+            } else {
+              console.log('[Google Auth] Broker assigned successfully');
+            }
           }
 
           console.log('[Google Auth] Broker assigned successfully');
@@ -324,7 +301,7 @@ export default function Auth() {
         } else {
           // Returning user
           console.log('[Google Auth] Returning user detected');
-          
+
           // ✅ FIX 5: Handle returning user without profile
           if (!existingProfile) {
             console.warn('[Google Auth] Returning user has no profile, will show broker picker');
@@ -347,14 +324,14 @@ export default function Auth() {
               localStorage.removeItem('oauth_started_at');
               return;
             }
-            
+
             // Show welcome back message
             toast({
               title: t('success.welcomeBack'),
               description: t('success.welcomeBackDescription'),
             });
           }
-          
+
           // Handle free trial if needed
           if (intent === 'free_trial') {
             const { error: trialError } = await activateFreeTrial();
@@ -368,18 +345,18 @@ export default function Auth() {
               return;
             }
           }
-          
+
           // Navigate to dashboard
           // Clear OAuth flags
           localStorage.removeItem('oauth_flow');
           localStorage.removeItem('oauth_started_at');
-          
+
           if (intent !== 'free_trial') {
             navigate('/dashboard');
           } else {
             navigate('/');
           }
-          
+
           setProcessingOAuth(false);
         }
       } catch (error) {
@@ -413,16 +390,8 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate broker selection
-    if (!selectedBrokerId) {
-      toast({
-        title: t('errors.validationError'),
-        description: t('errors.selectBrokerError'),
-        variant: "destructive"
-      });
-      return;
-    }
+
+
 
     // Validate password confirmation
     if (password !== confirmPassword) {
@@ -445,17 +414,15 @@ export default function Auth() {
 
     setLoading(true);
 
-    const selectedBroker = activeBrokers.find((b: any) => b.id === selectedBrokerId);
     const redirectUrl = `${window.location.origin}/dashboard`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          broker_id: selectedBrokerId,
-          broker_name: selectedBroker?.name || null
+          full_name: fullName
         }
       }
     });
@@ -471,7 +438,7 @@ export default function Auth() {
         title: t('success.registrationSuccessful'),
         description: t('success.registrationSuccessfulDescription')
       });
-      
+
       // If intent is free_trial, activate it after successful signup
       if (intent === 'free_trial' && !error) {
         setTimeout(async () => {
@@ -493,14 +460,14 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setProcessingOAuth(true);
-    
+
     // Set OAuth flow flags
     localStorage.setItem('oauth_flow', 'signin');
     localStorage.setItem('oauth_started_at', Date.now().toString());
-    
+
     const redirectUrl = `${window.location.origin}/auth`;
     console.log('[Google Sign In] Starting OAuth redirect', { redirectTo: redirectUrl });
-    
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -511,7 +478,7 @@ export default function Auth() {
         }
       }
     });
-    
+
     if (error) {
       toast({
         title: t('errors.googleSignInError'),
@@ -526,36 +493,17 @@ export default function Auth() {
   };
 
   const handleGoogleSignUp = async () => {
-    // First, check if broker is selected
-    if (!selectedBrokerId) {
-      toast({
-        title: t('errors.brokerRequiredForGoogle'),
-        description: t('errors.brokerRequiredForGoogleDescription'),
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setGoogleLoading(true);
     setProcessingOAuth(true);
-    
+
     // Set OAuth flow flags
     localStorage.setItem('oauth_flow', 'signup');
     localStorage.setItem('oauth_started_at', Date.now().toString());
-    
-    const selectedBroker = activeBrokers.find((b: any) => b.id === selectedBrokerId);
+
     const redirectUrl = `${window.location.origin}/auth`;
-    
-    // ✅ FIX 3: Store broker in localStorage with timestamp for OAuth popup compatibility
-    const brokerData = {
-      brokerId: selectedBrokerId,
-      brokerName: selectedBroker?.name || '',
-      timestamp: Date.now()
-    };
-    localStorage.setItem('oauth_pending_broker', JSON.stringify(brokerData));
-    console.log('[Google Sign Up] Stored broker in localStorage:', brokerData);
+
     console.log('[Google Sign Up] Starting OAuth redirect', { redirectTo: redirectUrl });
-    
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -566,7 +514,7 @@ export default function Auth() {
         }
       }
     });
-    
+
     if (error) {
       toast({
         title: t('errors.googleSignUpError'),
@@ -577,8 +525,6 @@ export default function Auth() {
       setProcessingOAuth(false);
       localStorage.removeItem('oauth_flow');
       localStorage.removeItem('oauth_started_at');
-      // Clear stored broker info
-      localStorage.removeItem('oauth_pending_broker');
     }
   };
 
@@ -598,7 +544,7 @@ export default function Auth() {
         .select('is_deleted, deleted_at')
         .eq('user_id', data.user.id)
         .maybeSingle();
-      
+
       if (profile?.is_deleted) {
         // Offer reactivation instead of blocking
         console.log('[Email Auth] User is soft-deleted, offering reactivation');
@@ -637,7 +583,7 @@ export default function Auth() {
           return;
         }
       }
-      
+
       // Redirect to dashboard after successful sign-in
       navigate('/dashboard');
     }
@@ -750,309 +696,300 @@ export default function Auth() {
     <div className="min-h-screen bg-background">
       <PublicNavbar />
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
-      {processingOAuth && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <Card className="w-full max-w-sm">
-            <CardContent className="pt-6">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">{t('processingGoogleSignIn')}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Broker Picker Dialog for Google OAuth without broker */}
-      <Dialog open={showBrokerPicker} onOpenChange={setShowBrokerPicker}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('selectBroker')}</DialogTitle>
-            <DialogDescription>
-              {t('brokerRequired')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Select value={brokerChoice || ''} onValueChange={setBrokerChoice}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('brokerPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent className="z-50 bg-background">
-                {activeBrokers.map((broker: any) => (
-                  <SelectItem key={broker.id} value={broker.id}>
-                    {broker.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {activeBrokers.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                {t('brokerNotListed')}
-              </p>
-            )}
+        {processingOAuth && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <Card className="w-full max-w-sm">
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">{t('processingGoogleSignIn')}</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <DialogFooter>
-            <Button
-              onClick={handleBrokerPickerConfirm}
-              disabled={!brokerChoice || processingOAuth}
-              className="w-full"
-            >
-              {processingOAuth && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('createAccount')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      {/* Reactivation Dialog for soft-deleted users */}
-      <Dialog open={showReactivation} onOpenChange={setShowReactivation}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('reactivation.title')}</DialogTitle>
-            <DialogDescription>
-              {t('reactivation.description')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800">
-                Your request will be reviewed by our team within 24-48 hours. You'll receive an email notification with the decision.
-              </p>
+        {/* Broker Picker Dialog for Google OAuth without broker */}
+        <Dialog open={showBrokerPicker} onOpenChange={setShowBrokerPicker}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('selectBroker')}</DialogTitle>
+              <DialogDescription>
+                {t('brokerRequired')}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Select value={brokerChoice || ''} onValueChange={setBrokerChoice}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('brokerPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-background">
+                  {activeBrokers.map((broker: any) => (
+                    <SelectItem key={broker.id} value={broker.id}>
+                      {broker.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeBrokers.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {t('brokerNotListed')}
+                </p>
+              )}
             </div>
-          </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowReactivation(false);
-                setPendingReactivationUser(null);
-                supabase.auth.signOut();
-                navigate('/auth');
-              }}
-              disabled={loading}
-              className="w-full"
-            >
-              {t('reactivation.cancel')}
-            </Button>
-            <Button
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  const { data, error } = await supabase.functions.invoke('request-reactivation');
-                  
-                  if (error) throw error;
+            <DialogFooter>
+              <Button
+                onClick={handleBrokerPickerConfirm}
+                disabled={!brokerChoice || processingOAuth}
+                className="w-full"
+              >
+                {processingOAuth && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t('createAccount')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-                  toast({
-                    title: t('auth.reactivation.request_sent_title'),
-                    description: t('auth.reactivation.request_sent_description'),
-                  });
-
+        {/* Reactivation Dialog for soft-deleted users */}
+        <Dialog open={showReactivation} onOpenChange={setShowReactivation}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('reactivation.title')}</DialogTitle>
+              <DialogDescription>
+                {t('reactivation.description')}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  Your request will be reviewed by our team within 24-48 hours. You'll receive an email notification with the decision.
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={() => {
                   setShowReactivation(false);
                   setPendingReactivationUser(null);
-                  await supabase.auth.signOut();
+                  supabase.auth.signOut();
                   navigate('/auth');
-                } catch (error: any) {
-                  console.error('[Auth] Reactivation request error:', error);
-                  
-                  if (error.message?.includes('already have a pending')) {
+                }}
+                disabled={loading}
+                className="w-full"
+              >
+                {t('reactivation.cancel')}
+              </Button>
+              <Button
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke('request-reactivation');
+
+                    if (error) throw error;
+
                     toast({
-                      title: t('auth.reactivation.pending_request_title'),
-                      description: t('auth.reactivation.pending_request_description'),
+                      title: t('auth.reactivation.request_sent_title'),
+                      description: t('auth.reactivation.request_sent_description'),
                     });
-                  } else {
-                    toast({
-                      title: t('auth.reactivation.request_error_title'),
-                      description: t('auth.reactivation.request_error_description'),
-                      variant: "destructive",
-                    });
+
+                    setShowReactivation(false);
+                    setPendingReactivationUser(null);
+                    await supabase.auth.signOut();
+                    navigate('/auth');
+                  } catch (error: any) {
+                    console.error('[Auth] Reactivation request error:', error);
+
+                    if (error.message?.includes('already have a pending')) {
+                      toast({
+                        title: t('auth.reactivation.pending_request_title'),
+                        description: t('auth.reactivation.pending_request_description'),
+                      });
+                    } else {
+                      toast({
+                        title: t('auth.reactivation.request_error_title'),
+                        description: t('auth.reactivation.request_error_description'),
+                        variant: "destructive",
+                      });
+                    }
+                    await supabase.auth.signOut();
+                    navigate('/auth');
+                  } finally {
+                    setLoading(false);
                   }
-                  await supabase.auth.signOut();
-                  navigate('/auth');
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              disabled={loading}
+                }}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t('auth.reactivation.request_button')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
+        <Card className="w-full max-w-md bg-card border-white/10 shadow-glow-primary">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-1">
+              <img
+                src="/logo_v2.png"
+                alt="Alphalens"
+                className="h-24 w-auto"
+              />
+            </div>
+            <CardTitle className="text-2xl font-bold">{t('welcomeToAlphalens')}</CardTitle>
+            <CardDescription>
+              {t('connectToDashboard')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs
+              value={tabValue}
+              onValueChange={(v) => setTabValue(v as 'signin' | 'signup')}
               className="w-full"
             >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('auth.reactivation.request_button')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">{t('signIn')}</TabsTrigger>
+                <TabsTrigger value="signup">{t('signUp')}</TabsTrigger>
+              </TabsList>
 
+              <TabsContent value="signin">
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <GoogleAuthButton
+                    mode="signin"
+                    loading={googleLoading}
+                    onClick={handleGoogleSignIn}
+                  />
 
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img 
-              src={newLogo} 
-              alt="Alphalens" 
-              className="h-12 w-auto"
-            />
-          </div>
-          <CardTitle className="text-2xl font-bold">{t('welcomeToAlphalens')}</CardTitle>
-          <CardDescription>
-            {t('connectToDashboard')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs 
-            value={tabValue} 
-            onValueChange={(v) => setTabValue(v as 'signin' | 'signup')} 
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">{t('signIn')}</TabsTrigger>
-              <TabsTrigger value="signup">{t('signUp')}</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <GoogleAuthButton
-                  mode="signin"
-                  loading={googleLoading}
-                  onClick={handleGoogleSignIn}
-                />
-                
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        {t('orContinueWithEmail')}
+                      </span>
+                    </div>
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      {t('orContinueWithEmail')}
-                    </span>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-email">{t('email')}</Label>
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email">{t('email')}</Label>
-                  <Input
-                    id="signin-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password">{t('password')}</Label>
-                  <Input
-                    id="signin-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="stay-logged-in"
-                    checked={stayLoggedIn}
-                    onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
-                  />
-                  <Label htmlFor="stay-logged-in" className="text-sm text-muted-foreground cursor-pointer">
-                    {t('stayLoggedIn')}
-                  </Label>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {t('signIn')}
-                </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-broker">{t('selectBroker')} *</Label>
-                  <Select value={selectedBrokerId} onValueChange={setSelectedBrokerId} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('brokerPlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent className="z-50 bg-white">
-                      {activeBrokers.map((broker: any) => (
-                        <SelectItem key={broker.id} value={broker.id}>
-                          {broker.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {activeBrokers.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {t('brokerNotListed')}
-                    </p>
-                  )}
-                </div>
-                
-                <GoogleAuthButton
-                  mode="signup"
-                  loading={googleLoading}
-                  onClick={handleGoogleSignUp}
-                  disabled={!selectedBrokerId}
-                />
-                
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-password">{t('password')}</Label>
+                    <Input
+                      id="signin-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      {t('orSignupWithEmail')}
-                    </span>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="stay-logged-in"
+                      checked={stayLoggedIn}
+                      onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
+                    />
+                    <Label htmlFor="stay-logged-in" className="text-sm text-muted-foreground cursor-pointer">
+                      {t('stayLoggedIn')}
+                    </Label>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">{t('email')}</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('signIn')}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <GoogleAuthButton
+                    mode="signup"
+                    loading={googleLoading}
+                    onClick={handleGoogleSignUp}
+                    disabled={loading}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">{t('password')}</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-confirm-password">{t('confirmPassword')}</Label>
-                  <Input
-                    id="signup-confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className={passwordMatchError ? 'border-destructive' : ''}
-                  />
-                  {passwordMatchError && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <Loader2 className="h-3 w-3" />
-                      {passwordMatchError}
-                    </p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full" disabled={loading || !!passwordMatchError}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {t('signUp')}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        {t('orSignupWithEmail')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-fullname">Full Name</Label>
+                    <Input
+                      id="signup-fullname"
+                      type="text"
+                      placeholder="John Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">{t('email')}</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">{t('password')}</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirm-password">{t('confirmPassword')}</Label>
+                    <Input
+                      id="signup-confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className={passwordMatchError ? 'border-destructive' : ''}
+                    />
+                    {passwordMatchError && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <Loader2 className="h-3 w-3" />
+                        {passwordMatchError}
+                      </p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading || !!passwordMatchError}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('signUp')}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

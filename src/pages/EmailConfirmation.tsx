@@ -19,7 +19,7 @@ export default function EmailConfirmation() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserEmail(user.email || '');
-        
+
         // Check if email is already confirmed
         if (user.email_confirmed_at) {
           navigate('/dashboard');
@@ -47,9 +47,9 @@ export default function EmailConfirmation() {
 
   const handleResendConfirmation = async () => {
     if (!userEmail) return;
-    
+
     setLoading(true);
-    
+
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: userEmail,
@@ -80,49 +80,49 @@ export default function EmailConfirmation() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white p-4">
+      <Card className="w-full max-w-md bg-[#0a0a0a] border-white/10">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img 
-              src={alphalensLogo} 
-              alt="Alphalens" 
-              className="h-12 w-auto"
+          <div className="flex justify-center mb-1">
+            <img
+              src="/logo_v2.png"
+              alt="Alphalens"
+              className="h-24 w-auto"
             />
           </div>
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Mail className="h-8 w-8 text-blue-600" />
+          <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Mail className="h-8 w-8 text-blue-400" />
           </div>
-          <CardTitle className="text-xl">Confirm your email address</CardTitle>
+          <CardTitle className="text-xl text-white">Confirm your email address</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-4">
-          <p className="text-muted-foreground">
-            We've sent a confirmation email to <strong>{userEmail}</strong>. 
+          <p className="text-gray-400">
+            We've sent a confirmation email to <strong className="text-white">{userEmail}</strong>.
             Please click the link in that email to activate your account.
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
+          <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-3">
+            <p className="text-sm text-blue-300">
               💡 Also check your spam folder if you can't find the email.
             </p>
           </div>
-          
+
           <div className="space-y-2">
-            <Button 
-              onClick={handleResendConfirmation} 
+            <Button
+              onClick={handleResendConfirmation}
               disabled={loading}
-              variant="outline" 
-              className="w-full"
+              variant="outline"
+              className="w-full border-white/20 hover:bg-white/10 text-white"
             >
               {loading && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
               Resend confirmation email
             </Button>
-            
-            <Button variant="ghost" onClick={handleSignOut} className="w-full">
+
+            <Button variant="ghost" onClick={handleSignOut} className="w-full text-gray-400 hover:text-white hover:bg-white/5">
               Sign out
             </Button>
           </div>
-          
-          <div className="text-xs text-muted-foreground mt-4">
+
+          <div className="text-xs text-gray-500 mt-4">
             Once your email is confirmed, your account will be submitted for approval by our team.
           </div>
         </CardContent>

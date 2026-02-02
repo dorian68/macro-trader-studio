@@ -15,6 +15,7 @@ import { PersistentToast } from "@/components/PersistentToast";
 import { JobStatusCards } from "@/components/JobStatusCards";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CursorGlow } from "@/components/CursorGlow";
 import AdminGuard from "./components/AdminGuard";
 import AuthGuard from "./components/AuthGuard";
 
@@ -78,57 +79,58 @@ const App = () => {
               <AURAContextProvider>
                 <TooltipProvider>
                   <BrowserRouter>
-                  <ScrollToTop />
-                  <GlobalLoadingProvider>
-                    <PersistentNotificationProvider>
-                  <JobStatusCards />
-                  <PersistentToast />
-                  <Toaster />
-                  <Sonner />
-                  <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-96 w-full max-w-4xl" /></div>}>
-                    <Routes>
-                      <Route path="/" element={<Homepage />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/dashboard" element={<AuthGuard requireApproval><Dashboard /></AuthGuard>} />
-                      <Route path="/asset/:symbol" element={<AssetDetail />} />
-                      <Route path="/ai-setup" element={<AuthGuard requireApproval><AISetup /></AuthGuard>} />
-                      <Route path="/macro-analysis" element={<AuthGuard requireApproval><MacroAnalysis /></AuthGuard>} />
-                      <Route path="/reports" element={<AuthGuard requireApproval><Reports /></AuthGuard>} />
-                      <Route path="/portfolio" element={<Portfolio />} />
-                      <Route path="/history" element={<History />} />
-                      <Route path="/email-confirmation" element={<EmailConfirmation />} />
-                      <Route path="/email-confirmation-success" element={<EmailConfirmationSuccess />} />
-                      <Route path="/payment-success" element={<PaymentSuccess />} />
-                      <Route path="/payment-canceled" element={<PaymentCanceled />} />
-                      <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
-                      <Route path="/credits" element={<AuthGuard requireApproval><Credits /></AuthGuard>} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/features" element={<Features />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/pricing" element={<Pricing />} />
-                      <Route path="/privacy" element={<Privacy />} />
-                      <Route path="/terms" element={<Terms />} />
-                      <Route path="/documentation" element={<Documentation />} />
-                      <Route path="/help-center" element={<HelpCenter />} />
-                      <Route path="/api" element={<API />} />
-                      <Route path="/alphalens-labs" element={<AuthGuard requireApproval><AlphaLensLabs /></AuthGuard>} />
-                      <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
-                      <Route path="/labs/scenario-simulator" element={<ScenarioSimulator />} />
-                      <Route path="/labs/backtester" element={<Backtester />} />
-                      <Route path="/forecast-playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
-                      <Route path="/forecast-playground/tool" element={<AuthGuard requireApproval><ForecastPlaygroundTool /></AuthGuard>} />
-                      <Route path="/forecast-playground/macro-commentary" element={<AuthGuard requireApproval><ForecastMacroLab /></AuthGuard>} />
-                      <Route path="/forecast-playground/trade-generator" element={<AuthGuard requireApproval><ForecastTradeGenerator /></AuthGuard>} />
-                      <Route path="/coming-soon" element={<ComingSoon />} />
-                      <Route path="/product" element={<ProductPresentation />} />
-                      <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Suspense>
-                    </PersistentNotificationProvider>
-                  </GlobalLoadingProvider>
-                </BrowserRouter>
-              </TooltipProvider>
+                    <ScrollToTop />
+                    <CursorGlow />
+                    <GlobalLoadingProvider>
+                      <PersistentNotificationProvider>
+                        <JobStatusCards />
+                        <PersistentToast />
+                        <Toaster />
+                        <Sonner />
+                        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-96 w-full max-w-4xl" /></div>}>
+                          <Routes>
+                            <Route path="/" element={<Homepage />} />
+                            <Route path="/auth" element={<Auth />} />
+                            <Route path="/dashboard" element={<AuthGuard requireApproval><Dashboard /></AuthGuard>} />
+                            <Route path="/asset/:symbol" element={<AssetDetail />} />
+                            <Route path="/ai-setup" element={<AuthGuard requireApproval><AISetup /></AuthGuard>} />
+                            <Route path="/macro-analysis" element={<AuthGuard requireApproval><MacroAnalysis /></AuthGuard>} />
+                            <Route path="/reports" element={<AuthGuard requireApproval><Reports /></AuthGuard>} />
+                            <Route path="/portfolio" element={<Portfolio />} />
+                            <Route path="/history" element={<History />} />
+                            <Route path="/email-confirmation" element={<EmailConfirmation />} />
+                            <Route path="/email-confirmation-success" element={<EmailConfirmationSuccess />} />
+                            <Route path="/payment-success" element={<PaymentSuccess />} />
+                            <Route path="/payment-canceled" element={<PaymentCanceled />} />
+                            <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
+                            <Route path="/credits" element={<AuthGuard requireApproval><Credits /></AuthGuard>} />
+                            <Route path="/about" element={<About />} />
+                            <Route path="/features" element={<Features />} />
+                            <Route path="/contact" element={<Contact />} />
+                            <Route path="/pricing" element={<Pricing />} />
+                            <Route path="/privacy" element={<Privacy />} />
+                            <Route path="/terms" element={<Terms />} />
+                            <Route path="/documentation" element={<Documentation />} />
+                            <Route path="/help-center" element={<HelpCenter />} />
+                            <Route path="/api" element={<API />} />
+                            <Route path="/alphalens-labs" element={<AuthGuard requireApproval><AlphaLensLabs /></AuthGuard>} />
+                            <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
+                            <Route path="/labs/scenario-simulator" element={<ScenarioSimulator />} />
+                            <Route path="/labs/backtester" element={<Backtester />} />
+                            <Route path="/forecast-playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
+                            <Route path="/forecast-playground/tool" element={<AuthGuard requireApproval><ForecastPlaygroundTool /></AuthGuard>} />
+                            <Route path="/forecast-playground/macro-commentary" element={<AuthGuard requireApproval><ForecastMacroLab /></AuthGuard>} />
+                            <Route path="/forecast-playground/trade-generator" element={<AuthGuard requireApproval><ForecastTradeGenerator /></AuthGuard>} />
+                            <Route path="/coming-soon" element={<ComingSoon />} />
+                            <Route path="/product" element={<ProductPresentation />} />
+                            <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </Suspense>
+                      </PersistentNotificationProvider>
+                    </GlobalLoadingProvider>
+                  </BrowserRouter>
+                </TooltipProvider>
               </AURAContextProvider>
             </LanguageProvider>
           </SessionManagerProvider>

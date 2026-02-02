@@ -26,7 +26,7 @@ interface JobStatusCardProps {
 
 const JOB_TYPE_LABELS = {
   ai_setup: 'AI Trade Setup',
-  macro_commentary: 'Macro Commentary', 
+  macro_commentary: 'Macro Commentary',
   report: 'Report Generation'
 };
 
@@ -89,23 +89,23 @@ export function JobStatusCard({ jobs, onViewResult, onDismiss, className }: JobS
                   {getStatusText(currentJob.status)}
                 </Badge>
               </div>
-              
+
               <h4 className="font-medium text-sm mb-1 truncate">
                 {currentJob.title}
               </h4>
-              
+
               <p className="text-xs text-muted-foreground">
-                {currentJob.status === 'completed' 
-                  ? 'Click to view result' 
+                {currentJob.status === 'completed'
+                  ? 'Click to view result'
                   : currentJob.status === 'failed'
-                  ? currentJob.error || 'Processing failed'
-                  : 'Processing your request...'}
+                    ? currentJob.error || 'Processing failed'
+                    : 'Processing your request...'}
               </p>
 
               {(currentJob.status === 'running' || currentJob.status === 'pending') && (
                 <div className="mt-2">
-                  <Progress 
-                    value={currentJob.progress || 10} 
+                  <Progress
+                    value={currentJob.progress || 10}
                     className="h-2"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -117,9 +117,8 @@ export function JobStatusCard({ jobs, onViewResult, onDismiss, className }: JobS
               {currentJob.status === 'completed' && (
                 <Button
                   size="sm"
-                  variant="outline"
                   onClick={() => onViewResult?.(currentJob)}
-                  className="mt-2 h-7 text-xs flex items-center gap-1 w-full sm:w-auto"
+                  className="mt-2 h-7 text-xs flex items-center gap-1 w-full sm:w-auto bg-black text-white hover:bg-accent hover:text-white border-0 transition-colors"
                 >
                   <Eye className="h-3 w-3" />
                   <span className="truncate">View Result</span>

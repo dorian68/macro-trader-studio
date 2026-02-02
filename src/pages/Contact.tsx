@@ -71,149 +71,149 @@ export default function Contact() {
     }));
   };
   return <div className="min-h-screen bg-background">
-      <PublicNavbar />
+    <PublicNavbar />
 
-      {/* Hero Section */}
-      <section className="py-20 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
-        <div className="container mx-auto max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            {t('hero.title')}
-            <span className="text-primary"> {t('hero.titleHighlight')}</span>
-          </h1>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            {t('hero.subtitle')}
-          </p>
-        </div>
-      </section>
+    {/* Hero Section */}
+    <section className="pt-10 pb-8 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
+      <div className="container mx-auto max-w-4xl">
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+          {t('hero.title')}
+          <span className="text-primary"> {t('hero.titleHighlight')}</span>
+        </h1>
+        <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+          {t('hero.subtitle')}
+        </p>
+      </div>
+    </section>
 
-      {/* Main Content */}
-      <section className="py-16 px-4 bg-background">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid lg:grid-cols-2 gap-12">
-            {/* Contact Form */}
+    {/* Main Content */}
+    <section className="py-8 px-4 bg-background">
+      <div className="container mx-auto max-w-6xl">
+        <div className="grid lg:grid-cols-2 gap-12">
+          {/* Contact Form */}
+          <Card className="p-6 border-border">
+            <CardHeader>
+              <CardTitle className="text-2xl text-foreground mb-2">{t('form.title')}</CardTitle>
+              <p className="text-muted-foreground">
+                {t('form.description')}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">{t('form.name')} {t('form.requiredFields')}</Label>
+                    <Input id="name" type="text" value={formData.name} onChange={e => handleInputChange("name", e.target.value)} placeholder={t('form.namePlaceholder')} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{t('form.email')} {t('form.requiredFields')}</Label>
+                    <Input id="email" type="email" value={formData.email} onChange={e => handleInputChange("email", e.target.value)} placeholder={t('form.emailPlaceholder')} required />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="company">{t('form.company')}</Label>
+                  <Input id="company" type="text" value={formData.company} onChange={e => handleInputChange("company", e.target.value)} placeholder={t('form.companyPlaceholder')} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="message">{t('form.message')} {t('form.requiredFields')}</Label>
+                  <Textarea id="message" value={formData.message} onChange={e => handleInputChange("message", e.target.value)} placeholder={t('form.messagePlaceholder')} rows={5} required />
+                </div>
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? <>
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                    {t('form.sendingButton')}
+                  </> : <>
+                    <Send className="w-4 h-4 mr-2" />
+                    {t('form.sendButton')}
+                  </>}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Contact Information */}
+          <div className="space-y-8">
             <Card className="p-6 border-border">
               <CardHeader>
-                <CardTitle className="text-2xl text-foreground mb-2">{t('form.title')}</CardTitle>
-                <p className="text-muted-foreground">
-                  {t('form.description')}
-                </p>
+                <CardTitle className="text-xl text-foreground">{t('info.title')}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">{t('form.name')} {t('form.requiredFields')}</Label>
-                      <Input id="name" type="text" value={formData.name} onChange={e => handleInputChange("name", e.target.value)} placeholder={t('form.namePlaceholder')} required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">{t('form.email')} {t('form.requiredFields')}</Label>
-                      <Input id="email" type="email" value={formData.email} onChange={e => handleInputChange("email", e.target.value)} placeholder={t('form.emailPlaceholder')} required />
-                    </div>
+              <CardContent className="space-y-6">
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-5 h-5 text-primary" />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="company">{t('form.company')}</Label>
-                    <Input id="company" type="text" value={formData.company} onChange={e => handleInputChange("company", e.target.value)} placeholder={t('form.companyPlaceholder')} />
+                  <div>
+                    <h3 className="font-semibold text-foreground">{t('info.email')}</h3>
+                    <p className="text-muted-foreground">{t('info.emailValue')}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t('info.emailNote')}
+                    </p>
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="message">{t('form.message')} {t('form.requiredFields')}</Label>
-                    <Textarea id="message" value={formData.message} onChange={e => handleInputChange("message", e.target.value)} placeholder={t('form.messagePlaceholder')} rows={5} required />
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-5 h-5 text-primary" />
                   </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{t('info.phone')}</h3>
+                    <p className="text-muted-foreground">{t('info.phoneValue')}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t('info.phoneNote')}
+                    </p>
+                  </div>
+                </div>
 
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? <>
-                        <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
-                        {t('form.sendingButton')}
-                      </> : <>
-                        <Send className="w-4 h-4 mr-2" />
-                        {t('form.sendButton')}
-                      </>}
-                  </Button>
-                </form>
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{t('info.office')}</h3>
+                    <p className="text-muted-foreground">{t('info.officeAddress')}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t('info.officeNote')}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Contact Information */}
-            <div className="space-y-8">
-              <Card className="p-6 border-border">
-                <CardHeader>
-                  <CardTitle className="text-xl text-foreground">{t('info.title')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{t('info.email')}</h3>
-                      <p className="text-muted-foreground">{t('info.emailValue')}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {t('info.emailNote')}
-                      </p>
-                    </div>
-                  </div>
+            <Card className="p-6 border-border">
+              <CardHeader>
+                <CardTitle className="text-xl text-foreground">{t('expect.title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-foreground">{t('expect.demo')}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {t('expect.demoDescription')}
+                  </p>
+                </div>
 
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{t('info.phone')}</h3>
-                      <p className="text-muted-foreground">{t('info.phoneValue')}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {t('info.phoneNote')}
-                      </p>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-foreground">{t('expect.inquiries')}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {t('expect.inquiriesDescription')}
+                  </p>
+                </div>
 
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{t('info.office')}</h3>
-                      <p className="text-muted-foreground">{t('info.officeAddress')}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {t('info.officeNote')}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="p-6 border-border">
-                <CardHeader>
-                  <CardTitle className="text-xl text-foreground">{t('expect.title')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-foreground">{t('expect.demo')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {t('expect.demoDescription')}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-foreground">{t('expect.inquiries')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {t('expect.inquiriesDescription')}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-foreground">{t('expect.partnership')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {t('expect.partnershipDescription')}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-foreground">{t('expect.partnership')}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {t('expect.partnershipDescription')}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <Footer />
-    </div>;
+    <Footer />
+  </div>;
 }

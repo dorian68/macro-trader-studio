@@ -164,169 +164,169 @@ const Pricing = () => {
     return checkoutLoading === planName.toLowerCase();
   };
   return <>
-      <PublicNavbar />
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-16">
-          {/* Header */}
-          <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              {t('hero.title')}
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              {t('hero.subtitle')}
+    <PublicNavbar />
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            {t('hero.title')}
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            {t('hero.subtitle')}
+          </p>
+        </div>
+
+        {/* B2C Plans Section */}
+        <div className="mb-12">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">
+              {t('b2c.title')}
+            </h2>
+            <p className="text-base text-muted-foreground">
+              {t('b2c.subtitle')}
             </p>
           </div>
 
-          {/* B2B Model Section */}
-          <div className="mb-20">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-semibold text-foreground mb-4">
-                {t('b2b.title')}
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                {t('b2b.subtitle')}
-              </p>
-            </div>
-            
-            <Card className="max-w-4xl mx-auto border-primary/20">
-              <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl">{t('b2b.cardTitle')}</CardTitle>
-                <CardDescription className="text-lg mt-2">
-                  {t('b2b.cardDescription')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-8 bg-gradient-to-br from-background via-muted/5 to-background">
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-xl p-6 border border-primary/20 backdrop-blur-sm">
-                    <h4 className="font-semibold text-xl mb-4 text-foreground flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary"></div>
-                      {t('b2b.benefits.title')}
-                    </h4>
-                    <ul className="space-y-3">
-                      <li className="flex items-center gap-3 text-muted-foreground">
+          {loading ? <div className="flex justify-center py-8">
+            <div className="text-muted-foreground">{t('b2c.loading')}</div>
+          </div> : <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {b2cPlans.map(plan => <div key={plan.name} className="relative flex">
+              {plan.highlight && <Badge variant="default" className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs whitespace-nowrap z-20 shadow-lg" aria-label={t('b2c.mostComplete')}>
+                {t('b2c.mostComplete')}
+              </Badge>}
+              <Card className={`${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'} flex flex-col h-full w-full`}>
+                <CardHeader className={`text-center ${plan.highlight ? 'pb-4 pt-2' : 'pb-4'}`}>
+                  <CardTitle className="text-xl">{plan.name}</CardTitle>
+                  <div className="mt-2">
+                    <span className="text-3xl font-bold text-foreground">{plan.price === 'Unavailable' ? t('b2c.unavailable') : plan.price}</span>
+                    {plan.price !== 'Unavailable' && <span className="text-muted-foreground text-sm">{t('b2c.perMonth')}</span>}
+                  </div>
+                  <CardDescription className="mt-1 text-sm">
+                    {plan.description}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-4 flex-1 flex flex-col">
+                  <div>
+                    <h4 className="font-semibold mb-2 text-sm">{t('b2c.features')}</h4>
+                    <ul className="space-y-1">
+                      {plan.features.map((feature, index) => <li key={index} className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                        <span>{t('b2b.benefits.whiteLabel')}</span>
-                      </li>
-                      <li className="flex items-center gap-3 text-muted-foreground">
-                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                        <span>{t('b2b.benefits.revenueShare')}</span>
-                      </li>
-                      <li className="flex items-center gap-3 text-muted-foreground">
-                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                        <span>{t('b2b.benefits.support')}</span>
-                      </li>
-                      <li className="flex items-center gap-3 text-muted-foreground">
-                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                        <span>{t('b2b.benefits.branding')}</span>
-                      </li>
+                        <span className="text-xs">{feature}</span>
+                      </li>)}
                     </ul>
                   </div>
-                  <div className="bg-gradient-to-br from-accent/10 via-accent/5 to-transparent rounded-xl p-6 border border-accent/20 backdrop-blur-sm">
-                    <h4 className="font-semibold text-xl mb-4 text-foreground flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-accent"></div>
-                      {t('b2b.revenueModel.title')}
-                    </h4>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('b2b.revenueModel.description')}
-                    </p>
-                    <div className="mt-4 pt-4 border-t border-accent/20">
-                      <p className="text-sm font-medium text-foreground">
-                        {t('b2b.revenueModel.valueCreation')}
-                      </p>
-                    </div>
+
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-2 text-sm">{t('b2c.usageLimits')}</h4>
+                    <ul className="space-y-1">
+                      {plan.usage.map((usage, index) => <li key={index} className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span className="text-xs">{usage}</span>
+                      </li>)}
+                    </ul>
                   </div>
-                </div>
-                
-                <div className="pt-4 border-t border-border">
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {t('b2b.footer')}
-                  </p>
-                  <Button size="lg" className="w-full md:w-auto" onClick={() => handleCTAClick('B2B Contact Sales')}>
-                    {t('b2b.contactSales')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* B2C Plans Section */}
-          <div>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-semibold text-foreground mb-4">
-                {t('b2c.title')}
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                {t('b2c.subtitle')}
-              </p>
-            </div>
+                  <div className="space-y-2 mt-auto">
+                    <Button
+                      className="w-full h-9 text-sm"
+                      variant={plan.highlight ? "default" : "outline"}
+                      onClick={() => handleCTAClick(plan.name)}
+                      disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}
+                    >
+                      {isCheckoutLoading(plan.name) ? t('b2c.processing') : user ? t('b2c.getStarted') : <><LogIn className="mr-2 h-4 w-4" />{t('b2c.signInToPurchase')}</>}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>)}
+          </div>}
+        </div>
 
-            {loading ? <div className="flex justify-center py-8">
-                <div className="text-muted-foreground">{t('b2c.loading')}</div>
-              </div> : <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                {b2cPlans.map(plan => <div key={plan.name} className="relative flex">
-                    {plan.highlight && <Badge variant="default" className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs whitespace-nowrap z-20 shadow-lg" aria-label={t('b2c.mostComplete')}>
-                        {t('b2c.mostComplete')}
-                      </Badge>}
-                    <Card className={`${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'} flex flex-col h-full w-full`}>
-                  <CardHeader className={`text-center ${plan.highlight ? 'pb-6 pt-2' : 'pb-6'}`}>
-                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                    <div className="mt-4">
-                      <span className="text-4xl font-bold text-foreground">{plan.price === 'Unavailable' ? t('b2c.unavailable') : plan.price}</span>
-                      {plan.price !== 'Unavailable' && <span className="text-muted-foreground">{t('b2c.perMonth')}</span>}
-                    </div>
-                    <CardDescription className="mt-2">
-                      {plan.description}
-                    </CardDescription>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-6 flex-1 flex flex-col">
-                    <div>
-                      <h4 className="font-semibold mb-3">{t('b2c.features')}</h4>
-                      <ul className="space-y-2">
-                        {plan.features.map((feature, index) => <li key={index} className="flex items-center gap-3">
-                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                            <span className="text-sm">{feature}</span>
-                          </li>)}
-                      </ul>
-                    </div>
-                    
-                    <div className="flex-1">
-                      <h4 className="font-semibold mb-3">{t('b2c.usageLimits')}</h4>
-                      <ul className="space-y-2">
-                        {plan.usage.map((usage, index) => <li key={index} className="flex items-center gap-3">
-                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                            <span className="text-sm">{usage}</span>
-                          </li>)}
-                      </ul>
-                    </div>
-                    
-                     <div className="space-y-3 mt-auto">
-                       <Button 
-                         className="w-full" 
-                         variant={plan.highlight ? "default" : "outline"} 
-                         onClick={() => handleCTAClick(plan.name)} 
-                         disabled={isCheckoutLoading(plan.name) || plan.price === 'Unavailable'}
-                       >
-                         {isCheckoutLoading(plan.name) ? t('b2c.processing') : user ? t('b2c.getStarted') : <><LogIn className="mr-2 h-4 w-4" />{t('b2c.signInToPurchase')}</>}
-                       </Button>
-                     </div>
-                   </CardContent>
-                 </Card>
-                    </div>)}
-              </div>}
-          </div>
-
-
-          {/* Footer Note */}
-          <div className="text-center mt-16 max-w-2xl mx-auto">
-            <p className="text-sm text-muted-foreground">
-              {t('footer')}
+        {/* B2B Model Section */}
+        <div className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-semibold text-foreground mb-4">
+              {t('b2b.title')}
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              {t('b2b.subtitle')}
             </p>
           </div>
+
+          <Card className="max-w-4xl mx-auto border-primary/20">
+            <CardHeader className="text-center pb-8">
+              <CardTitle className="text-2xl">{t('b2b.cardTitle')}</CardTitle>
+              <CardDescription className="text-lg mt-2">
+                {t('b2b.cardDescription')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8 bg-gradient-to-br from-background via-muted/5 to-background">
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-xl p-6 border border-primary/20 backdrop-blur-sm">
+                  <h4 className="font-semibold text-xl mb-4 text-foreground flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary"></div>
+                    {t('b2b.benefits.title')}
+                  </h4>
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-3 text-muted-foreground">
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>{t('b2b.benefits.whiteLabel')}</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-muted-foreground">
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>{t('b2b.benefits.revenueShare')}</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-muted-foreground">
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>{t('b2b.benefits.support')}</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-muted-foreground">
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>{t('b2b.benefits.branding')}</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="bg-gradient-to-br from-accent/10 via-accent/5 to-transparent rounded-xl p-6 border border-accent/20 backdrop-blur-sm">
+                  <h4 className="font-semibold text-xl mb-4 text-foreground flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-accent"></div>
+                    {t('b2b.revenueModel.title')}
+                  </h4>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {t('b2b.revenueModel.description')}
+                  </p>
+                  <div className="mt-4 pt-4 border-t border-accent/20">
+                    <p className="text-sm font-medium text-foreground">
+                      {t('b2b.revenueModel.valueCreation')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground mb-6">
+                  {t('b2b.footer')}
+                </p>
+                <Button size="lg" className="w-full md:w-auto" onClick={() => handleCTAClick('B2B Contact Sales')}>
+                  {t('b2b.contactSales')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+
+        {/* Footer Note */}
+        <div className="text-center mt-16 max-w-2xl mx-auto">
+          <p className="text-sm text-muted-foreground">
+            {t('footer')}
+          </p>
         </div>
       </div>
+    </div>
 
-      <Footer />
-    </>;
+    <Footer />
+  </>;
 };
 export default Pricing;

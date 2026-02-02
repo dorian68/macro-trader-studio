@@ -31,7 +31,7 @@ export default function PublicNavbar() {
   };
 
   return (
-    <header className="border-b border-border bg-white sticky top-0 z-50 shadow-sm">
+    <header className="border-b border-white/5 bg-background sticky top-0 z-50 shadow-sm">
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         {/* Logo - Mobile optimized */}
         <div className="flex items-center gap-2">
@@ -40,17 +40,11 @@ export default function PublicNavbar() {
             onClick={() => navigate('/')}
             className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group min-w-0"
           >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200 shrink-0 p-1">
-              <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
-            </div>
-            <div className="hidden xs:block min-w-0">
-              <img 
-                src="/lovable-uploads/Only_text_white_BG_FINAL.png" 
-                alt="alphaLens.ai" 
-                className="h-[1.66rem] sm:h-8 w-auto"
-              />
-              <p className="text-xs text-muted-foreground hidden sm:block">AI Trading Intelligence</p>
-            </div>
+            <img
+              src="/header_logo.png"
+              alt="alphaLens.ai"
+              className="h-10 sm:h-14 w-auto object-contain"
+            />
           </button>
 
           {/* Mobile hamburger menu */}
@@ -61,9 +55,9 @@ export default function PublicNavbar() {
                   {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48 bg-white">
+              <DropdownMenuContent align="start" className="w-48">
                 {navigationItems.map((item) => (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     key={item.name}
                     onClick={() => handleNavigation(item.path)}
                     className="cursor-pointer"
@@ -75,16 +69,16 @@ export default function PublicNavbar() {
             </DropdownMenu>
           </div>
         </div>
-        
+
         {/* Navigation - Desktop */}
         <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
           {/* Desktop navigation items */}
           <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {navigationItems.map((item) => (
-              <Button 
+              <Button
                 key={item.name}
-                variant="ghost" 
-                onClick={() => navigate(item.path)} 
+                variant="ghost"
+                onClick={() => navigate(item.path)}
                 className="text-sm px-2 lg:px-4 min-h-[44px]"
               >
                 {item.name}

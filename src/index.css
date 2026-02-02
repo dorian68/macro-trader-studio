@@ -7,133 +7,138 @@
 
 @layer base {
   :root {
-    /* AlphaLens Professional Light Theme */
-    --background: 0 0% 99%; /* #fcfcfc */
-    --background-secondary: 0 0% 96%;
-    --background-tertiary: 0 0% 93%;
-    --foreground: 208 100% 14%; /* RGB(0, 39, 73) - Bleu exact du logo */
+    /* Glossy Black Theme */
+    --background: 0 0% 4%;
+    /* #0a0a0a - Glossy Black Base */
+    --background-secondary: 0 0% 8%;
+    --background-tertiary: 0 0% 12%;
+    --foreground: 0 0% 100%;
+    /* Pure White Text */
 
-    --card: 0 0% 100%;
-    --card-secondary: 0 0% 98%;
-    --card-foreground: 208 100% 14%; /* RGB(0, 39, 73) */
+    --card: 0 0% 5%;
+    --card-secondary: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 208 100% 14%; /* RGB(0, 39, 73) */
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
 
-    /* AlphaLens Theme Colors */
-    --primary: 208 100% 14%; /* RGB(0, 39, 73) - Bleu exact du logo */
-    --primary-dark: 208 100% 10%; /* Version plus foncée */
-    --primary-light: 208 100% 20%; /* Version plus claire */
-    --primary-foreground: 0 0% 99%; /* #fcfcfc */
+    /* AlphaLens Theme Colors - Updated for Dark Mode */
+    --primary: 0 0% 100%;
+    --primary-dark: 0 0% 90%;
+    --primary-light: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
 
-    --success: 142 78% 55%; /* Conservé pour P&L */
+    --success: 142 78% 55%;
     --success-dark: 142 78% 45%;
     --success-light: 142 78% 65%;
-    --success-foreground: 0 0% 99%;
+    --success-foreground: 0 0% 100%;
 
-    --danger: 0 78% 60%; /* Conservé pour P&L */
+    --danger: 0 78% 60%;
     --danger-dark: 0 78% 50%;
     --danger-light: 0 78% 70%;
-    --danger-foreground: 0 0% 99%;
+    --danger-foreground: 0 0% 100%;
 
-    --warning: 17 88% 58%; /* #ed6839 - Orange secondaire */
+    --warning: 17 88% 58%;
+    /* #ed6839 - Orange maintained */
     --warning-dark: 17 88% 48%;
     --warning-light: 17 88% 68%;
-    --warning-foreground: 0 0% 99%;
+    --warning-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 33%; /* #545454 - Gris foncé */
-    --secondary-foreground: 0 0% 99%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 33%; /* #545454 - Texte secondaire */
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 17 88% 58%; /* #ed6839 - Orange pour accents */
-    --accent-foreground: 0 0% 99%;
+    --accent: 17 88% 58%;
+    /* #ed6839 */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 78% 60%;
-    --destructive-foreground: 0 0% 99%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --border-light: 0 0% 93%;
-    --input: 0 0% 96%;
-    --ring: 208 100% 14%; /* RGB(0, 39, 73) */
+    --border: 0 0% 20%;
+    --border-light: 0 0% 25%;
+    --input: 0 0% 15%;
+    --ring: 17 88% 58%;
+    /* Orange Ring */
 
     --radius: 0.75rem;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-dark)) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card-secondary)) 100%);
     --gradient-success: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(var(--success-dark)) 100%);
     --gradient-danger: linear-gradient(135deg, hsl(var(--danger)) 0%, hsl(var(--danger-dark)) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card-secondary)) 100%);
-    --gradient-bg: hsl(var(--background)); /* Fond uni blanc */
+    --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    --gradient-bg: hsl(var(--background));
 
     /* Shadows */
-    --shadow-soft: 0 4px 20px hsl(0 0% 0% / 0.08);
-    --shadow-medium: 0 8px 30px hsl(0 0% 0% / 0.12);
-    --shadow-strong: 0 12px 40px hsl(0 0% 0% / 0.15);
-    --shadow-glow-primary: 0 0 30px hsl(var(--primary) / 0.2);
+    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.5);
+    --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.6);
+    --shadow-strong: 0 12px 40px rgba(0, 0, 0, 0.8);
+    --shadow-glow-primary: 0 0 30px rgba(255, 255, 255, 0.1);
     --shadow-glow-success: 0 0 30px hsl(var(--success) / 0.2);
 
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-fast: all 0.15s ease-out;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 5%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 0 0% 90%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 17 88% 58%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 100%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 0 0% 15%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 0 0% 20%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 17 88% 58%;
   }
 
   .dark {
-    /* AlphaLens Light Theme maintenu pour le mode dark */
-    --background: 0 0% 99%; /* #fcfcfc */
-    --foreground: 208 100% 14%; /* RGB(0, 39, 73) */
+    /* Keeping consistent with main theme since user wants dark mode only really */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 208 100% 14%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 208 100% 14%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 208 100% 14%; /* RGB(0, 39, 73) */
-    --primary-foreground: 0 0% 99%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 0 0% 33%; /* #545454 */
-    --secondary-foreground: 0 0% 99%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 33%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 17 88% 58%; /* #ed6839 */
-    --accent-foreground: 0 0% 99%;
+    --accent: 17 88% 58%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 78% 60%;
-    --destructive-foreground: 0 0% 99%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 96%;
-    --ring: 208 100% 14%;
-    
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 17 88% 58%;
+
     /* Sidebar */
-    --sidebar-background: 0 0% 99%;
-    --sidebar-foreground: 208 100% 14%;
-    --sidebar-primary: 208 100% 14%;
-    --sidebar-primary-foreground: 0 0% 99%;
-    --sidebar-accent: 17 88% 58%;
-    --sidebar-accent-foreground: 0 0% 99%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 208 100% 14%;
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 17 88% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 17 88% 58%;
   }
 
   /* Mobile optimizations */
@@ -141,7 +146,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -176,15 +181,25 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: hsl(var(--background)); /* Fond blanc uni AlphaLens */
+    background: #0a0a0a;
+    /* Glossy Black Base */
+    color: #ffffff;
     line-height: 1.6;
     -webkit-text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    min-height: 100vh;
+    box-shadow: inset 0 0 150px rgba(255, 255, 255, 0.08);
+    /* Mirror/Shady Edge Effect */
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold tracking-tight;
   }
 
@@ -193,24 +208,31 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
 
   /* Better tap targets for mobile */
   @media (hover: none) and (pointer: coarse) {
-    button, [role="button"], input[type="button"], input[type="submit"], .clickable {
+
+    button,
+    [role="button"],
+    input[type="button"],
+    input[type="submit"],
+    .clickable {
       min-height: 44px;
       min-width: 44px;
     }
-    
+
     /* Remove hover effects on touch devices */
     .hover\:scale-110:hover {
       transform: none;
     }
-    
+
     /* Better touch feedback */
-    button:active, [role="button"]:active {
+    button:active,
+    [role="button"]:active {
       transform: scale(0.95);
       transition: transform 0.1s ease;
     }
@@ -218,13 +240,30 @@
 
   /* Enhanced mobile breakpoints */
   @media (max-width: 374px) {
-    .xs\:block { display: block; }
-    .xs\:hidden { display: none; }
-    .xs\:h-\[320px\] { height: 320px; }
-    .xs\:text-sm { font-size: 0.875rem; }
-    .xs\:p-2 { padding: 0.5rem; }
-    .xs\:gap-2 { gap: 0.5rem; }
-    
+    .xs\:block {
+      display: block;
+    }
+
+    .xs\:hidden {
+      display: none;
+    }
+
+    .xs\:h-\[320px\] {
+      height: 320px;
+    }
+
+    .xs\:text-sm {
+      font-size: 0.875rem;
+    }
+
+    .xs\:p-2 {
+      padding: 0.5rem;
+    }
+
+    .xs\:gap-2 {
+      gap: 0.5rem;
+    }
+
     /* Compact spacing for very small screens */
     .mobile-compact {
       font-size: 0.8125rem;
@@ -234,21 +273,51 @@
 
   /* Mobile typography and spacing optimizations */
   @media (max-width: 768px) {
-    html { font-size: 16px; }
-    
-    .mobile-title { font-size: 1.5rem; line-height: 1.4; }
-    .mobile-subtitle { font-size: 1.125rem; line-height: 1.4; }
-    .mobile-body { font-size: 0.875rem; line-height: 1.5; }
-    .mobile-caption { font-size: 0.75rem; line-height: 1.4; }
-    
+    html {
+      font-size: 16px;
+    }
+
+    .mobile-title {
+      font-size: 1.5rem;
+      line-height: 1.4;
+    }
+
+    .mobile-subtitle {
+      font-size: 1.125rem;
+      line-height: 1.4;
+    }
+
+    .mobile-body {
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .mobile-caption {
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
     /* Better mobile spacing */
-    .mobile-spacing { padding: 1rem; }
-    .mobile-spacing-sm { padding: 0.75rem; }
-    .mobile-spacing-xs { padding: 0.5rem; }
-    
+    .mobile-spacing {
+      padding: 1rem;
+    }
+
+    .mobile-spacing-sm {
+      padding: 0.75rem;
+    }
+
+    .mobile-spacing-xs {
+      padding: 0.5rem;
+    }
+
     /* Mobile-friendly gaps */
-    .mobile-gap { gap: 0.75rem; }
-    .mobile-gap-sm { gap: 0.5rem; }
+    .mobile-gap {
+      gap: 0.75rem;
+    }
+
+    .mobile-gap-sm {
+      gap: 0.5rem;
+    }
   }
 
   /* Enhanced mobile interactions */
@@ -259,10 +328,21 @@
 
   /* Safe area support for devices with notches */
   @supports (padding: env(safe-area-inset-top)) {
-    .safe-top { padding-top: env(safe-area-inset-top); }
-    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-    .safe-left { padding-left: env(safe-area-inset-left); }
-    .safe-right { padding-right: env(safe-area-inset-right); }
+    .safe-top {
+      padding-top: env(safe-area-inset-top);
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .safe-left {
+      padding-left: env(safe-area-inset-left);
+    }
+
+    .safe-right {
+      padding-right: env(safe-area-inset-right);
+    }
   }
 
   /* Mobile-optimized animations */
@@ -270,15 +350,16 @@
     .mobile-fade-in {
       animation: mobileSlideUp 0.3s ease-out;
     }
-    
+
     @keyframes mobileSlideUp {
-      from { 
-        opacity: 0; 
-        transform: translateY(16px); 
+      from {
+        opacity: 0;
+        transform: translateY(16px);
       }
-      to { 
-        opacity: 1; 
-        transform: translateY(0); 
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
     }
 
@@ -287,6 +368,7 @@
         opacity: 0;
         transform: translateX(100%);
       }
+
       to {
         opacity: 1;
         transform: translateX(0);
@@ -300,7 +382,10 @@
 
   /* Accessibility: reduce motion when requested */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -313,78 +398,81 @@
   .gradient-primary {
     background: var(--gradient-primary);
   }
-  
+
   .gradient-success {
     background: var(--gradient-success);
   }
-  
+
   .gradient-danger {
     background: var(--gradient-danger);
   }
-  
+
   .gradient-card {
     background: var(--gradient-card);
   }
-  
+
   .shadow-soft {
     box-shadow: var(--shadow-soft);
   }
-  
+
   .shadow-medium {
     box-shadow: var(--shadow-medium);
   }
-  
+
   .shadow-strong {
     box-shadow: var(--shadow-strong);
   }
-  
+
   .shadow-glow-primary {
     box-shadow: var(--shadow-glow-primary);
   }
-  
+
   .shadow-glow-success {
     box-shadow: var(--shadow-glow-success);
   }
-  
+
   .transition-smooth {
     transition: var(--transition-smooth);
   }
-  
+
   .transition-fast {
     transition: var(--transition-fast);
   }
-  
+
   /* Mobile-specific responsive utilities */
   .overflow-x-hidden {
     overflow-x: hidden !important;
   }
-  
+
   /* Scrollbar hiding utilities */
   .scrollbar-none {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
   }
-  
+
   .scrollbar-none::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
+    /* Chrome, Safari, Opera */
   }
-  
+
   .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   /* Touch-friendly targets */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   /* Safe area support */
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
-  
+
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -465,12 +553,43 @@
   }
 
   /* Mirror spacing utilities */
-  [dir='rtl'] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
-  [dir='rtl'] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
-  [dir='rtl'] .ml-4 { margin-left: 0; margin-right: 1rem; }
-  [dir='rtl'] .mr-4 { margin-right: 0; margin-left: 1rem; }
-  [dir='rtl'] .pl-4 { padding-left: 0; padding-right: 1rem; }
-  [dir='rtl'] .pr-4 { padding-right: 0; padding-left: 1rem; }
-  [dir='rtl'] .pl-6 { padding-left: 0; padding-right: 1.5rem; }
-  [dir='rtl'] .pr-6 { padding-right: 0; padding-left: 1.5rem; }
+  [dir='rtl'] .ml-2 {
+    margin-left: 0;
+    margin-right: 0.5rem;
+  }
+
+  [dir='rtl'] .mr-2 {
+    margin-right: 0;
+    margin-left: 0.5rem;
+  }
+
+  [dir='rtl'] .ml-4 {
+    margin-left: 0;
+    margin-right: 1rem;
+  }
+
+  [dir='rtl'] .mr-4 {
+    margin-right: 0;
+    margin-left: 1rem;
+  }
+
+  [dir='rtl'] .pl-4 {
+    padding-left: 0;
+    padding-right: 1rem;
+  }
+
+  [dir='rtl'] .pr-4 {
+    padding-right: 0;
+    padding-left: 1rem;
+  }
+
+  [dir='rtl'] .pl-6 {
+    padding-left: 0;
+    padding-right: 1.5rem;
+  }
+
+  [dir='rtl'] .pr-6 {
+    padding-right: 0;
+    padding-left: 1.5rem;
+  }
 }

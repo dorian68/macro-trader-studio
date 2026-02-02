@@ -37,7 +37,6 @@ const ProductPresentation = () => {
               </div>
               <div className="min-w-0">
                 <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">AlphaLens</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">AI Trading Intelligence</p>
               </div>
             </div>
             <Link to="/" className="shrink-0">
@@ -58,14 +57,14 @@ const ProductPresentation = () => {
             <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
             Revolutionize your trading with AI
           </Badge>
-          
+
           <div className="space-y-4 sm:space-y-6">
             <h1 className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl font-bold text-foreground tracking-tight mobile-title">
               Trading Intelligence
               <span className="gradient-primary bg-clip-text text-transparent block sm:inline"> Powered by AI</span>
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mobile-body px-2">
-              Transform your trading approach with our advanced AI assistant. 
+              Transform your trading approach with our advanced AI assistant.
               Real-time analysis, precise predictions and optimized risk management.
             </p>
           </div>
@@ -106,7 +105,7 @@ const ProductPresentation = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <p className="text-muted-foreground text-sm sm:text-base mobile-body leading-relaxed">
-                  Machine learning algorithms to analyze markets 
+                  Machine learning algorithms to analyze markets
                   and identify the best trading opportunities.
                 </p>
               </CardContent>
@@ -121,7 +120,7 @@ const ProductPresentation = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <p className="text-muted-foreground text-sm sm:text-base mobile-body leading-relaxed">
-                  Live data feed for all major markets. 
+                  Live data feed for all major markets.
                   Instant prices, volumes and technical indicators.
                 </p>
               </CardContent>
@@ -136,7 +135,7 @@ const ProductPresentation = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <p className="text-muted-foreground text-sm sm:text-base mobile-body leading-relaxed">
-                  Advanced risk management tools with automatic calculation 
+                  Advanced risk management tools with automatic calculation
                   of stop-loss and take-profit levels.
                 </p>
               </CardContent>
@@ -163,7 +162,7 @@ const ProductPresentation = () => {
                 Ready to revolutionize your trading?
               </h2>
               <p className="text-muted-foreground text-base sm:text-lg mb-6 sm:mb-8 max-w-2xl mx-auto mobile-body leading-relaxed px-2">
-                Join thousands of traders who already use our AI platform 
+                Join thousands of traders who already use our AI platform
                 to optimize their performance.
               </p>
               <Link to="/" className="block sm:inline-block">

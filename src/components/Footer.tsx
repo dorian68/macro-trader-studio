@@ -11,10 +11,10 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <img 
-                src="/lovable-uploads/Only_text_white_BG_FINAL.png" 
-                alt="alphaLens.ai" 
-                className="h-[1.95rem]" 
+              <img
+                src="/footer_logo.png"
+                alt="alphaLens.ai"
+                className="h-10 w-auto object-contain"
               />
             </div>
             <p className="text-muted-foreground text-sm">
@@ -25,24 +25,24 @@ export function Footer() {
             <h4 className="font-semibold mb-4 text-foreground">{t('footer.product')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <button 
-                  onClick={() => navigate("/features")} 
+                <button
+                  onClick={() => navigate("/features")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.features')}
                 </button>
               </li>
               <li>
-                <button 
-                  onClick={() => navigate("/pricing")} 
+                <button
+                  onClick={() => navigate("/pricing")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.pricing')}
                 </button>
               </li>
               <li>
-                <button 
-                  onClick={() => navigate("/contact")} 
+                <button
+                  onClick={() => navigate("/contact")}
                   className="hover:text-foreground transition-colors"
                 >
                   API
@@ -54,24 +54,24 @@ export function Footer() {
             <h4 className="font-semibold mb-4 text-foreground">{t('footer.company')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <button 
-                  onClick={() => navigate("/about")} 
+                <button
+                  onClick={() => navigate("/about")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.about')}
                 </button>
               </li>
               <li>
-                <button 
-                  onClick={() => navigate("/contact")} 
+                <button
+                  onClick={() => navigate("/contact")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.contact')}
                 </button>
               </li>
               <li>
-                <button 
-                  onClick={() => navigate("/contact")} 
+                <button
+                  onClick={() => navigate("/contact")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('footer.privacy')}
@@ -83,24 +83,24 @@ export function Footer() {
             <h4 className="font-semibold mb-4 text-foreground">{t('footer.support')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <button 
-                  onClick={() => navigate("/contact")} 
+                <button
+                  onClick={() => navigate("/contact")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.documentation')}
                 </button>
               </li>
               <li>
-                <button 
-                  onClick={() => navigate("/contact")} 
+                <button
+                  onClick={() => navigate("/contact")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.helpCenter')}
                 </button>
               </li>
               <li>
-                <button 
-                  onClick={() => navigate("/contact")} 
+                <button
+                  onClick={() => navigate("/contact")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('footer.terms')}
