@@ -285,6 +285,14 @@ export default function Auth() {
 
           console.log('[Google Auth] Broker assigned successfully');
 
+          // Fire-and-forget notification to admins about new registration
+          supabase.functions.invoke('notify-new-registration', {
+            body: {
+              userEmail: session.user.email,
+              brokerName: pendingBrokerName || null
+            }
+          }).catch(err => console.error('[Google Auth] Failed to notify admins:', err));
+
           toast({
             title: t('success.accountCreated'),
             description: t('success.accountCreatedDescription'),
@@ -434,13 +442,22 @@ export default function Auth() {
         variant: "destructive"
       });
     } else {
+      // Fire-and-forget notification to admins about new registration
+      const selectedBrokerName = activeBrokers.find(b => b.id === selectedBrokerId)?.name || null;
+      supabase.functions.invoke('notify-new-registration', {
+        body: {
+          userEmail: email,
+          brokerName: selectedBrokerName
+        }
+      }).catch(err => console.error('[Auth] Failed to notify admins:', err));
+
       toast({
         title: t('success.registrationSuccessful'),
         description: t('success.registrationSuccessfulDescription')
       });
 
       // If intent is free_trial, activate it after successful signup
-      if (intent === 'free_trial' && !error) {
+      if (intent === 'free_trial') {
         setTimeout(async () => {
           const { error: trialError } = await activateFreeTrial();
           if (!trialError) {
