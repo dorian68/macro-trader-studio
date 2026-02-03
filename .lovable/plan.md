@@ -1,214 +1,244 @@
 
-# Plan : Intégration des crédits et du toaster de chargement pour Trade Generator
 
-## Résumé des 3 demandes
+# Plan : Redirection du toaster de notification vers les nouvelles pages
 
-| Demande | État actuel | Action requise |
-|---------|-------------|----------------|
-| **1. Crédits Trade Generator** | Pas de gestion de crédits (fetch direct sans job) | Ajouter `useRealtimeJobManager` + `useCreditEngagement` avec type `ideas` |
-| **2. Navbar crédits temps réel** | Mise à jour après navigation uniquement | Dispatch `creditsUpdated` après complétion du job via trigger PostgreSQL |
-| **3. Toaster de chargement** | Pas de toaster (state `loading` local) | Utiliser le job pour déclencher `PersistentNotificationProvider` |
+## Résumé
 
----
+Les notifications de fin de job doivent rediriger vers les nouvelles pages ForecastMacroLab et ForecastTradeGenerator au lieu des anciennes pages MacroAnalysis et AISetup, tout en permettant aux nouvelles pages de traiter les résultats injectés via `sessionStorage`.
 
-## Diagnostic technique
+## Analyse de l'existant
 
-### Problème 1 : Trade Generator sans crédits
+### Architecture actuelle du routing
 
-**Fichier** : `src/pages/ForecastTradeGenerator.tsx`
+**Fichier** : `src/components/PersistentNotificationProvider.tsx`
 
-Actuellement, la page effectue un appel HTTP direct sans :
-- Création de job en base (pas d'INSERT dans `jobs`)
-- Engagement de crédit via `tryEngageCredit()`
-- Déclenchement du trigger `auto_manage_credits`
+| Fonction | Responsabilité |
+|----------|----------------|
+| `mapFeatureToOriginatingFeature()` (L82-87) | Convertit `AI Trade Setup` → `ai-setup`, `Macro Commentary` → `macro-analysis` |
+| `mapFeatureToRoute()` (L98-106) | Convertit `ai-setup` → `/ai-setup`, `macro-analysis` → `/macro-analysis` |
+| `navigateToResult()` (L489-503) | Stocke le résultat dans `sessionStorage` et navigue vers la route |
 
-```typescript
-// Ligne 1575-1590 : fetch direct sans job
-const response = await fetch(MACRO_LAB_PROXY_URL, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(macroPayload),
-});
-```
+### État actuel des pages
 
-### Problème 2 : Navbar non mise à jour en temps réel
-
-Le trigger PostgreSQL `auto_manage_credits` décrémente les crédits automatiquement lors de la complétion d'un job, mais le frontend n'est pas notifié.
-
-**Solution** : Le `PersistentNotificationProvider` doit dispatcher l'événement `creditsUpdated` lors de la complétion d'un job.
-
-### Problème 3 : Pas de toaster de chargement
-
-La page utilise un state `loading` local au lieu de créer un job qui serait intercepté par `PersistentNotificationProvider`.
-
----
+| Page | Gère pendingResult | Type vérifié |
+|------|-------------------|--------------|
+| AISetup | ✅ Oui (L556-607) | `ai_trade_setup` |
+| MacroAnalysis | ✅ Oui (L91-107) | `macro`, `commentary` |
+| ForecastMacroLab | ✅ Oui (L127-143) | `macro`, `commentary` |
+| ForecastTradeGenerator | ❌ Non | N/A |
 
 ## Solution
 
-### Phase 1 : Ajouter les imports et hooks dans Trade Generator
+### Stratégie de migration
 
-**Fichier** : `src/pages/ForecastTradeGenerator.tsx`
+Les nouvelles pages doivent **coexister** avec les anciennes. La stratégie est d'ajouter de nouveaux types de features (`macro_lab`, `trade_generator`) qui redirigent vers les nouvelles pages, tout en conservant le comportement existant pour les anciennes features.
 
-Ajouter les imports manquants :
+### Modifications requises
+
+#### 1. PersistentNotificationProvider.tsx - Étendre le mapping
+
+**Types à ajouter** :
+
 ```typescript
-import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
-import { useCreditEngagement } from "@/hooks/useCreditEngagement";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+// Interface ActiveJob (L11-21)
+originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
+
+// Interface CompletedJob (L23-33)
+originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
 ```
 
-Initialiser les hooks dans le composant :
+**mapFeatureToOriginatingFeature() - Ajouter les mappings** :
+
 ```typescript
-const { user } = useAuth();
-const { toast } = useToast();
-const { createJob } = useRealtimeJobManager();
-const { tryEngageCredit } = useCreditEngagement();
+const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
+  const f = feature.toLowerCase();
+  // Nouvelles pages Lab priorisées
+  if (f.includes('macro_lab') || f.includes('macro lab')) return 'macro-lab';
+  if (f.includes('trade_generator') || f.includes('trade generator')) return 'trade-generator';
+  // Pages existantes
+  if (f === 'ai trade setup' || f === 'ai_trade_setup') return 'ai-setup';
+  if (f.includes('macro') || f.includes('commentary')) return 'macro-analysis';
+  if (f.includes('report')) return 'reports';
+  return 'ai-setup'; // fallback
+};
 ```
 
-### Phase 2 : Refactoriser `handleSubmit` pour utiliser le pattern job
-
-**Fichier** : `src/pages/ForecastTradeGenerator.tsx`
-
-Modifier `handleSubmit` pour :
-1. Créer un job avec `createJob()` (déclenche INSERT -> toaster apparaît)
-2. Engager le crédit avec `tryEngageCredit('ideas', jobId)`
-3. Nettoyer le job si engagement échoue
-4. Continuer avec le fetch HTTP
+**mapFeatureToRoute() - Ajouter les routes** :
 
 ```typescript
-const handleSubmit = async () => {
-  setLoading(true);
-  setError(null);
-  // ... reset states ...
-
-  try {
-    // 1. Créer le job FIRST (déclenche PersistentNotificationProvider)
-    const jobId = await createJob(
-      'ai_trade_setup',
-      symbol,
-      { type: 'RAG', mode: 'trade_generation', instrument: symbol },
-      'AI Trade Setup' // feature name for display
-    );
-
-    // 2. Engager le crédit (type 'ideas' comme AI Trade Setup)
-    const creditResult = await tryEngageCredit('ideas', jobId);
-    if (!creditResult.success) {
-      // Nettoyer le job orphelin
-      await supabase.from('jobs').delete().eq('id', jobId);
-      
-      toast({
-        title: "Insufficient Credits",
-        description: "You've run out of credits. Please recharge to continue using AlphaLens.",
-        variant: "destructive"
-      });
-      setLoading(false);
-      return;
-    }
-
-    // 3. Continuer avec le fetch HTTP (inclure job_id)
-    const macroPayload = {
-      job_id: jobId,
-      // ... reste du payload existant
-    };
-
-    const response = await fetch(MACRO_LAB_PROXY_URL, { ... });
-    
-    // 4. Mettre à jour le job avec la réponse
-    if (response.ok) {
-      const data = await response.json();
-      await supabase.from('jobs').update({
-        status: 'completed',
-        response_payload: data
-      }).eq('id', jobId);
-    } else {
-      await supabase.from('jobs').update({
-        status: 'error'
-      }).eq('id', jobId);
-    }
-    
-    // ... traitement de la réponse existant ...
-    
-  } finally {
-    setLoading(false);
+const mapFeatureToRoute = (feature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator'): string => {
+  switch (feature) {
+    case 'ai-setup': return '/ai-setup';
+    case 'macro-analysis': return '/macro-analysis';
+    case 'reports': return '/reports';
+    case 'macro-lab': return '/forecast-playground/macro-commentary';
+    case 'trade-generator': return '/forecast-playground/trade-generator';
+    default: return '/ai-setup';
   }
 };
 ```
 
-### Phase 3 : Dispatch `creditsUpdated` après complétion dans PersistentNotificationProvider
-
-**Fichier** : `src/components/PersistentNotificationProvider.tsx`
-
-Dans le handler UPDATE, après avoir traité un job `completed`, dispatcher l'événement pour mettre à jour la navbar :
+**routeMap dans handler error (L288-292)** :
 
 ```typescript
-if (updatedJob.status === 'completed' && updatedJob.response_payload) {
-  // ... code existant de completion ...
-  
-  // ✅ Trigger navbar credit update
-  window.dispatchEvent(new Event('creditsUpdated'));
-  
-  // ... reste du code ...
-}
+const routeMap = {
+  'ai-setup': '/ai-setup',
+  'macro-analysis': '/macro-analysis',
+  'reports': '/reports',
+  'macro-lab': '/forecast-playground/macro-commentary',
+  'trade-generator': '/forecast-playground/trade-generator'
+};
 ```
 
-Également dans le handler `error` :
+#### 2. GlobalLoadingProvider.tsx - Étendre le navigationMap
+
+**handleViewResult() (L55-60)** :
+
 ```typescript
-else if (updatedJob.status === 'error') {
-  // ... code existant ...
-  
-  // ✅ Trigger navbar credit update (credit was released by trigger)
-  window.dispatchEvent(new Event('creditsUpdated'));
-}
+const navigationMap = {
+  'ai_trade_setup': '/ai-setup',
+  'macro_commentary': '/macro-analysis',
+  'reports': '/reports',
+  'macro_lab': '/forecast-playground/macro-commentary',
+  'trade_generator': '/forecast-playground/trade-generator'
+};
 ```
 
----
+#### 3. ForecastTradeGenerator.tsx - Ajouter la gestion des pendingResult
+
+Ajouter un `useEffect` pour récupérer et traiter les résultats stockés dans `sessionStorage` :
+
+```typescript
+// Après les autres useEffect
+useEffect(() => {
+  const pendingResult = sessionStorage.getItem('pendingResult');
+  if (pendingResult) {
+    try {
+      const result = JSON.parse(pendingResult);
+      // Accepter les résultats de type trade_generator OU ai_trade_setup (compatibilité)
+      if (result.type === 'trade_generator' || result.type === 'ai_trade_setup') {
+        console.log('📍 [TradeGenerator] Processing pending result:', result);
+        
+        // Injecter les données dans l'état existant
+        if (result.resultData) {
+          // Réutiliser la logique de normalisation existante
+          const normalized = normalizeN8nResponse(result.resultData);
+          if (normalized.tradeSetup) {
+            setN8nData(normalized.tradeSetup);
+          }
+          if (normalized.rawPayload) {
+            setRawPayload(normalized.rawPayload);
+          }
+          // Autres états selon la structure de la réponse...
+        }
+        
+        sessionStorage.removeItem('pendingResult');
+        
+        toast({
+          title: "Trade Setup Loaded",
+          description: "Your trade setup has been loaded from background analysis."
+        });
+      }
+    } catch (error) {
+      console.error('❌ [TradeGenerator] Error parsing pending result:', error);
+      sessionStorage.removeItem('pendingResult');
+    }
+  }
+}, []);
+```
+
+#### 4. ForecastTradeGenerator.tsx - Modifier le createJob pour utiliser le nouveau type
+
+Dans `handleSubmit()`, modifier l'appel à `createJob()` pour utiliser le type `trade_generator` :
+
+```typescript
+// Avant (ligne ~1560)
+const jobId = await createJob(
+  'ai_trade_setup',
+  symbol,
+  { type: 'RAG', mode: 'trade_generation', instrument: symbol },
+  'AI Trade Setup'
+);
+
+// Après
+const jobId = await createJob(
+  'trade_generator',              // ← Nouveau type
+  symbol,
+  { type: 'trade_generator', mode: 'trade_generation', instrument: symbol },
+  'Trade Generator'               // ← Nouveau nom affiché
+);
+```
+
+#### 5. ForecastMacroLab.tsx - Modifier le createJob pour utiliser le nouveau type
+
+Dans `generateAnalysis()`, modifier l'appel à `createJob()` :
+
+```typescript
+// Avant (ligne ~489)
+const responseJobId = await createJob(
+  'macro_commentary',
+  assetSymbol,
+  { type: 'macro_commentary', query: queryParams.query, instrument: assetSymbol },
+  'Macro Commentary'
+);
+
+// Après
+const responseJobId = await createJob(
+  'macro_lab',                    // ← Nouveau type
+  assetSymbol,
+  { type: 'macro_lab', query: queryParams.query, instrument: assetSymbol },
+  'Macro Lab'                     // ← Nouveau nom affiché
+);
+```
 
 ## Résumé des modifications
 
 | Fichier | Modification | Impact |
 |---------|--------------|--------|
-| `ForecastTradeGenerator.tsx` | Ajouter imports `useRealtimeJobManager`, `useCreditEngagement`, `useAuth`, `supabase`, `useToast` | Préparation |
-| `ForecastTradeGenerator.tsx` | Initialiser hooks `createJob`, `tryEngageCredit`, `user`, `toast` | Préparation |
-| `ForecastTradeGenerator.tsx` | Refactoriser `handleSubmit` : créer job -> engager crédit -> fetch -> update job status | Crédits + Toaster |
-| `PersistentNotificationProvider.tsx` | Ajouter `window.dispatchEvent(new Event('creditsUpdated'))` après complétion/erreur | Navbar temps réel |
-
----
+| `PersistentNotificationProvider.tsx` | Ajouter types `macro-lab`, `trade-generator` aux interfaces et fonctions de mapping | Routing correct |
+| `GlobalLoadingProvider.tsx` | Étendre `navigationMap` avec nouvelles routes | Compatibilité LoadingCards |
+| `ForecastTradeGenerator.tsx` | Ajouter `useEffect` pour `pendingResult` + modifier `createJob` type | Réception des résultats |
+| `ForecastMacroLab.tsx` | Modifier `createJob` type et feature name | Identification correcte |
 
 ## Garanties
 
-- Aucune modification de logique métier existante (normalizeN8n, extractors, etc.)
-- Aucune modification d'API/backend
-- Le type de crédit utilisé est `ideas` (même que AI Trade Setup)
-- Le toaster utilise le système existant `PersistentNotificationProvider`
-- La navbar se met à jour automatiquement via l'événement `creditsUpdated`
-- Le trigger PostgreSQL `auto_manage_credits` gère la déduction des crédits
-
----
+- Les anciennes pages (AISetup, MacroAnalysis, Reports) continuent de fonctionner normalement
+- Les nouvelles pages peuvent recevoir les résultats via le même mécanisme
+- Le type de crédit reste inchangé (`ideas` pour Trade Generator, `queries` pour Macro Lab)
+- Aucune modification du backend ou des edge functions
 
 ## Section technique
 
 ### Flux de données après modification
 
 ```text
-1. User clique "Generate Trade"
+1. User lance une analyse depuis /forecast-playground/trade-generator
 2. ForecastTradeGenerator.handleSubmit()
-   ├── createJob('ai_trade_setup', symbol, {}, 'AI Trade Setup')
-   │   └── INSERT jobs → PersistentNotificationProvider reçoit INSERT
-   │       └── Toaster de chargement apparaît
-   ├── tryEngageCredit('ideas', jobId)
-   │   ├── Si échec → DELETE job, toast "Insufficient Credits"
-   │   └── Si succès → continuer
-   ├── fetch(MACRO_LAB_PROXY_URL)
-   ├── UPDATE jobs.status = 'completed', response_payload = data
-   │   └── Trigger auto_manage_credits() décrémente credits_ideas_remaining
+   ├── createJob('trade_generator', symbol, {...}, 'Trade Generator')
+   │   └── INSERT jobs (feature: 'Trade Generator')
+   │       └── PersistentNotificationProvider reçoit INSERT
+   │           └── mapFeatureToOriginatingFeature('Trade Generator') → 'trade-generator'
+   │               └── Toaster de chargement apparaît
+
+3. User navigue ailleurs (ex: /dashboard)
+
+4. Backend termine → UPDATE jobs.status = 'completed'
    └── PersistentNotificationProvider reçoit UPDATE
-       ├── Toaster disparaît
-       ├── Flash message "Analysis Complete"
-       └── window.dispatchEvent('creditsUpdated')
-           └── CreditsNavbar.fetchCredits() → Navbar mise à jour
+       └── Toast "Analysis Complete" avec bouton View Result
+
+5. User clique "View Result"
+   └── navigateToResult(completedJob)
+       ├── sessionStorage.setItem('pendingResult', {...})
+       └── navigate('/forecast-playground/trade-generator')
+
+6. ForecastTradeGenerator monte
+   └── useEffect détecte pendingResult
+       ├── Parse et valide le type
+       ├── Injecte les données dans l'état
+       └── sessionStorage.removeItem('pendingResult')
 ```
 
-### Cohérence avec AI Trade Setup
+### Compatibilité descendante
 
-La logique est identique à celle de `src/pages/AISetup.tsx` (lignes 392-412), garantissant un comportement uniforme.
+Les jobs existants créés avec les anciens types (`ai_trade_setup`, `macro_commentary`) continueront de router vers les anciennes pages. Seuls les nouveaux jobs créés avec les types `trade_generator` et `macro_lab` iront vers les nouvelles pages.
+
