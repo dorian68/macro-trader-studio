@@ -378,6 +378,37 @@
     .animate-slide-in-right {
       animation: slide-in-right 0.3s ease-out;
     }
+
+    /* Collapsible panel animations */
+    @keyframes collapse-down {
+      from {
+        max-height: 0;
+        opacity: 0;
+      }
+      to {
+        max-height: var(--radix-collapsible-content-height);
+        opacity: 1;
+      }
+    }
+
+    @keyframes collapse-up {
+      from {
+        max-height: var(--radix-collapsible-content-height);
+        opacity: 1;
+      }
+      to {
+        max-height: 0;
+        opacity: 0;
+      }
+    }
+
+    [data-state="open"] > .collapsible-content {
+      animation: collapse-down 0.3s ease-out;
+    }
+
+    [data-state="closed"] > .collapsible-content {
+      animation: collapse-up 0.2s ease-out;
+    }
   }
 
   /* Accessibility: reduce motion when requested */

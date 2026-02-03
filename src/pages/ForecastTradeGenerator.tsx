@@ -1519,6 +1519,9 @@ function ForecastTradeGeneratorContent() {
   // Expanded rows state for Risk Profiles
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
+  // ✅ NEW: Collapsible input panel state
+  const [isInputPanelOpen, setIsInputPanelOpen] = useState(true);
+
   // Debug toggle and last sent payload
   const [showDebug, setShowDebug] = useState(false);
   const [lastPayload, setLastPayload] = useState<Record<string, unknown> | null>(null);
@@ -1579,6 +1582,9 @@ function ForecastTradeGeneratorContent() {
             }
             
             setRawResponse(result.resultData);
+            
+            // ✅ Auto-collapse inputs when injecting pending results
+            setIsInputPanelOpen(false);
           }
           
           sessionStorage.removeItem('pendingResult');
@@ -1798,6 +1804,10 @@ function ForecastTradeGeneratorContent() {
       }
     } finally {
       setLoading(false);
+      // ✅ Auto-collapse inputs when results are received (regardless of success/error)
+      if (!error) {
+        setIsInputPanelOpen(false);
+      }
     }
   };
 
@@ -1842,179 +1852,212 @@ function ForecastTradeGeneratorContent() {
           )}
         </header>
 
-        {/* Form Section */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Market Context Card */}
-          <Card className="rounded-2xl border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                Market Context
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="symbol">Symbol</Label>
-                <Select value={symbol} onValueChange={setSymbol}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ALLOWED_ASSETS.map((asset) => (
-                      <SelectItem key={asset} value={asset}>
-                        {asset}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="timeframe">Timeframe</Label>
-                <Select value={timeframe} onValueChange={setTimeframe}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIMEFRAMES.map((tf) => (
-                      <SelectItem key={tf} value={tf}>
-                        {tf}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="horizons">Horizons (hours, comma-separated)</Label>
-                <Input id="horizons" value={horizons} onChange={(e) => setHorizons(e.target.value)} placeholder="24, 48, 72" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Trade Parameters Card */}
-          <Card className="rounded-2xl border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-primary" />
-                Trade Parameters
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="strategy">Strategy</Label>
-                <Select value={strategy} onValueChange={setStrategy}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STRATEGIES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="riskLevel">Risk Level</Label>
-                <Select value={riskLevel} onValueChange={setRiskLevel}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RISK_LEVELS.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="customNotes">Custom Notes</Label>
-                <Textarea
-                  id="customNotes"
-                  value={customNotes}
-                  onChange={(e) => setCustomNotes(e.target.value)}
-                  placeholder="Optional trading context or preferences..."
-                  rows={2}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Model Options Card */}
-          <Card className="rounded-2xl border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FlaskConical className="h-4 w-4 text-primary" />
-                Model Options
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="montecarlo" className="text-sm">
-                  Monte Carlo Simulation
-                </Label>
-                <Switch id="montecarlo" checked={useMonteCarlo} onCheckedChange={setUseMonteCarlo} />
-              </div>
-
-              {useMonteCarlo && (
-                <div className="space-y-2">
-                  <Label htmlFor="paths">MC Paths</Label>
-                  <Input
-                    id="paths"
-                    type="number"
-                    value={paths}
-                    onChange={(e) => setPaths(parseInt(e.target.value, 10) || 1000)}
-                    min={100}
-                    max={10000}
-                  />
+        {/* Form Section - Collapsible Input Panel */}
+        <Collapsible open={isInputPanelOpen} onOpenChange={setIsInputPanelOpen}>
+          <Card className="rounded-2xl border shadow-sm overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Settings2 className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-base">Parameters</CardTitle>
+                    {/* Compact summary visible when collapsed */}
+                    {!isInputPanelOpen && hasResults && (
+                      <div className="flex flex-wrap gap-2 ml-2">
+                        <Badge variant="secondary" className="text-xs">{symbol}</Badge>
+                        <Badge variant="secondary" className="text-xs">{timeframe}</Badge>
+                        <Badge variant="secondary" className="text-xs">{horizons}h</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {STRATEGIES.find(s => s.value === strategy)?.label || strategy}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!isInputPanelOpen && (
+                      <span className="text-xs text-muted-foreground">Click to edit</span>
+                    )}
+                    <ChevronDown className={cn(
+                      "h-4 w-4 transition-transform duration-200",
+                      isInputPanelOpen ? "" : "-rotate-90"
+                    )} />
+                  </div>
                 </div>
-              )}
+              </CardHeader>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent className="collapsible-content">
+              <CardContent className="pt-0 pb-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  {/* Market Context Card */}
+                  <div className="space-y-4 p-4 rounded-xl bg-muted/20 border">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Target className="h-4 w-4 text-primary" />
+                      Market Context
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="symbol">Symbol</Label>
+                        <Select value={symbol} onValueChange={setSymbol}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ALLOWED_ASSETS.map((asset) => (
+                              <SelectItem key={asset} value={asset}>
+                                {asset}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-              <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between">
-                    <span className="text-xs">Advanced Options</span>
-                    {advancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-3 pt-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="skew" className="text-xs">
-                      Skew (-1 to +1)
-                    </Label>
-                    <Input
-                      id="skew"
-                      type="number"
-                      step="0.1"
-                      value={skew}
-                      onChange={(e) => setSkew(parseFloat(e.target.value) || 0)}
-                      min={-1}
-                      max={1}
-                    />
+                      <div className="space-y-2">
+                        <Label htmlFor="timeframe">Timeframe</Label>
+                        <Select value={timeframe} onValueChange={setTimeframe}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIMEFRAMES.map((tf) => (
+                              <SelectItem key={tf} value={tf}>
+                                {tf}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="horizons">Horizons (hours, comma-separated)</Label>
+                        <Input id="horizons" value={horizons} onChange={(e) => setHorizons(e.target.value)} placeholder="24, 48, 72" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="predictions" className="text-xs">
-                      Include Predictions
-                    </Label>
-                    <Switch id="predictions" checked={includePredictions} onCheckedChange={setIncludePredictions} />
+
+                  {/* Trade Parameters Card */}
+                  <div className="space-y-4 p-4 rounded-xl bg-muted/20 border">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Settings2 className="h-4 w-4 text-primary" />
+                      Trade Parameters
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="strategy">Strategy</Label>
+                        <Select value={strategy} onValueChange={setStrategy}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STRATEGIES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="riskLevel">Risk Level</Label>
+                        <Select value={riskLevel} onValueChange={setRiskLevel}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RISK_LEVELS.map((r) => (
+                              <SelectItem key={r.value} value={r.value}>
+                                {r.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="customNotes">Custom Notes</Label>
+                        <Textarea
+                          id="customNotes"
+                          value={customNotes}
+                          onChange={(e) => setCustomNotes(e.target.value)}
+                          placeholder="Optional trading context or preferences..."
+                          rows={2}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="metadata" className="text-xs">
-                      Include Metadata
-                    </Label>
-                    <Switch id="metadata" checked={includeMetadata} onCheckedChange={setIncludeMetadata} />
+
+                  {/* Model Options Card */}
+                  <div className="space-y-4 p-4 rounded-xl bg-muted/20 border">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <FlaskConical className="h-4 w-4 text-primary" />
+                      Model Options
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="montecarlo" className="text-sm">
+                          Monte Carlo Simulation
+                        </Label>
+                        <Switch id="montecarlo" checked={useMonteCarlo} onCheckedChange={setUseMonteCarlo} />
+                      </div>
+
+                      {useMonteCarlo && (
+                        <div className="space-y-2">
+                          <Label htmlFor="paths">MC Paths</Label>
+                          <Input
+                            id="paths"
+                            type="number"
+                            value={paths}
+                            onChange={(e) => setPaths(parseInt(e.target.value, 10) || 1000)}
+                            min={100}
+                            max={10000}
+                          />
+                        </div>
+                      )}
+
+                      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="w-full justify-between">
+                            <span className="text-xs">Advanced Options</span>
+                            {advancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-3 pt-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="skew" className="text-xs">
+                              Skew (-1 to +1)
+                            </Label>
+                            <Input
+                              id="skew"
+                              type="number"
+                              step="0.1"
+                              value={skew}
+                              onChange={(e) => setSkew(parseFloat(e.target.value) || 0)}
+                              min={-1}
+                              max={1}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="predictions" className="text-xs">
+                              Include Predictions
+                            </Label>
+                            <Switch id="predictions" checked={includePredictions} onCheckedChange={setIncludePredictions} />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="metadata" className="text-xs">
+                              Include Metadata
+                            </Label>
+                            <Switch id="metadata" checked={includeMetadata} onCheckedChange={setIncludeMetadata} />
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </CardContent>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
           </Card>
-        </div>
+        </Collapsible>
 
         {/* Submit Button */}
         <div className="flex items-center gap-4">
@@ -2149,138 +2192,146 @@ function ForecastTradeGeneratorContent() {
 
         {/* Results Section */}
         {hasResults && !loading && (
-          <Tabs defaultValue="trade-setup" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="trade-setup">Trade Setup</TabsTrigger>
-              <TabsTrigger value="forecast-data">Forecast Data</TabsTrigger>
-            </TabsList>
-
-            {/* Trade Setup Tab (AI Setup format) */}
-            <TabsContent value="trade-setup" className="space-y-4">
-              {aiSetupLoading ? (
-                <Card className="rounded-xl border shadow-sm">
-                  <CardContent className="py-12">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <span className="text-muted-foreground font-medium">
-                        Generating AI Trade Setup...
-                      </span>
-                      <p className="text-xs text-muted-foreground">
-                        Calling macro-lab-proxy with mode: trade_generation
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : aiSetupError ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>AI Setup Error</AlertTitle>
-                  <AlertDescription>{aiSetupError}</AlertDescription>
-                </Alert>
-              ) : aiSetupResult ? (
-                <>
-                  {/* Market Commentary */}
-                  {aiSetupResult.market_commentary_anchor?.summary && (
-                    <Card className="rounded-xl border shadow-sm">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Market Commentary</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">{aiSetupResult.market_commentary_anchor.summary}</p>
-                        {aiSetupResult.market_commentary_anchor.key_drivers && aiSetupResult.market_commentary_anchor.key_drivers.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {aiSetupResult.market_commentary_anchor.key_drivers.map((driver, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                {driver}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Setups */}
-                  {aiSetupResult.setups && aiSetupResult.setups.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {aiSetupResult.setups.map((setup, idx) => (
-                        <TradeSetupCard key={idx} setup={setup} index={idx} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>No trade setups available in response</p>
-                    </div>
-                  )}
-
-                  {/* Disclaimer */}
-                  {aiSetupResult.disclaimer && (
-                    <p className="text-xs text-muted-foreground italic text-center">{aiSetupResult.disclaimer}</p>
-                  )}
-                </>
-              ) : (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>No AI Setup Data</AlertTitle>
-                  <AlertDescription>
-                    Click "Generate Trade" to fetch AI Trade Setups from macro-lab-proxy.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </TabsContent>
-
-            {/* Forecast Data Tab */}
-            <TabsContent value="forecast-data" className="space-y-6">
-              {/* Enhanced Forecast Table with Risk Profiles */}
-              <Card className="rounded-xl border shadow-sm">
+          <div className="space-y-6">
+            {/* ★ Risk Surface FIRST - Hero Element */}
+            {riskSurfaceData && (
+              <Card className="rounded-xl border-2 border-primary/20 shadow-lg bg-gradient-to-br from-card to-card/80">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-primary" />
-                    Forecast Summary by Horizon
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Click on a row to expand Risk Profiles (Conservative / Moderate / Aggressive)
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Target className="h-5 w-5 text-primary" />
+                      Risk / Reward Surface
+                    </CardTitle>
+                    <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                      Primary Analysis
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    3D visualization of probability-adjusted TP as a function of SL intensity
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <EnhancedForecastTable 
-                    horizons={forecastHorizons} 
+                  <RiskSurfaceChart
+                    data={riskSurfaceData}
+                    loading={false}
+                    error={null}
                     symbol={symbol}
                     timeframe={timeframe}
-                    surfaceResult={riskSurfaceData}
-                    expandedRows={expandedRows}
-                    onToggleRow={toggleRowExpanded}
+                    horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
                   />
                 </CardContent>
               </Card>
+            )}
 
-              {/* Risk Surface Chart - Source: risk_surface field from trade_generation_output */}
-              {riskSurfaceData && (
+            {/* Tabs for Trade Setup and Forecast Data */}
+            <Tabs defaultValue="trade-setup" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="trade-setup">Trade Setup</TabsTrigger>
+                <TabsTrigger value="forecast-data">Forecast Data</TabsTrigger>
+              </TabsList>
+
+              {/* Trade Setup Tab (AI Setup format) */}
+              <TabsContent value="trade-setup" className="space-y-4">
+                {aiSetupLoading ? (
+                  <Card className="rounded-xl border shadow-sm">
+                    <CardContent className="py-12">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <span className="text-muted-foreground font-medium">
+                          Generating AI Trade Setup...
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Calling macro-lab-proxy with mode: trade_generation
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : aiSetupError ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>AI Setup Error</AlertTitle>
+                    <AlertDescription>{aiSetupError}</AlertDescription>
+                  </Alert>
+                ) : aiSetupResult ? (
+                  <>
+                    {/* Market Commentary */}
+                    {aiSetupResult.market_commentary_anchor?.summary && (
+                      <Card className="rounded-xl border shadow-sm">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm">Market Commentary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground">{aiSetupResult.market_commentary_anchor.summary}</p>
+                          {aiSetupResult.market_commentary_anchor.key_drivers && aiSetupResult.market_commentary_anchor.key_drivers.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {aiSetupResult.market_commentary_anchor.key_drivers.map((driver, i) => (
+                                <Badge key={i} variant="secondary" className="text-xs">
+                                  {driver}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Setups */}
+                    {aiSetupResult.setups && aiSetupResult.setups.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {aiSetupResult.setups.map((setup, idx) => (
+                          <TradeSetupCard key={idx} setup={setup} index={idx} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No trade setups available in response</p>
+                      </div>
+                    )}
+
+                    {/* Disclaimer */}
+                    {aiSetupResult.disclaimer && (
+                      <p className="text-xs text-muted-foreground italic text-center">{aiSetupResult.disclaimer}</p>
+                    )}
+                  </>
+                ) : (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>No AI Setup Data</AlertTitle>
+                    <AlertDescription>
+                      Click "Generate Trade" to fetch AI Trade Setups from macro-lab-proxy.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </TabsContent>
+
+              {/* Forecast Data Tab - Risk Surface removed (shown as hero above) */}
+              <TabsContent value="forecast-data" className="space-y-6">
+                {/* Enhanced Forecast Table with Risk Profiles */}
                 <Card className="rounded-xl border shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <Target className="h-4 w-4 text-primary" />
-                      Risk / Reward Surface
+                      <Layers className="h-4 w-4 text-primary" />
+                      Forecast Summary by Horizon
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      3D visualization of probability-adjusted TP as a function of SL intensity
+                      Click on a row to expand Risk Profiles (Conservative / Moderate / Aggressive)
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <RiskSurfaceChart
-                      data={riskSurfaceData}
-                      loading={false}
-                      error={null}
+                    <EnhancedForecastTable 
+                      horizons={forecastHorizons} 
                       symbol={symbol}
                       timeframe={timeframe}
-                      horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
+                      surfaceResult={riskSurfaceData}
+                      expandedRows={expandedRows}
+                      onToggleRow={toggleRowExpanded}
                     />
                   </CardContent>
                 </Card>
-              )}
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
       </main>
     </Layout>
