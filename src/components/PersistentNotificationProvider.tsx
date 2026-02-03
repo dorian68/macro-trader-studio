@@ -198,30 +198,8 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
           
           console.log('🔄 [PersistentNotifications] Job UPDATE:', updatedJob);
           
-          if (updatedJob.status === 'running') {
-            // Update active job status and progress message
-            setActiveJobs(prev => prev.map(job => 
-              job.id === updatedJob.id 
-                ? { ...job, status: 'running', progressMessage: updatedJob.progress_message }
-                : job
-            ));
-            console.log('🔄 [PersistentNotifications] Job set to running with progress:', updatedJob.progress_message);
-          } else if (updatedJob.progress_message) {
-            // Stop mock simulator when real backend message arrives
-            const wasActive = mockSimulatorsActive.current.get(updatedJob.id);
-            if (wasActive) {
-              console.log(`🛑 [PersistentNotifications] Stopping mock simulator for job ${updatedJob.id} - real backend message received`);
-              mockSimulatorsActive.current.set(updatedJob.id, false);
-            }
-            
-            // Update progress message for pending/running jobs
-            setActiveJobs(prev => prev.map(job => 
-              job.id === updatedJob.id 
-                ? { ...job, progressMessage: updatedJob.progress_message }
-                : job
-            ));
-            console.log('🔄 [PersistentNotifications] Progress message updated:', updatedJob.progress_message);
-          } else if (updatedJob.status === 'completed' && updatedJob.response_payload) {
+          // PRIORITÉ 1: Vérifier la complétion AVANT les messages de progression
+          if (updatedJob.status === 'completed' && updatedJob.response_payload) {
             // Stop mock simulator on completion
             mockSimulatorsActive.current.set(updatedJob.id, false);
             
@@ -288,7 +266,9 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               if (exists) return prev;
               return [...prev, completedJob];
             });
-          } else if (updatedJob.status === 'error') {
+          } 
+          // PRIORITÉ 2: Gérer les erreurs
+          else if (updatedJob.status === 'error') {
             // Stop mock simulator on error
             mockSimulatorsActive.current.set(updatedJob.id, false);
             
@@ -320,6 +300,32 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               ),
               className: "fixed bottom-4 right-4 z-[100] max-w-sm"
             });
+          }
+          // PRIORITÉ 3: Mettre à jour le statut running
+          else if (updatedJob.status === 'running') {
+            setActiveJobs(prev => prev.map(job => 
+              job.id === updatedJob.id 
+                ? { ...job, status: 'running', progressMessage: updatedJob.progress_message }
+                : job
+            ));
+            console.log('🔄 [PersistentNotifications] Job set to running with progress:', updatedJob.progress_message);
+          } 
+          // PRIORITÉ 4: Mettre à jour le message de progression (seulement si pas encore completed/error)
+          else if (updatedJob.progress_message) {
+            // Stop mock simulator when real backend message arrives
+            const wasActive = mockSimulatorsActive.current.get(updatedJob.id);
+            if (wasActive) {
+              console.log(`🛑 [PersistentNotifications] Stopping mock simulator for job ${updatedJob.id} - real backend message received`);
+              mockSimulatorsActive.current.set(updatedJob.id, false);
+            }
+            
+            // Update progress message for pending/running jobs
+            setActiveJobs(prev => prev.map(job => 
+              job.id === updatedJob.id 
+                ? { ...job, progressMessage: updatedJob.progress_message }
+                : job
+            ));
+            console.log('🔄 [PersistentNotifications] Progress message updated:', updatedJob.progress_message);
           }
         }
       )
