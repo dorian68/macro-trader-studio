@@ -14,15 +14,21 @@ export function CreditsNavbar() {
   const { credits, loading, fetchCredits } = useCreditManager();
   const navigate = useNavigate();
 
-  // Listen for credit updates from other components
+  // PERF: Stabilize event listener with ref to prevent re-subscription on navigation
+  const fetchCreditsRef = React.useRef(fetchCredits);
+  React.useEffect(() => {
+    fetchCreditsRef.current = fetchCredits;
+  }, [fetchCredits]);
+
+  // Listen for credit updates from other components (mount once)
   React.useEffect(() => {
     const handleCreditsUpdate = () => {
-      fetchCredits();
+      fetchCreditsRef.current();
     };
 
     window.addEventListener('creditsUpdated', handleCreditsUpdate);
     return () => window.removeEventListener('creditsUpdated', handleCreditsUpdate);
-  }, [fetchCredits]);
+  }, []);
 
   if (loading || !credits) {
     return (

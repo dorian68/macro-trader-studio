@@ -27,6 +27,32 @@ interface PriceData {
   volume: number;
 }
 
+// PERF: Moved outside component to prevent recreation on every render
+const ALL_ASSETS = [
+  // G10 Forex (principales paires)
+  { symbol: "EUR/USD", name: "Euro / US Dollar", icon: "💱" },
+  { symbol: "GBP/USD", name: "British Pound / US Dollar", icon: "💱" },
+  { symbol: "USD/JPY", name: "US Dollar / Japanese Yen", icon: "💱" },
+  { symbol: "AUD/USD", name: "Australian Dollar / US Dollar", icon: "💱" },
+  { symbol: "USD/CAD", name: "US Dollar / Canadian Dollar", icon: "💱" },
+  { symbol: "USD/CHF", name: "US Dollar / Swiss Franc", icon: "💱" },
+
+  // Crypto majeures
+  { symbol: "Bitcoin", name: "Bitcoin", icon: "₿" },
+  { symbol: "Ethereum", name: "Ethereum", icon: "Ξ" },
+  { symbol: "ADA-USD", name: "Cardano", icon: "🔷" },
+  { symbol: "SOL-USD", name: "Solana", icon: "🌞" },
+  { symbol: "DOGE-USD", name: "Dogecoin", icon: "🐕" },
+
+  // Commodités principales
+  { symbol: "GOLD", name: "Gold", icon: "🥇" },
+  { symbol: "SILVER", name: "Silver", icon: "🥈" },
+  { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️" },
+  { symbol: "NATGAS", name: "Natural Gas", icon: "🔥" },
+  { symbol: "COPPER", name: "Copper", icon: "🟤" },
+  { symbol: "PLATINUM", name: "Platinum", icon: "⚪" }
+];
+
 export default function TradingDashboard() {
   const { t } = useTranslation(['dashboard', 'common']);
   const navigate = useNavigate();
@@ -41,32 +67,6 @@ export default function TradingDashboard() {
   // Refs and state for height synchronization
   const chartRef = useRef<HTMLDivElement>(null);
   const [chartHeight, setChartHeight] = useState<number | undefined>(undefined);
-
-  // Hardcoded list of major assets compatible with Binance and TradingView
-  const allAssets = [
-    // G10 Forex (principales paires)
-    { symbol: "EUR/USD", name: "Euro / US Dollar", icon: "💱" },
-    { symbol: "GBP/USD", name: "British Pound / US Dollar", icon: "💱" },
-    { symbol: "USD/JPY", name: "US Dollar / Japanese Yen", icon: "💱" },
-    { symbol: "AUD/USD", name: "Australian Dollar / US Dollar", icon: "💱" },
-    { symbol: "USD/CAD", name: "US Dollar / Canadian Dollar", icon: "💱" },
-    { symbol: "USD/CHF", name: "US Dollar / Swiss Franc", icon: "💱" },
-
-    // Crypto majeures
-    { symbol: "Bitcoin", name: "Bitcoin", icon: "₿" },
-    { symbol: "Ethereum", name: "Ethereum", icon: "Ξ" },
-    { symbol: "ADA-USD", name: "Cardano", icon: "🔷" },
-    { symbol: "SOL-USD", name: "Solana", icon: "🌞" },
-    { symbol: "DOGE-USD", name: "Dogecoin", icon: "🐕" },
-
-    // Commodités principales
-    { symbol: "GOLD", name: "Gold", icon: "🥇" },
-    { symbol: "SILVER", name: "Silver", icon: "🥈" },
-    { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️" },
-    { symbol: "NATGAS", name: "Natural Gas", icon: "🔥" },
-    { symbol: "COPPER", name: "Copper", icon: "🟤" },
-    { symbol: "PLATINUM", name: "Platinum", icon: "⚪" }
-  ];
 
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("4h");
@@ -108,7 +108,7 @@ export default function TradingDashboard() {
     let fallbackInterval: NodeJS.Timeout | null = null;
 
     // Map to TwelveData symbols
-    const twelveDataInstruments: Record<string, string> = {
+    const TWELVE_DATA_INSTRUMENTS: Record<string, string> = {
       'EUR/USD': 'EUR/USD',
       'GBP/USD': 'GBP/USD',
       'BTC/USD': 'BTC/USD',
@@ -117,7 +117,7 @@ export default function TradingDashboard() {
       'SILVER': 'XAG/USD',
     };
 
-    const useTwelveData = Object.keys(twelveDataInstruments).includes(selectedAsset);
+    const useTwelveData = Object.keys(TWELVE_DATA_INSTRUMENTS).includes(selectedAsset);
 
     const connectWebSocket = () => {
       // Clean up previous connection
@@ -201,14 +201,14 @@ export default function TradingDashboard() {
     };
   }, [selectedAsset]);
 
-  const currentAsset = allAssets.find(asset => asset.symbol === selectedAsset);
+  const currentAsset = ALL_ASSETS.find(asset => asset.symbol === selectedAsset);
 
   // Set first asset as default when assets are loaded
   useEffect(() => {
-    if (allAssets.length > 0 && !currentAsset) {
-      setSelectedAsset(allAssets[0].symbol);
+    if (ALL_ASSETS.length > 0 && !currentAsset) {
+      setSelectedAsset(ALL_ASSETS[0].symbol);
     }
-  }, [allAssets, currentAsset]);
+  }, [currentAsset]);
 
   // Measure Trading Dashboard height and sync to Market News
   useEffect(() => {
@@ -281,7 +281,7 @@ export default function TradingDashboard() {
               dashboardSubtitle={t('dashboard:trading.subtitle')}
               priceData={priceData}
               isConnected={isConnected}
-              allAssets={allAssets}
+              allAssets={ALL_ASSETS}
               selectedAsset={selectedAsset}
               currentAsset={currentAsset}
               onAssetSelect={setSelectedAsset}

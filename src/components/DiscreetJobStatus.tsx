@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DiscreetJobStatusProps {
@@ -9,7 +9,12 @@ interface DiscreetJobStatusProps {
   className?: string;
 }
 
-export function DiscreetJobStatus({ activeJobsCount, latestMessage, className }: DiscreetJobStatusProps) {
+// PERF: Memoized to prevent re-renders on parent navigation
+export const DiscreetJobStatus = React.memo(function DiscreetJobStatus({ 
+  activeJobsCount, 
+  latestMessage, 
+  className 
+}: DiscreetJobStatusProps) {
   if (activeJobsCount === 0) return null;
 
   return (
@@ -38,4 +43,4 @@ export function DiscreetJobStatus({ activeJobsCount, latestMessage, className }:
       )}
     </div>
   );
-}
+});
