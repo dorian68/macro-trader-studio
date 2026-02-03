@@ -1,10 +1,6 @@
 import TradingDashboard from './TradingDashboard';
-import AuthGuard from '@/components/AuthGuard';
 
+// AuthGuard removed - already applied at route level in App.tsx
 export default function Dashboard() {
-  return (
-    <AuthGuard>
-      <TradingDashboard />
-    </AuthGuard>
-  );
+  return <TradingDashboard />;
 }

@@ -24,13 +24,14 @@ import Homepage from "./pages/Homepage";
 import Auth from "./pages/Auth";
 
 // Secondary routes (lazy loaded)
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const AISetup = lazy(() => import("./pages/AISetup"));
-const MacroAnalysis = lazy(() => import("./pages/MacroAnalysis"));
-const Reports = lazy(() => import("./pages/Reports"));
+// PERF: Critical routes with prefetch hints for faster navigation
+const Dashboard = lazy(() => import(/* webpackPrefetch: true */ "./pages/Dashboard"));
+const AISetup = lazy(() => import(/* webpackPrefetch: true */ "./pages/AISetup"));
+const MacroAnalysis = lazy(() => import(/* webpackPrefetch: true */ "./pages/MacroAnalysis"));
+const Reports = lazy(() => import(/* webpackPrefetch: true */ "./pages/Reports"));
 const AssetDetail = lazy(() => import("./pages/AssetDetail"));
 const Portfolio = lazy(() => import("./pages/Portfolio"));
-const History = lazy(() => import("./pages/History"));
+const History = lazy(() => import(/* webpackPrefetch: true */ "./pages/History"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Credits = lazy(() => import("./pages/Credits"));
 
@@ -85,7 +86,7 @@ const App = () => {
                         <PersistentToast />
                         <Toaster />
                         <Sonner />
-                        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-96 w-full max-w-4xl" /></div>}>
+                        <Suspense fallback={<div className="min-h-screen bg-background" />}>
                           <Routes>
                             <Route path="/" element={<Homepage />} />
                             <Route path="/auth" element={<Auth />} />

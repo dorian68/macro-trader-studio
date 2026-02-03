@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Menu, X, ChevronRight, ChevronDown, Activity, Zap, User, LogOut, Building2, Shield, FileText, History, Calculator } from "lucide-react";
+import { TrendingUp, Menu, X, ChevronDown, Activity, Zap, User, LogOut, Building2, Shield, FileText, History, Calculator } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BubbleSystem } from "./BubbleSystem";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +34,8 @@ export default function Layout({
   const [timeframe, setTimeframe] = useState("4h");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAURAExpanded, setIsAURAExpanded] = useState(false);
+  // PERF: Defer AURA mounting to prioritize main content
+  const [auraReady, setAuraReady] = useState(false);
   const {
     user,
     signOut
@@ -64,6 +65,16 @@ export default function Layout({
     if (path.includes('macro-analysis')) return 'Macro Analysis';
     return 'default';
   }, [location.pathname]);
+
+  // PERF: Defer AURA mount by 100ms to prioritize main content rendering
+  useEffect(() => {
+    if (user) {
+      const timer = setTimeout(() => setAuraReady(true), 100);
+      return () => clearTimeout(timer);
+    } else {
+      setAuraReady(false);
+    }
+  }, [user]);
   return <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/20 overflow-x-hidden">
     {/* Mobile-First Responsive Header */}
     <header className="sticky top-[calc(env(safe-area-inset-top))] z-40 border-b border-white/5 bg-background shadow-sm h-14 sm:h-16">
@@ -286,8 +297,8 @@ export default function Layout({
         onTradeSetupClick={() => onModuleChange?.("trading")}
        /> */}
 
-    {/* Global AURA Assistant */}
-    {user && (
+    {/* Global AURA Assistant - PERF: Deferred mount for faster first paint */}
+    {user && auraReady && (
       <AURA
         context={auraContext}
         contextData={contextData}
