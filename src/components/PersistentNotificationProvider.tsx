@@ -15,7 +15,7 @@ interface ActiveJob {
   instrument: string;
   status: 'pending' | 'running';
   createdAt: Date;
-  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports';
+  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
   progressMessage?: string;
   userQuery?: string;
 }
@@ -27,7 +27,7 @@ interface CompletedJob {
   instrument: string;
   resultData: any;
   completedAt: Date;
-  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports';
+  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
   progressMessage?: string;
   userQuery?: string;
 }
@@ -79,28 +79,35 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
   };
 
   // Map job features to originating features
-  const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-analysis' | 'reports' => {
-    if (feature === 'AI Trade Setup') return 'ai-setup';
-    if (feature === 'Macro Commentary') return 'macro-analysis';
-    if (feature === 'Report') return 'reports';
+  const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
+    const f = feature.toLowerCase();
+    // New Lab pages prioritized
+    if (f.includes('macro_lab') || f.includes('macro lab')) return 'macro-lab';
+    if (f.includes('trade_generator') || f.includes('trade generator')) return 'trade-generator';
+    // Existing pages
+    if (f === 'ai trade setup' || f === 'ai_trade_setup') return 'ai-setup';
+    if (f.includes('macro') || f.includes('commentary')) return 'macro-analysis';
+    if (f.includes('report')) return 'reports';
     return 'ai-setup'; // fallback
   };
 
   // Map feature to credit type
   const getCreditTypeForFeature = (feature: string): CreditType => {
     const f = feature.toLowerCase();
-    if (f.includes('trade') || f.includes('ai_trade_setup')) return 'ideas';
-    if (f.includes('macro') || f.includes('commentary')) return 'queries';
+    if (f.includes('trade') || f.includes('ai_trade_setup') || f.includes('trade_generator')) return 'ideas';
+    if (f.includes('macro') || f.includes('commentary') || f.includes('macro_lab')) return 'queries';
     if (f.includes('report')) return 'reports';
     return 'queries';
   };
 
   // Map features to routes
-  const mapFeatureToRoute = (feature: 'ai-setup' | 'macro-analysis' | 'reports'): string => {
+  const mapFeatureToRoute = (feature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator'): string => {
     switch (feature) {
       case 'ai-setup': return '/ai-setup';
       case 'macro-analysis': return '/macro-analysis';
       case 'reports': return '/reports';
+      case 'macro-lab': return '/forecast-playground/macro-commentary';
+      case 'trade-generator': return '/forecast-playground/trade-generator';
       default: return '/ai-setup';
     }
   };
@@ -285,10 +292,12 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             
             // Show error toast with retry button
             const originatingFeature = mapFeatureToOriginatingFeature(updatedJob.feature || '');
-            const routeMap = {
+            const routeMap: Record<string, string> = {
               'ai-setup': '/ai-setup',
               'macro-analysis': '/macro-analysis',
-              'reports': '/reports'
+              'reports': '/reports',
+              'macro-lab': '/forecast-playground/macro-commentary',
+              'trade-generator': '/forecast-playground/trade-generator'
             };
             
             toast({
