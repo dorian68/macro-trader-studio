@@ -1,131 +1,115 @@
 
-# Plan : Instrumentation du macro-lab-proxy pour auditer le job_id
+# Plan : Correction de l'architecture Realtime pour le suivi des jobs
 
-## Contexte
+## Problème identifié
 
-Le frontend `ForecastMacroLab.tsx` injecte correctement le `job_id` dans le payload avant l'envoi HTTP. Pour confirmer que ce dernier traverse bien l'Edge Function `macro-lab-proxy` jusqu'au backend, nous devons ajouter des logs détaillés du contenu du body reçu.
+L'architecture actuelle présente une **fragmentation d'état** entre plusieurs composants :
 
-## Problème
+1. **`JobStatusCards`** (en haut à gauche) appelle `useRealtimeJobManager()` directement, créant une **nouvelle instance d'état isolée**
+2. **`ForecastMacroLab`** utilise aussi `useRealtimeJobManager()` pour `createJob()`, mais avec un état séparé
+3. **`PersistentNotificationProvider`** gère son propre état `activeJobs` via `supabase.channel()` direct
+4. **`DiscreetJobStatus`** (badge central) utilise `activeJobs` du `PersistentNotificationProvider`
 
-Le proxy actuel ne log que la **taille** du body (`bodyBytes`), mais pas son **contenu**. Cela empêche de vérifier si le `job_id` est présent dans la requête.
+**Résultat** : Le job créé par MacroLab n'est **jamais visible** par `JobStatusCards` car ils utilisent des états différents.
 
-## Solution proposée
+## Architecture actuelle (problématique)
 
-Ajouter un parsing JSON du body dans le proxy pour extraire et logger spécifiquement :
-1. Le `job_id` reçu
-2. Le `type` de requête
-3. L'`instrument` demandé
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                           App.tsx                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │  PersistentNotificationProvider                                  ││
+│  │  ├── activeJobs (état A)                                         ││
+│  │  └── supabase.channel() - INSERT/UPDATE/DELETE                   ││
+│  │                                                                   ││
+│  │  JobStatusCards                                                   ││
+│  │  ├── useRealtimeJobManager() → activeJobs (état B - ISOLÉ)        ││
+│  │  └── subscribeToPostgresChanges() - UPDATE only                   ││
+│  └─────────────────────────────────────────────────────────────────┘│
+│                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │  ForecastMacroLab                                                ││
+│  │  ├── useRealtimeJobManager().createJob() → activeJobs (état C)   ││
+│  │  └── supabase.channel() local - UPDATE only (fallback)           ││
+│  └─────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────┘
 
-Cela permettra de tracer dans les logs Supabase Edge Functions si le `job_id` est bien transmis par le frontend.
+État A ≠ État B ≠ État C  →  Jobs créés invisibles aux cards!
+```
+
+## Solution : Unification de l'état
+
+### Option retenue : Supprimer `JobStatusCards` et utiliser l'état centralisé
+
+`PersistentNotificationProvider` écoute déjà les événements **INSERT**, **UPDATE**, et **DELETE** sur la table `jobs`. Son état `activeJobs` est accessible via le hook `usePersistentNotifications()`.
+
+La solution la plus simple sans régression :
+1. **Supprimer** l'import et l'usage de `JobStatusCards` (qui utilise un état isolé)
+2. **Conserver** `DiscreetJobStatus` qui affiche déjà correctement les jobs actifs depuis `PersistentNotificationProvider`
+3. **Optionnel** : Créer un nouveau composant de cards qui consomme `usePersistentNotifications()` au lieu de `useRealtimeJobManager()`
 
 ## Modifications
 
-### Fichier : `supabase/functions/macro-lab-proxy/index.ts`
+### Fichier 1 : `src/App.tsx`
 
-**Localisation** : Après la ligne 43 (`const body = await req.text();`)
+**Supprimer** l'import et l'usage de `JobStatusCards` qui crée une instance isolée.
 
-**Ajout** :
+Lignes concernées :
+- Ligne 15 : supprimer `import { JobStatusCards } from "@/components/JobStatusCards";`
+- Ligne 86 : supprimer `<JobStatusCards />`
+
+### Fichier 2 : `src/components/Layout.tsx`
+
+Le composant `DiscreetJobStatus` utilise déjà `usePersistentNotifications()` via le Layout. Il reste fonctionnel et affiche les jobs actifs.
+
+**Aucune modification requise** - le badge central continue de fonctionner.
+
+### Fichier 3 (optionnel) : Nouveau composant `JobStatusCardsUnified.tsx`
+
+Si les cards en haut à gauche sont souhaitées, créer un nouveau composant qui utilise `usePersistentNotifications()` :
+
 ```typescript
-// Parse body to extract and log critical fields for debugging
-let parsedBody: any = null;
-let jobIdFromPayload: string | null = null;
-let requestType: string | null = null;
-let instrument: string | null = null;
+import { usePersistentNotifications } from "@/components/PersistentNotificationProvider";
 
-try {
-  parsedBody = JSON.parse(body);
-  jobIdFromPayload = parsedBody?.job_id || null;
-  requestType = parsedBody?.type || null;
-  instrument = parsedBody?.instrument || null;
-} catch (parseError) {
-  console.log(`[macro-lab-proxy] body parse failed`, {
-    reqId,
-    error: parseError instanceof Error ? parseError.message : String(parseError),
-    bodyPreview: body.substring(0, 200),
-  });
+export function JobStatusCardsUnified() {
+  const { activeJobs } = usePersistentNotifications();
+  
+  // Affiche les cards basées sur l'état centralisé
+  // ...
 }
-
-console.log(`[macro-lab-proxy] payload inspection`, {
-  reqId,
-  job_id: jobIdFromPayload,
-  job_id_present: !!jobIdFromPayload,
-  type: requestType,
-  instrument: instrument,
-  bodyBytes: body.length,
-});
 ```
 
-**Modification du log existant (ligne 45-49)** :
+## Résumé des changements
 
-```typescript
-// De:
-console.log(`[macro-lab-proxy] forwarding`, {
-  reqId,
-  target: TARGET_URL,
-  bodyBytes: body.length,
-});
+| Fichier | Action | Impact |
+|---------|--------|--------|
+| `src/App.tsx` | Supprimer `JobStatusCards` | Élimine l'état isolé |
+| `src/components/JobStatusCards.tsx` | Conserver (optionnel cleanup) | Peut être supprimé ou refactoré |
+| `src/components/Layout.tsx` | Aucun | `DiscreetJobStatus` reste fonctionnel |
 
-// À:
-console.log(`[macro-lab-proxy] forwarding to backend`, {
-  reqId,
-  target: TARGET_URL,
-  job_id: jobIdFromPayload,
-  bodyBytes: body.length,
-});
-```
+## Comportement après correction
 
-**Ajout après réponse upstream (ligne 58-65)** :
-
-```typescript
-// Parse upstream response to verify job_id echo
-let upstreamJobId: string | null = null;
-try {
-  const upstreamParsed = JSON.parse(upstreamText);
-  // Backend may return job_id at different paths
-  upstreamJobId = upstreamParsed?.job_id 
-    || upstreamParsed?.message?.job_id 
-    || upstreamParsed?.body?.message?.job_id 
-    || null;
-} catch {
-  // Ignore parse errors for response logging
-}
-
-console.log(`[macro-lab-proxy] upstream response`, {
-  reqId,
-  status: upstream.status,
-  ms: Date.now() - startedAt,
-  upstreamBodyBytes: upstreamText.length,
-  job_id_in_response: upstreamJobId,
-  job_id_roundtrip: jobIdFromPayload === upstreamJobId ? 'MATCH' : 'MISMATCH',
-});
-```
-
-## Résumé des logs ajoutés
-
-| Log | Contenu | Objectif |
-|-----|---------|----------|
-| `payload inspection` | `job_id`, `type`, `instrument` | Vérifier ce que le proxy reçoit |
-| `forwarding to backend` | `job_id` + target URL | Confirmer avant transmission |
-| `upstream response` | `job_id_in_response`, `job_id_roundtrip` | Vérifier l'écho du backend |
-
-## Utilisation post-déploiement
-
-Après déploiement, consulter les logs via :
-1. **Supabase Dashboard** > Edge Functions > `macro-lab-proxy` > Logs
-2. Ou via l'outil `supabase--edge-function-logs` avec `function_name: "macro-lab-proxy"`
-
-Rechercher les logs contenant `job_id` pour confirmer la présence ou l'absence du champ dans les requêtes.
+1. **MacroLab** crée un job via `useRealtimeJobManager().createJob()` → INSERT en base
+2. **PersistentNotificationProvider** reçoit l'événement INSERT → ajoute le job à son `activeJobs`
+3. **DiscreetJobStatus** (badge central) affiche immédiatement le job via `usePersistentNotifications()`
+4. **Backend** met à jour le job avec `response_payload`
+5. **PersistentNotificationProvider** reçoit l'événement UPDATE → déplace le job vers `completedJobs`
+6. **Flash message** s'affiche pour notifier la completion
 
 ## Section technique
 
-### Sécurité
-- Les logs n'exposent pas de données sensibles (seulement `job_id`, `type`, `instrument`)
-- Le `bodyPreview` en cas d'erreur de parsing est limité à 200 caractères
+### Pourquoi `useRealtimeJobManager` ne fonctionne pas en tant que source partagée ?
 
-### Impact performance
-- Négligeable : un seul `JSON.parse()` supplémentaire sur le body déjà en mémoire
-- Le parsing de la réponse upstream est optionnel (try/catch silencieux)
+Le hook `useRealtimeJobManager()` utilise `useState` localement. Chaque composant qui l'appelle obtient une **instance d'état indépendante**. Seul le composant qui appelle `createJob()` verra le job dans son état local.
 
-### Déploiement
-- Le fichier sera automatiquement déployé lors du build
-- Aucune modification de `config.toml` requise
+Pour partager un état entre composants, il faut soit :
+- Un **Context Provider** (ce que fait `PersistentNotificationProvider`)
+- Un **state manager** global (Zustand, Jotai, Redux)
+
+### Vérification de la configuration Realtime
+
+La table `jobs` a `REPLICA IDENTITY FULL` activé, ce qui permet à Supabase Realtime de transmettre les anciennes et nouvelles valeurs lors des UPDATE/DELETE.
+
+### Risque de régression
+
+**Aucun** - `DiscreetJobStatus` utilise déjà le bon état centralisé. La suppression de `JobStatusCards` élimine simplement un composant qui n'affichait rien car son état était toujours vide.
