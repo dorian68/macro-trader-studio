@@ -2497,7 +2497,10 @@ function ForecastTradeGeneratorContent() {
 
                   {/* Setups */}
                   {aiSetupResult.setups && aiSetupResult.setups.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className={cn(
+                      "grid gap-4",
+                      aiSetupResult.setups.length === 1 ? "grid-cols-1" : "md:grid-cols-2"
+                    )}>
                       {aiSetupResult.setups.map((setup, idx) => (
                         <TradeSetupCard key={idx} setup={setup} index={idx} />
                       ))}
@@ -2543,9 +2546,38 @@ function ForecastTradeGeneratorContent() {
                 </p>
               </div>
 
-              {/* Risk Surface - Now integrated here */}
+              {/* Forecast Summary - Now FIRST */}
+              {forecastHorizons.length > 0 ? (
+                <div className="space-y-4 mb-6">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Layers className="h-4 w-4" />
+                      Forecast Summary by Horizon
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Click on a row to expand Risk Profiles (Conservative / Moderate / Aggressive)
+                    </p>
+                  </div>
+                  <EnhancedForecastTable 
+                    horizons={forecastHorizons} 
+                    symbol={symbol}
+                    timeframe={timeframe}
+                    surfaceResult={riskSurfaceData}
+                    expandedRows={expandedRows}
+                    onToggleRow={toggleRowExpanded}
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground mb-6">
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No forecast data available</p>
+                  <p className="text-xs mt-1">Generate a trade to see quantitative validation</p>
+                </div>
+              )}
+
+              {/* Risk Surface - Now BELOW Forecast Summary */}
               {riskSurfaceData && (
-                <div className="mb-6">
+                <div>
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                       <Target className="h-4 w-4" />
@@ -2566,34 +2598,6 @@ function ForecastTradeGeneratorContent() {
                     timeframe={timeframe}
                     horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
                   />
-                </div>
-              )}
-
-              {forecastHorizons.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                      <Layers className="h-4 w-4" />
-                      Forecast Summary by Horizon
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Click on a row to expand Risk Profiles (Conservative / Moderate / Aggressive)
-                    </p>
-                  </div>
-                  <EnhancedForecastTable 
-                    horizons={forecastHorizons} 
-                    symbol={symbol}
-                    timeframe={timeframe}
-                    surfaceResult={riskSurfaceData}
-                    expandedRows={expandedRows}
-                    onToggleRow={toggleRowExpanded}
-                  />
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No forecast data available</p>
-                  <p className="text-xs mt-1">Generate a trade to see quantitative validation</p>
                 </div>
               )}
             </NarrativeSection>
