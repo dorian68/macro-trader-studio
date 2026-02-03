@@ -33,10 +33,10 @@ import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
-import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
 import { MacroCommentaryDisplay } from "@/components/MacroCommentaryDisplay";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const { useState, useEffect } = React;
 
@@ -83,6 +83,7 @@ export default function ForecastMacroLab() {
   const { createJob } = useRealtimeJobManager();
   const { tryEngageCredit } = useCreditEngagement();
   const { t } = useTranslation(["dashboard", "toasts", "common"]);
+  const { isSuperUser } = useUserRole();
 
   // Forecast Playground is an internal tool: keep UI in English.
   useForceLanguage("en");
@@ -874,24 +875,22 @@ export default function ForecastMacroLab() {
   ];
 
   return (
-    <SuperUserGuard
-      fallback={<LabsComingSoon title="Macro Commentary" description="This feature is currently in private beta." />}
-    >
-      <Layout activeModule="macro-analysis" onModuleChange={() => {}}>
-        <div className="space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigate("/forecast-playground")}
-              className="shrink-0 min-h-[44px] w-11"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">{t("dashboard:macro.title")}</h1>
-              <p className="text-sm sm:text-base text-muted-foreground break-words">{t("dashboard:macro.subtitle")}</p>
-            </div>
+    <Layout activeModule="macro-analysis" onModuleChange={() => {}}>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/dashboard")}
+            className="shrink-0 min-h-[44px] w-11"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">{t("dashboard:macro.title")}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground break-words">{t("dashboard:macro.subtitle")}</p>
+          </div>
+          {isSuperUser && (
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-sm text-muted-foreground">HTTP debug</span>
               <Switch
@@ -900,7 +899,8 @@ export default function ForecastMacroLab() {
                 aria-label="Toggle HTTP debug"
               />
             </div>
-          </div>
+          )}
+        </div>
 
           <Card className="gradient-card shadow-lg rounded-2xl border">
             <CardContent className="p-4 sm:p-6">
@@ -1345,6 +1345,5 @@ export default function ForecastMacroLab() {
           </Card>
         </div>
       </Layout>
-    </SuperUserGuard>
   );
 }

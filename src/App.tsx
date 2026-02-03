@@ -118,6 +118,10 @@ const App = () => {
                             <Route path="/labs/backtester" element={<Backtester />} />
                             <Route path="/forecast-playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
                             <Route path="/forecast-playground/tool" element={<AuthGuard requireApproval><ForecastPlaygroundTool /></AuthGuard>} />
+                            {/* New public routes for Trade Generator and Macro Lab */}
+                            <Route path="/trade-generator" element={<AuthGuard requireApproval><ForecastTradeGenerator /></AuthGuard>} />
+                            <Route path="/macro-lab" element={<AuthGuard requireApproval><ForecastMacroLab /></AuthGuard>} />
+                            {/* Legacy routes for backward compatibility */}
                             <Route path="/forecast-playground/macro-commentary" element={<AuthGuard requireApproval><ForecastMacroLab /></AuthGuard>} />
                             <Route path="/forecast-playground/trade-generator" element={<AuthGuard requireApproval><ForecastTradeGenerator /></AuthGuard>} />
                             <Route path="/coming-soon" element={<ComingSoon />} />

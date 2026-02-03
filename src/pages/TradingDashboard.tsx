@@ -296,7 +296,7 @@ export default function TradingDashboard() {
           <div className="min-w-0 min-h-0 order-2 my-0 hidden lg:flex flex-col gap-2 h-full">
             <Card
               className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
-              onClick={() => navigate('/ai-setup')}
+              onClick={() => navigate('/trade-generator')}
               style={{ minHeight: '44px' }}
             >
               <CardContent className="p-6 flex flex-col items-center justify-center gap-4 text-center h-full">
@@ -317,7 +317,7 @@ export default function TradingDashboard() {
 
             <Card
               className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
-              onClick={() => navigate('/macro-analysis')}
+              onClick={() => navigate('/macro-lab')}
               style={{ minHeight: '44px' }}
             >
               <CardContent className="p-6 flex flex-col items-center justify-center gap-4 text-center h-full">
@@ -364,7 +364,7 @@ export default function TradingDashboard() {
               {/* AI Trade Setup */}
               <Card
                 className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
-                onClick={() => navigate('/ai-setup')}
+                onClick={() => navigate('/trade-generator')}
               >
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="gradient-primary p-2 rounded-xl shrink-0">
@@ -381,7 +381,7 @@ export default function TradingDashboard() {
               {/* Macro Commentary */}
               <Card
                 className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
-                onClick={() => navigate('/macro-analysis')}
+                onClick={() => navigate('/macro-lab')}
               >
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="gradient-primary p-2 rounded-xl shrink-0">
