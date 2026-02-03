@@ -1,61 +1,75 @@
 
 
-# Plan : Redirection du toaster de notification vers les nouvelles pages
+# Plan : Adaptation des toasters de fin de job vers les nouvelles pages
 
 ## Résumé
 
-Les notifications de fin de job doivent rediriger vers les nouvelles pages ForecastMacroLab et ForecastTradeGenerator au lieu des anciennes pages MacroAnalysis et AISetup, tout en permettant aux nouvelles pages de traiter les résultats injectés via `sessionStorage`.
+Adapter la logique existante de redirection des toasters de fin de job pour cibler les nouvelles pages fonctionnelles (Macro Labs et Trade Generator) tout en conservant la compatibilité descendante avec les anciennes pages.
 
 ## Analyse de l'existant
 
 ### Architecture actuelle du routing
 
-**Fichier** : `src/components/PersistentNotificationProvider.tsx`
+| Fichier | Fonction | Rôle |
+|---------|----------|------|
+| `PersistentNotificationProvider.tsx` | `mapFeatureToOriginatingFeature()` L82-87 | Convertit le nom de feature vers une clé interne |
+| `PersistentNotificationProvider.tsx` | `mapFeatureToRoute()` L99-106 | Convertit la clé interne vers une route |
+| `PersistentNotificationProvider.tsx` | `navigateToResult()` L489-503 | Stocke le résultat dans sessionStorage et navigue |
+| `GlobalLoadingProvider.tsx` | `navigationMap` L55-59 | Mapping pour les LoadingCards |
 
-| Fonction | Responsabilité |
-|----------|----------------|
-| `mapFeatureToOriginatingFeature()` (L82-87) | Convertit `AI Trade Setup` → `ai-setup`, `Macro Commentary` → `macro-analysis` |
-| `mapFeatureToRoute()` (L98-106) | Convertit `ai-setup` → `/ai-setup`, `macro-analysis` → `/macro-analysis` |
-| `navigateToResult()` (L489-503) | Stocke le résultat dans `sessionStorage` et navigue vers la route |
+### État actuel des types
 
-### État actuel des pages
+```typescript
+// Actuellement supportés :
+originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports'
+```
+
+### État actuel des pages cibles
 
 | Page | Gère pendingResult | Type vérifié |
 |------|-------------------|--------------|
-| AISetup | ✅ Oui (L556-607) | `ai_trade_setup` |
-| MacroAnalysis | ✅ Oui (L91-107) | `macro`, `commentary` |
-| ForecastMacroLab | ✅ Oui (L127-143) | `macro`, `commentary` |
+| AISetup | ✅ Oui | `ai_trade_setup` |
+| MacroAnalysis | ✅ Oui | `macro`, `commentary` |
+| ForecastMacroLab | ✅ Oui (L128-143) | `macro`, `commentary` |
 | ForecastTradeGenerator | ❌ Non | N/A |
 
-## Solution
+## Solution : Stratégie d'adaptation ciblée
 
-### Stratégie de migration
+L'approche consiste à **ajouter** de nouveaux types de features (`macro_lab`, `trade_generator`) qui redirigent vers les nouvelles pages, tout en **conservant intégralement** le comportement existant pour les anciennes features.
 
-Les nouvelles pages doivent **coexister** avec les anciennes. La stratégie est d'ajouter de nouveaux types de features (`macro_lab`, `trade_generator`) qui redirigent vers les nouvelles pages, tout en conservant le comportement existant pour les anciennes features.
+### Modifications fichier par fichier
 
-### Modifications requises
+---
 
-#### 1. PersistentNotificationProvider.tsx - Étendre le mapping
+#### 1. PersistentNotificationProvider.tsx
 
-**Types à ajouter** :
+**A. Étendre les interfaces (L11-21 et L23-33)**
+
+Ajouter `'macro-lab' | 'trade-generator'` aux types `originatingFeature` :
 
 ```typescript
-// Interface ActiveJob (L11-21)
-originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
+interface ActiveJob {
+  // ... existing fields ...
+  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
+}
 
-// Interface CompletedJob (L23-33)
-originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
+interface CompletedJob {
+  // ... existing fields ...
+  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
+}
 ```
 
-**mapFeatureToOriginatingFeature() - Ajouter les mappings** :
+**B. Étendre mapFeatureToOriginatingFeature() (L82-87)**
+
+Ajouter les nouveaux mappings en priorité (avant les anciens) :
 
 ```typescript
-const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
+const mapFeatureToOriginatingFeature = (feature: string): OriginatingFeature => {
   const f = feature.toLowerCase();
-  // Nouvelles pages Lab priorisées
+  // Nouvelles pages Lab (priorité haute)
   if (f.includes('macro_lab') || f.includes('macro lab')) return 'macro-lab';
   if (f.includes('trade_generator') || f.includes('trade generator')) return 'trade-generator';
-  // Pages existantes
+  // Pages existantes (inchangé)
   if (f === 'ai trade setup' || f === 'ai_trade_setup') return 'ai-setup';
   if (f.includes('macro') || f.includes('commentary')) return 'macro-analysis';
   if (f.includes('report')) return 'reports';
@@ -63,10 +77,12 @@ const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-an
 };
 ```
 
-**mapFeatureToRoute() - Ajouter les routes** :
+**C. Étendre mapFeatureToRoute() (L99-106)**
+
+Ajouter les nouvelles routes :
 
 ```typescript
-const mapFeatureToRoute = (feature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator'): string => {
+const mapFeatureToRoute = (feature: OriginatingFeature): string => {
   switch (feature) {
     case 'ai-setup': return '/ai-setup';
     case 'macro-analysis': return '/macro-analysis';
@@ -78,7 +94,7 @@ const mapFeatureToRoute = (feature: 'ai-setup' | 'macro-analysis' | 'reports' | 
 };
 ```
 
-**routeMap dans handler error (L288-292)** :
+**D. Étendre routeMap dans handler error (L288-292)**
 
 ```typescript
 const routeMap = {
@@ -90,9 +106,26 @@ const routeMap = {
 };
 ```
 
-#### 2. GlobalLoadingProvider.tsx - Étendre le navigationMap
+**E. Étendre extractFeature typeMap (L140-147 et L222-228)**
 
-**handleViewResult() (L55-60)** :
+Dans les deux fonctions extractFeature, ajouter :
+
+```typescript
+const typeMap: Record<string, string> = {
+  'ai_trade_setup': 'AI Trade Setup',
+  'macro_commentary': 'Macro Commentary',
+  'report': 'Report',
+  'reports': 'Report',
+  'macro_lab': 'Macro Lab',           // NOUVEAU
+  'trade_generator': 'Trade Generator' // NOUVEAU
+};
+```
+
+---
+
+#### 2. GlobalLoadingProvider.tsx
+
+**Étendre navigationMap (L55-59)**
 
 ```typescript
 const navigationMap = {
@@ -104,12 +137,13 @@ const navigationMap = {
 };
 ```
 
-#### 3. ForecastTradeGenerator.tsx - Ajouter la gestion des pendingResult
+---
 
-Ajouter un `useEffect` pour récupérer et traiter les résultats stockés dans `sessionStorage` :
+#### 3. ForecastTradeGenerator.tsx
+
+**A. Ajouter useEffect pour pendingResult (après L70)**
 
 ```typescript
-// Après les autres useEffect
 useEffect(() => {
   const pendingResult = sessionStorage.getItem('pendingResult');
   if (pendingResult) {
@@ -119,17 +153,27 @@ useEffect(() => {
       if (result.type === 'trade_generator' || result.type === 'ai_trade_setup') {
         console.log('📍 [TradeGenerator] Processing pending result:', result);
         
-        // Injecter les données dans l'état existant
         if (result.resultData) {
-          // Réutiliser la logique de normalisation existante
-          const normalized = normalizeN8nResponse(result.resultData);
-          if (normalized.tradeSetup) {
-            setN8nData(normalized.tradeSetup);
+          // Réutiliser les extractors existants pour injecter les données
+          const normalized = normalizeN8n(result.resultData);
+          if (normalized && normalized.setups?.length > 0) {
+            setAiSetupResult(normalized);
           }
-          if (normalized.rawPayload) {
-            setRawPayload(normalized.rawPayload);
+          
+          const tradeSetup = extractTradeSetup(result.resultData);
+          if (tradeSetup) {
+            const horizons = getHorizonsFromTradeSetup(tradeSetup);
+            if (horizons.length > 0) {
+              setForecastHorizons(horizons);
+            }
           }
-          // Autres états selon la structure de la réponse...
+          
+          const surface = extractRiskSurface(result.resultData);
+          if (surface) {
+            setSurfaceData(surface);
+          }
+          
+          setRawResponse(result.resultData);
         }
         
         sessionStorage.removeItem('pendingResult');
@@ -147,65 +191,74 @@ useEffect(() => {
 }, []);
 ```
 
-#### 4. ForecastTradeGenerator.tsx - Modifier le createJob pour utiliser le nouveau type
-
-Dans `handleSubmit()`, modifier l'appel à `createJob()` pour utiliser le type `trade_generator` :
+**B. Modifier createJob pour utiliser le nouveau type (L1558-1568)**
 
 ```typescript
-// Avant (ligne ~1560)
-const jobId = await createJob(
+// AVANT
+jobId = await createJob(
   'ai_trade_setup',
   symbol,
-  { type: 'RAG', mode: 'trade_generation', instrument: symbol },
+  { type: 'RAG', mode: 'trade_generation', instrument: symbol, horizons: parsedHorizons },
   'AI Trade Setup'
 );
 
-// Après
-const jobId = await createJob(
+// APRÈS
+jobId = await createJob(
   'trade_generator',              // ← Nouveau type
   symbol,
-  { type: 'trade_generator', mode: 'trade_generation', instrument: symbol },
+  { type: 'trade_generator', mode: 'trade_generation', instrument: symbol, horizons: parsedHorizons },
   'Trade Generator'               // ← Nouveau nom affiché
 );
 ```
 
-#### 5. ForecastMacroLab.tsx - Modifier le createJob pour utiliser le nouveau type
+---
 
-Dans `generateAnalysis()`, modifier l'appel à `createJob()` :
+#### 4. ForecastMacroLab.tsx
+
+**Modifier createJob pour utiliser le nouveau type (L491)**
 
 ```typescript
-// Avant (ligne ~489)
-const responseJobId = await createJob(
-  'macro_commentary',
-  assetSymbol,
-  { type: 'macro_commentary', query: queryParams.query, instrument: assetSymbol },
-  'Macro Commentary'
-);
+// AVANT
+responseJobId = await createJob("macro_analysis", selectedAsset.symbol, {}, "Macro Commentary");
 
-// Après
-const responseJobId = await createJob(
-  'macro_lab',                    // ← Nouveau type
-  assetSymbol,
-  { type: 'macro_lab', query: queryParams.query, instrument: assetSymbol },
-  'Macro Lab'                     // ← Nouveau nom affiché
-);
+// APRÈS
+responseJobId = await createJob("macro_lab", selectedAsset.symbol, {}, "Macro Lab");
 ```
 
-## Résumé des modifications
+**Étendre le check de pendingResult (L133)**
 
-| Fichier | Modification | Impact |
-|---------|--------------|--------|
-| `PersistentNotificationProvider.tsx` | Ajouter types `macro-lab`, `trade-generator` aux interfaces et fonctions de mapping | Routing correct |
-| `GlobalLoadingProvider.tsx` | Étendre `navigationMap` avec nouvelles routes | Compatibilité LoadingCards |
-| `ForecastTradeGenerator.tsx` | Ajouter `useEffect` pour `pendingResult` + modifier `createJob` type | Réception des résultats |
-| `ForecastMacroLab.tsx` | Modifier `createJob` type et feature name | Identification correcte |
+```typescript
+// AVANT
+if (result.type.includes("macro") || result.type.includes("commentary")) {
 
-## Garanties
+// APRÈS
+if (result.type.includes("macro") || result.type.includes("commentary") || result.type === "macro_lab") {
+```
+
+---
+
+## Tableau récapitulatif des modifications
+
+| Fichier | Ligne(s) | Action | Impact |
+|---------|----------|--------|--------|
+| `PersistentNotificationProvider.tsx` | L18, L30 | Étendre types | Typage correct |
+| `PersistentNotificationProvider.tsx` | L82-87 | Ajouter mappings feature→clé | Detection nouveaux types |
+| `PersistentNotificationProvider.tsx` | L99-106 | Ajouter routes | Navigation correcte |
+| `PersistentNotificationProvider.tsx` | L140-147, L222-228 | Ajouter typeMap entries | Extraction feature name |
+| `PersistentNotificationProvider.tsx` | L288-292 | Ajouter routeMap entries | Retry button route |
+| `GlobalLoadingProvider.tsx` | L55-59 | Étendre navigationMap | LoadingCards compat |
+| `ForecastTradeGenerator.tsx` | ~L80 | Ajouter useEffect pendingResult | Réception résultats |
+| `ForecastTradeGenerator.tsx` | L1558-1568 | Modifier createJob type/name | Identification job |
+| `ForecastMacroLab.tsx` | L491 | Modifier createJob type/name | Identification job |
+| `ForecastMacroLab.tsx` | L133 | Étendre check pendingResult | Accept macro_lab type |
+
+## Garanties de non-régression
 
 - Les anciennes pages (AISetup, MacroAnalysis, Reports) continuent de fonctionner normalement
-- Les nouvelles pages peuvent recevoir les résultats via le même mécanisme
+- Les jobs existants créés avec les anciens types (`ai_trade_setup`, `macro_commentary`) continuent de router vers les anciennes pages
 - Le type de crédit reste inchangé (`ideas` pour Trade Generator, `queries` pour Macro Lab)
-- Aucune modification du backend ou des edge functions
+- Aucune modification du backend, des Edge Functions, ou de Supabase Realtime
+- Le mécanisme de stockage/récupération via sessionStorage est conservé intégralement
 
 ## Section technique
 
@@ -215,7 +268,7 @@ const responseJobId = await createJob(
 1. User lance une analyse depuis /forecast-playground/trade-generator
 2. ForecastTradeGenerator.handleSubmit()
    ├── createJob('trade_generator', symbol, {...}, 'Trade Generator')
-   │   └── INSERT jobs (feature: 'Trade Generator')
+   │   └── INSERT jobs (type: 'trade_generator', feature: 'Trade Generator')
    │       └── PersistentNotificationProvider reçoit INSERT
    │           └── mapFeatureToOriginatingFeature('Trade Generator') → 'trade-generator'
    │               └── Toaster de chargement apparaît
@@ -228,17 +281,22 @@ const responseJobId = await createJob(
 
 5. User clique "View Result"
    └── navigateToResult(completedJob)
-       ├── sessionStorage.setItem('pendingResult', {...})
+       ├── sessionStorage.setItem('pendingResult', {type: 'trade_generator', ...})
        └── navigate('/forecast-playground/trade-generator')
 
 6. ForecastTradeGenerator monte
    └── useEffect détecte pendingResult
-       ├── Parse et valide le type
-       ├── Injecte les données dans l'état
+       ├── Parse et valide le type (trade_generator OU ai_trade_setup)
+       ├── Injecte les données via extractors existants
        └── sessionStorage.removeItem('pendingResult')
 ```
 
 ### Compatibilité descendante
 
-Les jobs existants créés avec les anciens types (`ai_trade_setup`, `macro_commentary`) continueront de router vers les anciennes pages. Seuls les nouveaux jobs créés avec les types `trade_generator` et `macro_lab` iront vers les nouvelles pages.
+| Type de job | Route cible |
+|-------------|-------------|
+| `ai_trade_setup` | `/ai-setup` (inchangé) |
+| `macro_commentary` | `/macro-analysis` (inchangé) |
+| `trade_generator` | `/forecast-playground/trade-generator` (nouveau) |
+| `macro_lab` | `/forecast-playground/macro-commentary` (nouveau) |
 
