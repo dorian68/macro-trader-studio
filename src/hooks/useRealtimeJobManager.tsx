@@ -37,10 +37,16 @@ const mapTypeToFeature = (type: string): string => {
     case 'macro-commentary':
     case 'macro_analysis':
       return 'macro_commentary';
+    case 'macro_lab':
+    case 'macro-lab':
+      return 'macro_lab';
     case 'trade_setup':
     case 'tradesetup':
     case 'ai_trade_setup':
       return 'ai_trade_setup';
+    case 'trade_generator':
+    case 'trade-generator':
+      return 'trade_generator';
     case 'reports':
     case 'report':
       return 'report';

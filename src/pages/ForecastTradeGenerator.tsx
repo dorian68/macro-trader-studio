@@ -1534,6 +1534,13 @@ function ForecastTradeGeneratorContent() {
           console.log('📍 [TradeGenerator] Processing pending result:', result);
           
           if (result.resultData) {
+            // ✅ Update symbol from result if available
+            const ins = result.instrument || result.resultData?.instrument;
+            if (ins) {
+              setSymbol(ins);
+              console.log('✅ [TradeGenerator] Updated symbol from result:', ins);
+            }
+            
             // Reuse existing extractors to inject data
             const normalized = normalizeN8n(result.resultData);
             if (normalized && normalized.setups && normalized.setups.length > 0) {
@@ -1554,6 +1561,20 @@ function ForecastTradeGeneratorContent() {
             if (surface) {
               setRiskSurfaceData(surface);
               console.log('✅ [TradeGenerator] Injected risk surface data:', surface);
+            }
+            
+            // ✅ Extract final_answer (AI textual analysis)
+            const answer = extractFinalAnswer(result.resultData);
+            if (answer) {
+              setFinalAnswer(answer);
+              console.log('✅ [TradeGenerator] Injected final answer');
+            }
+            
+            // ✅ Extract confidence_note
+            const note = extractConfidenceNote(result.resultData);
+            if (note) {
+              setConfidenceNote(note);
+              console.log('✅ [TradeGenerator] Injected confidence note');
             }
             
             setRawResponse(result.resultData);
