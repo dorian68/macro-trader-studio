@@ -41,6 +41,7 @@ import {
   BarChart3,
   CheckCircle2,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
@@ -915,6 +916,13 @@ function formatRatio(val?: number): string {
 
 function TradeSetupCard({ setup, index }: { setup: N8nSetup; index: number }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showFullContext, setShowFullContext] = useState(false);
+
+  // Determine if context needs truncation (> 200 chars)
+  const contextNeedsTruncation = setup.context && setup.context.length > 200;
+  const displayedContext = showFullContext 
+    ? setup.context 
+    : setup.context?.substring(0, 200);
 
   return (
     <Card className="rounded-xl border shadow-sm">
@@ -972,53 +980,79 @@ function TradeSetupCard({ setup, index }: { setup: N8nSetup; index: number }) {
           </div>
         </div>
 
-        {/* Expandable Details */}
-        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-full justify-between">
-              <span className="text-xs">Details</span>
-              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-3 pt-3">
-            {setup.context && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Context</p>
-                <p className="text-sm">{setup.context}</p>
-              </div>
+        {/* Context - NOW VISIBLE by default with better formatting */}
+        {setup.context && (
+          <div className="p-3 rounded-lg bg-muted/30 border-l-2 border-violet-500/50">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <FileText className="h-3 w-3" />
+              Trade Context
+            </p>
+            <p className="text-sm text-foreground leading-relaxed">
+              {displayedContext}
+              {contextNeedsTruncation && !showFullContext && "..."}
+            </p>
+            {contextNeedsTruncation && (
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="px-0 h-auto text-xs text-primary mt-1"
+                onClick={() => setShowFullContext(!showFullContext)}
+              >
+                {showFullContext ? "Show less" : "Read more"}
+              </Button>
             )}
-            {setup.riskNotes && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Risk Notes</p>
-                <p className="text-sm text-rose-600">{setup.riskNotes}</p>
-              </div>
-            )}
-            {setup.supports && setup.supports.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Supports</p>
-                <div className="flex flex-wrap gap-1">
-                  {setup.supports.map((s, i) => (
-                    <Badge key={i} variant="outline" className="font-mono text-xs">
-                      {formatPrice(s)}
-                    </Badge>
-                  ))}
+          </div>
+        )}
+
+        {/* Risk Notes - also visible when present */}
+        {setup.riskNotes && (
+          <div className="p-3 rounded-lg bg-rose-500/5 border-l-2 border-rose-500/50">
+            <p className="text-xs font-medium text-rose-600 dark:text-rose-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <AlertTriangle className="h-3 w-3" />
+              Risk Notes
+            </p>
+            <p className="text-sm text-rose-600 dark:text-rose-400">{setup.riskNotes}</p>
+          </div>
+        )}
+
+        {/* Expandable Details - for Supports/Resistances only */}
+        {((setup.supports && setup.supports.length > 0) || 
+          (setup.resistances && setup.resistances.length > 0)) && (
+          <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between">
+                <span className="text-xs">Technical Levels</span>
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 pt-3">
+              {setup.supports && setup.supports.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Supports</p>
+                  <div className="flex flex-wrap gap-1">
+                    {setup.supports.map((s, i) => (
+                      <Badge key={i} variant="outline" className="font-mono text-xs border-emerald-500/50 text-emerald-600">
+                        {formatPrice(s)}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {setup.resistances && setup.resistances.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Resistances</p>
-                <div className="flex flex-wrap gap-1">
-                  {setup.resistances.map((r, i) => (
-                    <Badge key={i} variant="outline" className="font-mono text-xs">
-                      {formatPrice(r)}
-                    </Badge>
-                  ))}
+              )}
+              {setup.resistances && setup.resistances.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Resistances</p>
+                  <div className="flex flex-wrap gap-1">
+                    {setup.resistances.map((r, i) => (
+                      <Badge key={i} variant="outline" className="font-mono text-xs border-rose-500/50 text-rose-600">
+                        {formatPrice(r)}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
     </Card>
   );
@@ -2408,36 +2442,6 @@ function ForecastTradeGeneratorContent() {
         {/* Results Section */}
         {hasResults && !loading && (
           <div className="space-y-6">
-            {/* ★ Risk Surface FIRST - Hero Element */}
-            {riskSurfaceData && (
-              <Card className="rounded-xl border-2 border-primary/20 shadow-lg bg-gradient-to-br from-card to-card/80">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Target className="h-5 w-5 text-primary" />
-                      Risk / Reward Surface
-                    </CardTitle>
-                    <Badge variant="outline" className="text-xs border-primary/50 text-primary">
-                      Primary Analysis
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    3D visualization of probability-adjusted TP as a function of SL intensity
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RiskSurfaceChart
-                    data={riskSurfaceData}
-                    loading={false}
-                    error={null}
-                    symbol={symbol}
-                    timeframe={timeframe}
-                    horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
             {/* Section 1: Market Thesis */}
             <NarrativeSection
               step={1}
@@ -2446,6 +2450,16 @@ function ForecastTradeGeneratorContent() {
               icon={<Lightbulb className="h-5 w-5" />}
               tagline="Human + AI Context"
             >
+              {/* Powered by explanation */}
+              <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 mb-4">
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-violet-600 dark:text-violet-400">
+                    Powered by:
+                  </span>{" "}
+                  GPT-4 Market Intelligence • Real-time macro data feeds • Technical pattern recognition
+                </p>
+              </div>
+              
               {aiSetupLoading ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -2519,6 +2533,42 @@ function ForecastTradeGeneratorContent() {
               icon={<BarChart3 className="h-5 w-5" />}
               tagline="Deep Learning + Risk Engine"
             >
+              {/* Powered by explanation */}
+              <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 mb-4">
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-blue-600 dark:text-blue-400">
+                    Powered by:
+                  </span>{" "}
+                  Deep Learning Forecasting (Prophet + Neural Nets) • Monte Carlo Risk Engine • ATR-based volatility calibration
+                </p>
+              </div>
+
+              {/* Risk Surface - Now integrated here */}
+              {riskSurfaceData && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Risk / Reward Surface
+                    </h4>
+                    <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-600 dark:text-blue-400">
+                      3D Probability Surface
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Interactive visualization of probability-adjusted TP as a function of SL intensity. Click anywhere to explore.
+                  </p>
+                  <RiskSurfaceChart
+                    data={riskSurfaceData}
+                    loading={false}
+                    error={null}
+                    symbol={symbol}
+                    timeframe={timeframe}
+                    horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
+                  />
+                </div>
+              )}
+
               {forecastHorizons.length > 0 ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
