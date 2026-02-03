@@ -1,308 +1,150 @@
 
-# Plan : Optimisation de la latence entre navigations
+# Plan : Correction du toaster de chargement persistant après réception de la réponse
 
-## Diagnostic des causes de latence identifiées
+## Diagnostic
 
-### Problèmes majeurs détectés
+Le toaster de chargement reste affiché même après la réception de la réponse du backend car la logique de conditions dans `PersistentNotificationProvider.tsx` est incorrecte.
 
-| Source | Impact | Fichier(s) |
-|--------|--------|------------|
-| **AuthGuard bloquant** | ~500ms par navigation | `AuthGuard.tsx` |
-| **Double fetch profil** | ~300ms | `useProfile.tsx` + `AuthGuard.tsx` |
-| **Hooks Realtime multiples** | ~200ms montage | `useProfile.tsx`, `useUserRole.tsx`, `useSessionManager.tsx` |
-| **CreditsNavbar fetch** | ~200ms par navigation | `CreditsNavbar.tsx` |
-| **Dashboard double AuthGuard** | ~400ms | `Dashboard.tsx` → `TradingDashboard` avec 2 AuthGuard |
-| **Suspense fallback lourd** | 100-300ms flash | `App.tsx` - Skeleton pleine page |
+### Cause racine identifiée
 
-### Architecture actuelle problématique
+Dans le gestionnaire d'événements `UPDATE` de Supabase Realtime (lignes 209-224), les conditions sont mutuellement exclusives via `else if` :
 
+```typescript
+} else if (updatedJob.progress_message) {
+  // Met à jour le message de progression...
+  // MAIS ne vérifie PAS si le job est completed !
+} else if (updatedJob.status === 'completed' && updatedJob.response_payload) {
+  // Cette branche N'EST JAMAIS ATTEINTE si progress_message existe
+  setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
+}
+```
+
+### Preuve en base de données
+
+Les jobs complétés ont tous un `progress_message` non-null :
+| Job ID | Status | progress_message | has_response_payload |
+|--------|--------|------------------|---------------------|
+| 9dea3b06... | completed | "Reading the news" | YES |
+| 72f95e3f... | completed | "Reading the news" | YES |
+| b414517b... | completed | "Reading the news" | YES |
+
+Quand le backend met à jour le job avec `status: 'completed'` ET `response_payload`, le champ `progress_message` reste présent. La condition `else if (updatedJob.progress_message)` est donc vraie, et la branche `completed` n'est jamais exécutée.
+
+**Résultat** : Le job reste dans `activeJobs` indéfiniment, et le toaster continue de s'afficher.
+
+## Solution
+
+Réorganiser les conditions pour prioriser la vérification du statut `completed`/`error` avant la vérification de `progress_message`.
+
+### Modification
+
+**Fichier** : `src/components/PersistentNotificationProvider.tsx`
+
+**Lignes concernées** : 201-324 (bloc UPDATE)
+
+**Logique actuelle (problématique)** :
 ```text
-Navigation vers /dashboard
-    │
-    ├── 1. Suspense fallback (skeleton) s'affiche immédiatement
-    │
-    ├── 2. Lazy load Dashboard.tsx (~100ms)
-    │
-    ├── 3. AuthGuard #1 (Dashboard.tsx)
-    │   ├── useAuth() → vérifie session
-    │   ├── useProfile() → fetch profil + subscribe Realtime
-    │   └── Affiche Loader2 pendant loading
-    │
-    ├── 4. TradingDashboard monte
-    │   ├── useAuth() (déjà chargé)
-    │   ├── useUserRole() → fetch roles + subscribe Realtime
-    │   ├── useJobStatusManager() → new instance
-    │   └── Layout monte
-    │       ├── useAuth()
-    │       ├── useUserRole()
-    │       ├── CreditsNavbar → useCreditManager() → fetch credits
-    │       ├── useResultNotifications()
-    │       ├── usePersistentNotifications()
-    │       └── AURA monte (si user)
-    │
-    └── TEMPS TOTAL: 800-1500ms avant affichage complet
+1. Si status === 'running' → mettre à jour
+2. SINON SI progress_message existe → mettre à jour le message (BLOQUE la suite)
+3. SINON SI status === 'completed' && response_payload → retirer de activeJobs
+4. SINON SI status === 'error' → retirer de activeJobs
 ```
 
-## Corrections proposées
-
-### Phase 1 : Éliminer les fetches redondants
-
-#### 1.1 Supprimer le double AuthGuard dans Dashboard.tsx
-
-**Fichier** : `src/pages/Dashboard.tsx`
-
-**Problème** : Dashboard.tsx enveloppe TradingDashboard dans un AuthGuard, mais la route dans App.tsx a déjà un AuthGuard.
-
-**Correction** : Supprimer l'AuthGuard interne.
-
-```typescript
-// AVANT
-export default function Dashboard() {
-  return (
-    <AuthGuard>
-      <TradingDashboard />
-    </AuthGuard>
-  );
-}
-
-// APRÈS
-export default function Dashboard() {
-  return <TradingDashboard />;
-}
+**Nouvelle logique (correcte)** :
+```text
+1. SI status === 'completed' && response_payload → retirer de activeJobs (PRIORITAIRE)
+2. SINON SI status === 'error' → retirer de activeJobs (PRIORITAIRE)
+3. SINON SI status === 'running' → mettre à jour le statut
+4. SINON SI progress_message existe → mettre à jour le message
 ```
 
-**Gain** : ~400ms (élimination du double check auth/profil)
+Cette réorganisation garantit que même si un job a un `progress_message`, sa complétion sera traitée correctement.
 
-### Phase 2 : Optimiser le Suspense fallback
+## Changements de code
 
-#### 2.1 Fallback léger et transitoire
+### PersistentNotificationProvider.tsx
 
-**Fichier** : `src/App.tsx`
-
-**Problème** : Le Skeleton pleine page crée un flash blanc/gris visible entre les pages.
-
-**Correction** : Utiliser un fallback minimal qui ne perturbe pas la perception.
+Réorganiser l'ordre des conditions dans le bloc UPDATE (lignes ~196-324) pour vérifier `completed`/`error` EN PREMIER :
 
 ```typescript
-// AVANT
-<Suspense fallback={
-  <div className="flex items-center justify-center min-h-screen">
-    <Skeleton className="h-96 w-full max-w-4xl" />
-  </div>
-}>
-
-// APRÈS
-<Suspense fallback={
-  <div className="min-h-screen bg-background" />
-}>
-```
-
-**Gain** : Transition plus fluide, pas de flash de skeleton
-
-### Phase 3 : Stabiliser les dépendances des hooks
-
-#### 3.1 Memoïser usePersistentNotifications dans Layout
-
-**Fichier** : `src/components/Layout.tsx`
-
-**Problème** : `usePersistentNotifications()` est appelé à chaque render, même si les données n'ont pas changé.
-
-**Correction** : Les données sont déjà extraites correctement, mais le composant recalcule `auraContext` à chaque render.
-
-```typescript
-// AVANT (ligne 58-66)
-const auraContext = useMemo(() => {
-  const path = location.pathname;
-  // ...
-}, [location.pathname]);
-
-// Cette partie est correcte - déjà optimisée
-```
-
-#### 3.2 Optimiser fetchCredits avec useCallback stabilisé
-
-**Fichier** : `src/components/CreditsNavbar.tsx`
-
-**Problème** : L'event listener se re-crée à chaque changement de `fetchCredits`.
-
-**Correction** : Utiliser un ref pour éviter le re-subscribe.
-
-```typescript
-// AVANT
-React.useEffect(() => {
-  const handleCreditsUpdate = () => {
-    fetchCredits();
-  };
-  window.addEventListener('creditsUpdated', handleCreditsUpdate);
-  return () => window.removeEventListener('creditsUpdated', handleCreditsUpdate);
-}, [fetchCredits]);
-
-// APRÈS
-const fetchCreditsRef = React.useRef(fetchCredits);
-React.useEffect(() => {
-  fetchCreditsRef.current = fetchCredits;
-}, [fetchCredits]);
-
-React.useEffect(() => {
-  const handleCreditsUpdate = () => {
-    fetchCreditsRef.current();
-  };
-  window.addEventListener('creditsUpdated', handleCreditsUpdate);
-  return () => window.removeEventListener('creditsUpdated', handleCreditsUpdate);
-}, []); // [] = montage unique
-```
-
-**Gain** : Évite le re-subscribe de l'event listener à chaque navigation
-
-### Phase 4 : Préchargement intelligent des routes critiques
-
-#### 4.1 Précharger les routes fréquentes depuis Homepage/Dashboard
-
-**Fichier** : `src/App.tsx`
-
-**Ajout** : Utiliser le pattern `webpackPrefetch` pour les routes critiques.
-
-```typescript
-// Routes secondaires avec prefetch
-const Dashboard = lazy(() => import(/* webpackPrefetch: true */ "./pages/Dashboard"));
-const AISetup = lazy(() => import(/* webpackPrefetch: true */ "./pages/AISetup"));
-const MacroAnalysis = lazy(() => import(/* webpackPrefetch: true */ "./pages/MacroAnalysis"));
-const Reports = lazy(() => import(/* webpackPrefetch: true */ "./pages/Reports"));
-```
-
-**Note** : Vite supporte les hints de prefetch via les magic comments.
-
-**Gain** : Les chunks sont préchargés en arrière-plan dès le chargement initial
-
-### Phase 5 : Optimiser le montage des composants lourds
-
-#### 5.1 Retarder le montage de AURA
-
-**Fichier** : `src/components/Layout.tsx`
-
-**Problème** : AURA monte immédiatement lors de la navigation, ajoutant de la latence.
-
-**Correction** : Différer le montage de 100ms pour prioriser le contenu principal.
-
-```typescript
-// AVANT (ligne 290-297)
-{user && (
-  <AURA
-    context={auraContext}
-    contextData={contextData}
-    isExpanded={isAURAExpanded}
-    onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
-  />
-)}
-
-// APRÈS
-const [auraReady, setAuraReady] = useState(false);
-
-useEffect(() => {
-  if (user) {
-    const timer = setTimeout(() => setAuraReady(true), 100);
-    return () => clearTimeout(timer);
+(payload) => {
+  const updatedJob = payload.new as any;
+  
+  console.log('🔄 [PersistentNotifications] Job UPDATE:', updatedJob);
+  
+  // PRIORITÉ 1: Vérifier la complétion AVANT les messages de progression
+  if (updatedJob.status === 'completed' && updatedJob.response_payload) {
+    // Stop mock simulator on completion
+    mockSimulatorsActive.current.set(updatedJob.id, false);
+    
+    // Move from active to completed
+    console.log('✅ [PersistentNotifications] Job completed, moving to completed list');
+    
+    // ... (extraction des données - code existant)
+    
+    setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
+    
+    // ... (création de completedJob et flash message - code existant)
+    
+  } else if (updatedJob.status === 'error') {
+    // PRIORITÉ 2: Gérer les erreurs
+    // ... (code existant)
+    
+  } else if (updatedJob.status === 'running') {
+    // PRIORITÉ 3: Mettre à jour le statut running
+    setActiveJobs(prev => prev.map(job => 
+      job.id === updatedJob.id 
+        ? { ...job, status: 'running', progressMessage: updatedJob.progress_message }
+        : job
+    ));
+    console.log('🔄 [PersistentNotifications] Job set to running');
+    
+  } else if (updatedJob.progress_message) {
+    // PRIORITÉ 4: Mettre à jour le message de progression (seulement si pas encore completed)
+    // Stop mock simulator when real backend message arrives
+    const wasActive = mockSimulatorsActive.current.get(updatedJob.id);
+    if (wasActive) {
+      console.log(`🛑 [PersistentNotifications] Stopping mock simulator for job ${updatedJob.id}`);
+      mockSimulatorsActive.current.set(updatedJob.id, false);
+    }
+    
+    setActiveJobs(prev => prev.map(job => 
+      job.id === updatedJob.id 
+        ? { ...job, progressMessage: updatedJob.progress_message }
+        : job
+    ));
   }
-}, [user]);
-
-// Dans le JSX
-{user && auraReady && (
-  <AURA
-    context={auraContext}
-    contextData={contextData}
-    isExpanded={isAURAExpanded}
-    onToggle={() => setIsAURAExpanded(!isAURAExpanded)}
-  />
-)}
-```
-
-**Gain** : Le contenu principal s'affiche 100ms plus tôt
-
-#### 5.2 Memoïser le composant DiscreetJobStatus
-
-**Fichier** : `src/components/DiscreetJobStatus.tsx`
-
-**Correction** : Envelopper dans React.memo pour éviter les re-renders inutiles.
-
-```typescript
-// AVANT
-export function DiscreetJobStatus({ activeJobsCount, latestMessage, className }: DiscreetJobStatusProps) {
-
-// APRÈS
-export const DiscreetJobStatus = React.memo(function DiscreetJobStatus({ 
-  activeJobsCount, 
-  latestMessage, 
-  className 
-}: DiscreetJobStatusProps) {
-  // ...
-});
-```
-
-### Phase 6 : Éviter les double-renders au montage
-
-#### 6.1 Utiliser useMemo pour les calculs dans TradingDashboard
-
-**Fichier** : `src/pages/TradingDashboard.tsx`
-
-**Problème** : `allAssets` est recréé à chaque render.
-
-**Correction** : Déplacer hors du composant ou memoïser.
-
-```typescript
-// AVANT (ligne 46-69) - Tableau recréé à chaque render
-const allAssets = [
-  { symbol: "EUR/USD", name: "Euro / US Dollar", icon: "💱" },
-  // ...
-];
-
-// APRÈS - Déclaration hors du composant
-const ALL_ASSETS = [
-  { symbol: "EUR/USD", name: "Euro / US Dollar", icon: "💱" },
-  // ...
-] as const;
-
-export default function TradingDashboard() {
-  // Utiliser ALL_ASSETS directement
 }
 ```
-
-**Gain** : Évite la recréation du tableau à chaque render
 
 ## Résumé des modifications
 
-| Fichier | Modification | Impact estimé |
-|---------|--------------|---------------|
-| `Dashboard.tsx` | Supprimer double AuthGuard | -400ms |
-| `App.tsx` | Fallback Suspense minimal | -100ms flash |
-| `App.tsx` | Prefetch routes critiques | -200ms navigation |
-| `Layout.tsx` | Différer AURA 100ms | -100ms first paint |
-| `CreditsNavbar.tsx` | Ref pour event listener | -50ms re-renders |
-| `DiscreetJobStatus.tsx` | React.memo | -30ms re-renders |
-| `TradingDashboard.tsx` | Constante hors composant | -20ms re-renders |
-
-**Gain total estimé** : 500-900ms par navigation
+| Fichier | Modification | Impact |
+|---------|--------------|--------|
+| `PersistentNotificationProvider.tsx` | Réorganiser les conditions if/else if dans le handler UPDATE | Le job sera retiré de `activeJobs` dès qu'il est completed, même si `progress_message` existe |
 
 ## Garanties
 
 - Aucune modification de logique métier
 - Aucune modification d'API/backend
 - Aucune suppression de fonctionnalité
-- Aucun changement de routing
-- Tests visuels identiques
-- Comportement auth inchangé
+- Comportement attendu : le toaster disparaît dès réception de la réponse
 
 ## Section technique
 
-### Ordre d'implémentation recommandé
+### Pourquoi le problème se manifeste maintenant ?
 
-1. **Phase 1** (impact maximal, risque minimal) : Supprimer double AuthGuard
-2. **Phase 2** : Optimiser Suspense fallback
-3. **Phase 4** : Ajouter prefetch aux routes
-4. **Phase 5** : Différer AURA + memo DiscreetJobStatus
-5. **Phase 3 + 6** : Stabilisation hooks et constantes
+Le backend a été mis à jour pour envoyer des messages de progression (`progress_message`) pendant le traitement. Avant cette mise à jour, les jobs n'avaient pas de `progress_message` au moment de la complétion, donc la branche `completed` était atteinte normalement.
 
-### Points de vigilance
+### Flux de données corrigé
 
-- Le prefetch Vite utilise `/* @vite-ignore */` pour les magic comments si nécessaire
-- La suppression du double AuthGuard est safe car App.tsx l'applique déjà
-- Le fallback minimal préserve la couleur de fond pour éviter le flash blanc
+```text
+1. ForecastMacroLab.createJob() → INSERT en base
+2. PersistentNotificationProvider reçoit INSERT → ajoute à activeJobs
+3. Backend traite → UPDATE avec progress_message
+4. PersistentNotificationProvider reçoit UPDATE → met à jour progressMessage
+5. Backend termine → UPDATE avec status='completed' + response_payload (+ progress_message toujours présent)
+6. PersistentNotificationProvider reçoit UPDATE → 
+   ✅ MAINTENANT: vérifie d'abord completed → retire de activeJobs
+   ❌ AVANT: vérifie d'abord progress_message → bloqué
+```
