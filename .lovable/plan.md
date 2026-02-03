@@ -1,197 +1,171 @@
 
+# Plan : Rendre Trade Generator et Macro Lab accessibles à tous les utilisateurs
 
-# Plan : Correction de l'erreur bloquante sur Macro Labs et Trade Generator
+## Objectif
 
-## Diagnostic
-
-L'erreur est une violation de contrainte de base de données :
-```
-"new row for relation \"jobs\" violates check constraint \"jobs_feature_check\""
-```
-
-### Contrainte actuelle de la base de données
-```sql
-CHECK ((feature = ANY (ARRAY['AI Trade Setup', 'Macro Commentary', 'Report'])))
-```
-
-### Valeurs utilisées dans le code récent
-| Page | Valeur utilisée | Statut |
-|------|-----------------|--------|
-| ForecastMacroLab | `'Macro Lab'` | ❌ Rejetée par DB |
-| ForecastTradeGenerator | `'Trade Generator'` | ❌ Rejetée par DB |
-
-## Solution : Réutiliser les valeurs feature existantes
-
-La stratégie consiste à utiliser les valeurs `feature` acceptées par la DB (`'Macro Commentary'`, `'AI Trade Setup'`) tout en stockant le **type réel** dans `request_payload.type` pour permettre au routing de différencier les nouvelles pages des anciennes.
-
-### Logique de routing adaptée
-
-Le `PersistentNotificationProvider` utilisera `request_payload.type` (quand disponible) plutôt que `feature` pour déterminer la destination :
-
-| request_payload.type | Route cible |
-|----------------------|-------------|
-| `macro_lab` | `/forecast-playground/macro-commentary` |
-| `trade_generator` | `/forecast-playground/trade-generator` |
-| (absent ou autre) | Comportement existant basé sur `feature` |
+1. Modifier les routes pour utiliser des chemins plus courts et intuitifs (`/trade-generator` et `/macro-lab`)
+2. Supprimer la restriction `SuperUserGuard` globale pour rendre les pages accessibles à tous les utilisateurs authentifiés
+3. Conserver les éléments de debug (switches, panneaux, badges) uniquement visibles pour les super-utilisateurs
+4. Mettre à jour les cards du Dashboard pour pointer vers les nouvelles pages
 
 ---
 
 ## Modifications fichier par fichier
 
-### 1. ForecastMacroLab.tsx (L491)
+### 1. App.tsx - Mise à jour des routes
 
-Revenir à `'Macro Commentary'` pour la valeur `feature` tout en gardant `macro_lab` dans le type :
+**Changements :**
+- Ajouter les nouvelles routes `/trade-generator` et `/macro-lab` (accessibles à tous les utilisateurs authentifiés)
+- Conserver les anciennes routes `/forecast-playground/...` pour la rétro-compatibilité
+
+| Route | Avant | Après |
+|-------|-------|-------|
+| Trade Generator | `/forecast-playground/trade-generator` | `/trade-generator` (+ alias ancien) |
+| Macro Lab | `/forecast-playground/macro-commentary` | `/macro-lab` (+ alias ancien) |
+
+---
+
+### 2. TradingDashboard.tsx - Mise à jour des liens des cards
+
+**Lignes affectées :** L299, L320, L367, L384
+
+| Card | Avant | Après |
+|------|-------|-------|
+| AI Trade Setup | `/ai-setup` | `/trade-generator` |
+| Macro Commentary | `/macro-analysis` | `/macro-lab` |
+
+---
+
+### 3. ForecastMacroLab.tsx - Suppression du SuperUserGuard global + Debug conditionnel
+
+**Changements :**
+
+A. **Import du hook useUserRole** pour vérifier le statut super-utilisateur
+
+B. **Suppression du wrapper `SuperUserGuard`** (L876-879 et L1348)
+
+C. **Rendre le switch HTTP Debug conditionnel** (L895-902)
+   - N'afficher que si `isSuperUser === true`
+
+D. **Rendre le panneau de debug HTTP conditionnel**
+   - Le panneau ne s'affiche que si `isSuperUser && showHttpDebug && lastHttpDebug`
+
+E. **Mettre à jour le bouton retour** (L886)
+   - Changer `/forecast-playground` vers `/dashboard`
+
+---
+
+### 4. ForecastTradeGenerator.tsx - Suppression du SuperUserGuard global + Debug conditionnel
+
+**Changements :**
+
+A. **Restructurer le composant** pour utiliser un seul export avec la logique conditionnelle intégrée
+
+B. **Import du hook useUserRole** pour vérifier le statut super-utilisateur
+
+C. **Rendre les badges "Internal" et "SuperUser" conditionnels** (L1836-1839)
+   - N'afficher que si `isSuperUser === true`
+
+D. **Rendre le switch "Debug JSON" conditionnel** (L2038-2043)
+   - N'afficher que si `isSuperUser === true`
+
+E. **Rendre le panneau HTTP Debug conditionnel** (L2063-2145)
+   - N'afficher que si `isSuperUser && showDebug && (lastPayload || rawResponse)`
+
+F. **Mettre à jour le bouton retour** (L1823)
+   - Changer `/forecast-playground` vers `/dashboard`
+
+G. **Supprimer le wrapper `SuperUserGuard`** dans l'export (L2289-2295)
+
+---
+
+### 5. PersistentNotificationProvider.tsx - Mise à jour du routing
+
+**Changements dans `mapFeatureToRoute`** (L112-121) :
+
+| Feature | Avant | Après |
+|---------|-------|-------|
+| `macro-lab` | `/forecast-playground/macro-commentary` | `/macro-lab` |
+| `trade-generator` | `/forecast-playground/trade-generator` | `/trade-generator` |
+
+---
+
+### 6. GlobalLoadingProvider.tsx - Mise à jour du navigationMap
+
+**Changements dans `navigationMap`** (L55-61) :
+
+| Type | Avant | Après |
+|------|-------|-------|
+| `macro_lab` | `/forecast-playground/macro-commentary` | `/macro-lab` |
+| `trade_generator` | `/forecast-playground/trade-generator` | `/trade-generator` |
+
+---
+
+## Section technique : Détails des modifications
+
+### Structure conditionnelle pour les éléments debug
 
 ```typescript
-// AVANT (bloqué par DB)
-responseJobId = await createJob("macro_lab", selectedAsset.symbol, {}, "Macro Lab");
+// Dans ForecastMacroLab.tsx et ForecastTradeGenerator.tsx
+import { useUserRole } from "@/hooks/useUserRole";
 
-// APRÈS (compatible DB)
-responseJobId = await createJob(
-  "macro_lab",                    // type interne (stocké dans request_payload.type)
-  selectedAsset.symbol,
-  { type: "macro_lab" },          // ✅ Type explicite pour routing
-  "Macro Commentary"              // ✅ feature acceptée par DB
-);
+// Dans le composant
+const { isSuperUser } = useUserRole();
+
+// Pour les switches de debug
+{isSuperUser && (
+  <div className="flex items-center gap-2 shrink-0">
+    <span className="text-sm text-muted-foreground">HTTP debug</span>
+    <Switch ... />
+  </div>
+)}
+
+// Pour les badges
+{isSuperUser && (
+  <div className="flex flex-wrap gap-2">
+    <Badge variant="outline" className="text-xs">Internal</Badge>
+    <Badge variant="outline" className="text-xs">SuperUser</Badge>
+  </div>
+)}
+
+// Pour les panneaux de debug
+{isSuperUser && showDebug && rawResponse && (
+  <Card className="...">
+    {/* Contenu du panneau debug */}
+  </Card>
+)}
 ```
 
-### 2. ForecastTradeGenerator.tsx (L1629-1639)
+### Routes finales
 
-Revenir à `'AI Trade Setup'` pour la valeur `feature` tout en gardant `trade_generator` dans le type :
-
-```typescript
-// AVANT (bloqué par DB)
-jobId = await createJob(
-  'trade_generator',
-  symbol,
-  { type: 'trade_generator', mode: 'trade_generation', instrument: symbol, horizons: parsedHorizons },
-  'Trade Generator'
-);
-
-// APRÈS (compatible DB)
-jobId = await createJob(
-  'trade_generator',              // type interne
-  symbol,
-  { 
-    type: 'trade_generator',      // ✅ Type explicite pour routing
-    mode: 'trade_generation', 
-    instrument: symbol, 
-    horizons: parsedHorizons 
-  },
-  'AI Trade Setup'                // ✅ feature acceptée par DB
-);
-```
-
-### 3. PersistentNotificationProvider.tsx - Améliorer mapFeatureToOriginatingFeature
-
-Modifier la fonction pour **d'abord vérifier `request_payload.type`** si disponible, puis fallback sur `feature` :
-
-```typescript
-// Nouvelle fonction helper (à ajouter avant mapFeatureToOriginatingFeature)
-const getEffectiveType = (job: any): string => {
-  // Priority 1: Explicit type in request_payload
-  if (job.request_payload?.type) {
-    return job.request_payload.type;
-  }
-  // Priority 2: Feature field
-  return job.feature || '';
-};
-
-// Modifier mapFeatureToOriginatingFeature pour accepter le job complet
-const mapJobToOriginatingFeature = (job: any): OriginatingFeature => {
-  const effectiveType = getEffectiveType(job).toLowerCase();
-  
-  // New Lab pages (check request_payload.type first)
-  if (effectiveType === 'macro_lab') return 'macro-lab';
-  if (effectiveType === 'trade_generator') return 'trade-generator';
-  
-  // Legacy pages (fallback to feature-based routing)
-  const f = (job.feature || '').toLowerCase();
-  if (f === 'ai trade setup' || f === 'ai_trade_setup') return 'ai-setup';
-  if (f.includes('macro') || f.includes('commentary')) return 'macro-analysis';
-  if (f.includes('report')) return 'reports';
-  
-  return 'ai-setup'; // fallback
-};
-```
-
-### 4. Mettre à jour les appels à mapFeatureToOriginatingFeature
-
-Dans le `useEffect` qui écoute les événements Realtime (INSERT et UPDATE handlers), passer l'objet job complet au lieu de juste `feature` :
-
-```typescript
-// Dans le handler INSERT (L158-175)
-originatingFeature: mapJobToOriginatingFeature(newJob),
-
-// Dans le handler UPDATE (L239-275)
-originatingFeature: mapJobToOriginatingFeature(updatedJob),
-```
-
-### 5. ForecastMacroLab.tsx - Corriger le pendingResult check (L133)
-
-S'assurer que le check accepte le type `macro_lab` :
-
-```typescript
-// AVANT
-if (result.type.includes("macro") || result.type.includes("commentary") || result.type === "macro_lab") {
-
-// APRÈS (déjà correct, vérifier seulement)
-if (result.type === "macro_lab" || result.type.includes("macro") || result.type.includes("commentary")) {
-```
-
-### 6. ForecastTradeGenerator.tsx - Vérifier le pendingResult check (L1531)
-
-S'assurer que le check accepte le type `trade_generator` :
-
-```typescript
-// AVANT (déjà correct)
-if (result.type === 'trade_generator' || result.type === 'ai_trade_setup') {
+```text
+/trade-generator     → ForecastTradeGenerator (tous utilisateurs authentifiés)
+/macro-lab           → ForecastMacroLab (tous utilisateurs authentifiés)
+/forecast-playground → ForecastPlayground (SuperUser only - hub interne)
+/forecast-playground/tool → ForecastPlaygroundTool (SuperUser only)
+/forecast-playground/trade-generator → Redirect vers /trade-generator
+/forecast-playground/macro-commentary → Redirect vers /macro-lab
 ```
 
 ---
 
-## Tableau récapitulatif
+## Tableau récapitulatif des fichiers modifiés
 
-| Fichier | Ligne(s) | Modification | Impact |
-|---------|----------|--------------|--------|
-| `ForecastMacroLab.tsx` | L491 | Changer feature `'Macro Lab'` → `'Macro Commentary'` + garder type | Fix DB constraint |
-| `ForecastTradeGenerator.tsx` | L1638 | Changer feature `'Trade Generator'` → `'AI Trade Setup'` + garder type | Fix DB constraint |
-| `PersistentNotificationProvider.tsx` | L82-95 | Créer `mapJobToOriginatingFeature` qui vérifie `request_payload.type` d'abord | Routing vers nouvelles pages |
-| `PersistentNotificationProvider.tsx` | L158, L239 | Utiliser `mapJobToOriginatingFeature(job)` au lieu de `mapFeatureToOriginatingFeature(feature)` | Routing correct |
+| Fichier | Modifications |
+|---------|--------------|
+| `src/App.tsx` | Ajouter routes `/trade-generator` et `/macro-lab` |
+| `src/pages/TradingDashboard.tsx` | Changer les liens des cards vers `/trade-generator` et `/macro-lab` |
+| `src/pages/ForecastMacroLab.tsx` | Supprimer SuperUserGuard, conditionner les éléments debug à isSuperUser |
+| `src/pages/ForecastTradeGenerator.tsx` | Supprimer SuperUserGuard, conditionner badges et debug à isSuperUser |
+| `src/components/PersistentNotificationProvider.tsx` | Mettre à jour les routes dans mapFeatureToRoute |
+| `src/components/GlobalLoadingProvider.tsx` | Mettre à jour navigationMap |
 
 ---
 
 ## Garanties de non-régression
 
-- Les valeurs `feature` en DB restent identiques (`'AI Trade Setup'`, `'Macro Commentary'`, `'Report'`)
-- Les anciennes pages (AISetup, MacroAnalysis) continuent de fonctionner normalement
-- Le monitoring admin affiche les bonnes statistiques (basé sur `feature`)
-- Le type réel est préservé dans `request_payload.type` pour le routing
-- Aucune modification de schéma de base de données nécessaire
-
----
-
-## Flux de données après correction
-
-```text
-1. User lance une analyse depuis /forecast-playground/trade-generator
-   
-2. ForecastTradeGenerator.handleSubmit()
-   └── createJob('trade_generator', symbol, {type: 'trade_generator', ...}, 'AI Trade Setup')
-       └── INSERT jobs (feature: 'AI Trade Setup', request_payload: {type: 'trade_generator', ...})
-           ✅ DB constraint satisfied!
-       
-3. PersistentNotificationProvider reçoit INSERT
-   └── mapJobToOriginatingFeature(job)
-       └── job.request_payload.type === 'trade_generator'
-           └── return 'trade-generator'
-   └── Toaster de chargement apparaît
-
-4. Backend termine → UPDATE jobs.status = 'completed'
-   
-5. User clique "View Result"
-   └── navigateToResult(completedJob)
-       ├── sessionStorage.setItem('pendingResult', {type: 'trade_generator', ...})
-       └── navigate('/forecast-playground/trade-generator')  ✅ Correct route!
-```
-
+- Les anciennes routes `/forecast-playground/*` restent fonctionnelles (redirect ou alias)
+- Le hub Forecast Playground reste accessible uniquement aux super-utilisateurs
+- Les pages AISetup et MacroAnalysis existantes restent inchangées
+- Le système de job tracking et notifications continue de fonctionner
+- Les éléments de debug ne sont visibles que pour les super-utilisateurs
