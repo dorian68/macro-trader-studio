@@ -1,276 +1,401 @@
 
 
-# Plan : Amélioration de l'UX du Trade Generator en mode résultats
+# Plan : Refonte UX du Trade Generator — Narratif en 3 temps
 
-## Contexte du problème
+## Problème actuel identifié
 
-Actuellement, lorsqu'un résultat est reçu :
-- Le dashboard d'inputs (3 cards : Market Context, Trade Parameters, Model Options) reste entièrement visible
-- L'utilisateur doit scroller pour voir les résultats
-- La Risk Surface (élément critique) se retrouve tout en bas de page
-- L'expérience n'est pas fluide pour un workflow "génération → consultation des résultats"
+La page Trade Generator affiche actuellement les résultats dans 2 onglets (tabs) :
+- **Trade Setup** : Contient le market commentary, les setups AI avec Entry/SL/TP
+- **Forecast Data** : Contient le tableau de forecast par horizon
 
-## Solution proposée : Panneau d'inputs auto-rétractable
+Ces deux sections sont perçues comme **redondantes** ou **concurrentes** car :
+1. Elles utilisent des noms techniques ("Trade Setup", "Forecast Data")
+2. Aucune narration ne les relie
+3. L'utilisateur ne sait pas quelle section consulter en premier ni pourquoi
 
-L'idée est d'implémenter un **Collapsible intelligent** qui :
-1. S'effondre automatiquement quand des résultats sont reçus
-2. Affiche un résumé compact des paramètres utilisés en mode collapsed
-3. Reste expansible pour permettre des ajustements et relances
-4. Met en avant les résultats (et surtout la Risk Surface) immédiatement
+## Solution proposée : Nouveau narratif UX en 3 temps
+
+Restructurer **uniquement la présentation visuelle** pour raconter une histoire décisionnelle claire :
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  📊 Trade Generator                                      │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ▼ Parameters  [EUR/USD | 1h | 24,48,72h | Breakout]    │  ← Résumé cliquable
-│  ───────────────────────────────────────────────────────│     quand collapsed
-│                                                          │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │           ★ RISK SURFACE (3D Chart)                 ││  ← Maintenant
-│  │                                                      ││    premier élément
-│  └─────────────────────────────────────────────────────┘│
-│                                                          │
-│  [Trade Setup]  [Forecast Data]   ← Tabs des résultats  │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  ★ RISK SURFACE (Hero - inchangé)                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ 1️⃣ MARKET THESIS — Why this trade exists                    ││
+│  │ (Human + AI Context)                                         ││
+│  │ ─────────────────────────────────────────────────────────── ││
+│  │ • Market Commentary (inchangé)                               ││
+│  │ • Key Drivers (inchangé)                                     ││
+│  │ • Setup Cards (Entry/SL/TP) (inchangé)                       ││
+│  │ • Context, Risk Notes (inchangé)                             ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ 2️⃣ QUANT VALIDATION — Is this statistically sound?          ││
+│  │ (Deep Learning + Risk Engine)                                ││
+│  │ ─────────────────────────────────────────────────────────── ││
+│  │ • Forecast Summary by Horizon (inchangé)                     ││
+│  │ • Risk Profiles (inchangé)                                   ││
+│  │ • Prob TP, R/R Ratio (inchangé)                              ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ 3️⃣ DECISION LAYER — Where thesis meets probability          ││
+│  │ (Synthesis - aucune nouvelle donnée)                         ││
+│  │ ─────────────────────────────────────────────────────────── ││
+│  │ • Convergence Points                                         ││
+│  │ • Divergence Alerts                                          ││
+│  │ • Trade Recommendation Summary                               ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Modifications techniques
+## Modifications fichier par fichier
 
-### 1. Nouveaux états dans ForecastTradeGeneratorContent
+### Fichier : `src/pages/ForecastTradeGenerator.tsx`
 
-**Lignes affectées :** ~L1473 (zone des useState)
+#### 1. Remplacer les tabs par des sections narratives verticales
 
-```typescript
-// État pour contrôler l'expansion du panneau d'inputs
-const [isInputPanelOpen, setIsInputPanelOpen] = useState(true);
+**Lignes affectées :** L2226-2333 (Results Section)
+
+**AVANT :**
+```tsx
+<Tabs defaultValue="trade-setup">
+  <TabsList>
+    <TabsTrigger value="trade-setup">Trade Setup</TabsTrigger>
+    <TabsTrigger value="forecast-data">Forecast Data</TabsTrigger>
+  </TabsList>
+  <TabsContent value="trade-setup">...</TabsContent>
+  <TabsContent value="forecast-data">...</TabsContent>
+</Tabs>
 ```
 
-### 2. Auto-collapse à la réception des résultats
+**APRÈS :**
+```tsx
+{/* Section 1: Market Thesis */}
+<NarrativeSection 
+  step={1}
+  title="Market Thesis"
+  subtitle="Why this trade exists"
+  icon={<Lightbulb />}
+  tagline="Human + AI Context"
+>
+  {/* Contenu existant de Trade Setup - AUCUNE MODIFICATION */}
+</NarrativeSection>
 
-**Lignes affectées :** handleSubmit (~L1700-1770)
+{/* Section 2: Quant Validation */}
+<NarrativeSection 
+  step={2}
+  title="Quant Validation"
+  subtitle="Is this trade statistically sound?"
+  icon={<BarChart3 />}
+  tagline="Deep Learning + Risk Engine"
+>
+  {/* Contenu existant de Forecast Data - AUCUNE MODIFICATION */}
+</NarrativeSection>
 
-Ajouter à la fin de handleSubmit (après le setLoading(false)) :
-```typescript
-// ✅ Auto-collapse inputs when results are received
-setIsInputPanelOpen(false);
+{/* Section 3: Decision Layer */}
+<DecisionLayer 
+  aiSetup={aiSetupResult}
+  forecastHorizons={forecastHorizons}
+/>
 ```
 
-**Aussi dans le useEffect du pendingResult** (~L1527-1574) :
-```typescript
-// Après l'injection des données
-setIsInputPanelOpen(false);
-```
+#### 2. Créer le composant `NarrativeSection` (wrapper purement visuel)
 
-### 3. Restructuration du JSX : Inputs dans un Collapsible
+**Emplacement :** Ajouter après les composants utilitaires existants (~L1340)
 
-**Lignes affectées :** L1845-2017 (Form Section)
+```tsx
+interface NarrativeSectionProps {
+  step: 1 | 2 | 3;
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  tagline: string;
+  children: React.ReactNode;
+}
 
-Wrapper le grid des 3 cards dans un Collapsible avec :
-- Un header compact affichant les paramètres actuels
-- Une animation fluide
-- Un bouton pour re-expand
+function NarrativeSection({ step, title, subtitle, icon, tagline, children }: NarrativeSectionProps) {
+  const stepColors = {
+    1: "border-l-violet-500",   // Purple for Thesis
+    2: "border-l-blue-500",     // Blue for Quant
+    3: "border-l-emerald-500",  // Green for Decision
+  };
 
-```typescript
-{/* Collapsible Input Panel */}
-<Collapsible open={isInputPanelOpen} onOpenChange={setIsInputPanelOpen}>
-  <Card className="rounded-2xl border shadow-sm overflow-hidden">
-    <CollapsibleTrigger asChild>
-      <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Settings2 className="h-4 w-4 text-primary" />
-            <CardTitle className="text-base">Parameters</CardTitle>
-            {/* Résumé compact visible quand collapsed */}
-            {!isInputPanelOpen && hasResults && (
-              <div className="flex flex-wrap gap-2 ml-2">
-                <Badge variant="secondary" className="text-xs">{symbol}</Badge>
-                <Badge variant="secondary" className="text-xs">{timeframe}</Badge>
-                <Badge variant="secondary" className="text-xs">{horizons}h</Badge>
-                <Badge variant="secondary" className="text-xs">{STRATEGIES.find(s => s.value === strategy)?.label || strategy}</Badge>
-              </div>
-            )}
+  return (
+    <Card className={cn(
+      "rounded-xl border shadow-sm overflow-hidden",
+      "border-l-4",
+      stepColors[step]
+    )}>
+      <CardHeader className="pb-3 bg-muted/20">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary">
+            {icon}
           </div>
-          <div className="flex items-center gap-2">
-            {!isInputPanelOpen && (
-              <span className="text-xs text-muted-foreground">Click to edit</span>
-            )}
-            <ChevronDown className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              isInputPanelOpen ? "" : "-rotate-90"
-            )} />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-mono">
+                Step {step}
+              </Badge>
+              <CardTitle className="text-lg">{title}</CardTitle>
+            </div>
+            <CardDescription className="text-sm">
+              {subtitle}
+            </CardDescription>
+          </div>
+          <Badge variant="secondary" className="text-xs">
+            {tagline}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+#### 3. Créer le composant `DecisionLayer` (synthèse visuelle uniquement)
+
+**Emplacement :** Ajouter après `NarrativeSection` (~L1380)
+
+Ce composant **ne calcule RIEN de nouveau**. Il reformule visuellement les données existantes.
+
+```tsx
+interface DecisionLayerProps {
+  aiSetup: N8nTradeResult | null;
+  forecastHorizons: ForecastHorizon[];
+}
+
+function DecisionLayer({ aiSetup, forecastHorizons }: DecisionLayerProps) {
+  // Pas de nouveau calcul - extraction des données existantes uniquement
+  const primarySetup = aiSetup?.setups?.[0];
+  const primaryHorizon = forecastHorizons[0];
+  
+  if (!primarySetup && !primaryHorizon) {
+    return null;
+  }
+
+  // Direction check - simple comparaison des données existantes
+  const aiDirection = primarySetup?.direction?.toLowerCase();
+  const quantDirection = primaryHorizon?.direction?.toLowerCase();
+  const directionsAlign = aiDirection === quantDirection;
+  
+  // Confidence check from existing data
+  const aiConfidence = primarySetup?.strategyMeta?.confidence;
+  const quantProb = primaryHorizon?.prob_hit_tp_before_sl;
+  
+  return (
+    <Card className="rounded-xl border-2 border-dashed border-emerald-500/30 bg-emerald-500/5">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-600">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-mono border-emerald-500/50">
+                Step 3
+              </Badge>
+              <CardTitle className="text-lg">Decision Layer</CardTitle>
+            </div>
+            <CardDescription>Where thesis meets probability</CardDescription>
           </div>
         </div>
       </CardHeader>
-    </CollapsibleTrigger>
-    
-    <CollapsibleContent>
-      <CardContent className="pt-0 pb-4">
-        {/* Le grid des 3 cards (Market Context, Trade Parameters, Model Options) */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* ... existing cards content ... */}
+      <CardContent className="space-y-4">
+        {/* Convergence / Divergence Points */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Convergence */}
+          <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                Convergence Points
+              </span>
+            </div>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {directionsAlign && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Direction aligned: Both suggest {aiDirection?.toUpperCase()}
+                </li>
+              )}
+              {quantProb && quantProb > 0.5 && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Probability favors TP: {(quantProb * 100).toFixed(0)}% chance
+                </li>
+              )}
+              {primaryHorizon?.riskReward && primaryHorizon.riskReward > 1 && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Positive R/R ratio: {primaryHorizon.riskReward.toFixed(2)}
+                </li>
+              )}
+              {(!directionsAlign && !quantProb) && (
+                <li className="text-muted-foreground italic">Generating...</li>
+              )}
+            </ul>
+          </div>
+
+          {/* Divergence */}
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                Divergence Alerts
+              </span>
+            </div>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {!directionsAlign && aiDirection && quantDirection && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Direction conflict: AI suggests {aiDirection?.toUpperCase()}, Quant suggests {quantDirection?.toUpperCase()}
+                </li>
+              )}
+              {quantProb && quantProb < 0.5 && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Low probability: Only {(quantProb * 100).toFixed(0)}% chance of TP
+                </li>
+              )}
+              {primarySetup?.riskNotes && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Risk flagged: {primarySetup.riskNotes.substring(0, 60)}...
+                </li>
+              )}
+              {(directionsAlign && (!quantProb || quantProb >= 0.5) && !primarySetup?.riskNotes) && (
+                <li className="text-emerald-600 italic">No divergence detected</li>
+              )}
+            </ul>
+          </div>
+        </div>
+
+        {/* Trade Recommendation Summary */}
+        <div className="p-4 rounded-lg bg-muted/30 border">
+          <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+            Recommended Trade
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {primarySetup?.direction && (
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-sm font-bold",
+                  primarySetup.direction.toLowerCase() === "long"
+                    ? "border-emerald-500 text-emerald-600 bg-emerald-500/10"
+                    : "border-rose-500 text-rose-600 bg-rose-500/10"
+                )}
+              >
+                {primarySetup.direction.toLowerCase() === "long" && <TrendingUp className="h-4 w-4 mr-1" />}
+                {primarySetup.direction.toLowerCase() === "short" && <TrendingDown className="h-4 w-4 mr-1" />}
+                {primarySetup.direction.toUpperCase()}
+              </Badge>
+            )}
+            {primarySetup?.entryPrice && (
+              <span className="text-sm">
+                Entry: <span className="font-mono font-semibold text-primary">{formatPrice(primarySetup.entryPrice)}</span>
+              </span>
+            )}
+            {primarySetup?.stopLoss && (
+              <span className="text-sm">
+                SL: <span className="font-mono font-semibold text-rose-600">{formatPrice(primarySetup.stopLoss)}</span>
+              </span>
+            )}
+            {primarySetup?.takeProfits?.[0] && (
+              <span className="text-sm">
+                TP: <span className="font-mono font-semibold text-emerald-600">{formatPrice(primarySetup.takeProfits[0])}</span>
+              </span>
+            )}
+          </div>
         </div>
       </CardContent>
-    </CollapsibleContent>
-  </Card>
-</Collapsible>
+    </Card>
+  );
+}
 ```
 
-### 4. Réorganiser la section Results pour prioriser Risk Surface
+#### 4. Ajouter les imports nécessaires
 
-**Lignes affectées :** L2151-2284 (Results Section)
+**Ligne 20-40 (imports Lucide) :**
 
-Créer un nouveau layout quand hasResults est true :
-
-```typescript
-{/* Results Section - Risk Surface FIRST */}
-{hasResults && !loading && (
-  <div className="space-y-6">
-    
-    {/* ★ Risk Surface en premier - élément héros */}
-    {riskSurfaceData && (
-      <Card className="rounded-xl border-2 border-primary/20 shadow-lg bg-gradient-to-br from-card to-card-secondary">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              Risk / Reward Surface
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              Primary Analysis
-            </Badge>
-          </div>
-          <CardDescription>
-            3D visualization of probability-adjusted TP as a function of SL intensity
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RiskSurfaceChart
-            data={riskSurfaceData}
-            loading={false}
-            error={null}
-            symbol={symbol}
-            timeframe={timeframe}
-            horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
-          />
-        </CardContent>
-      </Card>
-    )}
-    
-    {/* Tabs pour Trade Setup et Forecast Data */}
-    <Tabs defaultValue="trade-setup" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="trade-setup">Trade Setup</TabsTrigger>
-        <TabsTrigger value="forecast-data">Forecast Data</TabsTrigger>
-      </TabsList>
-      
-      {/* Trade Setup Tab - reste identique */}
-      <TabsContent value="trade-setup" className="space-y-4">
-        {/* ... existing content ... */}
-      </TabsContent>
-      
-      {/* Forecast Data Tab - SANS la Risk Surface (déjà affichée) */}
-      <TabsContent value="forecast-data" className="space-y-6">
-        {/* Forecast Table uniquement */}
-        <Card className="rounded-xl border shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Layers className="h-4 w-4 text-primary" />
-              Forecast Summary by Horizon
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EnhancedForecastTable ... />
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
-  </div>
-)}
-```
-
-### 5. Animation CSS pour le Collapsible
-
-**Fichier :** src/index.css
-
-Ajouter après les animations existantes (~L380) :
-
-```css
-/* Collapsible panel animation */
-@keyframes collapse-down {
-  from {
-    max-height: 0;
-    opacity: 0;
-  }
-  to {
-    max-height: var(--radix-collapsible-content-height);
-    opacity: 1;
-  }
-}
-
-@keyframes collapse-up {
-  from {
-    max-height: var(--radix-collapsible-content-height);
-    opacity: 1;
-  }
-  to {
-    max-height: 0;
-    opacity: 0;
-  }
-}
-
-[data-state="open"] > .collapsible-content {
-  animation: collapse-down 0.3s ease-out;
-}
-
-[data-state="closed"] > .collapsible-content {
-  animation: collapse-up 0.2s ease-out;
-}
+```tsx
+import {
+  // ... existing imports ...
+  Lightbulb,        // NEW - for Market Thesis
+  BarChart3,        // NEW - for Quant Validation
+  CheckCircle2,     // NEW - for Decision Layer
+  AlertTriangle,    // NEW - for Divergence Alerts
+} from "lucide-react";
 ```
 
 ---
 
-## Tableau récapitulatif
+## Récapitulatif des modifications
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/pages/ForecastTradeGenerator.tsx` | Ajouter état `isInputPanelOpen`, wrapper inputs dans Collapsible, réorganiser Results pour mettre Risk Surface en premier |
-| `src/index.css` | Ajouter animations pour le Collapsible |
-
----
-
-## Flux UX après modification
-
-```text
-1. Utilisateur arrive sur /trade-generator
-   └── Panneau d'inputs OUVERT (full form visible)
-   
-2. Utilisateur clique "Generate Trade"
-   └── Loading skeleton affiché
-   
-3. Résultats reçus
-   └── Panneau d'inputs AUTO-COLLAPSE
-   └── Résumé compact visible: [EUR/USD | 1h | 24,48,72h | Breakout]
-   └── ★ RISK SURFACE affichée en premier (sans scroll)
-   └── Tabs Trade Setup / Forecast Data en dessous
-   
-4. Utilisateur veut modifier les paramètres
-   └── Clic sur le header "Parameters"
-   └── Panneau se ré-ouvre avec animation fluide
-   └── Modifie et relance
-```
+| Élément | Avant | Après |
+|---------|-------|-------|
+| Structure résultats | 2 tabs (Trade Setup / Forecast Data) | 3 sections verticales narratives |
+| Tab "Trade Setup" | Nom technique | "Market Thesis — Why this trade exists" |
+| Tab "Forecast Data" | Nom technique | "Quant Validation — Is this statistically sound?" |
+| Nouvelle section | ❌ N'existe pas | "Decision Layer — Where thesis meets probability" |
+| Contenu fonctionnel | ✅ Intact | ✅ 100% préservé |
+| Données affichées | ✅ Identiques | ✅ Identiques (Decision Layer = reformulation visuelle) |
+| Appels API | ✅ Inchangés | ✅ Inchangés |
+| Calculs | ✅ Inchangés | ✅ Inchangés |
 
 ---
 
 ## Garanties de non-régression
 
-- Toutes les fonctionnalités existantes restent intactes
-- Les inputs sont toujours accessibles (collapsed mais expansible)
-- Les résultats restent dans les mêmes tabs
-- La Risk Surface est simplement déplacée et mise en avant
-- Les éléments de debug super-user restent conditionnels et fonctionnels
-- Le job tracking et les notifications ne sont pas impactés
+| Critère | Garantie |
+|---------|----------|
+| Market Commentary | ✅ Rendu identique, juste dans une section renommée |
+| Key Drivers | ✅ Badges identiques |
+| Setup Cards (Entry/SL/TP) | ✅ TradeSetupCard inchangé |
+| Context / Risk Notes | ✅ Collapsible identique |
+| Forecast Table | ✅ EnhancedForecastTable inchangé |
+| Risk Profiles panel | ✅ RiskProfilesPanel inchangé |
+| Risk Surface | ✅ Reste en "Hero" au-dessus |
+| API calls | ✅ Aucune modification |
+| Calculations | ✅ Aucune nouvelle logique |
+| Debug panels | ✅ Accessibles aux super-users |
+
+---
+
+## Nouveau flux UX
+
+```text
+1. Utilisateur génère un trade
+
+2. Risk Surface s'affiche en HERO (inchangé)
+
+3. Section 1: MARKET THESIS (violet)
+   └── "Voici POURQUOI ce trade existe"
+   └── Contexte macro, hypothèses AI
+   └── Setup cards avec Entry/SL/TP
+   └── L'utilisateur comprend le RAISONNEMENT
+
+4. Section 2: QUANT VALIDATION (bleu)
+   └── "Ce trade est-il STATISTIQUEMENT valide?"
+   └── Tableau de forecast par horizon
+   └── Probabilités, R/R ratio
+   └── L'utilisateur valide la ROBUSTESSE
+
+5. Section 3: DECISION LAYER (vert)
+   └── "Où la thèse rencontre la probabilité"
+   └── Points de convergence (direction alignée, prob > 50%)
+   └── Alertes de divergence (direction conflit, prob faible)
+   └── Récapitulatif du trade recommandé
+   └── L'utilisateur prend sa DÉCISION
+```
 
