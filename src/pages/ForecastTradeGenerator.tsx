@@ -37,6 +37,10 @@ import {
   TrendingDown,
   Zap,
   Info,
+  Lightbulb,
+  BarChart3,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
@@ -1468,6 +1472,217 @@ function EnhancedForecastTable({
 }
 
 // ============================================================================
+// NARRATIVE SECTION WRAPPER (Pure UX - no logic changes)
+// ============================================================================
+
+interface NarrativeSectionProps {
+  step: 1 | 2 | 3;
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  tagline: string;
+  children: React.ReactNode;
+}
+
+function NarrativeSection({ step, title, subtitle, icon, tagline, children }: NarrativeSectionProps) {
+  const stepColors = {
+    1: "border-l-violet-500",   // Purple for Thesis
+    2: "border-l-blue-500",     // Blue for Quant
+    3: "border-l-emerald-500",  // Green for Decision
+  };
+
+  return (
+    <Card className={cn(
+      "rounded-xl border shadow-sm overflow-hidden",
+      "border-l-4",
+      stepColors[step]
+    )}>
+      <CardHeader className="pb-3 bg-muted/20">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary">
+            {icon}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-mono">
+                Step {step}
+              </Badge>
+              <CardTitle className="text-lg">{title}</CardTitle>
+            </div>
+            <CardDescription className="text-sm">
+              {subtitle}
+            </CardDescription>
+          </div>
+          <Badge variant="secondary" className="text-xs">
+            {tagline}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// DECISION LAYER (Synthesis - no new calculations, just visual reformulation)
+// ============================================================================
+
+interface DecisionLayerProps {
+  aiSetup: N8nTradeResult | null;
+  forecastHorizons: ForecastHorizon[];
+}
+
+function DecisionLayer({ aiSetup, forecastHorizons }: DecisionLayerProps) {
+  // No new calculation - extraction of existing data only
+  const primarySetup = aiSetup?.setups?.[0];
+  const primaryHorizon = forecastHorizons[0];
+  
+  if (!primarySetup && !primaryHorizon) {
+    return null;
+  }
+
+  // Direction check - simple comparison of existing data
+  const aiDirection = primarySetup?.direction?.toLowerCase();
+  const quantDirection = primaryHorizon?.direction?.toLowerCase();
+  const directionsAlign = aiDirection && quantDirection && aiDirection === quantDirection;
+  
+  // Confidence check from existing data
+  const quantProb = primaryHorizon?.prob_hit_tp_before_sl;
+  
+  return (
+    <Card className="rounded-xl border-2 border-dashed border-emerald-500/30 bg-emerald-500/5">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-600">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-mono border-emerald-500/50">
+                Step 3
+              </Badge>
+              <CardTitle className="text-lg">Decision Layer</CardTitle>
+            </div>
+            <CardDescription>Where thesis meets probability</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Convergence / Divergence Points */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Convergence */}
+          <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                Convergence Points
+              </span>
+            </div>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {directionsAlign && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Direction aligned: Both suggest {aiDirection?.toUpperCase()}
+                </li>
+              )}
+              {quantProb && quantProb > 0.5 && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Probability favors TP: {(quantProb * 100).toFixed(0)}% chance
+                </li>
+              )}
+              {primaryHorizon?.riskReward && primaryHorizon.riskReward > 1 && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Positive R/R ratio: {primaryHorizon.riskReward.toFixed(2)}
+                </li>
+              )}
+              {(!directionsAlign && !quantProb) && (
+                <li className="text-muted-foreground italic">Generating...</li>
+              )}
+            </ul>
+          </div>
+
+          {/* Divergence */}
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                Divergence Alerts
+              </span>
+            </div>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {!directionsAlign && aiDirection && quantDirection && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Direction conflict: AI suggests {aiDirection?.toUpperCase()}, Quant suggests {quantDirection?.toUpperCase()}
+                </li>
+              )}
+              {quantProb && quantProb < 0.5 && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Low probability: Only {(quantProb * 100).toFixed(0)}% chance of TP
+                </li>
+              )}
+              {primarySetup?.riskNotes && (
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Risk flagged: {primarySetup.riskNotes.substring(0, 60)}...
+                </li>
+              )}
+              {(directionsAlign && (!quantProb || quantProb >= 0.5) && !primarySetup?.riskNotes) && (
+                <li className="text-emerald-600 italic">No divergence detected</li>
+              )}
+            </ul>
+          </div>
+        </div>
+
+        {/* Trade Recommendation Summary */}
+        <div className="p-4 rounded-lg bg-muted/30 border">
+          <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+            Recommended Trade
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {primarySetup?.direction && (
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-sm font-bold",
+                  primarySetup.direction.toLowerCase() === "long"
+                    ? "border-emerald-500 text-emerald-600 bg-emerald-500/10"
+                    : "border-rose-500 text-rose-600 bg-rose-500/10"
+                )}
+              >
+                {primarySetup.direction.toLowerCase() === "long" && <TrendingUp className="h-4 w-4 mr-1" />}
+                {primarySetup.direction.toLowerCase() === "short" && <TrendingDown className="h-4 w-4 mr-1" />}
+                {primarySetup.direction.toUpperCase()}
+              </Badge>
+            )}
+            {primarySetup?.entryPrice && (
+              <span className="text-sm">
+                Entry: <span className="font-mono font-semibold text-primary">{formatPrice(primarySetup.entryPrice)}</span>
+              </span>
+            )}
+            {primarySetup?.stopLoss && (
+              <span className="text-sm">
+                SL: <span className="font-mono font-semibold text-rose-600">{formatPrice(primarySetup.stopLoss)}</span>
+              </span>
+            )}
+            {primarySetup?.takeProfits?.[0] && (
+              <span className="text-sm">
+                TP: <span className="font-mono font-semibold text-emerald-600">{formatPrice(primarySetup.takeProfits[0])}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
 // MAIN PAGE COMPONENT
 // ============================================================================
 
@@ -2223,114 +2438,121 @@ function ForecastTradeGeneratorContent() {
               </Card>
             )}
 
-            {/* Tabs for Trade Setup and Forecast Data */}
-            <Tabs defaultValue="trade-setup" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="trade-setup">Trade Setup</TabsTrigger>
-                <TabsTrigger value="forecast-data">Forecast Data</TabsTrigger>
-              </TabsList>
+            {/* Section 1: Market Thesis */}
+            <NarrativeSection
+              step={1}
+              title="Market Thesis"
+              subtitle="Why this trade exists"
+              icon={<Lightbulb className="h-5 w-5" />}
+              tagline="Human + AI Context"
+            >
+              {aiSetupLoading ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="text-muted-foreground font-medium">
+                    Generating AI Trade Setup...
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Calling macro-lab-proxy with mode: trade_generation
+                  </p>
+                </div>
+              ) : aiSetupError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>AI Setup Error</AlertTitle>
+                  <AlertDescription>{aiSetupError}</AlertDescription>
+                </Alert>
+              ) : aiSetupResult ? (
+                <div className="space-y-4">
+                  {/* Market Commentary */}
+                  {aiSetupResult.market_commentary_anchor?.summary && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Market Commentary</h4>
+                      <p className="text-sm text-foreground">{aiSetupResult.market_commentary_anchor.summary}</p>
+                      {aiSetupResult.market_commentary_anchor.key_drivers && aiSetupResult.market_commentary_anchor.key_drivers.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {aiSetupResult.market_commentary_anchor.key_drivers.map((driver, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {driver}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-              {/* Trade Setup Tab (AI Setup format) */}
-              <TabsContent value="trade-setup" className="space-y-4">
-                {aiSetupLoading ? (
-                  <Card className="rounded-xl border shadow-sm">
-                    <CardContent className="py-12">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <span className="text-muted-foreground font-medium">
-                          Generating AI Trade Setup...
-                        </span>
-                        <p className="text-xs text-muted-foreground">
-                          Calling macro-lab-proxy with mode: trade_generation
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : aiSetupError ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>AI Setup Error</AlertTitle>
-                    <AlertDescription>{aiSetupError}</AlertDescription>
-                  </Alert>
-                ) : aiSetupResult ? (
-                  <>
-                    {/* Market Commentary */}
-                    {aiSetupResult.market_commentary_anchor?.summary && (
-                      <Card className="rounded-xl border shadow-sm">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Market Commentary</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground">{aiSetupResult.market_commentary_anchor.summary}</p>
-                          {aiSetupResult.market_commentary_anchor.key_drivers && aiSetupResult.market_commentary_anchor.key_drivers.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {aiSetupResult.market_commentary_anchor.key_drivers.map((driver, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {driver}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
+                  {/* Setups */}
+                  {aiSetupResult.setups && aiSetupResult.setups.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {aiSetupResult.setups.map((setup, idx) => (
+                        <TradeSetupCard key={idx} setup={setup} index={idx} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No trade setups available in response</p>
+                    </div>
+                  )}
 
-                    {/* Setups */}
-                    {aiSetupResult.setups && aiSetupResult.setups.length > 0 ? (
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {aiSetupResult.setups.map((setup, idx) => (
-                          <TradeSetupCard key={idx} setup={setup} index={idx} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>No trade setups available in response</p>
-                      </div>
-                    )}
+                  {/* Disclaimer */}
+                  {aiSetupResult.disclaimer && (
+                    <p className="text-xs text-muted-foreground italic text-center">{aiSetupResult.disclaimer}</p>
+                  )}
+                </div>
+              ) : (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>No AI Setup Data</AlertTitle>
+                  <AlertDescription>
+                    Click "Generate Trade" to fetch AI Trade Setups from macro-lab-proxy.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </NarrativeSection>
 
-                    {/* Disclaimer */}
-                    {aiSetupResult.disclaimer && (
-                      <p className="text-xs text-muted-foreground italic text-center">{aiSetupResult.disclaimer}</p>
-                    )}
-                  </>
-                ) : (
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>No AI Setup Data</AlertTitle>
-                    <AlertDescription>
-                      Click "Generate Trade" to fetch AI Trade Setups from macro-lab-proxy.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </TabsContent>
-
-              {/* Forecast Data Tab - Risk Surface removed (shown as hero above) */}
-              <TabsContent value="forecast-data" className="space-y-6">
-                {/* Enhanced Forecast Table with Risk Profiles */}
-                <Card className="rounded-xl border shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-primary" />
+            {/* Section 2: Quant Validation */}
+            <NarrativeSection
+              step={2}
+              title="Quant Validation"
+              subtitle="Is this trade statistically sound?"
+              icon={<BarChart3 className="h-5 w-5" />}
+              tagline="Deep Learning + Risk Engine"
+            >
+              {forecastHorizons.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Layers className="h-4 w-4" />
                       Forecast Summary by Horizon
-                    </CardTitle>
-                    <CardDescription className="text-xs">
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
                       Click on a row to expand Risk Profiles (Conservative / Moderate / Aggressive)
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <EnhancedForecastTable 
-                      horizons={forecastHorizons} 
-                      symbol={symbol}
-                      timeframe={timeframe}
-                      surfaceResult={riskSurfaceData}
-                      expandedRows={expandedRows}
-                      onToggleRow={toggleRowExpanded}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                    </p>
+                  </div>
+                  <EnhancedForecastTable 
+                    horizons={forecastHorizons} 
+                    symbol={symbol}
+                    timeframe={timeframe}
+                    surfaceResult={riskSurfaceData}
+                    expandedRows={expandedRows}
+                    onToggleRow={toggleRowExpanded}
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No forecast data available</p>
+                  <p className="text-xs mt-1">Generate a trade to see quantitative validation</p>
+                </div>
+              )}
+            </NarrativeSection>
+
+            {/* Section 3: Decision Layer */}
+            <DecisionLayer 
+              aiSetup={aiSetupResult}
+              forecastHorizons={forecastHorizons}
+            />
           </div>
         )}
       </main>
