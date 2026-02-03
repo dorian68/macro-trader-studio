@@ -260,6 +260,10 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               duration: 3000
             });
 
+            // ✅ Trigger navbar credit update (trigger auto_manage_credits already decremented)
+            window.dispatchEvent(new Event('creditsUpdated'));
+            console.log('📢 [PersistentNotifications] Dispatched creditsUpdated event');
+
             setCompletedJobs(prev => {
               // Avoid duplicates
               const exists = prev.some(job => job.id === completedJob.id);
@@ -274,6 +278,10 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             
             // Remove failed jobs from active
             setActiveJobs(prev => prev.filter(job => job.id !== updatedJob.id));
+            
+            // ✅ Trigger navbar credit update (credit was released by trigger)
+            window.dispatchEvent(new Event('creditsUpdated'));
+            console.log('📢 [PersistentNotifications] Dispatched creditsUpdated event (error path)');
             
             // Show error toast with retry button
             const originatingFeature = mapFeatureToOriginatingFeature(updatedJob.feature || '');

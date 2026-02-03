@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { v4 as uuidv4 } from "uuid";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
@@ -63,6 +62,12 @@ import {
 } from "@/lib/surfaceInterpolation";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+
+// ✅ NEW: Import hooks for credit management and job tracking
+import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+import { useCreditEngagement } from "@/hooks/useCreditEngagement";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // ============================================================================
 // CONSTANTS - API ENDPOINTS
@@ -1469,6 +1474,11 @@ function EnhancedForecastTable({
 function ForecastTradeGeneratorContent() {
   useForceLanguage("en");
   const navigate = useNavigate();
+  
+  // ✅ NEW: Credit management and job tracking hooks
+  const { createJob } = useRealtimeJobManager();
+  const { tryEngageCredit } = useCreditEngagement();
+  const { toast } = useToast();
 
   // Forecast params
   const [symbol, setSymbol] = useState("EUR/USD");
@@ -1528,10 +1538,7 @@ function ForecastTradeGeneratorContent() {
 
     const startTime = performance.now();
 
-    // Generate job_id for traceability
-    const jobId = uuidv4();
-
-    // Parse horizons
+    // Parse horizons first (before creating job)
     const parsedHorizons = horizons
       .split(",")
       .map((h) => parseInt(h.trim(), 10))
@@ -1543,10 +1550,48 @@ function ForecastTradeGeneratorContent() {
       return;
     }
 
+    // ✅ NEW: Variable to track job ID for cleanup on error
+    let jobId: string | null = null;
+
     try {
-      // === SINGLE API CALL: macro-lab-proxy with RAG format (same as AISetup) ===
+      // ✅ STEP 1: Create job FIRST (triggers PersistentNotificationProvider toaster)
+      jobId = await createJob(
+        'ai_trade_setup',
+        symbol,
+        { 
+          type: 'RAG', 
+          mode: 'trade_generation', 
+          instrument: symbol,
+          horizons: parsedHorizons
+        },
+        'AI Trade Setup' // feature name for display
+      );
+      console.log('✅ [TradeGenerator] Job created:', jobId);
+
+      // ✅ STEP 2: Engage credit atomically (type 'ideas' same as AI Trade Setup)
+      const creditResult = await tryEngageCredit('ideas', jobId);
+      if (!creditResult.success) {
+        console.log('❌ [TradeGenerator] Credit engagement failed, cleaning up job:', jobId);
+        
+        // Cleanup orphan job
+        await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', jobId);
+        
+        toast({
+          title: "Insufficient Credits",
+          description: "You've run out of credits. Please recharge to continue using AlphaLens.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      console.log('✅ [TradeGenerator] Credit engaged successfully. Available:', creditResult.available);
+
+      // ✅ STEP 3: Build and send API request (includes job_id for backend tracking)
       const macroPayload = {
-        job_id: jobId, // Include job_id for backend tracking
+        job_id: jobId,
         type: "RAG",
         mode: "trade_generation",
         instrument: symbol,
@@ -1584,11 +1629,28 @@ function ForecastTradeGeneratorContent() {
       if (!response.ok) {
         const errorBody = await response.text();
         setRawResponse({ error: errorBody } as unknown as CombinedResponse);
+        
+        // ✅ Update job status to error
+        await supabase
+          .from('jobs')
+          .update({ status: 'error' })
+          .eq('id', jobId);
+          
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       setRawResponse(data);
+
+      // ✅ STEP 4: Update job status to completed with response payload
+      await supabase
+        .from('jobs')
+        .update({ 
+          status: 'completed',
+          response_payload: data
+        })
+        .eq('id', jobId);
+      console.log('✅ [TradeGenerator] Job marked as completed:', jobId);
 
       // Parse AI Setup data (legacy format)
       const normalized = normalizeN8n(data);
@@ -1653,6 +1715,15 @@ function ForecastTradeGeneratorContent() {
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
+      
+      // ✅ Update job status to error if job was created
+      if (jobId) {
+        await supabase
+          .from('jobs')
+          .update({ status: 'error' })
+          .eq('id', jobId)
+          .then(() => console.log('✅ [TradeGenerator] Job marked as error:', jobId));
+      }
     } finally {
       setLoading(false);
     }
