@@ -56,7 +56,9 @@ export function GlobalLoadingProvider({ children }: GlobalLoadingProviderProps) 
     const navigationMap = {
       'ai_trade_setup': '/ai-setup',
       'macro_commentary': '/macro-analysis',
-      'reports': '/reports'
+      'reports': '/reports',
+      'macro_lab': '/forecast-playground/macro-commentary',
+      'trade_generator': '/forecast-playground/trade-generator'
     };
 
     const targetPath = navigationMap[request.type as keyof typeof navigationMap];

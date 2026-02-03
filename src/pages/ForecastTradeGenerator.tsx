@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
@@ -1523,6 +1523,56 @@ function ForecastTradeGeneratorContent() {
   const [lastPayload, setLastPayload] = useState<Record<string, unknown> | null>(null);
   const [lastHttpStatus, setLastHttpStatus] = useState<number | null>(null);
 
+  // ✅ NEW: Handle pending results from background job notifications
+  useEffect(() => {
+    const pendingResult = sessionStorage.getItem('pendingResult');
+    if (pendingResult) {
+      try {
+        const result = JSON.parse(pendingResult);
+        // Accept both trade_generator and legacy ai_trade_setup types for backward compatibility
+        if (result.type === 'trade_generator' || result.type === 'ai_trade_setup') {
+          console.log('📍 [TradeGenerator] Processing pending result:', result);
+          
+          if (result.resultData) {
+            // Reuse existing extractors to inject data
+            const normalized = normalizeN8n(result.resultData);
+            if (normalized && normalized.setups && normalized.setups.length > 0) {
+              setAiSetupResult(normalized);
+              console.log('✅ [TradeGenerator] Injected AI Setup result:', normalized);
+            }
+            
+            const tradeSetup = extractTradeSetup(result.resultData);
+            if (tradeSetup) {
+              const horizons = getHorizonsFromTradeSetup(tradeSetup);
+              if (horizons.length > 0) {
+                setForecastHorizons(horizons);
+                console.log('✅ [TradeGenerator] Injected forecast horizons:', horizons);
+              }
+            }
+            
+            const surface = extractRiskSurface(result.resultData);
+            if (surface) {
+              setRiskSurfaceData(surface);
+              console.log('✅ [TradeGenerator] Injected risk surface data:', surface);
+            }
+            
+            setRawResponse(result.resultData);
+          }
+          
+          sessionStorage.removeItem('pendingResult');
+          
+          toast({
+            title: "Trade Setup Loaded",
+            description: "Your trade setup has been loaded from background analysis."
+          });
+        }
+      } catch (error) {
+        console.error('❌ [TradeGenerator] Error parsing pending result:', error);
+        sessionStorage.removeItem('pendingResult');
+      }
+    }
+  }, [toast]);
+
   const handleSubmit = async () => {
     setLoading(true);
     setError(null);
@@ -1556,15 +1606,15 @@ function ForecastTradeGeneratorContent() {
     try {
       // ✅ STEP 1: Create job FIRST (triggers PersistentNotificationProvider toaster)
       jobId = await createJob(
-        'ai_trade_setup',
+        'trade_generator',
         symbol,
         { 
-          type: 'RAG', 
+          type: 'trade_generator', 
           mode: 'trade_generation', 
           instrument: symbol,
           horizons: parsedHorizons
         },
-        'AI Trade Setup' // feature name for display
+        'Trade Generator' // feature name for display
       );
       console.log('✅ [TradeGenerator] Job created:', jobId);
 
