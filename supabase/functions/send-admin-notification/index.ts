@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface AdminNotificationRequest {
-  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected';
+  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected' | 'new_registration';
   userEmail: string;
   userName: string;
   metadata?: any;
@@ -446,6 +446,71 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
             </body>
           </html>
         `
+      };
+
+    case 'new_registration':
+      const { userEmail: regEmail, brokerName: regBroker, registeredAt } = metadata || {};
+      return {
+        subject: '🆕 New Registration Pending Approval - Alphalens',
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>New Registration</title>
+              <style>${baseStyles}</style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <img src="https://jqrlegdulnnrpiixiecf.supabase.co/storage/v1/object/public/lovable-uploads/Full_logo_no_BG_2.png" alt="Alphalens AI" class="logo" />
+                  <p class="header-text">Admin Notification</p>
+                </div>
+                <div class="content">
+                  <h2>🆕 New User Registration</h2>
+                  <p>A new user has registered on the Alphalens platform and is awaiting approval.</p>
+                  
+                  <div class="highlight-box info">
+                    <p style="margin: 0 0 15px 0; font-size: 16px; font-weight: 600; color: #002244;">Registration Details</p>
+                    <table class="credits-table">
+                      <tbody>
+                        <tr>
+                          <td><strong>Email</strong></td>
+                          <td>${regEmail || userName}</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Broker</strong></td>
+                          <td>${regBroker || 'Not specified'}</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Registered At</strong></td>
+                          <td>${registeredAt ? new Date(registeredAt).toLocaleString() : new Date().toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Status</strong></td>
+                          <td><span style="color: #f59e0b; font-weight: 600;">⏳ Pending Approval</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <p style="text-align: center;">
+                    <a href="https://alphalensai.com/admin?tab=users" class="cta-button">
+                      Review in Admin Panel →
+                    </a>
+                  </p>
+                  
+                  <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">This account requires manual approval before the user can access the platform.</p>
+                </div>
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
+                  <p>This is an automated notification for administrators.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
       };
 
     default:

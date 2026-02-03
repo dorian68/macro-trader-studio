@@ -57,3 +57,6 @@ verify_jwt = false
 
 [functions.surface-proxy]
 verify_jwt = false
+
+[functions.notify-new-registration]
+verify_jwt = false
