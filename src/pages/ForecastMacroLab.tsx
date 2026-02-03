@@ -488,7 +488,7 @@ export default function ForecastMacroLab() {
 
     try {
       // Create job FIRST to get job_id for payload
-      responseJobId = await createJob("macro_lab", selectedAsset.symbol, {}, "Macro Lab");
+      responseJobId = await createJob("macro_lab", selectedAsset.symbol, { type: "macro_lab" }, "Macro Commentary");
 
       payload = {
         type: "RAG",

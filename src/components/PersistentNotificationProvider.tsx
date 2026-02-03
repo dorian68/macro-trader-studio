@@ -78,17 +78,36 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
     setFlashMessages(prev => prev.filter(msg => msg.id !== id));
   };
 
-  // Map job features to originating features
-  const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
-    const f = feature.toLowerCase();
-    // New Lab pages (high priority - check first)
-    if (f.includes('macro_lab') || f.includes('macro lab')) return 'macro-lab';
-    if (f.includes('trade_generator') || f.includes('trade generator')) return 'trade-generator';
-    // Legacy pages (unchanged)
+  // Get effective type from job (prioritize request_payload.type over feature)
+  const getEffectiveType = (job: any): string => {
+    // Priority 1: Explicit type in request_payload
+    if (job.request_payload?.type) {
+      return job.request_payload.type;
+    }
+    // Priority 2: Feature field
+    return job.feature || '';
+  };
+
+  // Map job to originating feature using request_payload.type for routing
+  const mapJobToOriginatingFeature = (job: any): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
+    const effectiveType = getEffectiveType(job).toLowerCase();
+    
+    // New Lab pages (check request_payload.type first)
+    if (effectiveType === 'macro_lab') return 'macro-lab';
+    if (effectiveType === 'trade_generator') return 'trade-generator';
+    
+    // Legacy pages (fallback to feature-based routing)
+    const f = (job.feature || '').toLowerCase();
     if (f === 'ai trade setup' || f === 'ai_trade_setup') return 'ai-setup';
     if (f.includes('macro') || f.includes('commentary')) return 'macro-analysis';
     if (f.includes('report')) return 'reports';
+    
     return 'ai-setup'; // fallback
+  };
+
+  // Legacy function for backward compatibility
+  const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
+    return mapJobToOriginatingFeature({ feature });
   };
 
   // Map feature to credit type
@@ -173,7 +192,7 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             instrument: extractInstrument(newJob),
             status: 'pending',
             createdAt: new Date(),
-            originatingFeature: mapFeatureToOriginatingFeature(extractFeature(newJob)),
+            originatingFeature: mapJobToOriginatingFeature(newJob),
             userQuery: extractUserQuery(newJob)
           };
 
@@ -259,7 +278,7 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
               instrument: extractInstrument(updatedJob),
               resultData: updatedJob.response_payload,
               completedAt: new Date(),
-              originatingFeature: mapFeatureToOriginatingFeature(extractFeature(updatedJob)),
+              originatingFeature: mapJobToOriginatingFeature(updatedJob),
               userQuery: extractUserQuery(updatedJob)
             };
 

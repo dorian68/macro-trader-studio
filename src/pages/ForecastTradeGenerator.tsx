@@ -1635,7 +1635,7 @@ function ForecastTradeGeneratorContent() {
           instrument: symbol,
           horizons: parsedHorizons
         },
-        'Trade Generator' // feature name for display
+        'AI Trade Setup' // ✅ DB-compatible feature value (routing via request_payload.type)
       );
       console.log('✅ [TradeGenerator] Job created:', jobId);
 
