@@ -1,144 +1,197 @@
 
-# Plan : Correction de l'injection des résultats dans Trade Generator
+
+# Plan : Correction de l'erreur bloquante sur Macro Labs et Trade Generator
 
 ## Diagnostic
 
-L'implémentation actuelle du `useEffect` pour `pendingResult` dans `ForecastTradeGenerator.tsx` (L1526-1574) est **incomplète** par rapport à la logique de `handleSubmit` (L1700-1765).
-
-### Comparaison avec le flow normal (handleSubmit)
-
-| Extraction | handleSubmit | useEffect pendingResult |
-|------------|-------------|------------------------|
-| `normalizeN8n` → `setAiSetupResult` | ✅ L1706-1709 | ✅ L1538-1542 |
-| `extractTradeSetup` → `getHorizonsFromTradeSetup` → `setForecastHorizons` | ✅ L1713-1739 | ✅ L1544-1551 |
-| `extractRiskSurface` → `setRiskSurfaceData` | ✅ L1743-1754 | ✅ L1553-1557 |
-| `extractFinalAnswer` → `setFinalAnswer` | ✅ L1757-1760 | ❌ Manquant |
-| `extractConfidenceNote` → `setConfidenceNote` | ✅ L1763-1764 | ❌ Manquant |
-| `setRawResponse` | ✅ L1693 | ✅ L1559 |
-| Mise à jour du `symbol` depuis résultat | N/A (déjà défini) | ❌ Manquant |
-
-### Problème secondaire : useRealtimeJobManager
-
-La fonction `mapTypeToFeature` (L34-50) ne gère pas les nouveaux types `trade_generator` et `macro_lab`. Bien que le fallback ne soit pas utilisé actuellement (car `feature` est passé explicitement), cela crée une incohérence et pourrait causer des problèmes futurs.
-
-## Solution
-
-### 1. Compléter le useEffect pendingResult dans ForecastTradeGenerator.tsx
-
-Modifier le `useEffect` (L1527-1574) pour ajouter les extractions manquantes :
-
-```typescript
-useEffect(() => {
-  const pendingResult = sessionStorage.getItem('pendingResult');
-  if (pendingResult) {
-    try {
-      const result = JSON.parse(pendingResult);
-      if (result.type === 'trade_generator' || result.type === 'ai_trade_setup') {
-        console.log('📍 [TradeGenerator] Processing pending result:', result);
-        
-        if (result.resultData) {
-          // ✅ Update symbol from result if available
-          const ins = result.instrument || result.resultData?.instrument;
-          if (ins) {
-            setSymbol(ins);
-            console.log('✅ [TradeGenerator] Updated symbol from result:', ins);
-          }
-          
-          // Reuse existing extractors to inject data
-          const normalized = normalizeN8n(result.resultData);
-          if (normalized && normalized.setups && normalized.setups.length > 0) {
-            setAiSetupResult(normalized);
-            console.log('✅ [TradeGenerator] Injected AI Setup result:', normalized);
-          }
-          
-          const tradeSetup = extractTradeSetup(result.resultData);
-          if (tradeSetup) {
-            const horizons = getHorizonsFromTradeSetup(tradeSetup);
-            if (horizons.length > 0) {
-              setForecastHorizons(horizons);
-              console.log('✅ [TradeGenerator] Injected forecast horizons:', horizons);
-            }
-          }
-          
-          const surface = extractRiskSurface(result.resultData);
-          if (surface) {
-            setRiskSurfaceData(surface);
-            console.log('✅ [TradeGenerator] Injected risk surface data:', surface);
-          }
-          
-          // ✅ AJOUT: Extract final_answer (AI textual analysis)
-          const answer = extractFinalAnswer(result.resultData);
-          if (answer) {
-            setFinalAnswer(answer);
-            console.log('✅ [TradeGenerator] Injected final answer');
-          }
-          
-          // ✅ AJOUT: Extract confidence_note
-          const note = extractConfidenceNote(result.resultData);
-          if (note) {
-            setConfidenceNote(note);
-            console.log('✅ [TradeGenerator] Injected confidence note');
-          }
-          
-          setRawResponse(result.resultData);
-        }
-        
-        sessionStorage.removeItem('pendingResult');
-        
-        toast({
-          title: "Trade Setup Loaded",
-          description: "Your trade setup has been loaded from background analysis."
-        });
-      }
-    } catch (error) {
-      console.error('❌ [TradeGenerator] Error parsing pending result:', error);
-      sessionStorage.removeItem('pendingResult');
-    }
-  }
-}, [toast]);
+L'erreur est une violation de contrainte de base de données :
+```
+"new row for relation \"jobs\" violates check constraint \"jobs_feature_check\""
 ```
 
-### 2. Mettre à jour mapTypeToFeature dans useRealtimeJobManager.tsx
+### Contrainte actuelle de la base de données
+```sql
+CHECK ((feature = ANY (ARRAY['AI Trade Setup', 'Macro Commentary', 'Report'])))
+```
 
-Ajouter les nouveaux types pour la cohérence et la robustesse :
+### Valeurs utilisées dans le code récent
+| Page | Valeur utilisée | Statut |
+|------|-----------------|--------|
+| ForecastMacroLab | `'Macro Lab'` | ❌ Rejetée par DB |
+| ForecastTradeGenerator | `'Trade Generator'` | ❌ Rejetée par DB |
+
+## Solution : Réutiliser les valeurs feature existantes
+
+La stratégie consiste à utiliser les valeurs `feature` acceptées par la DB (`'Macro Commentary'`, `'AI Trade Setup'`) tout en stockant le **type réel** dans `request_payload.type` pour permettre au routing de différencier les nouvelles pages des anciennes.
+
+### Logique de routing adaptée
+
+Le `PersistentNotificationProvider` utilisera `request_payload.type` (quand disponible) plutôt que `feature` pour déterminer la destination :
+
+| request_payload.type | Route cible |
+|----------------------|-------------|
+| `macro_lab` | `/forecast-playground/macro-commentary` |
+| `trade_generator` | `/forecast-playground/trade-generator` |
+| (absent ou autre) | Comportement existant basé sur `feature` |
+
+---
+
+## Modifications fichier par fichier
+
+### 1. ForecastMacroLab.tsx (L491)
+
+Revenir à `'Macro Commentary'` pour la valeur `feature` tout en gardant `macro_lab` dans le type :
 
 ```typescript
-const mapTypeToFeature = (type: string): string => {
-  switch (type.toLowerCase()) {
-    case 'macro_commentary':
-    case 'macro-commentary':
-    case 'macro_analysis':
-      return 'macro_commentary';
-    case 'macro_lab':             // ✅ AJOUT
-    case 'macro-lab':             // ✅ AJOUT
-      return 'macro_lab';         // ✅ AJOUT
-    case 'trade_setup':
-    case 'tradesetup':
-    case 'ai_trade_setup':
-      return 'ai_trade_setup';
-    case 'trade_generator':       // ✅ AJOUT
-    case 'trade-generator':       // ✅ AJOUT
-      return 'trade_generator';   // ✅ AJOUT
-    case 'reports':
-    case 'report':
-      return 'report';
-    default:
-      return 'macro_commentary'; // Default fallback
+// AVANT (bloqué par DB)
+responseJobId = await createJob("macro_lab", selectedAsset.symbol, {}, "Macro Lab");
+
+// APRÈS (compatible DB)
+responseJobId = await createJob(
+  "macro_lab",                    // type interne (stocké dans request_payload.type)
+  selectedAsset.symbol,
+  { type: "macro_lab" },          // ✅ Type explicite pour routing
+  "Macro Commentary"              // ✅ feature acceptée par DB
+);
+```
+
+### 2. ForecastTradeGenerator.tsx (L1629-1639)
+
+Revenir à `'AI Trade Setup'` pour la valeur `feature` tout en gardant `trade_generator` dans le type :
+
+```typescript
+// AVANT (bloqué par DB)
+jobId = await createJob(
+  'trade_generator',
+  symbol,
+  { type: 'trade_generator', mode: 'trade_generation', instrument: symbol, horizons: parsedHorizons },
+  'Trade Generator'
+);
+
+// APRÈS (compatible DB)
+jobId = await createJob(
+  'trade_generator',              // type interne
+  symbol,
+  { 
+    type: 'trade_generator',      // ✅ Type explicite pour routing
+    mode: 'trade_generation', 
+    instrument: symbol, 
+    horizons: parsedHorizons 
+  },
+  'AI Trade Setup'                // ✅ feature acceptée par DB
+);
+```
+
+### 3. PersistentNotificationProvider.tsx - Améliorer mapFeatureToOriginatingFeature
+
+Modifier la fonction pour **d'abord vérifier `request_payload.type`** si disponible, puis fallback sur `feature` :
+
+```typescript
+// Nouvelle fonction helper (à ajouter avant mapFeatureToOriginatingFeature)
+const getEffectiveType = (job: any): string => {
+  // Priority 1: Explicit type in request_payload
+  if (job.request_payload?.type) {
+    return job.request_payload.type;
   }
+  // Priority 2: Feature field
+  return job.feature || '';
+};
+
+// Modifier mapFeatureToOriginatingFeature pour accepter le job complet
+const mapJobToOriginatingFeature = (job: any): OriginatingFeature => {
+  const effectiveType = getEffectiveType(job).toLowerCase();
+  
+  // New Lab pages (check request_payload.type first)
+  if (effectiveType === 'macro_lab') return 'macro-lab';
+  if (effectiveType === 'trade_generator') return 'trade-generator';
+  
+  // Legacy pages (fallback to feature-based routing)
+  const f = (job.feature || '').toLowerCase();
+  if (f === 'ai trade setup' || f === 'ai_trade_setup') return 'ai-setup';
+  if (f.includes('macro') || f.includes('commentary')) return 'macro-analysis';
+  if (f.includes('report')) return 'reports';
+  
+  return 'ai-setup'; // fallback
 };
 ```
 
-## Fichiers modifiés
+### 4. Mettre à jour les appels à mapFeatureToOriginatingFeature
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/pages/ForecastTradeGenerator.tsx` | Compléter le useEffect pendingResult avec extractFinalAnswer, extractConfidenceNote, et mise à jour du symbol |
-| `src/hooks/useRealtimeJobManager.tsx` | Ajouter trade_generator et macro_lab dans mapTypeToFeature |
+Dans le `useEffect` qui écoute les événements Realtime (INSERT et UPDATE handlers), passer l'objet job complet au lieu de juste `feature` :
+
+```typescript
+// Dans le handler INSERT (L158-175)
+originatingFeature: mapJobToOriginatingFeature(newJob),
+
+// Dans le handler UPDATE (L239-275)
+originatingFeature: mapJobToOriginatingFeature(updatedJob),
+```
+
+### 5. ForecastMacroLab.tsx - Corriger le pendingResult check (L133)
+
+S'assurer que le check accepte le type `macro_lab` :
+
+```typescript
+// AVANT
+if (result.type.includes("macro") || result.type.includes("commentary") || result.type === "macro_lab") {
+
+// APRÈS (déjà correct, vérifier seulement)
+if (result.type === "macro_lab" || result.type.includes("macro") || result.type.includes("commentary")) {
+```
+
+### 6. ForecastTradeGenerator.tsx - Vérifier le pendingResult check (L1531)
+
+S'assurer que le check accepte le type `trade_generator` :
+
+```typescript
+// AVANT (déjà correct)
+if (result.type === 'trade_generator' || result.type === 'ai_trade_setup') {
+```
+
+---
+
+## Tableau récapitulatif
+
+| Fichier | Ligne(s) | Modification | Impact |
+|---------|----------|--------------|--------|
+| `ForecastMacroLab.tsx` | L491 | Changer feature `'Macro Lab'` → `'Macro Commentary'` + garder type | Fix DB constraint |
+| `ForecastTradeGenerator.tsx` | L1638 | Changer feature `'Trade Generator'` → `'AI Trade Setup'` + garder type | Fix DB constraint |
+| `PersistentNotificationProvider.tsx` | L82-95 | Créer `mapJobToOriginatingFeature` qui vérifie `request_payload.type` d'abord | Routing vers nouvelles pages |
+| `PersistentNotificationProvider.tsx` | L158, L239 | Utiliser `mapJobToOriginatingFeature(job)` au lieu de `mapFeatureToOriginatingFeature(feature)` | Routing correct |
+
+---
 
 ## Garanties de non-régression
 
-- Aucune modification de la logique de `handleSubmit` existante
-- Aucune modification du `PersistentNotificationProvider`
-- Les pages existantes (AISetup, MacroAnalysis, Reports) ne sont pas impactées
-- Le mécanisme de sessionStorage reste identique
-- La logique de routing du toaster reste inchangée
+- Les valeurs `feature` en DB restent identiques (`'AI Trade Setup'`, `'Macro Commentary'`, `'Report'`)
+- Les anciennes pages (AISetup, MacroAnalysis) continuent de fonctionner normalement
+- Le monitoring admin affiche les bonnes statistiques (basé sur `feature`)
+- Le type réel est préservé dans `request_payload.type` pour le routing
+- Aucune modification de schéma de base de données nécessaire
+
+---
+
+## Flux de données après correction
+
+```text
+1. User lance une analyse depuis /forecast-playground/trade-generator
+   
+2. ForecastTradeGenerator.handleSubmit()
+   └── createJob('trade_generator', symbol, {type: 'trade_generator', ...}, 'AI Trade Setup')
+       └── INSERT jobs (feature: 'AI Trade Setup', request_payload: {type: 'trade_generator', ...})
+           ✅ DB constraint satisfied!
+       
+3. PersistentNotificationProvider reçoit INSERT
+   └── mapJobToOriginatingFeature(job)
+       └── job.request_payload.type === 'trade_generator'
+           └── return 'trade-generator'
+   └── Toaster de chargement apparaît
+
+4. Backend termine → UPDATE jobs.status = 'completed'
+   
+5. User clique "View Result"
+   └── navigateToResult(completedJob)
+       ├── sessionStorage.setItem('pendingResult', {type: 'trade_generator', ...})
+       └── navigate('/forecast-playground/trade-generator')  ✅ Correct route!
+```
+
