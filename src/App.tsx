@@ -12,7 +12,6 @@ import { PersistentNotificationProvider } from "@/components/PersistentNotificat
 import { AURAContextProvider } from "@/contexts/AURAContextProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { PersistentToast } from "@/components/PersistentToast";
-import { JobStatusCards } from "@/components/JobStatusCards";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CursorGlow } from "@/components/CursorGlow";
@@ -83,7 +82,6 @@ const App = () => {
                     <CursorGlow />
                     <GlobalLoadingProvider>
                       <PersistentNotificationProvider>
-                        <JobStatusCards />
                         <PersistentToast />
                         <Toaster />
                         <Sonner />
