@@ -130,7 +130,7 @@ export default function ForecastMacroLab() {
     if (pendingResult) {
       try {
         const result = JSON.parse(pendingResult);
-        if (result.type.includes("macro") || result.type.includes("commentary")) {
+        if (result.type.includes("macro") || result.type.includes("commentary") || result.type === "macro_lab") {
           handleRealtimeResponse(result.resultData, result.jobId);
           sessionStorage.removeItem("pendingResult");
         }
@@ -488,7 +488,7 @@ export default function ForecastMacroLab() {
 
     try {
       // Create job FIRST to get job_id for payload
-      responseJobId = await createJob("macro_analysis", selectedAsset.symbol, {}, "Macro Commentary");
+      responseJobId = await createJob("macro_lab", selectedAsset.symbol, {}, "Macro Lab");
 
       payload = {
         type: "RAG",

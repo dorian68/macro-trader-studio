@@ -1,6 +1,8 @@
 
 
-# Plan : Adaptation des toasters de fin de job vers les nouvelles pages
+# ✅ Plan : Adaptation des toasters de fin de job vers les nouvelles pages
+
+**Status: IMPLEMENTED**
 
 ## Résumé
 
