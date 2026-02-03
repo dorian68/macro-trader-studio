@@ -2542,7 +2542,7 @@ function ForecastTradeGeneratorContent() {
                   <span className="font-medium text-blue-600 dark:text-blue-400">
                     Powered by:
                   </span>{" "}
-                  Deep Learning Forecasting (Prophet + Neural Nets) • Monte Carlo Risk Engine • ATR-based volatility calibration
+                  Proprietary quantitative models • Statistical risk analysis • Volatility-adjusted projections
                 </p>
               </div>
 
