@@ -53,12 +53,10 @@ export function GlobalLoadingProvider({ children }: GlobalLoadingProviderProps) 
     }));
 
     // Navigate to the correct page based on request type
-    const navigationMap: Record<string, string> = {
+    const navigationMap = {
       'ai_trade_setup': '/ai-setup',
       'macro_commentary': '/macro-analysis',
-      'reports': '/reports',
-      'macro_lab': '/forecast-playground/macro-commentary',
-      'trade_generator': '/forecast-playground/trade-generator'
+      'reports': '/reports'
     };
 
     const targetPath = navigationMap[request.type as keyof typeof navigationMap];

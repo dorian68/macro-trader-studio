@@ -130,9 +130,7 @@ export default function ForecastMacroLab() {
     if (pendingResult) {
       try {
         const result = JSON.parse(pendingResult);
-        // Accept macro_lab (new) OR legacy macro/commentary types
-        if (result.type === "macro_lab" || result.type.includes("macro") || result.type.includes("commentary")) {
-          console.log("📍 [MacroLab] Processing pending result:", result);
+        if (result.type.includes("macro") || result.type.includes("commentary")) {
           handleRealtimeResponse(result.resultData, result.jobId);
           sessionStorage.removeItem("pendingResult");
         }
@@ -489,8 +487,8 @@ export default function ForecastMacroLab() {
     let payload: Record<string, unknown> | null = null;
 
     try {
-      // Create job FIRST to get job_id for payload - use new type for routing
-      responseJobId = await createJob("macro_lab", selectedAsset.symbol, {}, "Macro Lab");
+      // Create job FIRST to get job_id for payload
+      responseJobId = await createJob("macro_analysis", selectedAsset.symbol, {}, "Macro Commentary");
 
       payload = {
         type: "RAG",
