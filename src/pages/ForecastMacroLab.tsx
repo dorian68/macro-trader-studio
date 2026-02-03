@@ -26,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+import { useCreditEngagement } from "@/hooks/useCreditEngagement";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
@@ -80,6 +81,7 @@ export default function ForecastMacroLab() {
   const { user } = useAuth();
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
+  const { tryEngageCredit } = useCreditEngagement();
   const { t } = useTranslation(["dashboard", "toasts", "common"]);
 
   // Forecast Playground is an internal tool: keep UI in English.
@@ -533,8 +535,28 @@ export default function ForecastMacroLab() {
         timestamp: new Date().toISOString(),
       });
 
-      // Macro Lab is a superuser-only testing tool: do NOT require credits on this page.
-      // (Credits remain enforced everywhere else.)
+      // ✅ ATOMIC: Try to engage credit (same logic as MacroAnalysis)
+      const creditResult = await tryEngageCredit('queries', responseJobId);
+      if (!creditResult.success) {
+        console.log('❌ [MacroLabs] Credit engagement failed, cleaning up job:', responseJobId);
+        
+        // Clean up orphan job
+        await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', responseJobId);
+        
+        toast({
+          title: "Insufficient Credits",
+          description: "You've run out of credits. Please recharge to continue using AlphaLens.",
+          variant: "destructive"
+        });
+        setIsGenerating(false);
+        setJobStatus("");
+        return;
+      }
+
+      console.log('✅ [MacroLabs] Credit engaged successfully. Available:', creditResult.available);
 
       // HYBRID ARCHITECTURE: Subscribe to Realtime BEFORE sending POST request (fallback mechanism)
       console.log("📡 [Realtime] Subscribing to jobs updates before POST (hybrid fallback)");
