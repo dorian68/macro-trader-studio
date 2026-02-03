@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
-import { SuperUserGuard } from "@/components/SuperUserGuard";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
+import { useUserRole } from "@/hooks/useUserRole";
 import { RiskSurfaceChart, SurfaceApiResponse } from "@/components/labs/RiskSurfaceChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1474,6 +1474,7 @@ function EnhancedForecastTable({
 function ForecastTradeGeneratorContent() {
   useForceLanguage("en");
   const navigate = useNavigate();
+  const { isSuperUser } = useUserRole();
   
   // ✅ NEW: Credit management and job tracking hooks
   const { createJob } = useRealtimeJobManager();
@@ -1820,7 +1821,7 @@ function ForecastTradeGeneratorContent() {
         {/* Header */}
         <header className="space-y-2">
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="icon" onClick={() => navigate("/forecast-playground")} className="shrink-0">
+            <Button variant="outline" size="icon" onClick={() => navigate("/dashboard")} className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-10 w-10 rounded-xl border bg-card flex items-center justify-center">
@@ -1833,10 +1834,12 @@ function ForecastTradeGeneratorContent() {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="text-xs">Internal</Badge>
-            <Badge variant="outline" className="text-xs">SuperUser</Badge>
-          </div>
+          {isSuperUser && (
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="text-xs">Internal</Badge>
+              <Badge variant="outline" className="text-xs">SuperUser</Badge>
+            </div>
+          )}
         </header>
 
         {/* Form Section */}
@@ -2035,12 +2038,14 @@ function ForecastTradeGeneratorContent() {
             </Badge>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
-            <Label htmlFor="debug" className="text-xs text-muted-foreground">
-              Debug JSON
-            </Label>
-            <Switch id="debug" checked={showDebug} onCheckedChange={setShowDebug} />
-          </div>
+          {isSuperUser && (
+            <div className="flex items-center gap-2 ml-auto">
+              <Label htmlFor="debug" className="text-xs text-muted-foreground">
+                Debug JSON
+              </Label>
+              <Switch id="debug" checked={showDebug} onCheckedChange={setShowDebug} />
+            </div>
+          )}
         </div>
 
         {/* Error Display */}
@@ -2061,7 +2066,7 @@ function ForecastTradeGeneratorContent() {
         )}
 
         {/* Debug Card - Always visible when toggle is ON and we have data */}
-        {showDebug && (lastPayload || rawResponse) && (
+        {isSuperUser && showDebug && (lastPayload || rawResponse) && (
           <Card className="rounded-xl border border-amber-500/50 bg-amber-500/5 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2 text-amber-600 dark:text-amber-400">
@@ -2286,10 +2291,10 @@ function ForecastTradeGeneratorContent() {
 // EXPORT WITH SUPERUSER GUARD
 // ============================================================================
 
+// ============================================================================
+// EXPORT (No SuperUserGuard - accessible to all authenticated users)
+// ============================================================================
+
 export default function ForecastTradeGenerator() {
-  return (
-    <SuperUserGuard fallback={<LabsComingSoon title="Trade Generator" description="This feature is currently in private beta." />}>
-      <ForecastTradeGeneratorContent />
-    </SuperUserGuard>
-  );
+  return <ForecastTradeGeneratorContent />;
 }

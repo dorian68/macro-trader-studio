@@ -125,8 +125,8 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
       case 'ai-setup': return '/ai-setup';
       case 'macro-analysis': return '/macro-analysis';
       case 'reports': return '/reports';
-      case 'macro-lab': return '/forecast-playground/macro-commentary';
-      case 'trade-generator': return '/forecast-playground/trade-generator';
+      case 'macro-lab': return '/macro-lab';
+      case 'trade-generator': return '/trade-generator';
       default: return '/ai-setup';
     }
   };
