@@ -51,7 +51,7 @@
     "legal": "Legal",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
-    "copyright": "© 2025 alphaLens AI. All rights reserved."
+    "copyright": "© 2025–2026 alphaLens AI. All rights reserved."
   },
   "status": {
     "liveMarkets": "Live Markets",
@@ -88,7 +88,7 @@
     "homeDescription": "Transform your trading strategy with AI-powered insights, macro commentary, and research reports for FX and crypto markets."
   },
   "newsFeed": {
-    "title": "Market News",
+    "title": "Market Intelligence",
     "collapse": "Collapse",
     "expand": "Expand",
     "filter": "Filter by category",

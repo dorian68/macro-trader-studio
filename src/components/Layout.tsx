@@ -180,7 +180,8 @@ export default function Layout({
         {isMobileMenuOpen && <div className="absolute top-full left-0 right-0 bg-card/95 backdrop-blur-xl border-b border-border/50 shadow-xl md:hidden z-40">
           <div className="p-3 space-y-3">
             <div className="grid grid-cols-1 gap-2">
-              {/* Public navigation items */}
+              {/* Resources */}
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 pt-1">Resources</p>
               <Button variant="outline" size="sm" onClick={() => {
                 navigate('/about');
                 setIsMobileMenuOpen(false);
@@ -209,24 +210,24 @@ export default function Layout({
                 <FileText className="h-4 w-4 mr-2" />
                 {t('nav.contact')}
               </Button>
-              {isSuperUser && (
-                <Button variant="outline" size="sm" onClick={() => {
-                  navigate('/alphalens-labs');
-                  setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm min-h-[44px]">
-                  <Calculator className="h-4 w-4 mr-2" />
-                  AlphaLens Labs
-                </Button>
-              )}
 
               {/* App navigation items for authenticated users */}
               {user && <>
+                <div className="border-t border-border/30 my-2" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Platform</p>
                 <Button variant="outline" size="sm" onClick={() => {
                   navigate('/dashboard');
                   setIsMobileMenuOpen(false);
                 }} className="justify-start text-sm min-h-[44px]">
                   <Activity className="h-4 w-4 mr-2" />
                   {t('nav.dashboard')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  navigate('/trade-generator');
+                  setIsMobileMenuOpen(false);
+                }} className="justify-start text-sm min-h-[44px]">
+                  <Zap className="h-4 w-4 mr-2" />
+                  {t('nav.aiSetup', { defaultValue: 'Trade Generator' })}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => {
                   navigate('/history');
@@ -247,16 +248,18 @@ export default function Layout({
                   navigate('/reports');
                   setIsMobileMenuOpen(false);
                 }} className="justify-start text-sm min-h-[44px]">
-                  <Activity className="h-4 w-4 mr-2" />
+                  <FileText className="h-4 w-4 mr-2" />
                   {t('nav.reports', { defaultValue: 'Reports' })}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  onModuleChange?.("ai-setup");
-                  setIsMobileMenuOpen(false);
-                }} className="justify-start text-sm min-h-[44px]">
-                  <Zap className="h-4 w-4 mr-2" />
-                  {t('nav.aiSetup', { defaultValue: 'AI Setup' })}
-                </Button>
+                {isSuperUser && (
+                  <Button variant="outline" size="sm" onClick={() => {
+                    navigate('/alphalens-labs');
+                    setIsMobileMenuOpen(false);
+                  }} className="justify-start text-sm min-h-[44px]">
+                    <Calculator className="h-4 w-4 mr-2" />
+                    AlphaLens Labs
+                  </Button>
+                )}
                 {(isAdmin || isSuperUser) && <Button variant="outline" size="sm" onClick={() => {
                   navigate('/admin');
                   setIsMobileMenuOpen(false);
