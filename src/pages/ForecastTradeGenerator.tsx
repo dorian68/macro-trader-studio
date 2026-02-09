@@ -925,7 +925,7 @@ function TradeSetupCard({ setup, index }: { setup: N8nSetup; index: number }) {
     : setup.context?.substring(0, 200);
 
   return (
-    <Card className="rounded-xl border shadow-sm">
+    <Card className="rounded-xl border shadow-sm transition-colors hover:border-white/20">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -1298,7 +1298,7 @@ function RiskProfilesPanel({
           </TableHeader>
           <TableBody>
             {profiles.map((p) => (
-              <TableRow key={p.key} className="hover:bg-muted/30 transition-colors">
+              <TableRow key={p.key} className="hover:bg-white/[0.06] transition-colors">
                 <TableCell className="font-medium">
                   <Badge variant="outline" className={getProfileStyles(p.key)}>
                     {p.name}
@@ -1445,7 +1445,7 @@ function EnhancedForecastTable({
                   <TableRow 
                     className={cn(
                       idx % 2 === 0 ? "bg-transparent" : "bg-muted/20",
-                      "cursor-pointer hover:bg-muted/40 transition-colors"
+                      "cursor-pointer hover:bg-white/[0.06] transition-colors"
                     )}
                     onClick={() => onToggleRow(rowKey)}
                   >
@@ -2105,7 +2105,7 @@ function ForecastTradeGeneratorContent() {
         <Collapsible open={isInputPanelOpen} onOpenChange={setIsInputPanelOpen}>
           <Card className="rounded-2xl border shadow-sm overflow-hidden">
             <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+              <CardHeader className="cursor-pointer hover:bg-white/[0.06] transition-colors pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Settings2 className="h-4 w-4 text-primary" />
