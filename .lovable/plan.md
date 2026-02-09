@@ -1,193 +1,150 @@
 
-
-# Plan : Notifications email pour inscription utilisateur
-
-## Analyse de l'existant
-
-Après exploration du code, voici ce qui est déjà en place :
-
-| Fonctionnalité | Statut |
-|----------------|--------|
-| Email "Compte approuvé" envoyé à l'utilisateur | ✅ **Déjà implémenté** |
-| Email "Compte rejeté" envoyé à l'utilisateur | ✅ **Déjà implémenté** |
-| Template email professionnel avec branding Alphalens | ✅ Existe |
-| Infrastructure `send-admin-notification` | ✅ Fonctionne |
-| Clé API Resend configurée | ✅ Présente |
-
-**Ce qu'il manque :**
-- ❌ Notification aux super users lors d'une nouvelle inscription en attente
+# Audit UX/Product AlphaLens — Recommandations priorisees
 
 ---
 
-## Modifications à effectuer
+## 1. Tour d'horizon produit (vue macro)
 
-### 1. Ajouter un nouveau type de notification : `new_registration`
+### Ce qui fonctionne bien
+- **Proposition de valeur claire** : "Intelligent Financial Research Powered by AI" est immediatement comprehensible
+- **Architecture produit coherente** : Forecast -> Trade Generator -> Macro Lab -> Reports forme un pipeline logique
+- **Identite visuelle** : esthetique sombre, professionnelle, adaptee a la cible
+- **Systeme de credits** : modele SaaS bien structure avec 3 tiers clairs
 
-**Fichier :** `supabase/functions/send-admin-notification/index.ts`
+### Frictions cognitives identifiees
 
-Ajouter un nouveau case dans la fonction `getEmailContent()` :
-
-```typescript
-interface AdminNotificationRequest {
-  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 
-        'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected' |
-        'new_registration';  // ← NOUVEAU
-  // ...
-}
-```
-
-Template email à ajouter (style sobre et professionnel) :
-
-```
-Subject: 🆕 Nouvelle inscription en attente - Alphalens
-
-Contenu :
-- Header avec logo Alphalens
-- "Nouvelle demande d'inscription"
-- Détails : email utilisateur, broker sélectionné, date d'inscription
-- Bouton CTA vers Admin Panel
-- Footer professionnel
-```
+| Friction | Localisation | Severite |
+|----------|-------------|----------|
+| Le footer redirige presque tout vers /contact au lieu des vraies pages | Footer (Homepage + Footer.tsx) | Haute |
+| Les 3 cards du dashboard utilisent la meme icone (Activity) pour Macro et Reports | TradingDashboard.tsx L324, L345 | Moyenne |
+| Navigation hamburger melange pages publiques et app privee sans separation | Layout.tsx mobile menu | Moyenne |
+| "AI Setup" dans le menu mobile ne mene nulle part (appelle onModuleChange) | Layout.tsx L254 | Haute |
+| Pas de breadcrumb dans le flow Trade Generator / Macro Lab | Pages profondes | Moyenne |
+| Le copyright affiche "2025" alors que nous sommes en 2026 | common.json L54 | Faible |
 
 ---
 
-### 2. Créer une Edge Function dédiée : `notify-new-registration`
+## 2. UX & Design — Recommandations concretes
 
-**Fichier :** `supabase/functions/notify-new-registration/index.ts`
+### 2.1 Footer : liens morts (Quick Win critique)
 
-Cette fonction :
-1. Est appelée après la création d'un profil avec `status: 'pending'`
-2. Récupère la liste des super users (via `user_roles` table)
-3. Envoie un email à chaque super user via `send-admin-notification`
+**Probleme** : Le Footer.tsx et le footer du Homepage.tsx redirigent "Privacy", "Documentation", "Help Center", "Terms of Service" et "API" vers `/contact`. Les vraies pages existent (`/privacy`, `/terms`, `/documentation`, `/help-center`, `/api`).
 
-**Pourquoi une fonction séparée ?**
-- Isolation des responsabilités
-- Peut être appelée depuis un trigger ou le frontend
-- Cohérent avec l'architecture existante (`request-reactivation` fait pareil)
+**Solution** : Corriger les `navigate()` pour pointer vers les bonnes routes.
 
----
+**Impact** : Credibilite, SEO, confiance utilisateur.
 
-### 3. Intégrer l'appel dans le flow d'inscription
+### 2.2 Icones de navigation Dashboard
 
-**Fichier :** `src/pages/Auth.tsx`
+**Probleme** : Les 3 cards cote droit du dashboard (Trade Setup, Macro, Reports) utilisent la meme icone `Activity` pour Macro et Reports. Cela nuit a la differenciation visuelle.
 
-Après la création réussie d'un compte (signUp), appeler la nouvelle Edge Function :
+**Solution** :
+- Trade Setup : `Zap` (deja correct)
+- Macro Commentary : `BarChart3` ou `Globe` (analyse macro)
+- Reports : `FileText` (document/rapport)
 
-```typescript
-// Dans handleSignUp, après succès
-if (!error) {
-  // Fire-and-forget notification aux admins
-  supabase.functions.invoke('notify-new-registration', {
-    body: {
-      userEmail: email,
-      brokerName: selectedBrokerName || null
-    }
-  }).catch(console.error);
-  
-  toast({ ... });
-}
-```
+**Impact** : Differenciation visuelle, navigation intuitive.
 
-Même chose pour le flow Google OAuth (handleOAuthEvent pour les nouveaux utilisateurs).
+### 2.3 Menu mobile : separation claire des zones
 
----
+**Probleme** : Le menu mobile melange les pages publiques (About, Features, Pricing) et les outils app (Dashboard, History, Macro) sans separation visuelle.
 
-## Schéma du flux
+**Solution** : Ajouter un separateur visuel et des labels de section ("Platform" / "Resources") pour delimiter les zones.
 
-```text
-┌─────────────────┐
-│ Nouvel user     │
-│ s'inscrit       │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Création profil │
-│ status: pending │
-└────────┬────────┘
-         │
-         ▼ (fire-and-forget)
-┌─────────────────────────────┐
-│ notify-new-registration     │
-│ Edge Function               │
-└────────┬────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Fetch super_users           │
-│ from user_roles             │
-└────────┬────────────────────┘
-         │
-         ▼ (pour chaque super user)
-┌─────────────────────────────┐
-│ send-admin-notification     │
-│ type: 'new_registration'    │
-└────────┬────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ 📧 Email envoyé aux admins  │
-│ "Nouvelle inscription"      │
-└─────────────────────────────┘
-```
+**Impact** : Clarte de navigation, reduction de la charge cognitive.
+
+### 2.4 "AI Setup" dans le menu mobile
+
+**Probleme** : Le bouton "AI Setup" dans le menu mobile appelle `onModuleChange?.("ai-setup")` qui ne fait rien car le callback est vide (`() => {}`) dans TradingDashboard. L'utilisateur clique et rien ne se passe.
+
+**Solution** : Remplacer par `navigate('/trade-generator')` qui est le vrai point d'entree fonctionnel.
+
+**Impact** : Elimination d'un dead-end UX.
+
+### 2.5 Copyright 2025 -> 2026
+
+**Probleme** : `common.json` affiche "2025" alors que nous sommes en 2026.
+
+**Solution** : Mettre a jour en "2025-2026" ou dynamiser avec `new Date().getFullYear()`.
 
 ---
 
-## Fichiers modifiés/créés
+## 3. Focus critique : le champ "Articles" / "Market News"
 
-| Fichier | Action | Description |
-|---------|--------|-------------|
-| `supabase/functions/send-admin-notification/index.ts` | Modifier | Ajouter template `new_registration` |
-| `supabase/functions/notify-new-registration/index.ts` | Créer | Nouvelle Edge Function |
-| `supabase/config.toml` | Modifier | Ajouter config pour la nouvelle fonction |
-| `src/pages/Auth.tsx` | Modifier | Appeler la notification après inscription |
+### Analyse du naming actuel
 
----
+Le systeme de news est actuellement nomme :
+- `"Market News"` dans le code (common.json, MarketNewsCollapsible, NewsFeedPanel)
+- `"News"` dans certains labels mobiles
 
-## Garanties de non-régression
+**Diagnostic** :
+- "Market News" est acceptable mais generique
+- Ce n'est pas un flux d'articles redactionnels crees par AlphaLens, c'est un **aggregateur de news externes** (flux RSS/API avec source, URL externe, categories forex/crypto/M&A)
+- Le composant ouvre les articles dans un nouvel onglet vers la source externe
 
-| Élément | Garantie |
-|---------|----------|
-| Flow d'inscription existant | ✅ Inchangé - notification en fire-and-forget |
-| Statut utilisateur par défaut | ✅ Reste `pending` |
-| Validation manuelle par admin | ✅ Toujours requise |
-| Email "compte approuvé" | ✅ Déjà implémenté, conservé |
-| Email "compte rejeté" | ✅ Déjà implémenté, conservé |
-| Tables existantes | ✅ Aucune modification |
-| Rôles et permissions | ✅ Aucun changement |
+### Ce que le naming devrait refleter
 
----
+Pour un produit de recherche quantitative, le flux de news devrait etre positionne comme un **outil de veille** et non un blog. Voici les alternatives :
 
-## Contenu des emails
+| Proposition | Positionnement | Adequation AlphaLens |
+|-------------|---------------|---------------------|
+| **Market Intelligence** | Veille strategique, signal | Excellent — institutionnel |
+| **Market Pulse** | Monitoring temps reel | Tres bon — dynamique |
+| **Market Wire** | Fil d'actualite professionnel (Bloomberg-like) | Tres bon — familier pour les pros |
+| **Research Wire** | Fil de veille research-grade | Bon mais implique du contenu interne |
+| **News & Signals** | Mixte news + signal | Bon mais trop generique |
 
-### Email aux Super Users (nouvelle inscription)
+**Recommandation** : **"Market Intelligence"** pour le titre principal, avec le sous-titre "Real-time market signals and analysis".
 
-```
-📬 À: Tous les super_users
-📋 Sujet: 🆕 Nouvelle inscription en attente - Alphalens
+### Repositionnement UX de la section
 
-Corps:
-- "Un nouvel utilisateur s'est inscrit sur la plateforme"
-- Email de l'utilisateur
-- Broker sélectionné (si applicable)
-- Date/heure d'inscription
-- Bouton "Examiner dans le Panel Admin →"
-- Message: "Ce compte est en attente de validation."
-```
+**Actuellement** : Section collapsible en bas du dashboard, deconnectee du flux de travail.
 
-### Email à l'utilisateur (compte approuvé) - DÉJÀ EXISTANT
-
-```
-📬 À: Utilisateur
-📋 Sujet: 🎉 Your Alphalens Account has been Approved!
-(Template déjà implémenté dans send-admin-notification)
-```
+**Proposition** :
+- Renommer le titre en "Market Intelligence"
+- Ajouter un badge de comptage "12 new" plutot qu'un simple indicateur pulse
+- Relier visuellement a la section Trade Generator : quand l'utilisateur lit une news sur EUR/USD, proposer un CTA discret "Analyze with Trade Generator"
+- Utiliser un ton plus "signal" : afficher un badge de sentiment (Bullish/Bearish/Neutral) sur chaque item s'il est disponible
 
 ---
 
-## Configuration requise
+## 4. Synthese actionnable priorisee
 
-- ✅ `RESEND_API_KEY` : Déjà configuré
-- ✅ Domaine email vérifié sur Resend
-- ✅ Table `user_roles` : Existe déjà
+### Quick Wins (effort faible, impact immediat)
 
+| # | Probleme | Solution | Impact |
+|---|----------|----------|--------|
+| 1 | Footer : 6 liens pointent vers /contact | Corriger vers /privacy, /terms, /documentation, /help-center, /api | Credibilite + SEO |
+| 2 | Copyright "2025" | Mettre "2025-2026" ou dynamique | Professionnalisme |
+| 3 | Icones identiques (Activity x2) sur Dashboard | Differencier avec BarChart3/Globe + FileText | Navigation visuelle |
+| 4 | "AI Setup" mobile = dead-end | Remplacer par navigate('/trade-generator') | UX fonctionnelle |
+
+### Ameliorations structurantes (effort moyen)
+
+| # | Probleme | Solution | Impact |
+|---|----------|----------|--------|
+| 5 | "Market News" naming generique | Renommer en "Market Intelligence" (tous locales) | Positionnement premium |
+| 6 | Menu mobile sans hierarchie | Ajouter separateurs et labels de section | Clarte navigation |
+| 7 | Pas de breadcrumb dans les outils profonds | Ajouter un breadcrumb contextuel (Dashboard > Trade Generator) | Orientation utilisateur |
+
+### Evolutions long terme
+
+| # | Probleme | Solution | Impact |
+|---|----------|----------|--------|
+| 8 | News deconnectees du workflow | Relier news -> Trade Generator via CTA contextuel | Engagement + retention |
+| 9 | Pas de sentiment badge sur les news | Ajouter Bullish/Bearish/Neutral par item | Valeur ajoutee data |
+| 10 | Homepage trop simple (3 cards + CTA) | Ajouter une section "How it works" (3 etapes) + social proof | Conversion |
+
+---
+
+### Fichiers impactes par les Quick Wins
+
+| Fichier | Modifications |
+|---------|--------------|
+| `src/components/Footer.tsx` | 6 liens a corriger |
+| `src/pages/Homepage.tsx` | Footer inline : memes corrections |
+| `src/pages/TradingDashboard.tsx` | Icones des cards (L324, L345) |
+| `src/components/Layout.tsx` | Menu mobile : AI Setup -> navigate, separateurs |
+| `src/locales/en/common.json` | Copyright, "Market News" -> "Market Intelligence" |
+| `src/locales/es/common.json` | Idem en espagnol |
+| `src/locales/fa/common.json` | Idem en farsi |
