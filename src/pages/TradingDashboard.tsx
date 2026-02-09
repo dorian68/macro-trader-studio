@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight, Globe, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { BubbleSystem } from "@/components/BubbleSystem";
@@ -322,7 +322,7 @@ export default function TradingDashboard() {
             >
               <CardContent className="p-6 flex flex-col items-center justify-center gap-4 text-center h-full">
                 <div className="gradient-primary p-3 rounded-2xl shadow-glow-primary shrink-0">
-                  <Activity className="h-8 w-8 text-white" />
+                  <Globe className="h-8 w-8 text-white" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-xl font-bold text-foreground mb-2">{t('dashboard:trading.macroCommentary')}</h3>
@@ -343,7 +343,7 @@ export default function TradingDashboard() {
             >
               <CardContent className="p-6 flex flex-col items-center justify-center gap-4 text-center h-full">
                 <div className="gradient-primary p-3 rounded-2xl shadow-glow-primary shrink-0">
-                  <Activity className="h-8 w-8 text-white" />
+                  <FileText className="h-8 w-8 text-white" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-xl font-bold text-foreground mb-2">{t('dashboard:trading.reports')}</h3>
@@ -385,7 +385,7 @@ export default function TradingDashboard() {
               >
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="gradient-primary p-2 rounded-xl shrink-0">
-                    <Activity className="h-5 w-5 text-white" />
+                    <Globe className="h-5 w-5 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.macroCommentary')}</h3>
@@ -402,7 +402,7 @@ export default function TradingDashboard() {
               >
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="gradient-primary p-2 rounded-xl shrink-0">
-                    <Activity className="h-5 w-5 text-white" />
+                    <FileText className="h-5 w-5 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.reports')}</h3>

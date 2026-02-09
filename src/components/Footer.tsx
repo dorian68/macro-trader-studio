@@ -42,7 +42,7 @@ export function Footer() {
               </li>
               <li>
                 <button
-                  onClick={() => navigate("/contact")}
+                  onClick={() => navigate("/api")}
                   className="hover:text-foreground transition-colors"
                 >
                   API
@@ -71,7 +71,7 @@ export function Footer() {
               </li>
               <li>
                 <button
-                  onClick={() => navigate("/contact")}
+                  onClick={() => navigate("/privacy")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('footer.privacy')}
@@ -84,7 +84,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <button
-                  onClick={() => navigate("/contact")}
+                  onClick={() => navigate("/documentation")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.documentation')}
@@ -92,7 +92,7 @@ export function Footer() {
               </li>
               <li>
                 <button
-                  onClick={() => navigate("/contact")}
+                  onClick={() => navigate("/help-center")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.helpCenter')}
@@ -100,7 +100,7 @@ export function Footer() {
               </li>
               <li>
                 <button
-                  onClick={() => navigate("/contact")}
+                  onClick={() => navigate("/terms")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('footer.terms')}
