@@ -1,93 +1,82 @@
 
 
-# Dashboard Single-View Viewport Layout
+# Dashboard Viewport-Locked Layout
 
 ## Problem
 
-The current dashboard stacks content vertically across ~3 screens:
-- Row 1: Chart (2/3) + 3 Nav Cards (1/3)
-- Row 2: AssetInfoCard (full width)
-- Row 3: MarketNewsCollapsible (full width, unconstrained)
+The dashboard stacks 3 sections vertically (Chart+NavCards, AssetInfo, MarketNews) requiring multiple scrolls. The Layout component uses `min-h-[calc(100vh-...)]` which allows unlimited expansion, and the Market News card spans full width with no height cap.
 
-This forces excessive scrolling. The Market News section expands to its full content height and spans the entire width, creating visual imbalance.
+## Solution
 
-## Solution: Viewport-Locked Layout
+### 1. `src/components/Layout.tsx` -- Add `fillViewport` prop
 
-Transform the dashboard into a viewport-filling layout using `h-[calc(100vh-3.5rem)]` (subtracting the navbar) with `overflow-hidden` on desktop, organized in two rows:
+Add an optional `fillViewport?: boolean` prop to the Layout component. When `true` and on desktop (`lg:`):
 
-```text
-+-------------------------------------------------------+
-|  Navbar (fixed, ~56px)                                 |
-+-------------------------------------------------------+
-|                                                        |
-|  [  Chart (2/3)              ] [ Nav Card 1 ]          |
-|  [                           ] [ Nav Card 2 ]          |  Row 1 (flex-1)
-|  [                           ] [ Nav Card 3 ]          |
-|                                                        |
-+-------------------------------------------------------+
-|  [ AssetInfoCard (2/3)       ] [ Market News (1/3)   ] |  Row 2 (~35%)
-|  [                           ] [ (internal scroll)   ] |
-+-------------------------------------------------------+
+- The outer `<main>` inner div switches from `min-h-[calc(100vh-3.5rem)]` to `lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden`
+- The container switches from `max-w-screen-lg` to `max-w-[1920px]` and uses `lg:h-full lg:flex lg:flex-col`
+- Mobile remains unchanged (normal scroll)
+
+**Props change:**
+```
+interface LayoutProps {
+  children: React.ReactNode;
+  fillViewport?: boolean;  // NEW
+  ...
+}
 ```
 
-## Changes by File
+**Main content area (lines 287-293):**
+- When `fillViewport`: the inner wrapper gets `lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden`
+- The container div gets `lg:h-full lg:max-w-[1920px]` instead of `max-w-screen-lg`
 
-### 1. `src/components/Layout.tsx` (line 287-293)
+### 2. `src/pages/TradingDashboard.tsx` -- Two-row viewport layout
 
-Add a prop `fillViewport` to let the dashboard opt into viewport-locked mode. When true, the main content area uses `h-[calc(100vh-3.5rem)] overflow-hidden` on desktop instead of `min-h-[calc(100vh-3.5rem)]`.
+**Pass prop (line 250):**
+- Add `fillViewport` to the Layout call
 
-- Add `fillViewport?: boolean` to Layout props
-- When `fillViewport=true` on `lg:` screens: replace `min-h-[calc(100vh-3.5rem)]` with `lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden`
-- The inner container switches from `max-w-screen-lg` to `max-w-[1920px]` when fillViewport is true
-- Mobile remains unchanged (scrollable)
+**Restructure the content (lines 258-429) into a flex column with two rows on desktop:**
 
-### 2. `src/pages/TradingDashboard.tsx`
+```
+Row 1 (flex-[3]): Chart (2/3) + Nav Cards (1/3)     -- already exists as grid
+Row 2 (flex-[2]): AssetInfo (2/3) + MarketNews (1/3) -- currently stacked full-width
+```
 
-**Pass `fillViewport` to Layout** (line 250):
-- Add `fillViewport={true}` prop
+Specific changes:
 
-**Restructure the main section** (lines 258-429) into a flex column that fills the viewport:
+- Wrap the entire section content in a `lg:flex lg:flex-col lg:h-full` container
+- **Row 1** (lines 263-416): Add `lg:flex-[3] lg:min-h-0` so it takes ~60% of viewport and can shrink
+- **Row 2** (lines 418-428): Transform from stacked `space-y-2` into a `lg:grid lg:grid-cols-[2fr_1fr] lg:flex-[2] lg:min-h-0` grid:
+  - Left column: `AssetInfoCard` with `lg:overflow-y-auto`
+  - Right column: `MarketNewsCollapsible` with `lg:overflow-y-auto lg:h-full` (internal scroll only)
+  - Remove the current `lg:max-h-[320px]` since flex constraints will handle height naturally
+- **Row 2 gap**: `gap-2` consistent with Row 1
 
-- Wrap everything in a `flex flex-col h-full` container on desktop
-- **Row 1** (flex-[3]): Chart grid `lg:grid-cols-[2fr_1fr]` -- unchanged content, just flex-grows
-- **Row 2** (flex-[2]): New `lg:grid-cols-[2fr_1fr]` grid placing AssetInfoCard (left, 2/3) and MarketNewsCollapsible (right, 1/3 with internal scroll and `overflow-y-auto`)
-- Remove the current stacked `space-y-2` section that puts AssetInfo and MarketNews full-width below the chart
+### 3. `src/components/CandlestickChart.tsx` -- Flex-friendly card
 
-**Market News specific changes:**
-- Move from full-width stacked position to the right column of Row 2
-- Apply `lg:h-full lg:overflow-y-auto` so it fills available height and scrolls internally
-- Remove the current `lg:max-h-[320px]` since the flex layout will constrain it naturally
+- Line 169: Ensure the Card has `flex-1 min-h-0` so it can shrink within the flex row
+- The chart container inside should also use `flex-1 min-h-0` to allow the TradingView widget to scale
 
-**AssetInfoCard:**
-- Move from full-width stacked position to the left column of Row 2
-- Apply `lg:overflow-y-auto` in case content is taller than available space
+## Files Modified
 
-### 3. `src/components/CandlestickChart.tsx` (line 169)
+| File | Changes |
+|------|---------|
+| `src/components/Layout.tsx` | Add `fillViewport` prop, conditional viewport-lock classes |
+| `src/pages/TradingDashboard.tsx` | Pass `fillViewport`, restructure into 2-row flex layout with Market News in right column of Row 2 |
+| `src/components/CandlestickChart.tsx` | Add `flex-1 min-h-0` to the Card for flex shrinking |
 
-- Ensure no `min-h-[800px]` exists (already removed in prior fix)
-- The chart card gets `flex-1 flex flex-col` so it fills Row 1 naturally
-- The chart iframe/canvas area gets `flex-1 min-h-0` to shrink properly within flex
+## What stays identical
 
-## Mobile Behavior (no change)
+- All components rendered (zero removals)
+- All data fetching, WebSocket, job management
+- All navigation cards, interactions, mobile behavior
+- BubbleSystem, MobileNewsBadge, MobileNewsModal, AURA
+- Mobile layout remains fully scrollable (changes gated behind `lg:`)
 
-- All changes are gated behind `lg:` breakpoint
-- Mobile keeps the current vertical stacking with normal page scroll
-- Mobile News Badge and Modal remain unchanged
+## Expected result
 
-## What Stays Identical
-
-- All components rendered (no removal)
-- All data fetching, WebSocket connections, job management
-- All navigation card destinations and interactions
-- All asset selection, timeframe controls
-- BubbleSystem, MobileNewsBadge, MobileNewsModal
-- JobStatusCard (conditionally rendered, positioned at bottom)
-
-## Expected Result
-
-- On a 13" laptop (1366x768): entire dashboard visible without any page-level scroll
-- Chart occupies ~60% of viewport height, AssetInfo + Market News occupy ~35%
-- Market News has its own internal scroll for content overflow
-- Navigation cards remain visible and clickable alongside the chart
-- Professional, data-dense layout suitable for traders/analysts
+- 13" laptop (1366x768): entire dashboard visible, zero page-level scroll
+- Chart ~60% height, AssetInfo + Market News ~35%
+- Market News scrolls internally within its allocated space
+- Navigation cards visible alongside chart
+- Professional, data-dense single-screen layout
 
