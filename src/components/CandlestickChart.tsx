@@ -166,10 +166,10 @@ const CandlestickChart = memo(function CandlestickChart({
   return <>
     {/* Chart Section - Full Width with integrated header */}
     <div className="w-full">
-      <Card className="gradient-card border border-border/50 shadow-medium rounded-lg min-h-[800px] flex flex-col">
+      <Card className="gradient-card border border-border/50 shadow-medium rounded-lg flex flex-col">
         {/* Header Section - Integrated dashboard header */}
         {showHeader && (
-          <CardHeader className="pb-6 border-b border-border/50 space-y-4">
+          <CardHeader className="pb-3 border-b border-border/50 space-y-2">
             {/* Row 1: Trading Dashboard Title + Trading Controls & Price Widget */}
             {dashboardTitle && (
               <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-4">

@@ -258,7 +258,7 @@ export default function TradingDashboard() {
       {/* SECTION 2: Full-width row with Chart (2/3) + Market News (1/3) */}
       <section
         aria-label="Market chart and news"
-        className="relative left-1/2 -translate-x-1/2 w-screen px-4 sm:px-6 lg:px-8 my-2"
+        className="relative left-1/2 -translate-x-1/2 w-screen px-4 sm:px-6 lg:px-8 my-1"
       >
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch max-w-[1920px] mx-auto">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
@@ -299,12 +299,12 @@ export default function TradingDashboard() {
               onClick={() => navigate('/trade-generator')}
               style={{ minHeight: '44px' }}
             >
-              <CardContent className="p-6 flex flex-col items-center justify-center gap-4 text-center h-full">
-                <div className="gradient-primary p-3 rounded-2xl shadow-glow-primary shrink-0">
-                  <Zap className="h-8 w-8 text-white" />
+              <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center h-full">
+                <div className="gradient-primary p-2 rounded-2xl shadow-glow-primary shrink-0">
+                  <Zap className="h-6 w-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-foreground mb-2">{t('dashboard:trading.aiTradeSetup')}</h3>
+                  <h3 className="text-base font-bold text-foreground mb-1">{t('dashboard:trading.aiTradeSetup')}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 px-2 mb-2">
                     {t('dashboard:trading.intelligentTradeSetups')}
                   </p>
@@ -320,12 +320,12 @@ export default function TradingDashboard() {
               onClick={() => navigate('/macro-lab')}
               style={{ minHeight: '44px' }}
             >
-              <CardContent className="p-6 flex flex-col items-center justify-center gap-4 text-center h-full">
-                <div className="gradient-primary p-3 rounded-2xl shadow-glow-primary shrink-0">
-                  <Globe className="h-8 w-8 text-white" />
+              <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center h-full">
+                <div className="gradient-primary p-2 rounded-2xl shadow-glow-primary shrink-0">
+                  <Globe className="h-6 w-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-foreground mb-2">{t('dashboard:trading.macroCommentary')}</h3>
+                  <h3 className="text-base font-bold text-foreground mb-1">{t('dashboard:trading.macroCommentary')}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 px-2 mb-2">
                     {t('dashboard:trading.inDepthAnalysis')}
                   </p>
@@ -341,12 +341,12 @@ export default function TradingDashboard() {
               onClick={() => navigate('/reports')}
               style={{ minHeight: '44px' }}
             >
-              <CardContent className="p-6 flex flex-col items-center justify-center gap-4 text-center h-full">
-                <div className="gradient-primary p-3 rounded-2xl shadow-glow-primary shrink-0">
-                  <FileText className="h-8 w-8 text-white" />
+              <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center h-full">
+                <div className="gradient-primary p-2 rounded-2xl shadow-glow-primary shrink-0">
+                  <FileText className="h-6 w-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-foreground mb-2">{t('dashboard:trading.reports')}</h3>
+                  <h3 className="text-base font-bold text-foreground mb-1">{t('dashboard:trading.reports')}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 px-2 mb-2">
                     {t('dashboard:trading.comprehensiveReports')}
                   </p>
@@ -416,7 +416,7 @@ export default function TradingDashboard() {
         </div>
 
         {/* SECTION 3: Asset Info + Market News */}
-        <div className="max-w-[1920px] mx-auto mt-4 space-y-4">
+        <div className="max-w-[1920px] mx-auto mt-2 space-y-2">
           {/* Asset Info Card */}
           <AssetInfoCard
             symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
@@ -424,7 +424,7 @@ export default function TradingDashboard() {
           />
 
           {/* Market News */}
-          <MarketNewsCollapsible className="w-full" />
+          <MarketNewsCollapsible className="w-full lg:max-h-[320px] lg:overflow-auto" />
         </div>
       </section>
 
