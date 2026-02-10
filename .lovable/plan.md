@@ -1,77 +1,93 @@
 
 
-# Fix: Dashboard Single-View Layout for Desktop
+# Dashboard Single-View Viewport Layout
 
 ## Problem
 
-The dashboard currently requires ~3 full page scrolls on a standard laptop (1366x768). The root causes are:
+The current dashboard stacks content vertically across ~3 screens:
+- Row 1: Chart (2/3) + 3 Nav Cards (1/3)
+- Row 2: AssetInfoCard (full width)
+- Row 3: MarketNewsCollapsible (full width, unconstrained)
 
-1. **Chart card minimum height**: `min-h-[800px]` on the CandlestickChart Card -- forces the chart to be enormous regardless of content
-2. **AssetInfoCard** stacks below as a full-width block
-3. **MarketNewsCollapsible** stacks below as another full-width block with no height constraint
-4. **Navigation cards** stretch to match the oversized chart height via `flex-1`
+This forces excessive scrolling. The Market News section expands to its full content height and spans the entire width, creating visual imbalance.
 
-## Solution
+## Solution: Viewport-Locked Layout
 
-Restructure the layout density to fit within a single desktop viewport by:
+Transform the dashboard into a viewport-filling layout using `h-[calc(100vh-3.5rem)]` (subtracting the navbar) with `overflow-hidden` on desktop, organized in two rows:
 
-### 1. Remove excessive chart min-height
+```text
++-------------------------------------------------------+
+|  Navbar (fixed, ~56px)                                 |
++-------------------------------------------------------+
+|                                                        |
+|  [  Chart (2/3)              ] [ Nav Card 1 ]          |
+|  [                           ] [ Nav Card 2 ]          |  Row 1 (flex-1)
+|  [                           ] [ Nav Card 3 ]          |
+|                                                        |
++-------------------------------------------------------+
+|  [ AssetInfoCard (2/3)       ] [ Market News (1/3)   ] |  Row 2 (~35%)
+|  [                           ] [ (internal scroll)   ] |
++-------------------------------------------------------+
+```
 
-**File:** `src/components/CandlestickChart.tsx` (line 169)
-- **Current**: `min-h-[800px]`
-- **Fix**: Remove the min-height entirely. The chart already has a `height={350}` prop and the flex layout handles sizing.
+## Changes by File
 
-### 2. Reduce chart header padding
+### 1. `src/components/Layout.tsx` (line 287-293)
 
-**File:** `src/components/CandlestickChart.tsx` (line 172)
-- **Current**: `pb-6` on CardHeader, `space-y-4` between header rows
-- **Fix**: `pb-3` and `space-y-2` for tighter header
+Add a prop `fillViewport` to let the dashboard opt into viewport-locked mode. When true, the main content area uses `h-[calc(100vh-3.5rem)] overflow-hidden` on desktop instead of `min-h-[calc(100vh-3.5rem)]`.
 
-### 3. Compact the 3 navigation cards
+- Add `fillViewport?: boolean` to Layout props
+- When `fillViewport=true` on `lg:` screens: replace `min-h-[calc(100vh-3.5rem)]` with `lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden`
+- The inner container switches from `max-w-screen-lg` to `max-w-[1920px]` when fillViewport is true
+- Mobile remains unchanged (scrollable)
 
-**File:** `src/pages/TradingDashboard.tsx` (lines 302, 323, 344)
-- **Current**: `p-6`, `gap-4`, icon `p-3`, `h-8 w-8`, title `text-xl`
-- **Fix**: `p-4`, `gap-2`, icon `p-2`, `h-6 w-6`, title `text-base` -- more compact while remaining clickable
+### 2. `src/pages/TradingDashboard.tsx`
 
-### 4. Constrain Market Intelligence with internal scroll
+**Pass `fillViewport` to Layout** (line 250):
+- Add `fillViewport={true}` prop
 
-**File:** `src/pages/TradingDashboard.tsx` (line 427)
-- **Current**: No height limit -- expands to show all news items
-- **Fix**: Add `max-h-[320px]` on desktop to cap the section and let ScrollArea handle overflow internally (already present in the component)
+**Restructure the main section** (lines 258-429) into a flex column that fills the viewport:
 
-### 5. Make AssetInfoCard more compact
+- Wrap everything in a `flex flex-col h-full` container on desktop
+- **Row 1** (flex-[3]): Chart grid `lg:grid-cols-[2fr_1fr]` -- unchanged content, just flex-grows
+- **Row 2** (flex-[2]): New `lg:grid-cols-[2fr_1fr]` grid placing AssetInfoCard (left, 2/3) and MarketNewsCollapsible (right, 1/3 with internal scroll and `overflow-y-auto`)
+- Remove the current stacked `space-y-2` section that puts AssetInfo and MarketNews full-width below the chart
 
-**File:** `src/pages/TradingDashboard.tsx` (line 419)
-- **Current**: `space-y-4` between AssetInfo and MarketNews, `mt-4`
-- **Fix**: `space-y-2`, `mt-2` -- tighter vertical spacing
+**Market News specific changes:**
+- Move from full-width stacked position to the right column of Row 2
+- Apply `lg:h-full lg:overflow-y-auto` so it fills available height and scrolls internally
+- Remove the current `lg:max-h-[320px]` since the flex layout will constrain it naturally
 
-### 6. Reduce Layout main container spacing
+**AssetInfoCard:**
+- Move from full-width stacked position to the left column of Row 2
+- Apply `lg:overflow-y-auto` in case content is taller than available space
 
-**File:** `src/components/Layout.tsx` (line 290)
-- **Current**: `py-4 sm:py-6`
-- **Fix**: `py-2 sm:py-3` -- less top/bottom padding on the main content area
+### 3. `src/components/CandlestickChart.tsx` (line 169)
 
-### 7. Reduce outer section margins
+- Ensure no `min-h-[800px]` exists (already removed in prior fix)
+- The chart card gets `flex-1 flex flex-col` so it fills Row 1 naturally
+- The chart iframe/canvas area gets `flex-1 min-h-0` to shrink properly within flex
 
-**File:** `src/pages/TradingDashboard.tsx` (line 261)
-- **Current**: `my-2` on the main section
-- **Fix**: `my-1` -- tighter
+## Mobile Behavior (no change)
 
----
+- All changes are gated behind `lg:` breakpoint
+- Mobile keeps the current vertical stacking with normal page scroll
+- Mobile News Badge and Modal remain unchanged
 
-## Files Modified
+## What Stays Identical
 
-| File | Changes |
-|------|---------|
-| `src/components/CandlestickChart.tsx` | Remove `min-h-[800px]`, compact header padding |
-| `src/pages/TradingDashboard.tsx` | Compact nav cards, constrain news height, tighter spacing |
-| `src/components/Layout.tsx` | Reduce main content vertical padding |
+- All components rendered (no removal)
+- All data fetching, WebSocket connections, job management
+- All navigation card destinations and interactions
+- All asset selection, timeframe controls
+- BubbleSystem, MobileNewsBadge, MobileNewsModal
+- JobStatusCard (conditionally rendered, positioned at bottom)
 
 ## Expected Result
 
-- Chart + 3 nav cards visible above the fold on a 13" laptop
-- AssetInfo + Market Intelligence visible with minimal scroll
-- Market Intelligence uses internal scroll when content overflows
-- All components, data, and interactions remain identical
-- No mobile regression (changes target `lg:` breakpoint where appropriate)
+- On a 13" laptop (1366x768): entire dashboard visible without any page-level scroll
+- Chart occupies ~60% of viewport height, AssetInfo + Market News occupy ~35%
+- Market News has its own internal scroll for content overflow
+- Navigation cards remain visible and clickable alongside the chart
+- Professional, data-dense layout suitable for traders/analysts
 
