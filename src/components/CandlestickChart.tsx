@@ -165,7 +165,7 @@ const CandlestickChart = memo(function CandlestickChart({
 
   return <>
     {/* Chart Section - Full Width with integrated header */}
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col">
       <Card className="gradient-card border border-border/50 shadow-medium rounded-lg flex flex-col flex-1 min-h-0">
         {/* Header Section - Integrated dashboard header */}
         {showHeader && (
