@@ -287,7 +287,7 @@ export default function Layout({
     <main className="flex-1 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]">
         {/* Mobile-first container with proper spacing */}
-        <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-2 sm:py-3">
           {children}
         </div>
       </div>
