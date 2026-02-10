@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Menu, X, ChevronDown, Activity, Zap, User, LogOut, Building2, Shield, FileText, History, Calculator } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -21,7 +20,6 @@ interface LayoutProps {
   completedJobsCount?: number;
   onResetJobsCount?: () => void;
   activeJobsCount?: number;
-  fillViewport?: boolean;
 }
 export default function Layout({
   children,
@@ -29,8 +27,7 @@ export default function Layout({
   onModuleChange,
   completedJobsCount = 0,
   onResetJobsCount,
-  activeJobsCount = 0,
-  fillViewport = false
+  activeJobsCount = 0
 }: LayoutProps) {
   const { t } = useTranslation('common');
   const [selectedAsset, setSelectedAsset] = useState("EUR/USD");
@@ -288,15 +285,9 @@ export default function Layout({
 
     {/* Main Content - Mobile responsive */}
     <main className="flex-1 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      <div className={cn(
-        "min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]",
-        fillViewport && "lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-hidden"
-      )}>
+      <div className="min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]">
         {/* Mobile-first container with proper spacing */}
-        <div className={cn(
-          "px-4 sm:px-6 py-2 sm:py-3",
-          fillViewport ? "max-w-[1920px] mx-auto lg:h-full lg:flex lg:flex-col" : "max-w-screen-lg mx-auto"
-        )}>
+        <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-2 sm:py-3">
           {children}
         </div>
       </div>
