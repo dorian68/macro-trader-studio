@@ -248,6 +248,7 @@ export default function TradingDashboard() {
 
   return (
     <Layout
+      fillViewport
       activeModule="trading"
       onModuleChange={() => { }}
       completedJobsCount={jobManager.completedJobsCount}
@@ -255,12 +256,12 @@ export default function TradingDashboard() {
       activeJobsCount={jobManager.activeJobs.filter(job => job.status === 'pending' || job.status === 'running').length}
     >
 
-      {/* SECTION 2: Full-width row with Chart (2/3) + Market News (1/3) */}
+      {/* SECTION 2: Full-width row with Chart (2/3) + Nav Cards (1/3) */}
       <section
         aria-label="Market chart and news"
-        className="relative left-1/2 -translate-x-1/2 w-screen px-4 sm:px-6 lg:px-8 my-1"
+        className="relative left-1/2 -translate-x-1/2 w-screen px-4 sm:px-6 lg:px-8 my-1 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch max-w-[1920px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch max-w-[1920px] mx-auto lg:flex-[3] lg:min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
           <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full">
             <CandlestickChart
@@ -415,16 +416,16 @@ export default function TradingDashboard() {
           </div>
         </div>
 
-        {/* SECTION 3: Asset Info + Market News */}
-        <div className="max-w-[1920px] mx-auto mt-2 space-y-2">
+        {/* SECTION 3: Asset Info + Market News - Row 2 */}
+        <div className="max-w-[1920px] mx-auto mt-2 space-y-2 lg:grid lg:grid-cols-[2fr_1fr] lg:gap-2 lg:space-y-0 lg:flex-[2] lg:min-h-0">
           {/* Asset Info Card */}
           <AssetInfoCard
             symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-            className="w-full"
+            className="w-full lg:overflow-y-auto lg:min-h-0"
           />
 
-          {/* Market News */}
-          <MarketNewsCollapsible className="w-full lg:max-h-[320px] lg:overflow-auto" />
+          {/* Market News - internal scroll only */}
+          <MarketNewsCollapsible className="w-full lg:overflow-y-auto lg:h-full lg:min-h-0" />
         </div>
       </section>
 
