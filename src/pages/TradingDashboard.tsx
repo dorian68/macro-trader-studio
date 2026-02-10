@@ -257,9 +257,9 @@ export default function TradingDashboard() {
     >
 
       {/* Main viewport-locked content */}
-      <div className="space-y-2 lg:flex lg:flex-col lg:h-full lg:overflow-hidden lg:space-y-0 lg:gap-2">
+      <div className="space-y-2">
         {/* Row 1: Chart + Nav Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:flex-[3] lg:min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
           <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full">
             <CandlestickChart
@@ -414,14 +414,14 @@ export default function TradingDashboard() {
           </div>
         </div>
 
-        {/* Row 2: Asset Info + Market News */}
-        <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-[2fr_1fr] lg:gap-2 lg:flex-[2] lg:min-h-0">
-          <AssetInfoCard
-            symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-            className="w-full lg:overflow-y-auto lg:min-h-0"
-          />
-          <MarketNewsCollapsible className="w-full lg:overflow-y-auto lg:h-full lg:min-h-0" />
-        </div>
+        {/* Row 2: Asset Info */}
+        <AssetInfoCard
+          symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
+          className="w-full"
+        />
+
+        {/* Row 3: Market News - below the fold, scroll to see */}
+        <MarketNewsCollapsible className="w-full lg:max-h-[500px] lg:overflow-y-auto" />
       </div>
 
       {/* SECTION 3: Normal width - Navigation Cards, Job Status */}
