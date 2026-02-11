@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 // import newLogo from '@/assets/new-logo.png'; // Removed unused import
 import PublicNavbar from '@/components/PublicNavbar';
 import { useBrokerActions } from '@/hooks/useBrokerActions';
@@ -40,6 +40,9 @@ export default function Auth() {
   const [session, setSession] = useState(null);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [activeBrokers, setActiveBrokers] = useState([]);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -235,7 +238,6 @@ export default function Auth() {
               .from('profiles')
               .insert({
                 user_id: session.user.id,
-                email: session.user.email,
                 status: 'pending'
               })
               .select()
@@ -910,21 +912,86 @@ export default function Auth() {
                       required
                     />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="stay-logged-in"
-                      checked={stayLoggedIn}
-                      onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
-                    />
-                    <Label htmlFor="stay-logged-in" className="text-sm text-muted-foreground cursor-pointer">
-                      {t('stayLoggedIn')}
-                    </Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="stay-logged-in"
+                        checked={stayLoggedIn}
+                        onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
+                      />
+                      <Label htmlFor="stay-logged-in" className="text-sm text-muted-foreground cursor-pointer">
+                        {t('stayLoggedIn')}
+                      </Label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {t('forgotPassword')}
+                    </button>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {t('signIn')}
                   </Button>
                 </form>
+
+                {/* Forgot Password Inline Form */}
+                {showForgotPassword && (
+                  <div className="mt-4 p-4 border border-border rounded-lg space-y-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setShowForgotPassword(false); setForgotPasswordSent(false); }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </button>
+                      <h3 className="text-sm font-semibold">{t('resetPassword')}</h3>
+                    </div>
+                    {forgotPasswordSent ? (
+                      <p className="text-sm text-muted-foreground">{t('checkEmail')}</p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="forgot-email">{t('email')}</Label>
+                          <Input
+                            id="forgot-email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          className="w-full"
+                          disabled={forgotPasswordLoading || !email}
+                          onClick={async () => {
+                            setForgotPasswordLoading(true);
+                            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                              redirectTo: `${window.location.origin}/auth`,
+                            });
+                            setForgotPasswordLoading(false);
+                            if (error) {
+                              toast({
+                                title: t('errors.authenticationError'),
+                                description: error.message,
+                                variant: 'destructive',
+                              });
+                            } else {
+                              setForgotPasswordSent(true);
+                            }
+                          }}
+                        >
+                          {forgotPasswordLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {t('resetPassword')}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="signup">
@@ -948,7 +1015,7 @@ export default function Auth() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-fullname">Full Name</Label>
+                    <Label htmlFor="signup-fullname">{t('fullName') || 'Full Name'}</Label>
                     <Input
                       id="signup-fullname"
                       type="text"
@@ -993,7 +1060,7 @@ export default function Auth() {
                     />
                     {passwordMatchError && (
                       <p className="text-sm text-destructive flex items-center gap-1">
-                        <Loader2 className="h-3 w-3" />
+                        <AlertCircle className="h-3 w-3" />
                         {passwordMatchError}
                       </p>
                     )}

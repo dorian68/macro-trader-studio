@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface GoogleAuthButtonProps {
   mode: 'signin' | 'signup';
@@ -9,7 +10,8 @@ interface GoogleAuthButtonProps {
 }
 
 export function GoogleAuthButton({ mode, loading, onClick, disabled }: GoogleAuthButtonProps) {
-  const text = mode === 'signin' ? 'Continue with Google' : 'Sign Up with Google';
+  const { t } = useTranslation('auth');
+  const text = mode === 'signin' ? t('signInWithGoogle') : t('signUpWithGoogle');
   
   return (
     <Button
