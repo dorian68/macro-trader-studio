@@ -1244,7 +1244,7 @@ function RiskProfilesPanel({
           )}
         </div>
       </div>
-      <div className="rounded-lg border overflow-x-auto bg-background/80 backdrop-blur-sm">
+      <div className="rounded-lg border overflow-x-visible bg-background/80 backdrop-blur-sm">
         <Table className="text-sm">
           <TableHeader>
             <TableRow className="bg-muted/30 border-b">
@@ -1523,9 +1523,11 @@ interface NarrativeSectionProps {
   icon: React.ReactNode;
   tagline: string;
   children: React.ReactNode;
+  defaultCollapsed?: boolean;
 }
 
-function NarrativeSection({ step, title, subtitle, icon, tagline, children }: NarrativeSectionProps) {
+function NarrativeSection({ step, title, subtitle, icon, tagline, children, defaultCollapsed }: NarrativeSectionProps) {
+  const [open, setOpen] = useState(!defaultCollapsed);
   const stepColors = {
     1: "border-l-violet-500",   // Purple for Thesis
     2: "border-l-blue-500",     // Blue for Quant
@@ -1534,11 +1536,11 @@ function NarrativeSection({ step, title, subtitle, icon, tagline, children }: Na
 
   return (
     <Card className={cn(
-      "rounded-xl border shadow-sm overflow-hidden",
+      "rounded-xl border shadow-sm",
       "border-l-4",
       stepColors[step]
     )}>
-      <CardHeader className="pb-3 bg-muted/20">
+      <CardHeader className="pb-3 bg-muted/20 cursor-pointer select-none" onClick={() => defaultCollapsed !== undefined && setOpen(o => !o)}>
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary">
             {icon}
@@ -1557,11 +1559,21 @@ function NarrativeSection({ step, title, subtitle, icon, tagline, children }: Na
           <Badge variant="secondary" className="text-xs">
             {tagline}
           </Badge>
+          {defaultCollapsed !== undefined && (
+            <ChevronDown className={cn(
+              "h-5 w-5 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180"
+            )} />
+          )}
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        {children}
-      </CardContent>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleContent>
+          <CardContent className="pt-4">
+            {children}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
@@ -2454,6 +2466,7 @@ function ForecastTradeGeneratorContent() {
               subtitle="Is this trade statistically sound?"
               icon={<BarChart3 className="h-5 w-5" />}
               tagline="Deep Learning + Risk Engine"
+              defaultCollapsed={true}
             >
               {/* Powered by explanation */}
               <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 mb-4">
