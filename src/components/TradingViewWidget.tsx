@@ -345,9 +345,9 @@ const TradingViewWidget = memo(function TradingViewWidget({
       }
     };
   }, [currentSymbol, onPriceUpdate]);
-  return <Card className={`w-full ${className}`}>
+  return <Card className={`w-full h-full flex flex-col overflow-hidden ${className}`}>
       
-      <CardContent className="pb-0">
+      <CardContent className="pb-0 flex-1 min-h-0 overflow-hidden flex flex-col">
         {loading && <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Loading market data...</span>
@@ -355,9 +355,9 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="relative w-full h-[380px] sm:h-[460px] lg:h-[560px] border border-border rounded-lg overflow-hidden" />
+        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 border border-border rounded-lg overflow-hidden" />
 
-        <div className="mt-3 sm:mt-4 text-sm text-muted-foreground">
+        <div className="mt-3 sm:mt-4 text-sm text-muted-foreground shrink-0">
           <div className="flex justify-between items-center">
             
             <Button variant="outline" size="sm" onClick={fetchData} className="h-8 sm:h-9 text-xs touch-manipulation" style={{
