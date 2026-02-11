@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Menu, X, ChevronDown, Activity, Zap, User, LogOut, Building2, Shield, FileText, History, Calculator } from "lucide-react";
@@ -51,6 +51,22 @@ export default function Layout({
   const location = useLocation();
   const { contextData } = useAURAContext();
 
+  // PERF: Prefetch route chunks on hover for near-instant navigation
+  const prefetchedRef = useRef<Set<string>>(new Set());
+  const prefetchRoute = useCallback((path: string) => {
+    if (prefetchedRef.current.has(path)) return;
+    prefetchedRef.current.add(path);
+    const routeMap: Record<string, () => Promise<any>> = {
+      '/dashboard': () => import('@/pages/Dashboard'),
+      '/trade-generator': () => import('@/pages/ForecastTradeGenerator'),
+      '/macro-lab': () => import('@/pages/ForecastMacroLab'),
+      '/macro-analysis': () => import('@/pages/MacroAnalysis'),
+      '/reports': () => import('@/pages/Reports'),
+      '/history': () => import('@/pages/History'),
+    };
+    routeMap[path]?.();
+  }, []);
+
   // Result notification system
   const { markResultsAsSeen } = useResultNotifications();
 
@@ -84,7 +100,7 @@ export default function Layout({
       <div className="h-full px-4 sm:px-6 max-w-screen-lg mx-auto">
         <div className="flex items-center h-full">
           {/* Logo - Mobile optimized */}
-          <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group">
+          <button onClick={() => navigate('/dashboard')} onMouseEnter={() => prefetchRoute('/dashboard')} className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group">
             <img src="/header_logo.png" alt="alphaLens.ai" className="h-10 sm:h-14 w-auto object-contain" />
           </button>
 
@@ -118,7 +134,7 @@ export default function Layout({
               navigate('/history');
               onResetJobsCount?.();
               markResultsAsSeen();
-            }} className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 hidden md:inline-flex">
+            }} onMouseEnter={() => prefetchRoute('/history')} className="relative h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2 hidden md:inline-flex">
               <History className="h-4 w-4" />
               <span className="hidden sm:inline ml-2">{t('nav.history', { defaultValue: 'History' })}</span>
               {completedJobsCount > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">

@@ -15,6 +15,7 @@ export function Footer() {
                 src="/footer_logo.png"
                 alt="alphaLens.ai"
                 className="h-10 w-auto object-contain"
+                loading="lazy"
               />
             </div>
             <p className="text-muted-foreground text-sm">
