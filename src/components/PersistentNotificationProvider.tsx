@@ -78,6 +78,20 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
     setFlashMessages(prev => prev.filter(msg => msg.id !== id));
   };
 
+  // Auto-remove flash messages after their duration
+  useEffect(() => {
+    if (flashMessages.length === 0) return;
+    
+    const timers = flashMessages.map(msg => {
+      const duration = msg.duration || 4000;
+      return setTimeout(() => {
+        removeFlashMessage(msg.id);
+      }, duration);
+    });
+    
+    return () => timers.forEach(clearTimeout);
+  }, [flashMessages]);
+
   // Get effective type from job (prioritize request_payload.type over feature)
   const getEffectiveType = (job: any): string => {
     // Priority 1: Explicit type in request_payload
