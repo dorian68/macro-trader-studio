@@ -1,81 +1,103 @@
 
 
-# Patch minimal PersistentToast : Fix zombie + Alignement visuel
+# Optimisation Performance : Navigation + Temps de chargement
 
-## 1) Fix bug "zombie toast" (spinner qui tourne sans jobs)
+## Diagnostic des points lents
 
-### Probleme
+Apres analyse du codebase, voici les causes principales de latence :
 
-La condition de sortie `if (totalCount === 0) return null` (ligne 144) depend de `totalCount = activeJobs.length + completedJobs.length + flashMessages.length`. Quand tous les jobs sont dismiss via `markJobAsViewed`, les arrays se vident et le composant return null. Cependant, deux cas edge provoquent un etat zombie :
+1. **useProfile fait un fetch Supabase a chaque navigation** via AuthGuard (chaque route protegee = 1 requete profiles + 1 souscription realtime)
+2. **useNewsFeed appelle une edge function** a chaque montage du dashboard (pas de cache inter-session)
+3. **AURA.tsx (1170 lignes)** est charge dans Layout.tsx meme quand l'utilisateur ne l'utilise pas - le lazy est fait mais le composant reste lourd
+4. **QueryClient sans staleTime** = chaque navigation re-fetch toutes les queries
+5. **Images sans lazy loading** (header_logo, footer_logo charges immediatement)
+6. **Plotly.js** (3MB+) est dans les dependances et potentiellement bundle au demarrage
 
-- **Index invalide** : Apres le dismiss du dernier job, `selectedJobIndex` peut pointer vers un index hors limites pendant un tick de render. Le `currentJob` est alors `undefined`, mais le toast reste visible car `totalCount` n'est pas encore 0 (les `useEffect` de clamp s'executent apres le render).
-- **Flash messages residuels** : Si un `flashMessage` existe encore (pas de timeout auto sur certains types), `totalCount > 0` et le toast affiche un spinner car `allJobs` est vide mais le composant ne return pas null.
+## Actions par priorite
 
-### Correctif
+### A) Cache et deduplication des fetches (impact majeur)
 
-- Ajouter un guard supplementaire : si `allJobs.length === 0` et `flashMessages.length === 0`, return null immediatement (plus robuste que `totalCount`).
-- Clamper `selectedJobIndex` de maniere synchrone (avec `useMemo` ou directement dans le render) au lieu de `useEffect` asynchrone, pour eviter un frame avec index invalide.
-- Reset `selectedJobIndex` a 0 dans le handler de `markJobAsViewed` quand le job dismiss etait le dernier.
-
-### Fichier : `src/components/PersistentToast.tsx`
+**`src/App.tsx`** : Configurer le QueryClient avec un `staleTime` global de 5 minutes et un `gcTime` de 10 minutes. Cela empeche les re-fetches inutiles lors des navigations entre pages.
 
 ```typescript
-// Remplacer le clamp via useEffect par un clamp synchrone
-const safeIndex = allJobs.length > 0 
-  ? Math.min(selectedJobIndex, allJobs.length - 1) 
-  : 0;
-const currentJob = allJobs[safeIndex];
-
-// Guard de sortie renforce (ligne 144)
-if (allJobs.length === 0 && flashMessages.length === 0) return null;
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,    // 5 min
+      gcTime: 10 * 60 * 1000,       // 10 min
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 ```
 
-Supprimer les deux `useEffect` de clamp (lignes 36-48) qui sont desormais inutiles et source de desynchronisation.
+**`src/hooks/useProfile.tsx`** : Migrer vers `useQuery` de TanStack Query au lieu de `useState` + `useEffect` manuel. Le profil est fetch une seule fois et cache pendant toute la session. La souscription realtime reste pour les updates en temps reel mais ne re-fetch plus a chaque montage.
 
----
+### B) Prefetch intelligent des routes (navigation percue)
 
-## 2) Alignement visuel avec le design system AlphaLens
+**`src/components/Layout.tsx`** : Ajouter un prefetch des routes principales au hover sur les boutons de navigation. Utiliser `router.prefetch` ou un simple `import()` dynamique au `onMouseEnter` sur les liens Dashboard, Trade Generator, Macro Lab, Reports.
 
-### Probleme
+```typescript
+const prefetchRoute = (path: string) => {
+  const routeMap: Record<string, () => Promise<any>> = {
+    '/dashboard': () => import('@/pages/TradingDashboard'),
+    '/trade-generator': () => import('@/pages/ForecastTradeGenerator'),
+    '/macro-lab': () => import('@/pages/ForecastMacroLab'),
+    '/reports': () => import('@/pages/Reports'),
+  };
+  routeMap[path]?.();
+};
+```
 
-Le composant utilise `shadow-elegant` (classe inexistante dans le tailwind config), `border-primary/20` (border blanche tres subtile sur fond quasi-noir = quasi invisible), et des styles generiques qui ne s'integrent pas au glossy-black theme du site (fond `#0a0a0a`, cards `#0d0d0d`, borders `hsl(0 0% 20%)`).
+### C) Memoization des composants lourds
 
-### Correctif (styles uniquement, zero changement structurel)
+**`src/pages/TradingDashboard.tsx`** : Wrapper les sous-composants stables (`CandlestickChart`, `DashboardColumnCarousel`, `AssetInfoCard`) avec `React.memo` pour eviter les re-renders quand seul l'asset change.
 
-**Card principale (expanded)** :
-- `shadow-elegant` → `shadow-[0_8px_30px_rgba(0,0,0,0.6)]` (correspond a `--shadow-medium`)
-- `border-primary/20` → `border-border` (utilise le token `--border: 0 0% 20%`)
-- `bg-card/95 backdrop-blur-sm` → `bg-card/98 backdrop-blur-md` (plus opaque, blur plus prononce pour le glossy effect)
+**`src/components/Layout.tsx`** : Memoiser le header et le footer avec `useMemo` car ils ne changent que lors du signOut/signIn.
 
-**Card minimisee (bubble)** :
-- `shadow-lg border-0 bg-card` → `shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-border/50 bg-card` (ajout d'une bordure subtile pour ancrer visuellement la bulle)
+### D) Lazy loading des assets media
 
-**Hover preview desktop** :
-- Memes corrections : `shadow-elegant` → `shadow-[var(--shadow-medium)]`, `border-primary/20` → `border-border`
+**`index.html`** : Ajouter `fetchpriority="high"` au preload du header_logo et `loading="lazy"` aux images non-critiques (footer_logo, logos secondaires).
 
-**Boutons et controles** :
-- `hover:bg-muted` → `hover:bg-white/[0.06]` (conforme a la memoire `high-contrast-hover-preference`)
-- Chips status : garder `bg-primary/10` et `bg-success/10` (deja coherents)
+**`src/components/Layout.tsx`** et **`src/components/Footer.tsx`** : Ajouter `loading="lazy"` aux balises `<img>` du footer.
 
-**Liste items** :
-- `hover:bg-muted/50` → `hover:bg-white/[0.06]`
-- `bg-primary/10 ring-1 ring-primary/20` → `bg-white/[0.06] ring-1 ring-border` (selection plus subtile)
+### E) Exclusion de Plotly du bundle initial
 
-### Fichier : `src/components/PersistentToast.tsx`
+**`vite.config.ts`** : Ajouter `plotly.js` et `react-plotly.js` dans un chunk separe `vendor-plotly` pour eviter de charger 3MB+ au demarrage. Ces libs ne sont utilisees que dans les pages Labs.
 
-Uniquement des remplacements de classes CSS, aucun changement de structure JSX.
+```typescript
+manualChunks: {
+  // ...existing chunks...
+  'vendor-plotly': ['plotly.js', 'react-plotly.js'],
+}
+```
 
----
+### F) Skeleton de transition coherent
+
+**`src/App.tsx`** : Remplacer le `<div className="min-h-screen bg-background" />` Suspense fallback par un skeleton minimal mais structure (header placeholder + zone de contenu) pour eviter le layout shift. Garder l'approche minimaliste mais ajouter un placeholder pour le header (meme hauteur que le vrai header = `h-14 sm:h-16`).
+
+```tsx
+<Suspense fallback={
+  <div className="min-h-screen bg-background">
+    <div className="h-14 sm:h-16 border-b border-white/5 bg-background" />
+  </div>
+}>
+```
 
 ## Ce qui ne change pas
 
-- Logique UX (dismiss job-by-job, single/list view, minimize, drag)
-- PersistentNotificationProvider (aucun changement)
-- MiniProgressBubble (aucun changement)
-- Realtime, credits, navigation, session
-- Structure JSX du composant
+- Logique metier, auth, permissions, API calls
+- Structure des routes et AuthGuard
+- Fonctionnalites existantes (credits, jobs, realtime, AURA)
+- Design system et identite visuelle
+- Mobile layout
 
 ## Resultat attendu
 
-- Zero etat zombie : quand plus aucun job/flash n'existe, le composant disparait immediatement et de maniere deterministe
-- Le toast s'integre visuellement au reste du site (glossy black, borders coherentes, shadows du design system, hovers haute visibilite)
+- Navigation Dashboard <-> pages principales ~200-400ms plus rapide (cache profile + staleTime queries)
+- Zero re-fetch inutile lors du retour sur une page deja visitee
+- Prefetch au hover = chargement quasi-instantane des routes principales
+- Bundle initial reduit de ~3MB (plotly isole)
+- Zero layout shift entre les transitions (skeleton header stable)
+
