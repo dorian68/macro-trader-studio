@@ -442,7 +442,8 @@ export function PersistentToast() {
                       <div className="flex gap-1.5">
                         {isCompleted && (
                           <Button 
-                            size="sm" 
+                            size="sm"
+                            variant="ghost"
                             onClick={(e) => { e.stopPropagation(); navigateToResult(currentJob as any); }}
                             className="text-[11px] h-7 flex-1 bg-white text-black hover:bg-white/90 font-medium border-0 shadow-none"
                           >
