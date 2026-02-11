@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Stub Node.js built-ins that some dependencies try to import in browser
+      "buffer/": "buffer",
     },
   },
   // PERFORMANCE: Optimized build configuration for better bundle splitting and caching
