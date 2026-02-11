@@ -1,4 +1,5 @@
 import PublicNavbar from "@/components/PublicNavbar";
+import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 
@@ -30,9 +31,7 @@ export default function Terms() {
                 <CardTitle>{t('terms.acceptance.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>
-                  {t('terms.acceptance.description')}
-                </p>
+                <p>{t('terms.acceptance.description')}</p>
               </CardContent>
             </Card>
 
@@ -41,9 +40,7 @@ export default function Terms() {
                 <CardTitle>{t('terms.service.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>
-                  {t('terms.service.description')}
-                </p>
+                <p>{t('terms.service.description')}</p>
                 <ul className="list-disc pl-6 space-y-2">
                   <li>{t('terms.service.feature1')}</li>
                   <li>{t('terms.service.feature2')}</li>
@@ -77,12 +74,23 @@ export default function Terms() {
                 <p className="font-semibold text-foreground">
                   {t('terms.disclaimer.warning')}
                 </p>
-                <p>
-                  {t('terms.disclaimer.description')}
-                </p>
-                <p>
-                  {t('terms.disclaimer.advice')}
-                </p>
+                <p>{t('terms.disclaimer.description')}</p>
+                <p>{t('terms.disclaimer.advice')}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('terms.ai.title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-muted-foreground">
+                <p>{t('terms.ai.description')}</p>
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>{t('terms.ai.item1')}</li>
+                  <li>{t('terms.ai.item2')}</li>
+                  <li>{t('terms.ai.item3')}</li>
+                  <li>{t('terms.ai.item4')}</li>
+                </ul>
               </CardContent>
             </Card>
 
@@ -106,9 +114,7 @@ export default function Terms() {
                 <CardTitle>{t('terms.intellectual.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>
-                  {t('terms.intellectual.description')}
-                </p>
+                <p>{t('terms.intellectual.description')}</p>
               </CardContent>
             </Card>
 
@@ -117,9 +123,31 @@ export default function Terms() {
                 <CardTitle>{t('terms.liability.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>
-                  {t('terms.liability.description')}
-                </p>
+                <p>{t('terms.liability.description')}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('terms.dataRetention.title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-muted-foreground">
+                <p>{t('terms.dataRetention.description')}</p>
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>{t('terms.dataRetention.item1')}</li>
+                  <li>{t('terms.dataRetention.item2')}</li>
+                  <li>{t('terms.dataRetention.item3')}</li>
+                  <li>{t('terms.dataRetention.item4')}</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('terms.age.title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-muted-foreground">
+                <p>{t('terms.age.description')}</p>
               </CardContent>
             </Card>
 
@@ -128,9 +156,25 @@ export default function Terms() {
                 <CardTitle>{t('terms.availability.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>
-                  {t('terms.availability.description')}
-                </p>
+                <p>{t('terms.availability.description')}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('terms.governing.title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-muted-foreground">
+                <p>{t('terms.governing.description')}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('terms.changes.title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-muted-foreground">
+                <p>{t('terms.changes.description')}</p>
               </CardContent>
             </Card>
 
@@ -139,9 +183,7 @@ export default function Terms() {
                 <CardTitle>{t('terms.contact.title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
-                <p>
-                  {t('terms.contact.description')}
-                </p>
+                <p>{t('terms.contact.description')}</p>
                 <p className="font-semibold text-foreground">
                   {t('terms.contact.email')}
                 </p>
@@ -151,12 +193,7 @@ export default function Terms() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-background border-t border-border py-8 px-4">
-        <div className="container mx-auto max-w-4xl text-center text-muted-foreground text-sm">
-          <p>{t('footer.copyright')}</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
