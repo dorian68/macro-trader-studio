@@ -1,55 +1,48 @@
 
-# Dashboard Layout: Market News Below the Fold
 
-## What changes
+# Row 1 (Chart + Nav Cards) remplit le viewport sur laptop
 
-The user wants:
-- **Row 1** (visible on load): Chart + Nav Cards + AssetInfoCard -- fills the viewport
-- **Market News** moves below the fold, accessible by scrolling down
-- No more viewport-lock (`overflow-hidden`) on the page -- re-enable vertical scroll
+## Objectif
 
-## Changes by file
+Le bas du chart et le bas des 3 nav cards doivent coincider avec le bas de l'ecran sur laptop. Les contenus suivants (AssetInfo, Market News) restent accessibles par scroll.
+
+## Approche
+
+Utiliser `lg:h-[calc(100vh-3.5rem-1rem)]` sur la Row 1 pour qu'elle occupe exactement la hauteur du viewport moins la navbar et le padding. Le chart et les nav cards s'etirent pour remplir cet espace.
+
+## Changements
 
 ### 1. `src/pages/TradingDashboard.tsx`
 
-**Remove viewport-lock classes from the main wrapper** (line 260):
-- Change `lg:flex lg:flex-col lg:h-full lg:overflow-hidden lg:space-y-0 lg:gap-2` to just `space-y-2 lg:space-y-2`
-- The page becomes normally scrollable again
+**Row 1** (ligne 262) : ajouter une hauteur fixe viewport sur desktop
 
-**Row 1** (line 262): Keep the chart + nav cards grid as-is, remove `lg:flex-[3] lg:min-h-0` (no longer needed since we're not in a flex viewport)
-
-**Row 2** (lines 417-424): Split into two separate sections:
-- **AssetInfoCard** stays directly below Row 1 (visible on load), placed in its own row
-- **MarketNewsCollapsible** becomes a separate section below AssetInfoCard, with a fixed max-height (`lg:max-h-[500px]`) and internal scroll (`lg:overflow-y-auto`)
-
-New structure:
-```text
-Row 1: Chart (2/3) + Nav Cards (1/3)     -- visible on load
-Row 2: AssetInfoCard (full width)         -- visible on load  
-Row 3: MarketNewsCollapsible (full width) -- below the fold, scroll to see
 ```
+- <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch">
++ <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:h-[calc(100vh-3.5rem-1rem)]">
+```
+
+Le `3.5rem` correspond a la navbar, le `1rem` au padding vertical (`py-2` = 0.5rem * 2). Les deux colonnes (chart + nav cards) s'etirent automatiquement grace a `items-stretch`.
+
+**Chart height prop** (ligne 269) : le `height={350}` est un fallback pour mobile. Sur desktop, le chart est deja dans un conteneur `h-full flex flex-col` donc il s'adaptera a la hauteur du parent.
 
 ### 2. `src/components/Layout.tsx`
 
-**Remove viewport-lock behavior** (lines 291-294):
-- Remove the `fillViewport` conditional that sets `lg:h-[calc(100vh-3.5rem)] lg:min-h-0 lg:overflow-hidden`
-- Keep `min-h-[calc(100vh-3.5rem)]` for all cases (normal scrollable page)
-- The `fillViewport` prop can still control `max-w-[1920px]` vs `max-w-screen-lg` for width
+Aucun changement -- la structure actuelle (`min-h-[calc(100vh-3.5rem)]` + scroll normal) est correcte pour ce comportement.
 
 ### 3. `src/components/CandlestickChart.tsx`
 
-No changes needed -- the `h-full flex flex-col` on the wrapper is harmless and works in both layouts.
+Aucun changement -- le wrapper utilise deja `h-full flex flex-col` ce qui lui permet de remplir la hauteur du parent.
 
-## What stays identical
+## Ce qui ne change pas
 
-- All components rendered (zero removals)
-- All data fetching, WebSocket, navigation, job management
-- Mobile layout unchanged
-- Nav cards, AssetInfoCard, MarketNewsCollapsible -- all preserved
+- Tous les composants, donnees, WebSocket, navigation
+- Mobile/tablette : layout empile standard
+- AssetInfo et Market News restent en dessous, accessibles par scroll
 - BubbleSystem, MobileNewsBadge, MobileNewsModal
 
-## Expected result
+## Resultat attendu
 
-- On load: Chart + Nav Cards + AssetInfoCard fill the screen
-- Scroll down to see Market News with internal scrolling
-- Clean, professional layout without forcing everything into a single viewport
+- Sur laptop : le chart et les 3 cards remplissent exactement la hauteur de l'ecran
+- Scroll vers le bas pour voir AssetInfo puis Market News
+- Layout propre et professionnel
+
