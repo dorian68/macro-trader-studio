@@ -1,101 +1,81 @@
-Patch UX: PersistentToast — Ergonomie améliorée, contrôle total utilisateur (sans régression)
-Contexte / Intention
 
-Je ne veux pas introduire de logique qui “décide à la place de l’utilisateur” (auto-dismiss, timers, fermeture automatique, suppression en masse par défaut).
-Un utilisateur peut vouloir conserver certains jobs terminés pour les consulter plus tard.
 
-➡️ L’objectif est uniquement d’améliorer l’ergonomie et la fluidité, en laissant le contrôle total à l’utilisateur, et sans régression.
+# Patch minimal PersistentToast : Fix zombie + Alignement visuel
 
-Diagnostic (problèmes UX actuels)
+## 1) Fix bug "zombie toast" (spinner qui tourne sans jobs)
 
-Fermeture/gestion laborieuse quand plusieurs jobs sont présents : trop de micro-actions, pas assez clair.
+### Probleme
 
-Manque de contrôle fin : l’utilisateur doit pouvoir gérer facilement job par job.
+La condition de sortie `if (totalCount === 0) return null` (ligne 144) depend de `totalCount = activeJobs.length + completedJobs.length + flashMessages.length`. Quand tous les jobs sont dismiss via `markJobAsViewed`, les arrays se vident et le composant return null. Cependant, deux cas edge provoquent un etat zombie :
 
-Lisibilité : quand il y a plusieurs jobs (actifs + terminés), l’utilisateur doit comprendre rapidement :
+- **Index invalide** : Apres le dismiss du dernier job, `selectedJobIndex` peut pointer vers un index hors limites pendant un tick de render. Le `currentJob` est alors `undefined`, mais le toast reste visible car `totalCount` n'est pas encore 0 (les `useEffect` de clamp s'executent apres le render).
+- **Flash messages residuels** : Si un `flashMessage` existe encore (pas de timeout auto sur certains types), `totalCount > 0` et le toast affiche un spinner car `allJobs` est vide mais le composant ne return pas null.
 
-ce qui est en cours
+### Correctif
 
-ce qui est terminé
+- Ajouter un guard supplementaire : si `allJobs.length === 0` et `flashMessages.length === 0`, return null immediatement (plus robuste que `totalCount`).
+- Clamper `selectedJobIndex` de maniere synchrone (avec `useMemo` ou directement dans le render) au lieu de `useEffect` asynchrone, pour eviter un frame avec index invalide.
+- Reset `selectedJobIndex` a 0 dans le handler de `markJobAsViewed` quand le job dismiss etait le dernier.
 
-ce qui demande une action (voir résultat)
+### Fichier : `src/components/PersistentToast.tsx`
 
-Scrollbars et bruit visuel : certains comportements/éléments nuisent à l’esthétique et à la sensation “produit premium”.
+```typescript
+// Remplacer le clamp via useEffect par un clamp synchrone
+const safeIndex = allJobs.length > 0 
+  ? Math.min(selectedJobIndex, allJobs.length - 1) 
+  : 0;
+const currentJob = allJobs[safeIndex];
 
-Principes UX à respecter (non négociables)
+// Guard de sortie renforce (ligne 144)
+if (allJobs.length === 0 && flashMessages.length === 0) return null;
+```
 
-✅ Zéro auto-dismiss / zéro timer : rien ne disparaît tout seul.
+Supprimer les deux `useEffect` de clamp (lignes 36-48) qui sont desormais inutiles et source de desynchronisation.
 
-✅ Pas de “Dismiss All” automatique ou agressif.
-(Optionnel : un bouton de gestion globale peut exister uniquement si c’est explicite, non destructif, et jamais déclenché par défaut.)
+---
 
-✅ L’utilisateur garde la main : il peut minimiser, fermer, archiver ou marquer comme vu individuellement.
+## 2) Alignement visuel avec le design system AlphaLens
 
-✅ Sans régression : ne pas casser la logique jobs/realtime/session/toasters/navigation.
+### Probleme
 
-Solution demandée (UX seulement)
-1) Gestion claire “job par job”
+Le composant utilise `shadow-elegant` (classe inexistante dans le tailwind config), `border-primary/20` (border blanche tres subtile sur fond quasi-noir = quasi invisible), et des styles generiques qui ne s'integrent pas au glossy-black theme du site (fond `#0a0a0a`, cards `#0d0d0d`, borders `hsl(0 0% 20%)`).
 
-Le bouton X doit fermer uniquement le job actuellement affiché (ou l’item visé), jamais les autres.
+### Correctif (styles uniquement, zero changement structurel)
 
-Les jobs terminés restent disponibles tant que l’utilisateur ne les ferme/mark pas explicitement.
+**Card principale (expanded)** :
+- `shadow-elegant` → `shadow-[0_8px_30px_rgba(0,0,0,0.6)]` (correspond a `--shadow-medium`)
+- `border-primary/20` → `border-border` (utilise le token `--border: 0 0% 20%`)
+- `bg-card/95 backdrop-blur-sm` → `bg-card/98 backdrop-blur-md` (plus opaque, blur plus prononce pour le glossy effect)
 
-2) Navigation multi-jobs plus ergonomique
+**Card minimisee (bubble)** :
+- `shadow-lg border-0 bg-card` → `shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-border/50 bg-card` (ajout d'une bordure subtile pour ancrer visuellement la bulle)
 
-Quand plusieurs jobs existent, afficher une navigation claire (ex. compteur “Job 2/5”, chips, tabs, ou liste compacte) pour passer d’un job à l’autre sans friction.
+**Hover preview desktop** :
+- Memes corrections : `shadow-elegant` → `shadow-[var(--shadow-medium)]`, `border-primary/20` → `border-border`
 
-Les jobs actifs et terminés doivent être clairement distingués (icône/status + label).
+**Boutons et controles** :
+- `hover:bg-muted` → `hover:bg-white/[0.06]` (conforme a la memoire `high-contrast-hover-preference`)
+- Chips status : garder `bg-primary/10` et `bg-success/10` (deja coherents)
 
-3) Minimisation plus intelligente mais non destructive
+**Liste items** :
+- `hover:bg-muted/50` → `hover:bg-white/[0.06]`
+- `bg-primary/10 ring-1 ring-primary/20` → `bg-white/[0.06] ring-1 ring-border` (selection plus subtile)
 
-Minimiser doit seulement réduire l’encombrement visuel, sans supprimer d’info.
+### Fichier : `src/components/PersistentToast.tsx`
 
-La bulle minimisée doit être plus informative :
+Uniquement des remplacements de classes CSS, aucun changement de structure JSX.
 
-afficher un compteur (ex. actifs/terminés)
+---
 
-indiquer visuellement si un résultat attend d’être consulté
+## Ce qui ne change pas
 
-Un clic sur la bulle réouvre le toast (comportement simple, prévisible).
-Pas de fermeture implicite.
+- Logique UX (dismiss job-by-job, single/list view, minimize, drag)
+- PersistentNotificationProvider (aucun changement)
+- MiniProgressBubble (aucun changement)
+- Realtime, credits, navigation, session
+- Structure JSX du composant
 
-4) Esthétique premium (réduction des scrollbars et du bruit)
+## Resultat attendu
 
-Réduire au maximum les scrollbars visibles et les comportements “bruyants”.
-
-Si overflow nécessaire, privilégier :
-
-layout compact
-
-pagination / navigation interne propre
-
-hauteurs maîtrisées
-au lieu d’un gros scroll interne qui casse l’UI.
-
-Changements attendus (fichiers)
-
-src/components/PersistentToast.tsx : ajustements UX (navigation, contrôles job par job, minimisation plus informative, pas de timer)
-
-src/components/PersistentNotificationProvider.tsx : uniquement si nécessaire pour supporter une meilleure UX (mais sans logique auto)
-
-Ce qui ne doit pas changer (zéro régression)
-
-Création jobs (realtime INSERT)
-
-Completion jobs (realtime UPDATE)
-
-Système de crédits
-
-Navigation, sessionStorage injection, redirections existantes
-
-Composants existants (MiniProgressBubble, DiscreetJobStatus, etc.) sauf retouches UI strictement nécessaires
-
-Résultat attendu
-
-UX plus fluide, plus claire, plus “premium”
-
-Multi-jobs gérable sans effort
-
-Contrôle total utilisateur : rien ne se ferme/se supprime tout seul
-
-Aucune régression fonctionnelle
+- Zero etat zombie : quand plus aucun job/flash n'existe, le composant disparait immediatement et de maniere deterministe
+- Le toast s'integre visuellement au reste du site (glossy black, borders coherentes, shadows du design system, hovers haute visibilite)
