@@ -11,6 +11,7 @@ import { BubbleSystem } from "@/components/BubbleSystem";
 import Layout from "@/components/Layout";
 import { HybridSearchBar } from "@/components/HybridSearchBar";
 import { AssetSummaryBanner } from "@/components/AssetSummaryBanner";
+import { DashboardColumnCarousel } from "@/components/DashboardColumnCarousel";
 import { getSymbolForAsset, getNormalizedSymbol } from "@/lib/assetMapping";
 import AssetInfoCard from "@/components/AssetInfoCard";
 import { JobStatusCard } from "@/components/JobStatusCard";
@@ -292,70 +293,7 @@ export default function TradingDashboard() {
           </div>
 
           {/* Col droite - Rangée 1 : Navigation Cards Vertical Stack */}
-          <div className="min-w-0 min-h-0 order-2 my-0 hidden lg:flex flex-col gap-2 h-full">
-            <Card
-              className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
-              onClick={() => navigate('/trade-generator')}
-              style={{ minHeight: '44px' }}
-            >
-              <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center h-full">
-                <div className="gradient-primary p-2 rounded-2xl shadow-glow-primary shrink-0">
-                  <Zap className="h-6 w-6 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-bold text-foreground mb-1">{t('dashboard:trading.aiTradeSetup')}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 px-2 mb-2">
-                    {t('dashboard:trading.intelligentTradeSetups')}
-                  </p>
-                  <div className="text-primary text-sm font-semibold flex items-center justify-center gap-2">
-                    {t('dashboard:getStarted')} <ArrowRight className="h-4 w-4" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card
-              className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
-              onClick={() => navigate('/macro-lab')}
-              style={{ minHeight: '44px' }}
-            >
-              <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center h-full">
-                <div className="gradient-primary p-2 rounded-2xl shadow-glow-primary shrink-0">
-                  <Globe className="h-6 w-6 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-bold text-foreground mb-1">{t('dashboard:trading.macroCommentary')}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 px-2 mb-2">
-                    {t('dashboard:trading.inDepthAnalysis')}
-                  </p>
-                  <div className="text-primary text-sm font-semibold flex items-center justify-center gap-2">
-                    {t('common:actions.explore')} <ArrowRight className="h-4 w-4" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card
-              className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
-              onClick={() => navigate('/reports')}
-              style={{ minHeight: '44px' }}
-            >
-              <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center h-full">
-                <div className="gradient-primary p-2 rounded-2xl shadow-glow-primary shrink-0">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-bold text-foreground mb-1">{t('dashboard:trading.reports')}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 px-2 mb-2">
-                    {t('dashboard:trading.comprehensiveReports')}
-                  </p>
-                  <div className="text-primary text-sm font-semibold flex items-center justify-center gap-2">
-                    {t('common:actions.explore')} <ArrowRight className="h-4 w-4" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <DashboardColumnCarousel className="min-w-0 min-h-0 order-2 my-0 hidden lg:flex h-full" />
 
           {/* Mobile Navigation Cards - visible only on mobile/tablet */}
           <div className="lg:hidden mt-4">
