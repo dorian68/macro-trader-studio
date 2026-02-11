@@ -257,9 +257,9 @@ export default function TradingDashboard() {
     >
 
       {/* Main viewport-locked content */}
-      <div className="space-y-2">
+      <div className="space-y-2 lg:h-full lg:overflow-hidden lg:flex lg:flex-col">
         {/* Row 1: Chart + Nav Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:h-[calc(100vh-4.25rem)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:flex-1 lg:min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
           <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full overflow-hidden">
             <CandlestickChart
@@ -417,11 +417,11 @@ export default function TradingDashboard() {
         {/* Row 2: Asset Info */}
         <AssetInfoCard
           symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-          className="w-full"
+          className="w-full lg:hidden"
         />
 
         {/* Row 3: Market News - below the fold, scroll to see */}
-        <MarketNewsCollapsible className="w-full lg:max-h-[500px] lg:overflow-y-auto" />
+        <MarketNewsCollapsible className="w-full lg:hidden" />
       </div>
 
       {/* SECTION 3: Normal width - Navigation Cards, Job Status */}
