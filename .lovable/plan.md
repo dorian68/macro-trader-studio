@@ -1,52 +1,83 @@
 
 
-# Fix : PersistentToast reste ouvert apres fermeture de tous les jobs
+# Hardcode Horizon and Model Options in Trade Generator
 
-## Cause racine
+## Summary
 
-Quand un job se termine, le `PersistentNotificationProvider` appelle `addFlashMessage({ duration: 3000 })`. Mais cette duration n'est jamais utilisee car :
+Remove the Horizon input and Model Options card from user control. These parameters will be computed/hardcoded internally based on the selected timeframe, simplifying the UI.
 
-1. Le composant `FlashMessage` (qui a un timer auto-remove) n'est **pas utilise** dans le PersistentToast -- les flash messages sont rendus en inline dans le JSX du toast
-2. Il n'y a **aucun timer** dans le Provider qui nettoie les flash messages automatiquement
-3. Le guard du PersistentToast (`if (allJobs.length === 0 && flashMessages.length === 0) return null`) ne se declenche jamais car `flashMessages` n'est jamais vide apres une completion
+## Changes
 
-Resultat : l'utilisateur ferme tous les jobs via le bouton X (`markJobAsViewed`), les jobs disparaissent, mais les flash messages restent dans le state. Le toast reste affiche avec un spinner ou un contenu vide.
+### File: `src/pages/ForecastTradeGenerator.tsx`
 
-## Correctif (1 fichier, patch minimal)
+**1. Horizon mapping constant (add near line 158)**
 
-### `src/components/PersistentNotificationProvider.tsx`
-
-Ajouter un `useEffect` qui auto-supprime les flash messages apres leur `duration` (ou 4 secondes par defaut). Cela reproduit exactement le comportement du composant `FlashMessage` standalone mais au niveau du state centralisé.
-
+Add a mapping object:
 ```typescript
-// Auto-remove flash messages after their duration
-useEffect(() => {
-  if (flashMessages.length === 0) return;
-  
-  const timers = flashMessages.map(msg => {
-    const duration = msg.duration || 4000;
-    return setTimeout(() => {
-      removeFlashMessage(msg.id);
-    }, duration);
-  });
-  
-  return () => timers.forEach(clearTimeout);
-}, [flashMessages]);
+const HORIZON_BY_TIMEFRAME: Record<string, number> = {
+  "15min": 12,
+  "30min": 24,
+  "1h": 24,
+  "4h": 30,
+};
 ```
 
-Ce useEffect sera place juste apres la definition de `removeFlashMessage` (ligne 79).
+**2. Remove user-facing state variables (lines 1736-1749)**
 
-### Ce qui ne change pas
+Remove these state declarations:
+- `horizons` (line 1736) -- will be computed from timeframe
+- `useMonteCarlo` (line 1737) -- always true
+- `paths` (line 1738) -- always 3000
+- `skew` (line 1739) -- always -0.8
+- `advancedOpen` (line 1747) -- no longer needed
+- `includePredictions` (line 1748) -- always true
+- `includeMetadata` (line 1749) -- always false
 
-- `markJobAsViewed` : inchange
-- Logique de completion/error des jobs : inchangee
-- Rendu du PersistentToast : inchange
-- Le composant FlashMessage standalone : inchange
-- Toute autre fonctionnalite
+**3. Update `handleSubmit` payload construction (lines 1868-1942)**
 
-### Resultat attendu
+Replace the horizon parsing logic:
+```typescript
+const parsedHorizons = [HORIZON_BY_TIMEFRAME[timeframe] || 24];
+```
 
-- Les flash messages disparaissent automatiquement apres 3-4 secondes
-- Une fois tous les jobs fermes ET les flash messages expires, le toast disparait completement
-- Zero spinner residuel, zero toast zombie
+Remove the validation guard (lines 1874-1878) since horizons are now guaranteed valid.
+
+Update the payload to use hardcoded values:
+```typescript
+const macroPayload = {
+  job_id: jobId,
+  type: "RAG",
+  mode: "trade_generation",
+  instrument: symbol,
+  question: buildQuestion({ instrument: symbol, timeframe, riskLevel, strategy, customNotes, horizons: parsedHorizons }),
+  user_email: null,
+  isTradeQuery: true,
+  timeframe,
+  riskLevel,
+  strategy,
+  customNotes,
+  horizons: parsedHorizons,
+  use_montecarlo: true,
+  paths: 3000,
+  skew: -0.8,
+};
+```
+
+**4. Remove UI elements from the parameters card (lines 2180-2304)**
+
+- Remove the "Horizons" input field (lines 2180-2184)
+- Remove the entire "Model Options" card (lines 2239-2304), including Monte Carlo switch, MC Paths input, Advanced Options collapsible (skew, include predictions, include metadata)
+- Change grid from `md:grid-cols-3` to `md:grid-cols-2` (line 2140)
+
+**5. Update collapsed summary badges (line 2118)**
+
+Replace `{horizons}h` with the computed horizon: `{HORIZON_BY_TIMEFRAME[timeframe] || 24}h`
+
+## What does NOT change
+
+- All response parsing, extraction, and display logic
+- Risk Profiles, Risk Surface, Decision Layer
+- Job tracking, credit management
+- Debug panel (super_user only)
+- buildQuestion function signature (still receives horizons array)
 
