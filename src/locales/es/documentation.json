@@ -10,24 +10,28 @@
     "faq": "Preguntas Frecuentes"
   },
   "gettingStarted": {
-    "quickStart": "Guía de Inicio Rápido",
-    "step1Title": "1. Crea Tu Cuenta",
-    "step1Desc": "Regístrate con tu correo electrónico y comienza con una prueba gratuita para explorar todas las funciones.",
-    "step2Title": "2. Selecciona Tu Broker",
-    "step2Desc": "Elige tu broker de trading de nuestra lista compatible para obtener información personalizada.",
-    "step3Title": "3. Explora Funciones de IA",
-    "step3Desc": "Usa Configuración de Trading IA, Comentarios Macro e Informes para generar conocimientos de trading.",
-    "step4Title": "4. Construye Tu Cartera",
-    "step4Desc": "Agrega posiciones y recibe recomendaciones impulsadas por IA para optimización.",
-    "creditsTitle": "Comprender los Créditos",
-    "creditsIntro": "Alphalens usa un sistema basado en créditos para conocimientos generados por IA:",
-    "creditsTradeSetup": "Configuración de Trading: 1 crédito por idea de trading generada por IA",
-    "creditsMacro": "Comentario Macro: 1 crédito por análisis de mercado",
-    "creditsReports": "Informes: 1 crédito por informe integral",
-    "creditsNote": "Los créditos se restablecen mensualmente según tu plan de suscripción. Los créditos no utilizados no se transfieren."
+    "quickStart": {
+      "title": "Guía de Inicio Rápido",
+      "step1": "1. Crea Tu Cuenta",
+      "step1Description": "Regístrate con tu correo electrónico y comienza con una prueba gratuita para explorar todas las funciones.",
+      "step2": "2. Selecciona Tu Broker",
+      "step2Description": "Elige tu broker de trading de nuestra lista compatible para obtener información personalizada.",
+      "step3": "3. Explora Funciones de IA",
+      "step3Description": "Usa Configuración de Trading IA, Comentarios Macro e Informes para generar conocimientos de trading.",
+      "step4": "4. Construye Tu Cartera",
+      "step4Description": "Agrega posiciones y recibe recomendaciones impulsadas por IA para optimización."
+    },
+    "credits": {
+      "title": "Comprender los Créditos",
+      "description": "Alphalens usa un sistema basado en créditos para conocimientos generados por IA:",
+      "tradeSetup": "Configuración de Trading: 1 crédito por idea de trading generada por IA",
+      "macroCommentary": "Comentario Macro: 1 crédito por análisis de mercado",
+      "reports": "Informes: 1 crédito por informe integral",
+      "resetInfo": "Los créditos se restablecen mensualmente según tu plan de suscripción. Los créditos no utilizados no se transfieren."
+    }
   },
   "features": {
-    "aiTradeSetup": {
+    "aiSetup": {
       "title": "Configuración de Trading IA",
       "description": "Genera ideas de trading inteligentes con puntos de entrada, stop loss y niveles de take profit.",
       "feature1": "Análisis técnico multi-temporal",
@@ -54,14 +58,14 @@
   },
   "aiSetup": {
     "title": "Configuración de AI Trade Setup",
-    "step1Title": "1. Selecciona Tu Activo",
-    "step1Desc": "Busca acciones, pares de divisas, criptomonedas o commodities usando la barra de búsqueda.",
-    "step2Title": "2. Elige Marco Temporal",
-    "step2Desc": "Selecciona de marcos temporales 1m, 5m, 15m, 1h, 4h, 1D o 1W según tu estilo de trading.",
-    "step3Title": "3. Establece Parámetros",
-    "step3Desc": "Ajusta la tolerancia al riesgo, tamaño de posición y profundidad de análisis para que coincida con tu estrategia.",
-    "step4Title": "4. Genera Configuración",
-    "step4Desc": "Haz clic en \"Generar Configuración IA\" y recibe tu idea de trading personalizada en segundos."
+    "step1": "1. Selecciona Tu Activo",
+    "step1Description": "Busca acciones, pares de divisas, criptomonedas o commodities usando la barra de búsqueda.",
+    "step2": "2. Elige Marco Temporal",
+    "step2Description": "Selecciona de marcos temporales 1m, 5m, 15m, 1h, 4h, 1D o 1W según tu estilo de trading.",
+    "step3": "3. Establece Parámetros",
+    "step3Description": "Ajusta la tolerancia al riesgo, tamaño de posición y profundidad de análisis para que coincida con tu estrategia.",
+    "step4": "4. Genera Configuración",
+    "step4Description": "Haz clic en \"Generar Configuración IA\" y recibe tu idea de trading personalizada en segundos."
   },
   "portfolio": {
     "title": "Gestión de Cartera",
@@ -75,21 +79,20 @@
   "api": {
     "title": "Acceso a API",
     "description": "Los planes Enterprise y Professional incluyen acceso a API para integración con tus propios sistemas.",
-    "contact": "Para documentación de API y credenciales de acceso, contáctanos en",
-    "email": "research@albaricg.com"
+    "contact": "Para documentación de API y credenciales de acceso, contáctanos en"
   },
   "faq": {
     "title": "Preguntas Frecuentes",
-    "q1Title": "¿Qué tan precisas son las predicciones de IA?",
-    "q1Answer": "Nuestra IA analiza múltiples fuentes de datos e indicadores técnicos, pero el trading involucra riesgo. Siempre usa nuestras ideas como una entrada en tu proceso de toma de decisiones.",
-    "q2Title": "¿Puedo cancelar mi suscripción en cualquier momento?",
-    "q2Answer": "Sí, puedes cancelar tu suscripción en cualquier momento desde la configuración de tu cuenta. Mantendrás el acceso hasta el final de tu período de facturación.",
-    "q3Title": "¿Qué mercados soportan?",
-    "q3Answer": "Soportamos forex, criptomonedas y commodities. La cobertura se está expandiendo continuamente.",
-    "q4Title": "¿Son seguros mis datos?",
-    "q4Answer": "Sí, utilizamos cifrado estándar de la industria y prácticas de seguridad. Nunca vendemos tus datos a terceros."
+    "question1": "¿Qué tan precisas son las predicciones de IA?",
+    "answer1": "Nuestra IA analiza múltiples fuentes de datos e indicadores técnicos, pero el trading involucra riesgo. Siempre usa nuestras ideas como una entrada en tu proceso de toma de decisiones.",
+    "question2": "¿Puedo cancelar mi suscripción en cualquier momento?",
+    "answer2": "Sí, puedes cancelar tu suscripción en cualquier momento desde la configuración de tu cuenta. Mantendrás el acceso hasta el final de tu período de facturación.",
+    "question3": "¿Qué mercados soportan?",
+    "answer3": "Soportamos forex, criptomonedas y commodities. La cobertura se está expandiendo continuamente.",
+    "question4": "¿Son seguros mis datos?",
+    "answer4": "Sí, utilizamos cifrado estándar de la industria y prácticas de seguridad. Nunca vendemos tus datos a terceros."
   },
   "footer": {
-    "copyright": "© 2025 alphaLens.ai. Todos los derechos reservados."
+    "copyright": "© 2026 alphaLens.ai. Todos los derechos reservados."
   }
 }

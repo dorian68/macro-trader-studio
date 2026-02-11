@@ -10,24 +10,28 @@
     "faq": "FAQ"
   },
   "gettingStarted": {
-    "quickStart": "Quick Start Guide",
-    "step1Title": "1. Create Your Account",
-    "step1Desc": "Sign up with your email and start with a free trial to explore all features.",
-    "step2Title": "2. Select Your Broker",
-    "step2Desc": "Choose your trading broker from our supported list to get tailored insights.",
-    "step3Title": "3. Explore AI Features",
-    "step3Desc": "Use AI Trade Setup, Macro Commentary, and Reports to generate trading insights.",
-    "step4Title": "4. Build Your Portfolio",
-    "step4Desc": "Add positions and receive AI-powered recommendations for optimization.",
-    "creditsTitle": "Understanding Credits",
-    "creditsIntro": "Alphalens uses a credit-based system for AI-generated insights:",
-    "creditsTradeSetup": "Trade Setup: 1 credit per AI-generated trade idea",
-    "creditsMacro": "Macro Commentary: 1 credit per market analysis",
-    "creditsReports": "Reports: 1 credit per comprehensive report",
-    "creditsNote": "Credits reset monthly based on your subscription plan. Unused credits do not roll over."
+    "quickStart": {
+      "title": "Quick Start Guide",
+      "step1": "1. Create Your Account",
+      "step1Description": "Sign up with your email and start with a free trial to explore all features.",
+      "step2": "2. Select Your Broker",
+      "step2Description": "Choose your trading broker from our supported list to get tailored insights.",
+      "step3": "3. Explore AI Features",
+      "step3Description": "Use AI Trade Setup, Macro Commentary, and Reports to generate trading insights.",
+      "step4": "4. Build Your Portfolio",
+      "step4Description": "Add positions and receive AI-powered recommendations for optimization."
+    },
+    "credits": {
+      "title": "Understanding Credits",
+      "description": "Alphalens uses a credit-based system for AI-generated insights:",
+      "tradeSetup": "Trade Setup: 1 credit per AI-generated trade idea",
+      "macroCommentary": "Macro Commentary: 1 credit per market analysis",
+      "reports": "Reports: 1 credit per comprehensive report",
+      "resetInfo": "Credits reset monthly based on your subscription plan. Unused credits do not roll over."
+    }
   },
   "features": {
-    "aiTradeSetup": {
+    "aiSetup": {
       "title": "AI Trade Setup",
       "description": "Generate intelligent trade ideas with entry points, stop losses, and take profit levels.",
       "feature1": "Multi-timeframe technical analysis",
@@ -54,14 +58,14 @@
   },
   "aiSetup": {
     "title": "Configuring AI Trade Setup",
-    "step1Title": "1. Select Your Asset",
-    "step1Desc": "Search for stocks, forex pairs, cryptocurrencies, or commodities using the search bar.",
-    "step2Title": "2. Choose Timeframe",
-    "step2Desc": "Select from 1m, 5m, 15m, 1h, 4h, 1D, or 1W timeframes based on your trading style.",
-    "step3Title": "3. Set Parameters",
-    "step3Desc": "Adjust risk tolerance, position size, and analysis depth to match your strategy.",
-    "step4Title": "4. Generate Setup",
-    "step4Desc": "Click \"Generate AI Setup\" and receive your personalized trade idea within seconds."
+    "step1": "1. Select Your Asset",
+    "step1Description": "Search for stocks, forex pairs, cryptocurrencies, or commodities using the search bar.",
+    "step2": "2. Choose Timeframe",
+    "step2Description": "Select from 1m, 5m, 15m, 1h, 4h, 1D, or 1W timeframes based on your trading style.",
+    "step3": "3. Set Parameters",
+    "step3Description": "Adjust risk tolerance, position size, and analysis depth to match your strategy.",
+    "step4": "4. Generate Setup",
+    "step4Description": "Click \"Generate AI Setup\" and receive your personalized trade idea within seconds."
   },
   "portfolio": {
     "title": "Portfolio Management",
@@ -75,21 +79,20 @@
   "api": {
     "title": "API Access",
     "description": "Enterprise and Professional plans include API access for integration with your own systems.",
-    "contact": "For API documentation and access credentials, please contact our team at",
-    "email": "research@albaricg.com"
+    "contact": "For API documentation and access credentials, please contact our team at"
   },
   "faq": {
     "title": "Frequently Asked Questions",
-    "q1Title": "How accurate are the AI predictions?",
-    "q1Answer": "Our AI analyzes multiple data sources and technical indicators, but trading involves risk. Always use our insights as one input in your decision-making process.",
-    "q2Title": "Can I cancel my subscription anytime?",
-    "q2Answer": "Yes, you can cancel your subscription at any time from your account settings. You'll retain access until the end of your billing period.",
-    "q3Title": "What markets do you support?",
-    "q3Answer": "We support forex, cryptocurrencies, and commodities. Coverage is continuously expanding.",
-    "q4Title": "Is my data secure?",
-    "q4Answer": "Yes, we use industry-standard encryption and security practices. We never sell your data to third parties."
+    "question1": "How accurate are the AI predictions?",
+    "answer1": "Our AI analyzes multiple data sources and technical indicators, but trading involves risk. Always use our insights as one input in your decision-making process.",
+    "question2": "Can I cancel my subscription anytime?",
+    "answer2": "Yes, you can cancel your subscription at any time from your account settings. You'll retain access until the end of your billing period.",
+    "question3": "What markets do you support?",
+    "answer3": "We support forex, cryptocurrencies, and commodities. Coverage is continuously expanding.",
+    "question4": "Is my data secure?",
+    "answer4": "Yes, we use industry-standard encryption and security practices. We never sell your data to third parties."
   },
   "footer": {
-    "copyright": "© 2025 alphaLens.ai. All rights reserved."
+    "copyright": "© 2026 alphaLens.ai. All rights reserved."
   }
 }
