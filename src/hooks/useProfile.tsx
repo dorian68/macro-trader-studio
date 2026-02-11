@@ -1,8 +1,9 @@
 import * as React from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-const { useState, useEffect } = React;
+const { useEffect } = React;
 
 interface Profile {
   id: string;
@@ -14,73 +15,60 @@ interface Profile {
   updated_at: string;
 }
 
+async function fetchProfile(userId: string): Promise<Profile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching profile:', error);
+    return null;
+  }
+  return data as Profile | null;
+}
+
 export function useProfile() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
+  const { data: profile = null, isLoading: loading } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: () => fetchProfile(user!.id),
+    enabled: !!user,
+    staleTime: Infinity, // Profile only changes via realtime — never refetch on navigation
+  });
+
+  // Realtime subscription to keep cache fresh
   useEffect(() => {
-    async function fetchProfile() {
-      if (!user) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
+    if (!user) return;
 
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching profile:', error);
-          setProfile(null);
-          return;
-        }
-
-        setProfile(data as Profile | null);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (user) {
-      fetchProfile();
-
-      // Set up real-time subscription for profile changes
-      const subscription = supabase
-        .channel('profile-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-            schema: 'public',
-            table: 'profiles',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log('Profile updated via realtime:', payload);
-            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-              setProfile(payload.new as Profile);
-            } else if (payload.eventType === 'DELETE') {
-              setProfile(null);
-            }
+    const subscription = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Profile updated via realtime:', payload);
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            queryClient.setQueryData(['profile', user.id], payload.new as Profile);
+          } else if (payload.eventType === 'DELETE') {
+            queryClient.setQueryData(['profile', user.id], null);
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      return () => {
-        subscription.unsubscribe();
-      };
-    } else {
-      setProfile(null);
-      setLoading(false);
-    }
-  }, [user]);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user, queryClient]);
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user || !profile) return;
@@ -93,7 +81,8 @@ export function useProfile() {
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      // Optimistic update in cache
+      queryClient.setQueryData(['profile', user.id], { ...profile, ...updates });
       return { success: true };
     } catch (error) {
       console.error('Error updating profile:', error);

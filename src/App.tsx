@@ -66,7 +66,16 @@ const ForecastPlaygroundTool = lazy(() => import("./pages/ForecastPlaygroundTool
 const ForecastMacroLab = lazy(() => import("./pages/ForecastMacroLab"));
 const ForecastTradeGenerator = lazy(() => import("./pages/ForecastTradeGenerator"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,    // 5 min — avoid refetch on navigation
+      gcTime: 10 * 60 * 1000,       // 10 min — keep cached data longer
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 // Force rebuild after PersistentNotificationProvider interface update
 
 const App = () => {
@@ -86,7 +95,7 @@ const App = () => {
                         <PersistentToast />
                         <Toaster />
                         <Sonner />
-                        <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                        <Suspense fallback={<div className="min-h-screen bg-background"><div className="h-14 sm:h-16 border-b border-white/5 bg-background" /></div>}>
                           <Routes>
                             <Route path="/" element={<Homepage />} />
                             <Route path="/auth" element={<Auth />} />

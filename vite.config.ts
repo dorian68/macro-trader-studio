@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => ({
           'vendor-charts': ['recharts', 'lightweight-charts'],
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-query': ['@tanstack/react-query'],
+          'vendor-plotly': ['plotly.js', 'react-plotly.js'],
         },
       },
     },
