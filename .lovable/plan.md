@@ -1,74 +1,68 @@
 
 
-# Suppression des scrollbars dans le Trading Dashboard
+# Fix: Scrollbar dans le widget TradingView
 
 ## Diagnostic
 
-Le composant `CandlestickChart` contient plusieurs zones qui generent des scrollbars visibles :
+Le composant `TradingViewWidget.tsx` (ligne 348-371) utilise des **hauteurs fixes** pour le conteneur du chart (`h-[380px] sm:h-[460px] lg:h-[560px]`). Quand ce widget est rendu a l'interieur du `CandlestickChart` (qui a `overflow-hidden` et `flex-1 min-h-0`), la hauteur fixe de 560px depasse l'espace disponible, generant une scrollbar interne dans la Card du TradingViewWidget.
 
-1. **Asset selector horizontal** (ligne 268) : `overflow-x-auto` sur la rangee de boutons d'assets populaires affiche une scrollbar horizontale visible
-2. **CardContent** : le composant `CardContent` de `card.tsx` a `overflow-x-hidden` mais pas `overflow-y-hidden`, ce qui peut laisser passer une scrollbar verticale
-3. **CardHeader** : le header (titre + search bar + asset buttons) occupe beaucoup de hauteur, comprimant la zone chart
+De plus, la `Card` du TradingViewWidget n'a pas `overflow-hidden`, et son `CardContent` n'a ni `flex-1`, ni `min-h-0`, ni `overflow-hidden`.
 
 ## Changements
 
-### 1. `src/components/CandlestickChart.tsx`
+### `src/components/TradingViewWidget.tsx`
 
-**Asset selector** (ligne 268) : Masquer la scrollbar horizontale avec les classes CSS appropriees. La classe `scrollbar-hide` est deja presente mais pourrait ne pas etre definie. Ajouter aussi un style CSS inline en fallback :
-
-```
-// Before (ligne 268)
-<div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide">
-
-// After
-<div className="flex gap-2 overflow-x-auto pb-0 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide"
-     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-```
-
-Retirer `pb-2` (remplacer par `pb-0`) car ce padding etait la pour compenser la scrollbar visible.
-
-**CardHeader** (ligne 172) : Ajouter `overflow-hidden shrink-0` pour que le header ne deborde jamais et conserve sa taille naturelle sans comprimer le chart :
+**Card wrapper** (ligne 348) : Ajouter `overflow-hidden h-full flex flex-col` pour que la carte remplisse son parent et ne deborde jamais :
 
 ```
 // Before
-<CardHeader className="pb-3 border-b border-border/50 space-y-2">
+<Card className={`w-full ${className}`}>
 
 // After
-<CardHeader className="pb-3 border-b border-border/50 space-y-2 overflow-hidden shrink-0">
+<Card className={`w-full h-full flex flex-col overflow-hidden ${className}`}>
 ```
 
-**CardContent** (ligne 291) : Ajouter `overflow-hidden` pour empecher toute scrollbar dans la zone chart :
+**CardContent** (ligne 350) : Ajouter `flex-1 min-h-0 overflow-hidden flex flex-col` pour qu'il prenne l'espace restant sans deborder :
 
 ```
 // Before
-<CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1 min-h-0">
+<CardContent className="pb-0">
 
 // After
-<CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1 min-h-0 overflow-hidden">
+<CardContent className="pb-0 flex-1 min-h-0 overflow-hidden flex flex-col">
 ```
 
-### 2. `src/index.css`
+**Chart container div** (ligne 358) : Remplacer les hauteurs fixes par `flex-1 min-h-0` pour que le chart s'adapte a l'espace disponible au lieu d'imposer 560px :
 
-Ajouter la classe utilitaire `scrollbar-hide` si elle n'existe pas deja :
+```
+// Before
+<div ref={chartContainerRef} className="relative w-full h-[380px] sm:h-[460px] lg:h-[560px] border border-border rounded-lg overflow-hidden" />
 
-```css
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
+// After
+<div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 border border-border rounded-lg overflow-hidden" />
+```
+
+**Footer** (ligne 360) : Ajouter `shrink-0` pour que le bouton Refresh ne soit jamais compresse :
+
+```
+// Before
+<div className="mt-3 sm:mt-4 text-sm text-muted-foreground">
+
+// After
+<div className="mt-3 sm:mt-4 text-sm text-muted-foreground shrink-0">
 ```
 
 ## Ce qui ne change pas
 
-- Toute la logique metier, les donnees, WebSocket, navigation
-- Le layout mobile (aucune classe `lg:` modifiee)
-- Les 3 nav cards (AI Trade Setup, Macro Commentary, Reports)
-- BubbleSystem, MobileNewsBadge, MobileNewsModal
-- Le fonctionnement du scroll horizontal sur les assets (il fonctionne toujours, juste sans scrollbar visible)
+- Toute la logique metier, WebSocket, fetch, TradingView widget JS
+- Le composant CandlestickChart (deja corrige)
+- Layout mobile/tablette (le flex-1 s'adapte naturellement)
+- Les 3 nav cards, navigation, donnees
 
 ## Resultat attendu
 
-- Zero scrollbar visible dans le composant Trading Dashboard
-- Le header du chart reste compact et ne deborde pas
-- La zone chart remplit l'espace restant proprement
-- Experience utilisateur propre et professionnelle
+- Le widget TradingView remplit exactement l'espace disponible sans deborder
+- Zero scrollbar dans le conteneur chart
+- Le bouton Refresh reste visible en bas
+- Aucune regression
 
