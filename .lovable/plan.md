@@ -1,34 +1,52 @@
 
 
-# Fix : Bouton "View Result" invisible en single view
+# Fix : PersistentToast reste ouvert apres fermeture de tous les jobs
 
 ## Cause racine
 
-Le composant `Button` (ligne 444 de PersistentToast.tsx) n'a pas de prop `variant`, donc il utilise le variant **default** qui applique :
-- `gradient-primary` (fond gradient custom qui ecrase `bg-white`)
-- `text-white` (ecrase `text-black`)
-- `shadow-soft`, `border border-white/10`, etc.
+Quand un job se termine, le `PersistentNotificationProvider` appelle `addFlashMessage({ duration: 3000 })`. Mais cette duration n'est jamais utilisee car :
 
-Le `className="bg-white text-black"` passe en argument est ecrase par les styles du variant default car `gradient-primary` est une classe CSS custom plus specifique que les utilitaires Tailwind.
+1. Le composant `FlashMessage` (qui a un timer auto-remove) n'est **pas utilise** dans le PersistentToast -- les flash messages sont rendus en inline dans le JSX du toast
+2. Il n'y a **aucun timer** dans le Provider qui nettoie les flash messages automatiquement
+3. Le guard du PersistentToast (`if (allJobs.length === 0 && flashMessages.length === 0) return null`) ne se declenche jamais car `flashMessages` n'est jamais vide apres une completion
 
-## Correctif
+Resultat : l'utilisateur ferme tous les jobs via le bouton X (`markJobAsViewed`), les jobs disparaissent, mais les flash messages restent dans le state. Le toast reste affiche avec un spinner ou un contenu vide.
 
-**Fichier** : `src/components/PersistentToast.tsx`, ligne 444
+## Correctif (1 fichier, patch minimal)
 
-Ajouter `variant="ghost"` au bouton "View Result". Le variant ghost applique uniquement `hover:bg-accent hover:text-white border-transparent shadow-none`, ce qui permet aux classes explicites `bg-white text-black` de s'appliquer correctement sans conflit.
+### `src/components/PersistentNotificationProvider.tsx`
 
-```tsx
-<Button 
-  size="sm"
-  variant="ghost"
-  onClick={(e) => { e.stopPropagation(); navigateToResult(currentJob as any); }}
-  className="text-[11px] h-7 flex-1 bg-white text-black hover:bg-white/90 font-medium border-0 shadow-none"
->
+Ajouter un `useEffect` qui auto-supprime les flash messages apres leur `duration` (ou 4 secondes par defaut). Cela reproduit exactement le comportement du composant `FlashMessage` standalone mais au niveau du state centralisé.
+
+```typescript
+// Auto-remove flash messages after their duration
+useEffect(() => {
+  if (flashMessages.length === 0) return;
+  
+  const timers = flashMessages.map(msg => {
+    const duration = msg.duration || 4000;
+    return setTimeout(() => {
+      removeFlashMessage(msg.id);
+    }, duration);
+  });
+  
+  return () => timers.forEach(clearTimeout);
+}, [flashMessages]);
 ```
 
-## Ce qui ne change pas
+Ce useEffect sera place juste apres la definition de `removeFlashMessage` (ligne 79).
 
-- Aucune autre ligne modifiee
-- Meme apparence visuelle cible (fond blanc, texte noir)
-- Meme comportement au clic
+### Ce qui ne change pas
+
+- `markJobAsViewed` : inchange
+- Logique de completion/error des jobs : inchangee
+- Rendu du PersistentToast : inchange
+- Le composant FlashMessage standalone : inchange
+- Toute autre fonctionnalite
+
+### Resultat attendu
+
+- Les flash messages disparaissent automatiquement apres 3-4 secondes
+- Une fois tous les jobs fermes ET les flash messages expires, le toast disparait completement
+- Zero spinner residuel, zero toast zombie
 
