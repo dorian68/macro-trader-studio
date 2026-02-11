@@ -854,7 +854,7 @@ export default function Auth() {
               <img
                 src="/logos/alphalens-ai-text.png"
                 alt="Alphalens AI"
-                className="h-20 w-auto object-contain"
+                className="h-24 w-auto object-contain"
               />
             </div>
             <CardTitle className="text-2xl font-bold">{t('welcomeToAlphalens')}</CardTitle>
