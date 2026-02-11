@@ -71,7 +71,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
         </TabsList>
 
         {/* Slide 1: Quick Access Nav Cards */}
-        <TabsContent value="quick-access" className="flex-1 min-h-0 flex flex-col gap-2 mt-2 overflow-hidden animate-fade-in">
+        <TabsContent value="quick-access" className="flex-1 min-h-0 gap-2 mt-2 overflow-hidden animate-fade-in">
           <Card
             className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
             onClick={() => navigate('/trade-generator')}
@@ -137,7 +137,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
         </TabsContent>
 
         {/* Slide 2: Market Intelligence (paginated) */}
-        <TabsContent value="market-intel" className="flex-1 min-h-0 flex flex-col mt-2 overflow-hidden animate-fade-in">
+        <TabsContent value="market-intel" className="flex-1 min-h-0 mt-2 overflow-hidden animate-fade-in">
           {/* Category filters */}
           <div className="flex gap-1 mb-2 shrink-0">
             {['all', 'general', 'forex', 'crypto'].map(cat => (
