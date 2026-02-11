@@ -45,7 +45,6 @@ export function useRealtimeResponseInjector({
             title: "Macro Analysis Complete",
             description: "Your macro commentary is ready. Navigate to the Macro Analysis page to view it.",
             duration: 10000,
-            className: "fixed top-4 left-4 z-[100] max-w-sm"
           });
         }
         break;
@@ -60,7 +59,6 @@ export function useRealtimeResponseInjector({
             title: "Trade Setup Complete",
             description: "Your AI trade setup is ready. Navigate to the Trading Dashboard to view it.",
             duration: 10000,
-            className: "fixed top-4 left-4 z-[100] max-w-sm"
           });
         }
         break;
@@ -77,7 +75,6 @@ export function useRealtimeResponseInjector({
             title: "Report Complete",
             description: "Your report has been generated and is ready for export.",
             duration: 10000,
-            className: "fixed top-4 left-4 z-[100] max-w-sm"
           });
         }
         break;
@@ -88,7 +85,6 @@ export function useRealtimeResponseInjector({
           title: "Analysis Complete",
           description: "Your request has been processed successfully.",
           duration: 10000,
-          className: "fixed top-4 left-4 z-[100] max-w-sm"
         });
     }
   }, [onMacroCommentaryResult, onTradeSetupResult, onReportResult, toast]);

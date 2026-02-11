@@ -716,8 +716,8 @@ export default function Auth() {
       <PublicNavbar />
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
         {processingOAuth && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-            <Card className="w-full max-w-sm">
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center" role="dialog" aria-modal="true">
+            <Card className="w-full max-w-sm" tabIndex={-1} ref={(el) => el?.focus()}>
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center gap-4">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
