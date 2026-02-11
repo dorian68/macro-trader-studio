@@ -32,30 +32,19 @@ export function PersistentToast() {
   const hasActiveJobs = activeJobs.length > 0;
   const hasCompletedJobs = completedJobs.length > 0;
   
-  // Clamp selectedJobIndex
-  useEffect(() => {
-    if (allJobs.length > 0 && selectedJobIndex >= allJobs.length) {
-      setSelectedJobIndex(Math.max(0, allJobs.length - 1));
-    }
-  }, [allJobs.length]);
-  
-  useEffect(() => {
-    if (activeJobs.length === 0 && completedJobs.length > 0) {
-      if (selectedJobIndex >= completedJobs.length) {
-        setSelectedJobIndex(0);
-      }
-    }
-  }, [activeJobs.length, completedJobs.length, selectedJobIndex]);
-  
-  const currentJob = allJobs[selectedJobIndex];
+  // Synchronous index clamp — no useEffect lag
+  const safeIndex = allJobs.length > 0 
+    ? Math.min(selectedJobIndex, allJobs.length - 1) 
+    : 0;
+  const currentJob = allJobs[safeIndex];
   const isCompleted = currentJob && (
     'resultData' in currentJob || 
     completedJobs.some(j => j.id === currentJob.id)
   );
   const latestFlash = flashMessages.length > 0 ? flashMessages[flashMessages.length - 1] : null;
   
-  const goToNextJob = () => setSelectedJobIndex((prev) => (prev + 1) % allJobs.length);
-  const goToPreviousJob = () => setSelectedJobIndex((prev) => (prev - 1 + allJobs.length) % allJobs.length);
+  const goToNextJob = () => { if (allJobs.length > 0) setSelectedJobIndex((prev) => (prev + 1) % allJobs.length); };
+  const goToPreviousJob = () => { if (allJobs.length > 0) setSelectedJobIndex((prev) => (prev - 1 + allJobs.length) % allJobs.length); };
 
   // Individual timers for active jobs
   useEffect(() => {
@@ -141,7 +130,8 @@ export function PersistentToast() {
     };
   }, [isDragging, dragOffset]);
 
-  if (totalCount === 0) return null;
+  // Deterministic guard: no jobs AND no flash → render nothing
+  if (allJobs.length === 0 && flashMessages.length === 0) return null;
 
   // ── Render: Job list item (for list view) ──
   const renderJobListItem = (job: typeof allJobs[0], index: number) => {
@@ -153,7 +143,7 @@ export function PersistentToast() {
         key={job.id}
         className={`
           flex items-center gap-2 p-2 rounded-md transition-colors group/item
-          ${isSelected ? 'bg-primary/10 ring-1 ring-primary/20' : 'hover:bg-muted/50'}
+          ${isSelected ? 'bg-white/[0.06] ring-1 ring-border' : 'hover:bg-white/[0.06]'}
         `}
       >
         {/* Status icon */}
@@ -229,11 +219,11 @@ export function PersistentToast() {
           ${isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab'}
           ${isMinimized 
             ? isMobile 
-              ? 'w-14 h-14 rounded-full shadow-lg border-0 bg-card p-0 overflow-visible' 
-              : 'w-16 h-16 rounded-full shadow-lg border-0 bg-card p-0 overflow-visible'
+              ? 'w-14 h-14 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-border/50 bg-card p-0 overflow-visible' 
+              : 'w-16 h-16 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-border/50 bg-card p-0 overflow-visible'
             : isMobile 
-              ? 'w-[calc(100vw-2rem)] max-w-sm shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm' 
-              : 'w-80 shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm'
+              ? 'w-[calc(100vw-2rem)] max-w-sm shadow-[0_8px_30px_rgba(0,0,0,0.6)] border-border bg-card/98 backdrop-blur-md' 
+              : 'w-80 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border-border bg-card/98 backdrop-blur-md'
           }
         `}
         style={{
@@ -281,14 +271,14 @@ export function PersistentToast() {
             {/* Desktop hover preview */}
             {!isMobile && allJobs.length > 0 && (
               <div className="absolute right-full mr-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 pointer-events-auto">
-                <Card className="w-64 shadow-elegant border-primary/20 bg-card/95 backdrop-blur-sm p-2">
+                <Card className="w-64 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border-border bg-card/98 backdrop-blur-md p-2">
                   <div className="space-y-1 max-h-48 overflow-y-auto">
                     {allJobs.slice(0, 5).map((job) => {
                       const jobCompleted = 'resultData' in job;
                       return (
                         <div 
                           key={job.id}
-                          className="p-1.5 rounded-md hover:bg-muted/50 cursor-pointer flex items-center gap-2"
+                          className="p-1.5 rounded-md hover:bg-white/[0.06] cursor-pointer flex items-center gap-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (jobCompleted) {
@@ -350,7 +340,7 @@ export function PersistentToast() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-5 w-5 p-0 hover:bg-muted"
+                    className="h-5 w-5 p-0 hover:bg-white/[0.06]"
                     onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'list' ? 'single' : 'list'); }}
                     title={viewMode === 'list' ? 'Single view' : 'List view'}
                   >
@@ -360,7 +350,7 @@ export function PersistentToast() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 w-5 p-0 hover:bg-muted"
+                  className="h-5 w-5 p-0 hover:bg-white/[0.06]"
                   onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
                 >
                   <Minimize2 className="h-3 w-3" />
@@ -384,7 +374,7 @@ export function PersistentToast() {
                       <ChevronLeft className="h-3.5 w-3.5" />
                     </Button>
                     <span className="text-[10px] text-muted-foreground font-medium tabular-nums">
-                      {selectedJobIndex + 1} / {allJobs.length}
+                      {safeIndex + 1} / {allJobs.length}
                     </span>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
                       onClick={(e) => { e.stopPropagation(); goToNextJob(); }}>
@@ -476,7 +466,7 @@ export function PersistentToast() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-5 w-5 p-0 hover:bg-muted flex-shrink-0 opacity-50 hover:opacity-100"
+                      className="h-5 w-5 p-0 hover:bg-white/[0.06] flex-shrink-0 opacity-50 hover:opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         markJobAsViewed(currentJob.id);
