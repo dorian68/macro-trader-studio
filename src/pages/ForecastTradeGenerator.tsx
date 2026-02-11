@@ -156,6 +156,13 @@ interface CombinedResponse extends N8nTradeResult {
 // ============================================================================
 
 const ALLOWED_ASSETS = ["AUD/USD", "EUR/USD", "BTC/USD", "ETH/USD", "XAU/USD", "XLM/USD"];
+
+const HORIZON_BY_TIMEFRAME: Record<string, number> = {
+  "15min": 12,
+  "30min": 24,
+  "1h": 24,
+  "4h": 30,
+};
 const TIMEFRAMES = ["15min", "30min", "1h", "4h"];
 const RISK_LEVELS = [
   { value: "low", label: "Conservative" },
@@ -1733,20 +1740,10 @@ function ForecastTradeGeneratorContent() {
   // Forecast params
   const [symbol, setSymbol] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15min");
-  const [horizons, setHorizons] = useState("24");
-  const [useMonteCarlo, setUseMonteCarlo] = useState(true);
-  const [paths, setPaths] = useState(3000);
-  const [skew, setSkew] = useState(0.0);
-
   // AI Setup params
   const [riskLevel, setRiskLevel] = useState("medium");
   const [strategy, setStrategy] = useState("breakout");
   const [customNotes, setCustomNotes] = useState("");
-
-  // Advanced options
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [includePredictions, setIncludePredictions] = useState(true);
-  const [includeMetadata, setIncludeMetadata] = useState(false);
 
   // Request state
   const [loading, setLoading] = useState(false);
@@ -1865,17 +1862,8 @@ function ForecastTradeGeneratorContent() {
 
     const startTime = performance.now();
 
-    // Parse horizons first (before creating job)
-    const parsedHorizons = horizons
-      .split(",")
-      .map((h) => parseInt(h.trim(), 10))
-      .filter((h) => !isNaN(h) && h > 0);
-
-    if (parsedHorizons.length === 0) {
-      setError("Invalid horizons. Please enter comma-separated positive integers.");
-      setLoading(false);
-      return;
-    }
+    // Compute horizon from timeframe (hardcoded mapping)
+    const parsedHorizons = [HORIZON_BY_TIMEFRAME[timeframe] || 24];
 
     // ✅ NEW: Variable to track job ID for cleanup on error
     let jobId: string | null = null;
@@ -1891,7 +1879,7 @@ function ForecastTradeGeneratorContent() {
           instrument: symbol,
           horizons: parsedHorizons
         },
-        'AI Trade Setup' // ✅ DB-compatible feature value (routing via request_payload.type)
+        'AI Trade Setup'
       );
       console.log('✅ [TradeGenerator] Job created:', jobId);
 
@@ -1932,13 +1920,14 @@ function ForecastTradeGeneratorContent() {
         }),
         user_email: null,
         isTradeQuery: true,
-        timeframe: timeframe,
-        riskLevel: riskLevel,
-        strategy: strategy,
-        customNotes: customNotes,
+        timeframe,
+        riskLevel,
+        strategy,
+        customNotes,
         horizons: parsedHorizons,
-        use_montecarlo: useMonteCarlo,
-        ...(useMonteCarlo && { paths: paths, skew: skew })
+        use_montecarlo: true,
+        paths: 3000,
+        skew: -0.8,
       };
 
       // Store payload for debug display
@@ -2115,7 +2104,7 @@ function ForecastTradeGeneratorContent() {
                       <div className="flex flex-wrap gap-2 ml-2">
                         <Badge variant="secondary" className="text-xs">{symbol}</Badge>
                         <Badge variant="secondary" className="text-xs">{timeframe}</Badge>
-                        <Badge variant="secondary" className="text-xs">{horizons}h</Badge>
+                        <Badge variant="secondary" className="text-xs">{HORIZON_BY_TIMEFRAME[timeframe] || 24}h</Badge>
                         <Badge variant="secondary" className="text-xs">
                           {STRATEGIES.find(s => s.value === strategy)?.label || strategy}
                         </Badge>
@@ -2137,7 +2126,7 @@ function ForecastTradeGeneratorContent() {
             
             <CollapsibleContent className="collapsible-content">
               <CardContent className="pt-0 pb-4">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   {/* Market Context Card */}
                   <div className="space-y-4 p-4 rounded-xl bg-muted/20 border">
                     <div className="flex items-center gap-2 text-sm font-medium">
@@ -2177,10 +2166,6 @@ function ForecastTradeGeneratorContent() {
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="horizons">Horizons (hours, comma-separated)</Label>
-                        <Input id="horizons" value={horizons} onChange={(e) => setHorizons(e.target.value)} placeholder="24, 48, 72" />
-                      </div>
                     </div>
                   </div>
 
@@ -2236,72 +2221,6 @@ function ForecastTradeGeneratorContent() {
                     </div>
                   </div>
 
-                  {/* Model Options Card */}
-                  <div className="space-y-4 p-4 rounded-xl bg-muted/20 border">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <FlaskConical className="h-4 w-4 text-primary" />
-                      Model Options
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="montecarlo" className="text-sm">
-                          Monte Carlo Simulation
-                        </Label>
-                        <Switch id="montecarlo" checked={useMonteCarlo} onCheckedChange={setUseMonteCarlo} />
-                      </div>
-
-                      {useMonteCarlo && (
-                        <div className="space-y-2">
-                          <Label htmlFor="paths">MC Paths</Label>
-                          <Input
-                            id="paths"
-                            type="number"
-                            value={paths}
-                            onChange={(e) => setPaths(parseInt(e.target.value, 10) || 1000)}
-                            min={100}
-                            max={10000}
-                          />
-                        </div>
-                      )}
-
-                      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="sm" className="w-full justify-between">
-                            <span className="text-xs">Advanced Options</span>
-                            {advancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                          </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="space-y-3 pt-3">
-                          <div className="space-y-2">
-                            <Label htmlFor="skew" className="text-xs">
-                              Skew (-1 to +1)
-                            </Label>
-                            <Input
-                              id="skew"
-                              type="number"
-                              step="0.1"
-                              value={skew}
-                              onChange={(e) => setSkew(parseFloat(e.target.value) || 0)}
-                              min={-1}
-                              max={1}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="predictions" className="text-xs">
-                              Include Predictions
-                            </Label>
-                            <Switch id="predictions" checked={includePredictions} onCheckedChange={setIncludePredictions} />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="metadata" className="text-xs">
-                              Include Metadata
-                            </Label>
-                            <Switch id="metadata" checked={includeMetadata} onCheckedChange={setIncludeMetadata} />
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </CollapsibleContent>
@@ -2596,7 +2515,7 @@ function ForecastTradeGeneratorContent() {
                     error={null}
                     symbol={symbol}
                     timeframe={timeframe}
-                    horizonHours={parseInt(horizons.split(",")[0]?.trim() || "24", 10)}
+                    horizonHours={HORIZON_BY_TIMEFRAME[timeframe] || 24}
                   />
                 </div>
               )}
