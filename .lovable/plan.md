@@ -1,105 +1,50 @@
 
 
-# Dashboard Column 2 Carousel: Quick Access / Market News
+# Fix: Probleme d'affichage du DashboardColumnCarousel
 
-## Overview
+## Diagnostic
 
-Transform the right column of the dashboard into a two-slide carousel that alternates between:
-- **Slide 1 (default)**: The 3 navigation cards (AI Trade Setup, Macro Commentary, Reports)
-- **Slide 2**: Market Intelligence (news feed, paginated, no scrollbars)
+Le probleme vient du composant Radix `TabsContent` : quand un onglet est actif, Radix le rend en `display: block`. Or, le carousel applique des classes flexbox (`flex-1 min-h-0 flex flex-col`) sur le `TabsContent`, qui ne fonctionnent que si l'element parent a `display: flex`.
 
-## Architecture
+Resultat : le `TabsContent` ne s'etire pas pour remplir la hauteur disponible dans la colonne. Les 3 cards sont compressees ou le contenu deborde au lieu de remplir proprement l'espace.
 
-A new component `DashboardColumnCarousel.tsx` wraps both slides using tabs as the switcher (clearer UX than dots for two states). The existing Embla carousel library (already installed) powers the transitions.
+## Solution
 
-## Changes
+Modifier le composant `TabsContent` dans `tabs.tsx` pour ajouter `data-[state=active]:flex` dans les classes de base. Quand l'onglet est actif, il passera automatiquement en `display: flex` au lieu de `display: block`, ce qui permettra aux classes `flex-1`, `flex-col`, `min-h-0` de fonctionner correctement.
 
-### 1. New file: `src/components/DashboardColumnCarousel.tsx`
+## Changements
 
-A self-contained component that:
-- Uses `Tabs` (Quick Access | Market Intelligence) as the control, styled compactly at the top
-- Contains two panels:
-  - **Panel 1**: The 3 existing nav cards (AI Trade Setup, Macro Commentary, Reports) in a vertical `flex-col gap-2 flex-1` layout -- identical markup to current column 2
-  - **Panel 2**: A paginated news feed (no ScrollArea, no scrollbar). News items are displayed in batches of 3-4 with "Prev / Next" micro-buttons at the bottom. Each news item is a compact card (headline + category badge + time). The panel uses `overflow-hidden` and a fixed item count per page to guarantee zero overflow
-- Default tab = "Quick Access" so the 3 cards are visible on arrival
-- Smooth fade transition between panels (CSS `animate-fade-in`)
-- The whole component is `h-full flex flex-col overflow-hidden` to respect the viewport-fit constraint
+### 1. `src/components/ui/tabs.tsx`
 
-### 2. `src/pages/TradingDashboard.tsx`
-
-Replace the desktop column 2 div (lines 295-358) with:
-
-```tsx
-<DashboardColumnCarousel className="min-w-0 min-h-0 order-2 my-0 hidden lg:flex h-full" />
-```
-
-Remove the `lg:hidden` from `MarketNewsCollapsible` (line 424) since it is no longer needed on desktop -- the carousel handles it. Keep `lg:hidden` on `AssetInfoCard`.
-
-Actually, to avoid duplication, MarketNewsCollapsible stays `lg:hidden` for mobile and the carousel renders its own paginated news view on desktop (different UX: paginated cards vs scrollable list).
-
-No other files change. No routes, API, or business logic affected.
-
-### 3. News pagination logic (inside DashboardColumnCarousel)
-
-- Import `useNewsFeed` hook directly
-- Display news in pages of 3 items (compact cards: headline truncated to 2 lines, category badge, timestamp)
-- Bottom bar: page indicator (1/N) + Prev/Next buttons
-- No scrollbar, no ScrollArea -- pure pagination
-- Category filter tabs (All, Forex, Crypto, General) inline at the top of the news panel
-- `overflow-hidden` on the container
-
-## Technical details
+Ajouter `data-[state=active]:flex` a la className de base du `TabsContent` :
 
 ```
-src/components/DashboardColumnCarousel.tsx  (new)
-src/pages/TradingDashboard.tsx              (edit lines 295-358)
+// Before
+"mt-2 ring-offset-background focus-visible:outline-none ..."
+
+// After
+"mt-2 ring-offset-background focus-visible:outline-none ... data-[state=active]:flex data-[state=active]:flex-col"
 ```
 
-### DashboardColumnCarousel structure
+Cela garantit que tout `TabsContent` avec des classes flex enfants (comme `flex-1`, `flex-col`) fonctionnera correctement quand il est actif.
 
-```text
-+------------------------------------------+
-| [Quick Access]  [Market Intelligence]    |  <-- Tabs switcher
-+------------------------------------------+
-|                                          |
-|  Panel 1 (default):                      |
-|  +------------------------------------+  |
-|  | AI Trade Setup          ->         |  |
-|  +------------------------------------+  |
-|  | Macro Commentary        ->         |  |
-|  +------------------------------------+  |
-|  | Reports                 ->         |  |
-|  +------------------------------------+  |
-|                                          |
-|  -- OR --                                |
-|                                          |
-|  Panel 2:                                |
-|  [All] [Forex] [Crypto] [General]        |
-|  +------------------------------------+  |
-|  | Headline 1       category   3h ago |  |
-|  +------------------------------------+  |
-|  | Headline 2       category   1d ago |  |
-|  +------------------------------------+  |
-|  | Headline 3       category   2d ago |  |
-|  +------------------------------------+  |
-|           < 1/4 >                        |
-+------------------------------------------+
-```
+### 2. `src/components/DashboardColumnCarousel.tsx`
 
-### What stays identical
+Nettoyer les classes redondantes sur les deux `TabsContent` puisque `flex` et `flex-col` seront desormais geres par le composant de base :
 
-- All 3 nav cards: same markup, same routes, same icons, same translations
-- Mobile layout: unchanged (stacked cards + MobileNewsBadge + MobileNewsModal)
-- All business logic, WebSocket, API calls, data fetching
-- Chart component (column 1): untouched
-- No new dependencies (uses existing Radix Tabs + useNewsFeed hook)
+- Retirer `flex flex-col` des classNames des `TabsContent` (garder `flex-1 min-h-0 gap-2 mt-2 overflow-hidden animate-fade-in`)
 
-### Expected result
+## Ce qui ne change pas
 
-- Dashboard loads with Slide 1 (Quick Access) visible by default
-- 3 cards immediately accessible, no scroll
-- User clicks "Market Intelligence" tab to see paginated news
-- Zero scrollbars, zero vertical scroll on desktop
-- Smooth tab transitions
-- Premium, cohesive aesthetic
+- Toute la logique metier, navigation, API, donnees
+- Le layout mobile
+- Le contenu des cards et des news
+- Les autres usages de `TabsContent` dans le projet (le `data-[state=active]:flex` est inoffensif car il ne s'applique que quand d'autres classes flex sont presentes)
+
+## Resultat attendu
+
+- Les 3 cards Quick Access remplissent proprement toute la hauteur de la colonne
+- Les news paginees remplissent aussi l'espace disponible
+- Zero debordement, zero compression anormale
+- Aucune regression sur les autres composants utilisant des Tabs
 
