@@ -174,7 +174,7 @@ export function PersistentToast() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-[10px] text-primary hover:text-primary hover:bg-primary/10"
+                className="h-6 px-2 text-[10px] text-primary hover:text-primary bg-white/[0.08] hover:bg-primary/10"
                 onClick={(e) => { e.stopPropagation(); navigateToResult(job as any); }}
               >
                 <Eye className="h-3 w-3 mr-1" />
@@ -183,7 +183,7 @@ export function PersistentToast() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0 opacity-50 hover:opacity-100"
+                className="h-5 w-5 p-0 opacity-70 hover:opacity-100"
                 onClick={(e) => { e.stopPropagation(); markJobAsViewed(job.id); }}
               >
                 <X className="h-3 w-3" />
@@ -431,7 +431,7 @@ export function PersistentToast() {
                                 <p className="text-[10px] text-muted-foreground truncate">{latestFlash.description}</p>
                               )}
                             </div>
-                            <button className="opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); removeFlashMessage(latestFlash.id); }}>
+                            <button className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); removeFlashMessage(latestFlash.id); }}>
                               <X className="h-3 w-3" />
                             </button>
                           </div>
@@ -444,7 +444,7 @@ export function PersistentToast() {
                           <Button 
                             size="sm" 
                             onClick={(e) => { e.stopPropagation(); navigateToResult(currentJob as any); }}
-                            className="text-[11px] h-7 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+                            className="text-[11px] h-7 flex-1 bg-white text-black hover:bg-white/90 font-medium border-0 shadow-none"
                           >
                             <Eye className="h-3 w-3 mr-1" />
                             View Result
@@ -466,7 +466,7 @@ export function PersistentToast() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-5 w-5 p-0 hover:bg-white/[0.06] flex-shrink-0 opacity-50 hover:opacity-100"
+                      className="h-5 w-5 p-0 hover:bg-white/[0.06] flex-shrink-0 opacity-70 hover:opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         markJobAsViewed(currentJob.id);
