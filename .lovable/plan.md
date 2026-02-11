@@ -1,94 +1,101 @@
+Patch UX: PersistentToast — Ergonomie améliorée, contrôle total utilisateur (sans régression)
+Contexte / Intention
 
+Je ne veux pas introduire de logique qui “décide à la place de l’utilisateur” (auto-dismiss, timers, fermeture automatique, suppression en masse par défaut).
+Un utilisateur peut vouloir conserver certains jobs terminés pour les consulter plus tard.
 
-# Market Intelligence : Images + Modes d'affichage (style Explorateur Windows)
+➡️ L’objectif est uniquement d’améliorer l’ergonomie et la fluidité, en laissant le contrôle total à l’utilisateur, et sans régression.
 
-## Objectif
+Diagnostic (problèmes UX actuels)
 
-Enrichir le panel "Market Intelligence" du carousel avec :
-1. Les **images des articles** (deja disponibles via `item.image` dans le hook `useNewsFeed`)
-2. Un **selecteur de mode d'affichage** permettant a l'utilisateur de choisir entre 3 vues, comme l'explorateur de fichiers Windows
+Fermeture/gestion laborieuse quand plusieurs jobs sont présents : trop de micro-actions, pas assez clair.
 
-## Les 3 modes d'affichage
+Manque de contrôle fin : l’utilisateur doit pouvoir gérer facilement job par job.
 
-| Mode | Icone | Description | Items/page |
-|------|-------|-------------|------------|
-| **Liste** | `List` | Compact : headline + badge + time sur une ligne, pas d'image | 5 |
-| **Petites icones** | `LayoutGrid` | Thumbnail 40x40 a gauche + headline + meta a droite | 3 |
-| **Grandes icones** | `Image` | Image large en haut (h-24) + headline + summary en dessous | 2 |
+Lisibilité : quand il y a plusieurs jobs (actifs + terminés), l’utilisateur doit comprendre rapidement :
 
-## Changements
+ce qui est en cours
 
-### `src/components/DashboardColumnCarousel.tsx`
+ce qui est terminé
 
-**Nouvel etat** : `viewMode` avec 3 valeurs (`'list' | 'compact' | 'large'`), default = `'compact'` (petites icones, similaire a l'ancien affichage avec images).
+ce qui demande une action (voir résultat)
 
-**Selecteur de vue** : 3 boutons icones places a droite des filtres de categorie, dans la meme barre. Utilisation de `ToggleGroup` (deja installe via Radix) pour un look propre :
+Scrollbars et bruit visuel : certains comportements/éléments nuisent à l’esthétique et à la sensation “produit premium”.
 
-```text
-[All] [General] [Forex] [Crypto]     [≡] [⊞] [▣]
-                                     list compact large
-```
+Principes UX à respecter (non négociables)
 
-Le bouton actif est mis en surbrillance (`bg-primary text-primary-foreground`).
+✅ Zéro auto-dismiss / zéro timer : rien ne disparaît tout seul.
 
-**Items par page dynamique** : `ITEMS_PER_PAGE` devient une variable derivee de `viewMode` :
-- `list` = 5 items
-- `compact` = 3 items
-- `large` = 2 items
+✅ Pas de “Dismiss All” automatique ou agressif.
+(Optionnel : un bouton de gestion globale peut exister uniquement si c’est explicite, non destructif, et jamais déclenché par défaut.)
 
-**Rendu conditionnel par mode** :
+✅ L’utilisateur garde la main : il peut minimiser, fermer, archiver ou marquer comme vu individuellement.
 
-- **Liste** : `<div>` horizontal simple, headline tronque a 1 ligne, badge + time a droite. Pas d'image. Dense et rapide a scanner.
+✅ Sans régression : ne pas casser la logique jobs/realtime/session/toasters/navigation.
 
-- **Petites icones (compact)** : Le rendu actuel enrichi d'un thumbnail `item.image` (40x40, `object-cover rounded`) a gauche du texte. Si pas d'image, affichage sans. Headline 2 lignes max + meta.
+Solution demandée (UX seulement)
+1) Gestion claire “job par job”
 
-- **Grandes icones (large)** : Image en banniere (`w-full h-24 object-cover rounded-t-lg`), puis headline + summary (2 lignes) + meta en dessous. Format "carte magazine".
+Le bouton X doit fermer uniquement le job actuellement affiché (ou l’item visé), jamais les autres.
 
-**Gestion des images manquantes** : Si `item.image` est `null`, les modes compact/large affichent un placeholder gris avec une icone `Newspaper` au centre.
+Les jobs terminés restent disponibles tant que l’utilisateur ne les ferme/mark pas explicitement.
 
-**Pagination** : Le calcul `totalPages` et `pageItems` reste identique, seul `ITEMS_PER_PAGE` change selon le mode. Le changement de mode remet `page` a 0.
+2) Navigation multi-jobs plus ergonomique
 
-### Imports supplementaires
+Quand plusieurs jobs existent, afficher une navigation claire (ex. compteur “Job 2/5”, chips, tabs, ou liste compacte) pour passer d’un job à l’autre sans friction.
 
-- `List`, `LayoutGrid`, `Image`, `Newspaper` de `lucide-react`
-- `ToggleGroup`, `ToggleGroupItem` de `@/components/ui/toggle-group` (deja existant)
+Les jobs actifs et terminés doivent être clairement distingués (icône/status + label).
 
-### Ce qui ne change pas
+3) Minimisation plus intelligente mais non destructive
 
-- Hook `useNewsFeed` : inchange
-- Quick Access (Slide 1) : inchange
-- `MarketNewsCollapsible` (mobile) : inchange
-- Logique de pagination, filtres categorie, navigation : inchanges
-- Layout global du dashboard : inchange
-- Aucune nouvelle dependance
+Minimiser doit seulement réduire l’encombrement visuel, sans supprimer d’info.
 
-## Structure visuelle du panel Market Intelligence
+La bulle minimisée doit être plus informative :
 
-```text
-+------------------------------------------+
-| [Quick Access]  [Market Intelligence]    |
-+------------------------------------------+
-| [All] [General] [Forex] [Crypto]  [≡][⊞][▣] |
-+------------------------------------------+
-|                                          |
-|  Mode "compact" (default):               |
-|  +------------------------------------+  |
-|  | [img] Headline text...    forex 3h |  |
-|  +------------------------------------+  |
-|  | [img] Headline text...    crypto 1d|  |
-|  +------------------------------------+  |
-|  | [img] Headline text...    general 5h| |
-|  +------------------------------------+  |
-|                                          |
-|           < Prev  1/4  Next >            |
-+------------------------------------------+
-```
+afficher un compteur (ex. actifs/terminés)
 
-## Resultat attendu
+indiquer visuellement si un résultat attend d’être consulté
 
-- Les images des articles sont de nouveau visibles (comme avant)
-- L'utilisateur peut choisir son mode d'affichage prefere
-- Zero scrollbar, pagination adaptee au mode choisi
-- UI premium et coherente avec le reste du dashboard
-- Aucune regression sur Quick Access, mobile, ou logique metier
+Un clic sur la bulle réouvre le toast (comportement simple, prévisible).
+Pas de fermeture implicite.
 
+4) Esthétique premium (réduction des scrollbars et du bruit)
+
+Réduire au maximum les scrollbars visibles et les comportements “bruyants”.
+
+Si overflow nécessaire, privilégier :
+
+layout compact
+
+pagination / navigation interne propre
+
+hauteurs maîtrisées
+au lieu d’un gros scroll interne qui casse l’UI.
+
+Changements attendus (fichiers)
+
+src/components/PersistentToast.tsx : ajustements UX (navigation, contrôles job par job, minimisation plus informative, pas de timer)
+
+src/components/PersistentNotificationProvider.tsx : uniquement si nécessaire pour supporter une meilleure UX (mais sans logique auto)
+
+Ce qui ne doit pas changer (zéro régression)
+
+Création jobs (realtime INSERT)
+
+Completion jobs (realtime UPDATE)
+
+Système de crédits
+
+Navigation, sessionStorage injection, redirections existantes
+
+Composants existants (MiniProgressBubble, DiscreetJobStatus, etc.) sauf retouches UI strictement nécessaires
+
+Résultat attendu
+
+UX plus fluide, plus claire, plus “premium”
+
+Multi-jobs gérable sans effort
+
+Contrôle total utilisateur : rien ne se ferme/se supprime tout seul
+
+Aucune régression fonctionnelle
