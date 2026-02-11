@@ -259,7 +259,7 @@ export default function TradingDashboard() {
       {/* Main viewport-locked content */}
       <div className="space-y-2">
         {/* Row 1: Chart + Nav Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:h-[calc(100vh-3.5rem-1rem)]">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
           <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full">
             <CandlestickChart
