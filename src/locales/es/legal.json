@@ -1,77 +1,184 @@
 {
   "terms": {
     "title": "Términos de Servicio",
-    "lastUpdated": "Última actualización: {{date}}",
+    "lastUpdated": "Última actualización: febrero de 2026",
     "acceptance": {
       "title": "1. Aceptación de los Términos",
-      "content": "Al acceder y utilizar Alphalens.ai ('el Servicio'), usted acepta estar sujeto a estos Términos de Servicio. Si no está de acuerdo con alguna parte de estos términos, no podrá acceder al Servicio."
+      "description": "Al acceder y utilizar Alphalens.ai (\"el Servicio\"), usted acepta estar sujeto a estos Términos de Servicio. Si no está de acuerdo con estos términos, no utilice nuestro Servicio. El uso continuado del Servicio tras cualquier modificación constituye la aceptación de los términos actualizados."
     },
-    "description": {
+    "service": {
       "title": "2. Descripción del Servicio",
-      "content": "Alphalens.ai proporciona análisis de mercado impulsado por IA, configuraciones de trading y perspectivas de inversión. El Servicio está destinado únicamente para fines informativos y educativos."
+      "description": "Alphalens.ai proporciona investigación financiera impulsada por IA, perspectivas de trading y herramientas de análisis de carteras. Nuestro Servicio incluye:",
+      "feature1": "Configuraciones de trading y análisis de mercado generados por IA",
+      "feature2": "Comentarios macroeconómicos y perspectivas económicas",
+      "feature3": "Herramientas de gestión de carteras y evaluación de riesgos",
+      "feature4": "Datos de mercado en tiempo real e indicadores técnicos"
     },
-    "userResponsibilities": {
+    "responsibilities": {
       "title": "3. Responsabilidades del Usuario",
-      "content": "Usted es responsable de mantener la confidencialidad de su cuenta y contraseña. Acepta aceptar la responsabilidad de todas las actividades que ocurran bajo su cuenta."
+      "intro": "Usted se compromete a:",
+      "item1": "Proporcionar información de registro precisa y completa",
+      "item2": "Mantener la seguridad de las credenciales de su cuenta",
+      "item3": "Utilizar el Servicio de conformidad con todas las leyes y regulaciones aplicables",
+      "item4": "No intentar realizar ingeniería inversa, explotar o interrumpir el Servicio",
+      "item5": "No compartir su cuenta con terceros no autorizados"
     },
-    "investmentDisclaimer": {
+    "disclaimer": {
       "title": "4. Aviso de Inversión",
-      "content": "La información proporcionada por Alphalens.ai no constituye asesoramiento de inversión. Todas las decisiones de trading e inversión son responsabilidad exclusiva del usuario. El rendimiento pasado no garantiza resultados futuros."
+      "warning": "IMPORTANTE: El trading y la inversión implican un riesgo sustancial de pérdida.",
+      "description": "Alphalens.ai proporciona contenido informativo y herramientas analíticas únicamente. No proporcionamos asesoramiento de inversión, y nuestras perspectivas generadas por IA no deben interpretarse como recomendaciones financieras personalizadas. Usted es el único responsable de sus decisiones de trading y sus resultados.",
+      "advice": "Los resultados pasados no garantizan resultados futuros. Siempre realice su propia investigación y consulte con asesores financieros cualificados antes de tomar decisiones de inversión."
+    },
+    "ai": {
+      "title": "5. Transparencia de IA y Cumplimiento del EU AI Act",
+      "description": "De conformidad con la Ley de Inteligencia Artificial de la UE (Reglamento 2024/1689), divulgamos lo siguiente sobre el uso de nuestros sistemas de IA:",
+      "item1": "Todas las configuraciones de trading, análisis de mercado y perspectivas son generados por modelos de inteligencia artificial y no constituyen asesoramiento financiero personalizado",
+      "item2": "Nuestros sistemas de IA están clasificados como de riesgo limitado bajo el EU AI Act; los usuarios son informados claramente cuando interactúan con contenido generado por IA",
+      "item3": "Los resultados de la IA pueden contener imprecisiones o errores — los usuarios deben ejercer un juicio independiente antes de actuar sobre cualquier recomendación generada por IA",
+      "item4": "Tiene derecho a solicitar la revisión humana de cualquier decisión automatizada que le afecte significativamente, de conformidad con el Artículo 22 del RGPD"
     },
     "subscription": {
-      "title": "5. Suscripción y Facturación",
-      "content": "Al suscribirse a un plan de pago, acepta pagar todas las tarifas asociadas con el plan elegido. Las suscripciones se renovarán automáticamente a menos que se cancelen antes del próximo período de facturación."
+      "title": "6. Suscripción y Facturación",
+      "item1": "Las suscripciones se facturan mensual o anualmente por adelantado",
+      "item2": "Los períodos de prueba gratuitos no requieren información de pago",
+      "item3": "Puede cancelar su suscripción en cualquier momento; la cancelación surte efecto al final del período de facturación actual",
+      "item4": "Los reembolsos se proporcionan a nuestra discreción caso por caso",
+      "item5": "Las asignaciones de créditos se reinician según el ciclo de renovación de su plan"
     },
-    "intellectualProperty": {
-      "title": "6. Propiedad Intelectual",
-      "content": "Todo el contenido, características y funcionalidad del Servicio son propiedad de Alphalens.ai y están protegidos por leyes internacionales de derechos de autor, marcas comerciales y otras leyes de propiedad intelectual."
+    "intellectual": {
+      "title": "7. Propiedad Intelectual",
+      "description": "Todo el contenido, características y funcionalidad de Alphalens.ai — incluyendo algoritmos, modelos, interfaces y documentación — son de nuestra propiedad y están protegidos por leyes internacionales de derechos de autor, marcas comerciales, patentes y otras leyes de propiedad intelectual. No puede copiar, modificar, distribuir ni crear obras derivadas sin nuestro permiso escrito expreso."
     },
     "liability": {
-      "title": "7. Limitación de Responsabilidad",
-      "content": "Alphalens.ai no será responsable de pérdidas directas, indirectas, incidentales o consecuentes que resulten del uso o la imposibilidad de uso del Servicio."
+      "title": "8. Limitación de Responsabilidad",
+      "description": "En la medida máxima permitida por la ley aplicable, Alphalens.ai y sus afiliados no serán responsables de daños indirectos, incidentales, especiales, consecuentes o punitivos, incluyendo pero no limitado a pérdida de beneficios, datos, pérdidas de trading o interrupción del negocio, derivados del uso o la imposibilidad de uso del Servicio."
+    },
+    "dataRetention": {
+      "title": "9. Conservación de Datos",
+      "description": "Conservamos sus datos durante los siguientes períodos, de conformidad con el Artículo 5(1)(e) del RGPD y las regulaciones financieras aplicables:",
+      "item1": "Datos de cuenta: conservados durante la duración de su cuenta activa más 3 años tras la eliminación",
+      "item2": "Historial de trading e interacciones con IA: conservados durante 5 años por cumplimiento regulatorio",
+      "item3": "Registros de pago: conservados durante 7 años según las regulaciones fiscales y financieras",
+      "item4": "Registros del servidor y analíticas: conservados durante 12 meses, luego anonimizados"
+    },
+    "age": {
+      "title": "10. Restricción de Edad",
+      "description": "El Servicio está destinado a usuarios mayores de 18 años. Al utilizar Alphalens.ai, confirma que tiene al menos 18 años de edad. No recopilamos conscientemente datos de personas menores de 18 años. Si tenemos conocimiento de que un usuario es menor de 18 años, procederemos a la terminación de su cuenta y eliminación de los datos asociados."
     },
     "availability": {
-      "title": "8. Disponibilidad del Servicio",
-      "content": "Nos esforzamos por mantener el Servicio disponible las 24 horas del día, los 7 días de la semana, pero no podemos garantizar un tiempo de actividad ininterrumpido. Nos reservamos el derecho de modificar o discontinuar el Servicio en cualquier momento."
+      "title": "11. Disponibilidad del Servicio",
+      "description": "Nos esforzamos por mantener una alta disponibilidad, pero no garantizamos un acceso ininterrumpido al Servicio. Podemos modificar, suspender o descontinuar cualquier aspecto del Servicio en cualquier momento con un aviso razonable."
+    },
+    "governing": {
+      "title": "12. Legislación Aplicable y Jurisdicción",
+      "description": "Estos Términos se regirán e interpretarán de conformidad con las leyes de la Unión Europea y, en su caso, las leyes de España. Cualquier disputa que surja de estos Términos se someterá a los tribunales competentes de Madrid, España, sin perjuicio de los derechos que le asistan en virtud de las leyes de protección del consumidor de su país de residencia."
+    },
+    "changes": {
+      "title": "13. Modificaciones de los Términos",
+      "description": "Nos reservamos el derecho de modificar estos Términos en cualquier momento. Los cambios sustanciales se comunicarán con al menos 30 días de antelación por correo electrónico o mediante un aviso destacado en el Servicio. El uso continuado del Servicio tras la fecha de entrada en vigor de cualquier modificación constituye la aceptación de los Términos actualizados."
     },
     "contact": {
-      "title": "9. Contacto",
-      "content": "Si tiene alguna pregunta sobre estos Términos de Servicio, contáctenos en contact@alphalens.ai"
+      "title": "14. Información de Contacto",
+      "description": "Para preguntas sobre estos Términos de Servicio, contáctenos en:",
+      "email": "Email: research@albaricg.com"
     }
   },
   "privacy": {
     "title": "Política de Privacidad",
-    "lastUpdated": "Última actualización: {{date}}",
+    "lastUpdated": "Última actualización: febrero de 2026",
     "collection": {
       "title": "1. Información que Recopilamos",
-      "content": "Recopilamos información que usted nos proporciona directamente, incluido su nombre, dirección de correo electrónico, información de pago e historial de uso del servicio."
+      "description": "Recopilamos información que usted nos proporciona directamente, incluida:",
+      "item1": "Información de cuenta (nombre, correo electrónico, datos de empresa)",
+      "item2": "Preferencias de trading y datos de cartera",
+      "item3": "Datos de uso e interacción con nuestras funciones de IA",
+      "item4": "Información de pago (procesada de forma segura a través de Stripe — nunca almacenamos datos de tarjeta)"
+    },
+    "legalBasis": {
+      "title": "2. Base Legal del Tratamiento (RGPD Art. 6)",
+      "description": "Tratamos sus datos personales sobre las siguientes bases legales:",
+      "item1": "Consentimiento (Art. 6(1)(a)): para comunicaciones de marketing y cookies analíticas opcionales",
+      "item2": "Ejecución del contrato (Art. 6(1)(b)): para prestar el Servicio, gestionar su cuenta y procesar pagos",
+      "item3": "Obligación legal (Art. 6(1)(c)): para cumplir con las regulaciones fiscales, de información financiera y contra el blanqueo de capitales",
+      "item4": "Interés legítimo (Art. 6(1)(f)): para mejorar nuestro Servicio, garantizar la seguridad y prevenir el fraude"
     },
     "usage": {
-      "title": "2. Cómo Usamos Su Información",
-      "content": "Utilizamos su información para proporcionar, mantener y mejorar nuestros servicios, procesar transacciones, enviar comunicaciones técnicas y responder a sus solicitudes."
+      "title": "3. Cómo Usamos Su Información",
+      "intro": "Utilizamos la información que recopilamos para:",
+      "item1": "Proporcionar, mantener y mejorar nuestros servicios",
+      "item2": "Generar perspectivas de trading personalizadas impulsadas por IA",
+      "item3": "Procesar sus transacciones y gestionar suscripciones",
+      "item4": "Enviarle avisos técnicos y mensajes de soporte",
+      "item5": "Comunicar sobre productos, funciones y actualizaciones (con su consentimiento)"
     },
     "security": {
-      "title": "3. Seguridad de Datos",
-      "content": "Implementamos medidas de seguridad apropiadas para proteger contra el acceso no autorizado, alteración, divulgación o destrucción de su información personal."
+      "title": "4. Seguridad de Datos",
+      "description": "Implementamos medidas de seguridad robustas para proteger sus datos, en cumplimiento del Artículo 32 del RGPD y los requisitos de DORA:",
+      "item1": "Cifrado de extremo a extremo para datos financieros sensibles (TLS 1.3 en tránsito, AES-256 en reposo)",
+      "item2": "Auditorías de seguridad periódicas y pruebas de penetración",
+      "item3": "Infraestructura cloud segura con Supabase (alojada en la UE cuando corresponda)",
+      "item4": "Controles de acceso estrictos, autenticación multifactor y permisos basados en roles"
     },
     "sharing": {
-      "title": "4. Compartir Información",
-      "content": "No vendemos, comercializamos ni transferimos su información de identificación personal a terceros sin su consentimiento, excepto cuando sea requerido por ley."
+      "title": "5. Compartir Datos",
+      "description": "No vendemos su información personal. Solo podemos compartir sus datos:",
+      "item1": "Con su consentimiento explícito",
+      "item2": "Con proveedores de servicios verificados que asisten nuestras operaciones (bajo Acuerdos de Procesamiento de Datos)",
+      "item3": "Para cumplir con obligaciones legales, órdenes judiciales o solicitudes regulatorias",
+      "item4": "Con su bróker si ha vinculado su cuenta de corretaje"
+    },
+    "transfers": {
+      "title": "6. Transferencias Internacionales de Datos",
+      "description": "Sus datos pueden transferirse fuera del Espacio Económico Europeo (EEE). Cuando esto ocurre, garantizamos una protección adecuada mediante:",
+      "item1": "Cláusulas Contractuales Tipo (CCT) de la UE aprobadas por la Comisión Europea",
+      "item2": "Decisiones de adecuación reconocidas por la Comisión Europea para el país de destino",
+      "item3": "Normas Corporativas Vinculantes u otros mecanismos de transferencia aprobados bajo el Capítulo V del RGPD"
+    },
+    "retention": {
+      "title": "7. Períodos de Conservación de Datos",
+      "description": "Conservamos sus datos solo durante el tiempo necesario para los fines descritos en esta política:",
+      "item1": "Datos de cuenta: duración de su cuenta más 3 años tras la eliminación",
+      "item2": "Registros de interacciones con IA: 5 años (cumplimiento regulatorio)",
+      "item3": "Registros de pago: 7 años (regulaciones fiscales y financieras)",
+      "item4": "Registros del servidor: 12 meses, luego anonimizados o eliminados"
+    },
+    "profiling": {
+      "title": "8. Perfilado y Toma de Decisiones Automatizadas",
+      "description": "Nuestro Servicio utiliza algoritmos de IA para generar configuraciones de trading y análisis de mercado. Estos resultados son meramente informativos y no producen efectos legales o de importancia similar sobre usted. Tiene derecho a solicitar la intervención humana, expresar su punto de vista y contestar cualquier decisión automatizada en virtud del Artículo 22 del RGPD. Para ejercer este derecho, contacte a nuestro DPO."
+    },
+    "aiTransparency": {
+      "title": "9. Transparencia de IA (EU AI Act)",
+      "description": "En cumplimiento de la Ley de Inteligencia Artificial de la UE (Reglamento 2024/1689):",
+      "item1": "Todo el contenido generado por IA está claramente etiquetado como tal dentro del Servicio",
+      "item2": "No utilizamos sus datos personales para entrenar modelos de IA sin su consentimiento explícito",
+      "item3": "Puede solicitar una explicación detallada de cómo se generaron los resultados de IA para sus consultas específicas"
     },
     "rights": {
-      "title": "5. Sus Derechos",
-      "content": "Tiene derecho a acceder, corregir o eliminar su información personal. Puede solicitar estos cambios contactándonos en contact@alphalens.ai"
+      "title": "10. Sus Derechos (RGPD Artículos 15–22)",
+      "intro": "En virtud del RGPD, usted tiene los siguientes derechos:",
+      "item1": "Derecho de acceso: obtener una copia de sus datos personales (Art. 15)",
+      "item2": "Derecho de rectificación: corregir datos inexactos o incompletos (Art. 16)",
+      "item3": "Derecho de supresión: solicitar la eliminación de sus datos ('derecho al olvido') (Art. 17)",
+      "item4": "Derecho a la limitación: restringir cómo procesamos sus datos (Art. 18)",
+      "item5": "Derecho a la portabilidad: recibir sus datos en un formato estructurado y legible por máquina (Art. 20)",
+      "item6": "Derecho de oposición: oponerse al tratamiento basado en interés legítimo o para marketing directo (Art. 21)"
     },
     "cookies": {
-      "title": "6. Cookies",
-      "content": "Utilizamos cookies y tecnologías similares para mejorar su experiencia, analizar tendencias y administrar el sitio web."
+      "title": "11. Cookies y Seguimiento",
+      "description": "Utilizamos cookies y tecnologías similares para mejorar la experiencia del usuario, analizar patrones de uso y mantener la seguridad de la sesión. Las cookies esenciales son necesarias para el funcionamiento del Servicio. Las cookies analíticas y de marketing solo se activan con su consentimiento explícito. Puede gestionar sus preferencias de cookies en cualquier momento."
+    },
+    "dpo": {
+      "title": "12. Delegado de Protección de Datos (DPO)",
+      "description": "Nuestro Delegado de Protección de Datos supervisa el cumplimiento del RGPD y las leyes de protección de datos aplicables. Para cualquier consulta sobre protección de datos, solicitudes de derechos o reclamaciones, contacte a nuestro DPO en:",
+      "email": "DPO: dpo@alphalens.ai"
     },
     "contact": {
-      "title": "7. Contacto",
-      "content": "Para preguntas sobre esta Política de Privacidad, contáctenos en contact@alphalens.ai"
+      "title": "13. Contacto",
+      "description": "Si tiene preguntas generales sobre esta Política de Privacidad o nuestras prácticas de datos, contáctenos en:",
+      "email": "Email: research@albaricg.com"
     }
   },
   "footer": {
-    "copyright": "© 2024 Alphalens.ai. Todos los derechos reservados."
+    "copyright": "© 2026 alphaLens.ai. Todos los derechos reservados."
   }
 }
