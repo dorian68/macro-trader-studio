@@ -1,50 +1,94 @@
 
 
-# Fix: Probleme d'affichage du DashboardColumnCarousel
+# Market Intelligence : Images + Modes d'affichage (style Explorateur Windows)
 
-## Diagnostic
+## Objectif
 
-Le probleme vient du composant Radix `TabsContent` : quand un onglet est actif, Radix le rend en `display: block`. Or, le carousel applique des classes flexbox (`flex-1 min-h-0 flex flex-col`) sur le `TabsContent`, qui ne fonctionnent que si l'element parent a `display: flex`.
+Enrichir le panel "Market Intelligence" du carousel avec :
+1. Les **images des articles** (deja disponibles via `item.image` dans le hook `useNewsFeed`)
+2. Un **selecteur de mode d'affichage** permettant a l'utilisateur de choisir entre 3 vues, comme l'explorateur de fichiers Windows
 
-Resultat : le `TabsContent` ne s'etire pas pour remplir la hauteur disponible dans la colonne. Les 3 cards sont compressees ou le contenu deborde au lieu de remplir proprement l'espace.
+## Les 3 modes d'affichage
 
-## Solution
-
-Modifier le composant `TabsContent` dans `tabs.tsx` pour ajouter `data-[state=active]:flex` dans les classes de base. Quand l'onglet est actif, il passera automatiquement en `display: flex` au lieu de `display: block`, ce qui permettra aux classes `flex-1`, `flex-col`, `min-h-0` de fonctionner correctement.
+| Mode | Icone | Description | Items/page |
+|------|-------|-------------|------------|
+| **Liste** | `List` | Compact : headline + badge + time sur une ligne, pas d'image | 5 |
+| **Petites icones** | `LayoutGrid` | Thumbnail 40x40 a gauche + headline + meta a droite | 3 |
+| **Grandes icones** | `Image` | Image large en haut (h-24) + headline + summary en dessous | 2 |
 
 ## Changements
 
-### 1. `src/components/ui/tabs.tsx`
+### `src/components/DashboardColumnCarousel.tsx`
 
-Ajouter `data-[state=active]:flex` a la className de base du `TabsContent` :
+**Nouvel etat** : `viewMode` avec 3 valeurs (`'list' | 'compact' | 'large'`), default = `'compact'` (petites icones, similaire a l'ancien affichage avec images).
 
+**Selecteur de vue** : 3 boutons icones places a droite des filtres de categorie, dans la meme barre. Utilisation de `ToggleGroup` (deja installe via Radix) pour un look propre :
+
+```text
+[All] [General] [Forex] [Crypto]     [≡] [⊞] [▣]
+                                     list compact large
 ```
-// Before
-"mt-2 ring-offset-background focus-visible:outline-none ..."
 
-// After
-"mt-2 ring-offset-background focus-visible:outline-none ... data-[state=active]:flex data-[state=active]:flex-col"
+Le bouton actif est mis en surbrillance (`bg-primary text-primary-foreground`).
+
+**Items par page dynamique** : `ITEMS_PER_PAGE` devient une variable derivee de `viewMode` :
+- `list` = 5 items
+- `compact` = 3 items
+- `large` = 2 items
+
+**Rendu conditionnel par mode** :
+
+- **Liste** : `<div>` horizontal simple, headline tronque a 1 ligne, badge + time a droite. Pas d'image. Dense et rapide a scanner.
+
+- **Petites icones (compact)** : Le rendu actuel enrichi d'un thumbnail `item.image` (40x40, `object-cover rounded`) a gauche du texte. Si pas d'image, affichage sans. Headline 2 lignes max + meta.
+
+- **Grandes icones (large)** : Image en banniere (`w-full h-24 object-cover rounded-t-lg`), puis headline + summary (2 lignes) + meta en dessous. Format "carte magazine".
+
+**Gestion des images manquantes** : Si `item.image` est `null`, les modes compact/large affichent un placeholder gris avec une icone `Newspaper` au centre.
+
+**Pagination** : Le calcul `totalPages` et `pageItems` reste identique, seul `ITEMS_PER_PAGE` change selon le mode. Le changement de mode remet `page` a 0.
+
+### Imports supplementaires
+
+- `List`, `LayoutGrid`, `Image`, `Newspaper` de `lucide-react`
+- `ToggleGroup`, `ToggleGroupItem` de `@/components/ui/toggle-group` (deja existant)
+
+### Ce qui ne change pas
+
+- Hook `useNewsFeed` : inchange
+- Quick Access (Slide 1) : inchange
+- `MarketNewsCollapsible` (mobile) : inchange
+- Logique de pagination, filtres categorie, navigation : inchanges
+- Layout global du dashboard : inchange
+- Aucune nouvelle dependance
+
+## Structure visuelle du panel Market Intelligence
+
+```text
++------------------------------------------+
+| [Quick Access]  [Market Intelligence]    |
++------------------------------------------+
+| [All] [General] [Forex] [Crypto]  [≡][⊞][▣] |
++------------------------------------------+
+|                                          |
+|  Mode "compact" (default):               |
+|  +------------------------------------+  |
+|  | [img] Headline text...    forex 3h |  |
+|  +------------------------------------+  |
+|  | [img] Headline text...    crypto 1d|  |
+|  +------------------------------------+  |
+|  | [img] Headline text...    general 5h| |
+|  +------------------------------------+  |
+|                                          |
+|           < Prev  1/4  Next >            |
++------------------------------------------+
 ```
-
-Cela garantit que tout `TabsContent` avec des classes flex enfants (comme `flex-1`, `flex-col`) fonctionnera correctement quand il est actif.
-
-### 2. `src/components/DashboardColumnCarousel.tsx`
-
-Nettoyer les classes redondantes sur les deux `TabsContent` puisque `flex` et `flex-col` seront desormais geres par le composant de base :
-
-- Retirer `flex flex-col` des classNames des `TabsContent` (garder `flex-1 min-h-0 gap-2 mt-2 overflow-hidden animate-fade-in`)
-
-## Ce qui ne change pas
-
-- Toute la logique metier, navigation, API, donnees
-- Le layout mobile
-- Le contenu des cards et des news
-- Les autres usages de `TabsContent` dans le projet (le `data-[state=active]:flex` est inoffensif car il ne s'applique que quand d'autres classes flex sont presentes)
 
 ## Resultat attendu
 
-- Les 3 cards Quick Access remplissent proprement toute la hauteur de la colonne
-- Les news paginees remplissent aussi l'espace disponible
-- Zero debordement, zero compression anormale
-- Aucune regression sur les autres composants utilisant des Tabs
+- Les images des articles sont de nouveau visibles (comme avant)
+- L'utilisateur peut choisir son mode d'affichage prefere
+- Zero scrollbar, pagination adaptee au mode choisi
+- UI premium et coherente avec le reste du dashboard
+- Aucune regression sur Quick Access, mobile, ou logique metier
 
