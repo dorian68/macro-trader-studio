@@ -1,4 +1,5 @@
 import PublicNavbar from "@/components/PublicNavbar";
+import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Book, Code, Zap, BarChart3, TrendingUp, Shield } from "lucide-react";
@@ -255,12 +256,7 @@ export default function Documentation() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-background border-t border-border py-8 px-4">
-        <div className="container mx-auto max-w-6xl text-center text-muted-foreground text-sm">
-          <p>{t('footer.copyright')}</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
