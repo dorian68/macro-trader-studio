@@ -1,106 +1,74 @@
 
 
-# Dashboard Premium Viewport-Fit Layout
+# Suppression des scrollbars dans le Trading Dashboard
 
 ## Diagnostic
 
-The current layout has two issues preventing a clean viewport-fit on desktop:
+Le composant `CandlestickChart` contient plusieurs zones qui generent des scrollbars visibles :
 
-1. **Layout container** uses `lg:h-full` but its parent (`min-h-[calc(100vh-3.5rem)]`) only sets a *minimum* height, not a *fixed* height. The `h-full` resolves to nothing useful.
-2. **TradingDashboard** wraps everything in `space-y-2` which allows `AssetInfoCard` and `MarketNewsCollapsible` to push Row 1 beyond the viewport, causing scrollbars.
+1. **Asset selector horizontal** (ligne 268) : `overflow-x-auto` sur la rangee de boutons d'assets populaires affiche une scrollbar horizontale visible
+2. **CardContent** : le composant `CardContent` de `card.tsx` a `overflow-x-hidden` mais pas `overflow-y-hidden`, ce qui peut laisser passer une scrollbar verticale
+3. **CardHeader** : le header (titre + search bar + asset buttons) occupe beaucoup de hauteur, comprimant la zone chart
 
-The goal: On desktop, the dashboard page shows **only** the Trading Chart + the 3 Navigation Cards (AI Trade Setup, Macro Commentary, Reports), perfectly filling the viewport with zero scroll and zero scrollbars. AssetInfoCard, MarketNews, and JobStatus remain accessible below the fold on mobile only.
+## Changements
 
-## Changes
+### 1. `src/components/CandlestickChart.tsx`
 
-### 1. `src/components/Layout.tsx` (line 291-301)
+**Asset selector** (ligne 268) : Masquer la scrollbar horizontale avec les classes CSS appropriees. La classe `scrollbar-hide` est deja presente mais pourrait ne pas etre definie. Ajouter aussi un style CSS inline en fallback :
 
-Fix the `fillViewport` container to use a **fixed height** (not min-height) on desktop, with `overflow-hidden` to kill any page-level scroll:
+```
+// Before (ligne 268)
+<div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide">
+
+// After
+<div className="flex gap-2 overflow-x-auto pb-0 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide"
+     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+```
+
+Retirer `pb-2` (remplacer par `pb-0`) car ce padding etait la pour compenser la scrollbar visible.
+
+**CardHeader** (ligne 172) : Ajouter `overflow-hidden shrink-0` pour que le header ne deborde jamais et conserve sa taille naturelle sans comprimer le chart :
 
 ```
 // Before
-<div className="min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]">
-  <div className={cn(
-    "px-4 sm:px-6 py-2 sm:py-3",
-    fillViewport
-      ? "lg:max-w-[1920px] lg:h-full lg:flex lg:flex-col"
-      : "max-w-screen-lg",
-    "mx-auto"
-  )}>
+<CardHeader className="pb-3 border-b border-border/50 space-y-2">
 
 // After
-<div className={cn(
-  fillViewport
-    ? "lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden"
-    : "",
-  "min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]"
-)}>
-  <div className={cn(
-    "px-4 sm:px-6 py-2 sm:py-3",
-    fillViewport
-      ? "lg:max-w-[1920px] lg:h-full lg:flex lg:flex-col"
-      : "max-w-screen-lg",
-    "mx-auto"
-  )}>
+<CardHeader className="pb-3 border-b border-border/50 space-y-2 overflow-hidden shrink-0">
 ```
 
-This gives the outer wrapper a **fixed** `h-[calc(100vh-3.5rem)]` on `lg:` breakpoint when `fillViewport` is true, so `h-full` on children actually resolves correctly. `overflow-hidden` prevents any page scroll on desktop.
-
-### 2. `src/pages/TradingDashboard.tsx`
-
-**Main wrapper** (line 260): Make the `space-y-2` div fill the Layout and hide overflow on desktop:
+**CardContent** (ligne 291) : Ajouter `overflow-hidden` pour empecher toute scrollbar dans la zone chart :
 
 ```
 // Before
-<div className="space-y-2">
+<CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1 min-h-0">
 
 // After
-<div className="space-y-2 lg:h-full lg:overflow-hidden">
+<CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1 min-h-0 overflow-hidden">
 ```
 
-**Row 1** (line 262): Switch from a fixed calc height to `flex-1` so it takes all remaining space in the flex parent. Remove the hardcoded `lg:h-[calc(100vh-4.25rem)]`:
+### 2. `src/index.css`
 
-```
-// Before
-<div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:h-[calc(100vh-4.25rem)]">
+Ajouter la classe utilitaire `scrollbar-hide` si elle n'existe pas deja :
 
-// After
-<div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:flex-1 lg:min-h-0">
-```
-
-Using `flex-1 min-h-0` is more robust than a hardcoded calc -- it automatically fills whatever space the Layout provides, regardless of navbar height variations.
-
-**Below-the-fold content** (lines 417-424): Hide AssetInfoCard and MarketNewsCollapsible on desktop (they are only useful on mobile where the viewport-lock doesn't apply):
-
-```
-// Before
-<AssetInfoCard ... className="w-full" />
-<MarketNewsCollapsible className="w-full lg:max-h-[500px] lg:overflow-y-auto" />
-
-// After
-<AssetInfoCard ... className="w-full lg:hidden" />
-<MarketNewsCollapsible className="w-full lg:hidden" />
+```css
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
 ```
 
-On desktop, these sections would never be visible anyway (overflow-hidden on parent). Adding `lg:hidden` makes the intent explicit and avoids rendering hidden DOM nodes.
+## Ce qui ne change pas
 
-### 3. No changes to `CandlestickChart.tsx`
+- Toute la logique metier, les donnees, WebSocket, navigation
+- Le layout mobile (aucune classe `lg:` modifiee)
+- Les 3 nav cards (AI Trade Setup, Macro Commentary, Reports)
+- BubbleSystem, MobileNewsBadge, MobileNewsModal
+- Le fonctionnement du scroll horizontal sur les assets (il fonctionne toujours, juste sans scrollbar visible)
 
-The `overflow-hidden` already applied in the previous iteration is correct and sufficient.
+## Resultat attendu
 
-## What stays identical
-
-- All components, data fetching, WebSocket connections, navigation logic
-- Mobile/tablet layout: standard stacked flow with normal scrolling
-- All 3 nav cards (AI Trade Setup, Macro Commentary, Reports) fully visible
-- BubbleSystem, MobileNewsBadge, MobileNewsModal, JobStatusCard
-- No business logic, API, or data changes
-
-## Expected result
-
-- Desktop: Trading Chart (left 2/3) + 3 Nav Cards (right 1/3) fill the entire viewport exactly
-- Bottom edges align with the bottom of the screen
-- Zero scrollbars anywhere
-- Zero vertical scroll on the dashboard page
-- Mobile: unchanged, normal scrollable layout with all sections visible
+- Zero scrollbar visible dans le composant Trading Dashboard
+- Le header du chart reste compact et ne deborde pas
+- La zone chart remplit l'espace restant proprement
+- Experience utilisateur propre et professionnelle
 
