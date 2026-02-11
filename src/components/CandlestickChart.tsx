@@ -169,7 +169,7 @@ const CandlestickChart = memo(function CandlestickChart({
       <Card className="gradient-card border border-border/50 shadow-medium rounded-lg flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Header Section - Integrated dashboard header */}
         {showHeader && (
-          <CardHeader className="pb-3 border-b border-border/50 space-y-2">
+          <CardHeader className="pb-3 border-b border-border/50 space-y-2 overflow-hidden shrink-0">
             {/* Row 1: Trading Dashboard Title + Trading Controls & Price Widget */}
             {dashboardTitle && (
               <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-4">
@@ -265,7 +265,7 @@ const CandlestickChart = memo(function CandlestickChart({
             {/* Row 3: Popular Assets Selector */}
             {allAssets && onAssetSelect && (
               <div className="w-full -mx-2 sm:mx-0">
-                <div className="flex gap-2 overflow-x-auto pb-2 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide">
+                <div className="flex gap-2 overflow-x-auto pb-0 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {allAssets.map((assetItem) => (
                     <button
                       key={assetItem.symbol}
@@ -288,7 +288,7 @@ const CandlestickChart = memo(function CandlestickChart({
           </CardHeader>
         )}
 
-        <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1 min-h-0">
+        <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
             {!effectiveUseFallback && effectiveProvider === 'twelvedata' ? (
               <LightweightChartWidget
