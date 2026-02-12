@@ -418,7 +418,7 @@ const CandlestickChart = memo(function CandlestickChart({
             </div>}
           </div>
 
-          {showHeader && <div className="mt-3 text-xs text-muted-foreground text-center">
+          {showHeader && <div className="mt-3 text-xs text-muted-foreground text-center hidden md:block">
             {!effectiveUseFallback ? 'Powered by TwelveData' : (hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`)}
           </div>}
         </CardContent>

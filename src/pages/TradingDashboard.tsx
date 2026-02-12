@@ -264,9 +264,9 @@ export default function TradingDashboard() {
       {/* Main viewport-locked content */}
       <div className="h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col gap-1 md:h-full md:gap-2">
         {/* Mobile branding header */}
-        <div className="shrink-0 px-2 py-1 md:hidden">
-          <h1 className="text-sm font-bold text-foreground leading-tight">{t('dashboard:trading.title')}</h1>
-          <p className="text-[10px] text-muted-foreground leading-tight">{t('dashboard:trading.subtitle')}</p>
+        <div className="shrink-0 px-3 py-1.5 md:hidden border-b border-border/30">
+          <h1 className="text-base font-bold text-primary leading-tight tracking-tight">{t('dashboard:trading.title')}</h1>
+          <p className="text-xs text-muted-foreground leading-tight mt-0.5">{t('dashboard:trading.subtitle')}</p>
         </div>
         {/* Row 1: Chart + Nav Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch flex-1 min-h-0">
