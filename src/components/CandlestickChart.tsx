@@ -2,7 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart3, Wifi, WifiOff, Activity, TrendingUp, TrendingDown } from 'lucide-react';
+import { BarChart3, Wifi, WifiOff, Activity, TrendingUp, TrendingDown, Search, Maximize2 } from 'lucide-react';
 import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
@@ -42,7 +42,7 @@ interface CandlestickChartProps {
   tradeLevels?: TradeLevels | null;
   onLevelUpdate?: (type: 'entry' | 'stopLoss' | 'takeProfit', value: number) => void;
   historicalData?: any[];
-  forceMode?: 'tradingview' | 'light'; // Admin-only chart mode override
+  forceMode?: 'tradingview' | 'light';
 
   // New props for integrated dashboard header
   dashboardTitle?: string;
@@ -57,6 +57,10 @@ interface CandlestickChartProps {
   onAssetProfileSelect?: (asset: any) => void;
   timeframe?: string;
   onTimeframeChange?: (timeframe: string) => void;
+
+  // Mobile UX props
+  onFullscreenToggle?: () => void;
+  compact?: boolean;
 }
 const timeframes = [{
   value: '1m',
@@ -107,13 +111,16 @@ const CandlestickChart = memo(function CandlestickChart({
   selectedAssetProfile,
   onAssetProfileSelect,
   timeframe: timeframeProp,
-  onTimeframeChange
+  onTimeframeChange,
+  onFullscreenToggle,
+  compact,
 }: CandlestickChartProps) {
   const [localTimeframe, setLocalTimeframe] = useState('1h');
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [useFallback, setUseFallback] = useState(false);
   const [globalProvider, setGlobalProvider] = useState<'twelvedata' | 'tradingview'>('twelvedata');
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
 
@@ -163,6 +170,9 @@ const CandlestickChart = memo(function CandlestickChart({
       ? 'twelvedata'
       : globalProvider;
 
+  // Whether to show searchbar and chips (hidden on mobile unless toggled, always on desktop; hidden in compact mode)
+  const showSearchAndChips = !compact;
+
   return <>
     {/* Chart Section - Full Width with integrated header */}
     <div className="w-full h-full flex flex-col">
@@ -172,9 +182,9 @@ const CandlestickChart = memo(function CandlestickChart({
           <CardHeader className="pb-3 border-b border-border/50 space-y-2 overflow-hidden shrink-0">
             {/* Row 1: Trading Dashboard Title + Trading Controls & Price Widget */}
             {dashboardTitle && (
-              <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-4">
-                {/* Left: Dashboard Title */}
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-2 md:gap-4">
+                {/* Left: Dashboard Title - hidden on mobile for compact layout */}
+                <div className="hidden md:flex items-center gap-3">
                   <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
                     <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
@@ -192,8 +202,8 @@ const CandlestickChart = memo(function CandlestickChart({
 
                 {/* Right: Trading Controls + Price Widget */}
                 <div className="flex flex-col items-start md:items-end gap-2 shrink-0 w-full md:w-auto">
-                  {/* Top row: Instrument + Connection + Timeframe */}
-                  <div className="flex items-center gap-2 flex-wrap">
+                  {/* Top row: Instrument + Connection + Timeframe + Mobile actions */}
+                  <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
                     <Badge variant="outline" className="border-primary/20 text-primary min-h-[32px] flex items-center">
                       {asset}
                     </Badge>
@@ -205,7 +215,7 @@ const CandlestickChart = memo(function CandlestickChart({
                       {isConnected && hasRealTimeData ? 'Live' : hasRealTimeData ? 'Disconnected' : 'Historical'}
                     </Badge>
                     <Select value={timeframe} onValueChange={handleTimeframeChange}>
-                      <SelectTrigger className="w-28 sm:w-32 h-9 bg-background/50 border-border-light text-xs sm:text-sm">
+                      <SelectTrigger className="w-24 sm:w-32 h-9 bg-background/50 border-border-light text-xs sm:text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -216,6 +226,31 @@ const CandlestickChart = memo(function CandlestickChart({
                         )}
                       </SelectContent>
                     </Select>
+
+                    {/* Mobile-only: Search toggle + Fullscreen */}
+                    {showSearchAndChips && onAssetSelect && (
+                      <button
+                        onClick={() => setShowMobileSearch(prev => !prev)}
+                        className={cn(
+                          "md:hidden p-2 rounded-lg border transition-smooth touch-manipulation min-h-[36px] min-w-[36px] flex items-center justify-center",
+                          showMobileSearch
+                            ? "bg-primary/20 border-primary/40 text-primary"
+                            : "bg-background/50 border-border/30 text-muted-foreground hover:text-foreground"
+                        )}
+                        aria-label="Toggle search"
+                      >
+                        <Search className="h-4 w-4" />
+                      </button>
+                    )}
+                    {onFullscreenToggle && (
+                      <button
+                        onClick={onFullscreenToggle}
+                        className="md:hidden p-2 rounded-lg border bg-background/50 border-border/30 text-muted-foreground hover:text-foreground transition-smooth touch-manipulation min-h-[36px] min-w-[36px] flex items-center justify-center"
+                        aria-label="Fullscreen chart"
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Bottom row: Price Widget */}
@@ -248,9 +283,12 @@ const CandlestickChart = memo(function CandlestickChart({
               </div>
             )}
 
-            {/* Row 2: HybridSearchBar */}
-            {onAssetSelect && allAssets && (
-              <div className="w-full">
+            {/* Row 2: HybridSearchBar - hidden on mobile by default, toggle via search icon */}
+            {showSearchAndChips && onAssetSelect && allAssets && (
+              <div className={cn(
+                "w-full",
+                showMobileSearch ? "block" : "hidden md:block"
+              )}>
                 <HybridSearchBar
                   assets={allAssets}
                   selectedAsset={selectedAsset || asset}
@@ -262,9 +300,12 @@ const CandlestickChart = memo(function CandlestickChart({
               </div>
             )}
 
-            {/* Row 3: Popular Assets Selector */}
-            {allAssets && onAssetSelect && (
-              <div className="w-full -mx-2 sm:mx-0">
+            {/* Row 3: Popular Assets Selector - hidden on mobile by default, toggle via search icon */}
+            {showSearchAndChips && allAssets && onAssetSelect && (
+              <div className={cn(
+                "w-full -mx-2 sm:mx-0",
+                showMobileSearch ? "block" : "hidden md:block"
+              )}>
                 <div className="flex gap-2 overflow-x-auto pb-0 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {allAssets.map((assetItem) => (
                     <button
@@ -296,12 +337,12 @@ const CandlestickChart = memo(function CandlestickChart({
                 timeframe={timeframe}
                 onPriceUpdate={(price) => {
                   setCurrentPrice(price);
-                  setIsConnected(true); // Reflects TwelveData live connection
+                  setIsConnected(true);
                 }}
                 onFallback={() => {
                   console.log('Lightweight Chart failed, switching to TradingView fallback');
                   setUseFallback(true);
-                  setIsConnected(false); // Fallback means no TwelveData connection
+                  setIsConnected(false);
                 }}
               />
             ) : (
@@ -388,7 +429,8 @@ const CandlestickChart = memo(function CandlestickChart({
   // Only re-render if key props change
   return prevProps.asset === nextProps.asset &&
     prevProps.timeframe === nextProps.timeframe &&
-    prevProps.forceMode === nextProps.forceMode;
+    prevProps.forceMode === nextProps.forceMode &&
+    prevProps.compact === nextProps.compact;
 });
 
 export { CandlestickChart };

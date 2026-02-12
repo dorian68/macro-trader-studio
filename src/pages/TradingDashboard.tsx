@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight, Globe, FileText } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, ArrowRight, Globe, FileText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { BubbleSystem } from "@/components/BubbleSystem";
@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { MarketNewsCollapsible } from "@/components/MarketNewsCollapsible";
 import { MobileNewsBadge } from "@/components/MobileNewsBadge";
 import { MobileNewsModal } from "@/components/MobileNewsModal";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface PriceData {
   symbol: string;
@@ -91,6 +92,7 @@ export default function TradingDashboard() {
 
   // Mobile news drawer state
   const [isMobileNewsOpen, setIsMobileNewsOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Handle asset profile selection and synchronize with chart
   const handleAssetProfileSelect = (asset: any) => {
@@ -262,7 +264,7 @@ export default function TradingDashboard() {
         {/* Row 1: Chart + Nav Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch md:flex-1 md:min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
-          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full overflow-hidden md:min-h-[500px]">
+          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 overflow-hidden min-h-[320px] h-[clamp(320px,50vh,520px)] md:h-full md:min-h-[500px] chart-landscape-boost md:!h-full">
             <CandlestickChart
               forceMode={sessionChartMode}
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
@@ -289,6 +291,7 @@ export default function TradingDashboard() {
               onAssetProfileSelect={handleAssetProfileSelect}
               timeframe={timeframe}
               onTimeframeChange={setTimeframe}
+              onFullscreenToggle={() => setIsFullscreen(true)}
             />
           </div>
 
@@ -415,6 +418,29 @@ export default function TradingDashboard() {
       >
         <MarketNewsCollapsible className="h-full" />
       </MobileNewsModal>
+
+      {/* Fullscreen Chart Dialog */}
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent className="max-w-none w-screen h-[100dvh] p-0 m-0 rounded-none border-none bg-background gap-0 [&>button]:z-50 [&>button]:bg-card/80 [&>button]:rounded-full [&>button]:p-2 [&>button]:top-3 [&>button]:right-3">
+          <DialogTitle className="sr-only">Fullscreen Chart</DialogTitle>
+          <div className="w-full h-full">
+            <CandlestickChart
+              forceMode={sessionChartMode}
+              asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
+              showHeader={true}
+              compact={true}
+              height={350}
+              tradeLevels={activeTradeLevels}
+              priceData={priceData}
+              isConnected={isConnected}
+              selectedAsset={selectedAsset}
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
+              dashboardTitle={selectedAsset}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
