@@ -636,6 +636,14 @@
   }
 }
 
+/* Mobile landscape: boost chart height */
+@media (orientation: landscape) and (max-width: 1023px) {
+  .chart-landscape-boost {
+    height: 85vh !important;
+    min-height: 280px;
+  }
+}
+
 /* Improved touch feedback for cards */
 .card-touch-feedback {
   transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
