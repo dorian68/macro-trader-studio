@@ -13,8 +13,8 @@ export default function About() {
       <PublicNavbar />
       <div className="max-w-4xl mx-auto space-y-6 px-4 py-6">
         <div className="text-center space-y-4">
-          <img src="/alphalens_logo_new.png" alt="alphaLens.ai" className="h-48 sm:h-64 w-auto mx-auto object-contain" />
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
+          <img src="/alphalens_logo_new.png" alt="alphaLens.ai" className="h-32 sm:h-48 md:h-64 w-auto mx-auto object-contain" />
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
             {t('title')}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">

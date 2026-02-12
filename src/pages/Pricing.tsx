@@ -169,7 +169,7 @@ const Pricing = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
             {t('hero.title')}
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
@@ -195,7 +195,7 @@ const Pricing = () => {
               {plan.highlight && <Badge variant="default" className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs whitespace-nowrap z-20 shadow-lg" aria-label={t('b2c.mostComplete')}>
                 {t('b2c.mostComplete')}
               </Badge>}
-              <Card className={`${plan.highlight ? 'border-primary shadow-lg scale-105' : 'border-border'} flex flex-col h-full w-full`}>
+              <Card className={`${plan.highlight ? 'border-primary shadow-lg md:scale-105' : 'border-border'} flex flex-col h-full w-full`}>
                 <CardHeader className={`text-center ${plan.highlight ? 'pb-4 pt-2' : 'pb-4'}`}>
                   <CardTitle className="text-xl">{plan.name}</CardTitle>
                   <div className="mt-2">

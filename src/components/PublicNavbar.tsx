@@ -32,7 +32,7 @@ export default function PublicNavbar() {
 
   return (
     <header className="border-b border-white/5 bg-background sticky top-0 z-50 shadow-sm">
-      <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-2 sm:py-4 flex items-center justify-between">
         {/* Logo - Mobile optimized */}
         <div className="flex items-center gap-2">
           {/* Logo */}
