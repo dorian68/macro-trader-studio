@@ -306,7 +306,7 @@ export default function Layout({
     <main className="flex-1 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className={cn(
           fillViewport
-            ? "lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden"
+            ? "md:h-[calc(100vh-3.5rem)] md:overflow-hidden"
             : "",
           "min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]"
         )}>
@@ -314,7 +314,7 @@ export default function Layout({
         <div className={cn(
           "px-4 sm:px-6 py-2 sm:py-3",
           fillViewport
-            ? "lg:max-w-[1920px] lg:h-full lg:flex lg:flex-col"
+            ? "md:max-w-[1920px] md:h-full md:flex md:flex-col"
             : "max-w-screen-lg",
           "mx-auto"
         )}>

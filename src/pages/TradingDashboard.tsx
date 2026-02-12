@@ -258,11 +258,11 @@ export default function TradingDashboard() {
     >
 
       {/* Main viewport-locked content */}
-      <div className="space-y-2 lg:h-full lg:overflow-hidden lg:flex lg:flex-col">
+      <div className="space-y-2 md:h-full md:overflow-hidden md:flex md:flex-col">
         {/* Row 1: Chart + Nav Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch lg:flex-1 lg:min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-[3fr_1fr] lg:grid-cols-[2fr_1fr] gap-2 items-stretch md:flex-1 md:min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
-          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full overflow-hidden">
+          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full overflow-hidden md:min-h-[500px]">
             <CandlestickChart
               forceMode={sessionChartMode}
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
@@ -293,10 +293,10 @@ export default function TradingDashboard() {
           </div>
 
           {/* Col droite - Rangée 1 : Navigation Cards Vertical Stack */}
-          <DashboardColumnCarousel className="min-w-0 min-h-0 order-2 my-0 hidden lg:flex h-full" />
+          <DashboardColumnCarousel className="min-w-0 min-h-0 order-2 my-0 hidden md:flex h-full" />
 
-          {/* Mobile Navigation Cards - visible only on mobile/tablet */}
-          <div className="lg:hidden mt-4">
+          {/* Mobile Navigation Cards - visible only on mobile (<768px) */}
+          <div className="md:hidden mt-2">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* AI Trade Setup */}
               <Card
@@ -355,11 +355,11 @@ export default function TradingDashboard() {
         {/* Row 2: Asset Info */}
         <AssetInfoCard
           symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-          className="w-full lg:hidden"
+          className="w-full md:hidden"
         />
 
         {/* Row 3: Market News - below the fold, scroll to see */}
-        <MarketNewsCollapsible className="w-full lg:hidden" />
+        <MarketNewsCollapsible className="w-full md:hidden" />
       </div>
 
       {/* SECTION 3: Normal width - Navigation Cards, Job Status */}

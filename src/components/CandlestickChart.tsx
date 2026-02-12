@@ -179,11 +179,11 @@ const CandlestickChart = memo(function CandlestickChart({
                     <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+                    <h1 className="text-xl sm:text-2xl md:text-xl lg:text-3xl font-bold text-foreground tracking-tight">
                       {dashboardTitle}
                     </h1>
                     {dashboardSubtitle && (
-                      <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
+                      <p className="text-xs sm:text-sm hidden md:hidden lg:block text-muted-foreground">
                         {dashboardSubtitle}
                       </p>
                     )}
