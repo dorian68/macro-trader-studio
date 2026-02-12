@@ -1,48 +1,35 @@
 
 
-# Remplir la page Documentation -- Corriger les cles i18n et enrichir le contenu
+# Remplacer le logo de la page Auth
 
-## Probleme actuel
+## Changement
 
-La page Documentation affiche des cles de traduction manquantes partout. Le composant TSX attend des cles comme `gettingStarted.quickStart.title`, `faq.question1`, `features.aiSetup.title`, mais les fichiers JSON utilisent des cles differentes (`gettingStarted.quickStart` en string plate, `faq.q1Title`, `features.aiTradeSetup.title`).
-
-Resultat : la page est quasiment vide avec des cles brutes affichees.
+Remplacer le logo actuel (`/logos/alphalens-ai-text.png` -- logo texte complet) par le nouveau logo icone Alpha (cercle + alpha orange) fourni en piece jointe, sans toucher a aucune autre fonctionnalite.
 
 ## Modifications
 
-### 1. `src/locales/en/documentation.json` -- Restructuration complete
+### 1. Copier l'image uploadee dans le projet
+- Copier `user-uploads://Alpha_no_BG.png` vers `public/logos/Alpha_no_BG.png`
 
-Adapter toutes les cles pour correspondre exactement a ce que le TSX attend :
+### 2. `src/pages/Auth.tsx` (ligne ~855)
+- Changer le `src` de l'image de `/logos/alphalens-ai-text.png` a `/logos/Alpha_no_BG.png`
+- Ajuster la hauteur de `h-36` a `h-28` car le logo icone seul est plus compact visuellement qu'un logo texte
+- Conserver `drop-shadow-lg`, `w-auto`, `object-contain`
 
-```text
-Avant (JSON)                    -> Apres (pour matcher le TSX)
-gettingStarted.quickStart       -> gettingStarted.quickStart.title
-gettingStarted.step1Title       -> gettingStarted.quickStart.step1
-gettingStarted.step1Desc        -> gettingStarted.quickStart.step1Description
-gettingStarted.creditsTitle     -> gettingStarted.credits.title
-gettingStarted.creditsIntro     -> gettingStarted.credits.description
-gettingStarted.creditsTradeSetup-> gettingStarted.credits.tradeSetup
-gettingStarted.creditsNote      -> gettingStarted.credits.resetInfo
-features.aiTradeSetup.*         -> features.aiSetup.*
-aiSetup.step1Title              -> aiSetup.step1
-aiSetup.step1Desc               -> aiSetup.step1Description
-faq.q1Title                     -> faq.question1
-faq.q1Answer                    -> faq.answer1
 ```
+Avant :
+  <img src="/logos/alphalens-ai-text.png" alt="Alphalens AI"
+       className="h-36 w-auto object-contain drop-shadow-lg" />
 
-### 2. `src/locales/es/documentation.json` -- Meme restructuration en espagnol
-
-### 3. `src/locales/fa/documentation.json` -- Meme restructuration en farsi
-
-### 4. `src/pages/Documentation.tsx` -- Ajout du Footer
-
-- Remplacer le footer inline par le composant `Footer` importe (coherence avec Terms/Privacy)
-- Mettre a jour le copyright a 2026
+Apres :
+  <img src="/logos/Alpha_no_BG.png" alt="Alphalens AI"
+       className="h-28 w-auto object-contain drop-shadow-lg" />
+```
 
 ## Ce qui ne change pas
 
-- La structure du composant (Tabs, Cards, layout)
-- Les routes
-- Les autres pages
-- Le contenu metier reste le meme, seules les cles sont reorganisees
+- Aucune logique auth (login, signup, Google OAuth, broker selection)
+- Les traductions, les z-index, le layout de la Card
+- Les autres logos du site (navbar, footer, etc.)
+- L'ancien fichier logo reste dans le projet (pas de suppression)
 
