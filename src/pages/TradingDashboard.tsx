@@ -400,11 +400,13 @@ export default function TradingDashboard() {
         }}
       />
 
-      {/* Mobile News Badge - floating button (mobile only) */}
-      <MobileNewsBadge
-        onClick={() => setIsMobileNewsOpen(true)}
-        hasNewItems={false}
-      />
+      {/* Mobile News Badge - tablet only (hidden on mobile <768px) */}
+      <div className="hidden md:block">
+        <MobileNewsBadge
+          onClick={() => setIsMobileNewsOpen(true)}
+          hasNewItems={false}
+        />
+      </div>
 
       {/* Mobile News Modal - centered overlay */}
       <MobileNewsModal

@@ -76,7 +76,7 @@ export default function Features() {
 
       <section className="pt-10 pb-8 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
         <div className="container mx-auto max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground mb-6">
             {t('hero.title')}
             <span className="text-primary"> {t('hero.titleHighlight')}</span>
           </h1>
@@ -142,8 +142,8 @@ export default function Features() {
 
       <section className="py-10 px-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-4xl font-bold mb-6">{t('cta.title')}</h2>
-          <p className="text-xl mb-8 opacity-90">{t('cta.subtitle')}</p>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">{t('cta.title')}</h2>
+          <p className="text-base sm:text-lg md:text-xl mb-8 opacity-90">{t('cta.subtitle')}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" variant="secondary" className="text-lg px-8 py-3" onClick={() => navigate("/auth")}>
               {t('cta.startTrial')}

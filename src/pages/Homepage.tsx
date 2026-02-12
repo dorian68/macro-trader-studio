@@ -8,6 +8,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreditManager } from "@/hooks/useCreditManager";
 import { useToast } from "@/hooks/use-toast";
+import { Footer } from "@/components/Footer";
 
 export default function Homepage() {
   const navigate = useNavigate();
@@ -44,15 +45,15 @@ export default function Homepage() {
             <img
               src="/alphalens_logo_new.png"
               alt="alphaLens.ai logo"
-              className="h-72 w-auto object-contain"
+              className="h-40 sm:h-56 md:h-72 w-auto object-contain"
             />
           </div>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4 leading-tight -mt-16">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-primary mb-4 leading-tight -mt-8 sm:-mt-12 md:-mt-16">
           {t('hero.title')}
           <span className="text-primary"> {t('hero.subtitle')}</span>
         </h1>
-        <p className="text-xl text-muted-foreground mb-6 max-w-3xl mx-auto leading-relaxed">
+        <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-6 max-w-3xl mx-auto leading-relaxed">
           {t('hero.description')}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -70,7 +71,7 @@ export default function Homepage() {
     <section className="py-10 px-4 bg-background">
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-10">
-          <h2 className="text-4xl font-bold text-foreground mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
             {t('hero.tradingIntelligence')}
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -123,10 +124,10 @@ export default function Homepage() {
     {/* Call to Action */}
     <section className="py-12 px-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
       <div className="container mx-auto max-w-4xl text-center">
-        <h2 className="text-4xl font-bold mb-6">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">
           {t('cta.title')}
         </h2>
-        <p className="text-xl mb-8 opacity-90">
+        <p className="text-base sm:text-lg md:text-xl mb-8 opacity-90">
           {t('cta.subtitle')}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -141,46 +142,6 @@ export default function Homepage() {
     </section>
 
     {/* Footer */}
-    <footer className="bg-background border-t border-border py-8 px-4">
-      <div className="container mx-auto max-w-6xl">
-        <div className="grid md:grid-cols-4 gap-8">
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <img src="/footer_logo.png" alt="alphaLens.ai" className="h-10 w-auto" />
-            </div>
-            <p className="text-muted-foreground text-sm">
-              {t('footer.description')}
-            </p>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-4 text-foreground">{t('footer.product')}</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><button onClick={() => navigate("/features")} className="hover:text-foreground transition-colors">Features</button></li>
-              <li><button onClick={() => navigate("/pricing")} className="hover:text-foreground transition-colors">Pricing</button></li>
-              <li><button onClick={() => navigate("/api")} className="hover:text-foreground transition-colors">API</button></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-4 text-foreground">{t('footer.company')}</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><button onClick={() => navigate("/about")} className="hover:text-foreground transition-colors">About</button></li>
-              <li><button onClick={() => navigate("/contact")} className="hover:text-foreground transition-colors">Contact</button></li>
-              <li><button onClick={() => navigate("/privacy")} className="hover:text-foreground transition-colors">Privacy</button></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-4 text-foreground">{t('footer.support')}</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><button onClick={() => navigate("/documentation")} className="hover:text-foreground transition-colors">Documentation</button></li>
-              <li><button onClick={() => navigate("/help-center")} className="hover:text-foreground transition-colors">Help Center</button></li>
-              <li><button onClick={() => navigate("/terms")} className="hover:text-foreground transition-colors">Terms of Service</button></li>
-            </ul>
-          </div>
-        </div>
-        <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-          <p>{t('footer.copyright')}</p>
-        </div>
-      </div>
-    </footer>
+    <Footer />
   </div>;
 }
