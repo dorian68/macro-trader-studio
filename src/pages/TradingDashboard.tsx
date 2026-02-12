@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +60,7 @@ export default function TradingDashboard() {
   const { t } = useTranslation(['dashboard', 'common']);
   const navigate = useNavigate();
   const jobManager = useJobStatusManager();
+  const isMobile = useIsMobile();
 
   // Read session-based chart mode for super users (default: tradingview)
   const [sessionChartMode, setSessionChartMode] = useState<'tradingview' | 'light'>(() => {
@@ -260,15 +262,16 @@ export default function TradingDashboard() {
     >
 
       {/* Main viewport-locked content */}
-      <div className="space-y-2 md:h-full md:overflow-hidden md:flex md:flex-col">
+      <div className="h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col gap-1 md:h-full md:gap-2">
         {/* Row 1: Chart + Nav Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch md:flex-1 md:min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch flex-1 min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
-          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 overflow-hidden min-h-[320px] h-[clamp(320px,50vh,520px)] md:h-full md:min-h-[500px] chart-landscape-boost md:!h-full">
+          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 overflow-hidden md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full">
             <CandlestickChart
               forceMode={sessionChartMode}
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
               showHeader={true}
+              compact={isMobile}
               height={350}
               tradeLevels={activeTradeLevels}
               onLevelUpdate={(type, value) => {
@@ -297,73 +300,59 @@ export default function TradingDashboard() {
 
           {/* Col droite - Rangée 1 : Navigation Cards Vertical Stack */}
           <DashboardColumnCarousel className="min-w-0 min-h-0 order-2 my-0 hidden lg:flex h-full" />
-
-          {/* Mobile Navigation Cards - visible only on mobile (<768px) */}
-          <div className="lg:hidden mt-2">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* AI Trade Setup */}
-              <Card
-                className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
-                onClick={() => navigate('/trade-generator')}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="gradient-primary p-2 rounded-xl shrink-0">
-                    <Zap className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.aiTradeSetup')}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{t('dashboard:trading.intelligentTradeSetups')}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-primary shrink-0" />
-                </CardContent>
-              </Card>
-
-              {/* Macro Commentary */}
-              <Card
-                className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
-                onClick={() => navigate('/macro-lab')}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="gradient-primary p-2 rounded-xl shrink-0">
-                    <Globe className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.macroCommentary')}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{t('dashboard:trading.inDepthAnalysis')}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-primary shrink-0" />
-                </CardContent>
-              </Card>
-
-              {/* Reports */}
-              <Card
-                className="gradient-card border-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all touch-manipulation"
-                onClick={() => navigate('/reports')}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="gradient-primary p-2 rounded-xl shrink-0">
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">{t('dashboard:trading.reports')}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{t('dashboard:trading.comprehensiveReports')}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-primary shrink-0" />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
         </div>
 
-        {/* Row 2: Asset Info */}
-        <AssetInfoCard
-          symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-          className="w-full md:hidden"
-        />
+        {/* Mobile compact feature cards - above the fold */}
+        <div className="shrink-0 lg:hidden">
+          <div className="grid grid-cols-3 gap-2 px-1">
+            {/* AI Trade Setup */}
+            <Card
+              className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
+              onClick={() => navigate('/trade-generator')}
+            >
+              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center">
+                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
+                  <Zap className="h-4 w-4 text-white" />
+                </div>
+                <h3 className="text-[11px] font-semibold text-foreground leading-tight">{t('dashboard:trading.aiTradeSetup')}</h3>
+              </CardContent>
+            </Card>
 
-        {/* Row 3: Market News - below the fold, scroll to see */}
-        <MarketNewsCollapsible className="w-full md:hidden" />
+            {/* Macro Commentary */}
+            <Card
+              className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
+              onClick={() => navigate('/macro-lab')}
+            >
+              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center">
+                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
+                  <Globe className="h-4 w-4 text-white" />
+                </div>
+                <h3 className="text-[11px] font-semibold text-foreground leading-tight">{t('dashboard:trading.macroCommentary')}</h3>
+              </CardContent>
+            </Card>
+
+            {/* Reports */}
+            <Card
+              className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
+              onClick={() => navigate('/reports')}
+            >
+              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center">
+                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
+                  <FileText className="h-4 w-4 text-white" />
+                </div>
+                <h3 className="text-[11px] font-semibold text-foreground leading-tight">{t('dashboard:trading.reports')}</h3>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
+
+      {/* Below the fold - scroll to see */}
+      <AssetInfoCard
+        symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
+        className="w-full md:hidden mt-2"
+      />
+      <MarketNewsCollapsible className="w-full md:hidden mt-2" />
 
       {/* SECTION 3: Normal width - Navigation Cards, Job Status */}
       <div className="space-y-4 sm:space-y-6">
