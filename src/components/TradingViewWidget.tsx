@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { TrendingUp, BarChart3, AlertTriangle, Loader2 } from "lucide-react";
+import { TrendingUp, BarChart3, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -355,17 +355,15 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 border border-border rounded-lg overflow-hidden" />
-
-        <div className="mt-3 sm:mt-4 text-sm text-muted-foreground shrink-0">
-          <div className="flex justify-between items-center">
-            
-            <Button variant="outline" size="sm" onClick={fetchData} className="h-8 sm:h-9 text-xs touch-manipulation" style={{
-            minHeight: '44px'
-          }}>
-              Refresh
-            </Button>
-          </div>
+        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 border border-border rounded-lg overflow-hidden">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={fetchData}
+            className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full shadow-md opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </CardContent>
     </Card>;
