@@ -1,50 +1,57 @@
 
-# Mobile Dashboard -- Branding Header + Bouton Refresh compact
 
-## 1. Ajouter un en-tete branding mobile au-dessus du chart
+# Mobile Dashboard -- Titre en avant + Suppression texte tronque
 
-**Fichier** : `src/pages/TradingDashboard.tsx`
+## Problemes identifies
 
-Ajouter un bloc `shrink-0` visible uniquement sur mobile (`md:hidden`) juste avant le conteneur du chart, a l'interieur du flex verrouille au viewport. Ce bloc contient :
-- Le titre "Trading Dashboard" en `text-sm font-bold`
-- Le sous-titre "Real-time AI analysis and trade execution" en `text-[10px] text-muted-foreground`
-- Compact : une seule ligne de hauteur minimale (~28-32px) pour ne pas empieter sur le chart
+1. **Texte tronque sous le chart** : Dans `CandlestickChart.tsx` (ligne 421-423), un footer "Powered by TwelveData" / "Real-time data from TradingView" s'affiche sous le widget. Sur mobile, il est tronque et prend de la place inutilement.
 
-Position : entre la ligne 265 (ouverture du conteneur principal) et la ligne 267 (ouverture de la grille chart).
+2. **Titre peu visible** : Le branding header dans `TradingDashboard.tsx` (lignes 267-270) utilise `text-sm` ce qui est trop discret -- pas assez de presence visuelle pour une page d'accueil dashboard.
+
+3. **Bouton Refresh** : Il existe deja en overlay (icone ronde `RefreshCw` en haut a droite du chart dans TradingViewWidget.tsx). Il est fonctionnel mais discret par design. Aucun changement necessaire.
+
+## Modifications
+
+### 1. `src/components/CandlestickChart.tsx` -- Masquer le footer sur mobile
+
+Ligne 421 : le `<div>` "Powered by..." recoit la classe `hidden md:block` pour etre invisible sur mobile.
 
 ```
-<div className="shrink-0 px-2 py-1 md:hidden">
-  <h1 className="text-sm font-bold text-foreground leading-tight">Trading Dashboard</h1>
-  <p className="text-[10px] text-muted-foreground leading-tight">Real-time AI analysis and trade execution</p>
+Avant : <div className="mt-3 text-xs text-muted-foreground text-center">
+Apres : <div className="mt-3 text-xs text-muted-foreground text-center hidden md:block">
+```
+
+### 2. `src/pages/TradingDashboard.tsx` -- Titre plus impactant
+
+Le bloc branding (lignes 267-270) est transforme pour avoir plus de presence visuelle :
+
+- Le titre passe de `text-sm font-bold` a `text-base font-bold` avec une couleur accentuee via un gradient ou la couleur primaire
+- Le sous-titre passe de `text-[10px]` a `text-xs` avec un espacement ameliore
+- Ajout d'un trait de separation subtil en dessous (`border-b border-border/30 pb-1.5`)
+- Le padding vertical augmente legerement de `py-1` a `py-1.5`
+
+```
+<div className="shrink-0 px-3 py-1.5 md:hidden border-b border-border/30">
+  <h1 className="text-base font-bold text-primary leading-tight tracking-tight">
+    {t('dashboard:trading.title')}
+  </h1>
+  <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+    {t('dashboard:trading.subtitle')}
+  </p>
 </div>
 ```
-
-Les textes utiliseront les cles i18n existantes `t('dashboard:trading.title')` et `t('dashboard:trading.subtitle')`.
-
-## 2. Remplacer le bouton "Refresh" textuel par une icone compacte
-
-**Fichier** : `src/components/TradingViewWidget.tsx`
-
-Le bouton "Refresh" (lignes 360-368) occupe actuellement une rangee entiere sous le chart avec le texte "Refresh" et un `minHeight: 44px`. Il sera transforme en un bouton icone compact :
-
-- Remplacer le conteneur `<div className="mt-3 sm:mt-4 ...">` par un positionnement absolu en haut a droite du chart (overlay)
-- Le bouton devient un cercle avec uniquement l'icone `RefreshCw` (import deja present dans LightweightChartWidget, a ajouter dans TradingViewWidget)
-- Taille : `h-8 w-8 p-0 rounded-full` avec l'icone en `h-3.5 w-3.5`
-- Position : `absolute top-2 right-2 z-10` dans le conteneur relatif du chart
-- Supprimer la rangee de footer qui ne contenait que ce bouton
-
-Cela libere ~50px de hauteur verticale sur mobile.
 
 ## Resume
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/pages/TradingDashboard.tsx` | Ajouter branding header mobile-only (titre + sous-titre) avec `shrink-0 md:hidden` |
-| `src/components/TradingViewWidget.tsx` | Bouton Refresh transforme en icone `RefreshCw` positionnee en overlay sur le chart, suppression de la rangee footer |
+| `src/components/CandlestickChart.tsx` | Footer "Powered by..." masque sur mobile (`hidden md:block`) |
+| `src/pages/TradingDashboard.tsx` | Titre agrandi (`text-base`, couleur `text-primary`), sous-titre `text-xs`, separateur visuel |
 
 ## Ce qui ne change pas
 
-- Desktop / tablet : aucun changement visible (le header branding est `md:hidden`, le refresh est repositionne mais fonctionne pareil)
-- Logique metier, API, data : zero changement
-- Fonctionnalite refresh : preservee, seule la presentation change
-- Layout mobile du chart (flex-1, compact) : inchange
+- Desktop / tablet : aucun impact (le footer reste visible, le titre mobile est `md:hidden`)
+- Bouton Refresh : deja en overlay icone, inchange
+- Logique metier, API, routing : zero changement
+- Layout flex / viewport-lock mobile : inchange
+
