@@ -260,7 +260,7 @@ export default function TradingDashboard() {
       {/* Main viewport-locked content */}
       <div className="space-y-2 md:h-full md:overflow-hidden md:flex md:flex-col">
         {/* Row 1: Chart + Nav Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-[3fr_1fr] lg:grid-cols-[2fr_1fr] gap-2 items-stretch md:flex-1 md:min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch md:flex-1 md:min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
           <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 h-full overflow-hidden md:min-h-[500px]">
             <CandlestickChart
@@ -293,10 +293,10 @@ export default function TradingDashboard() {
           </div>
 
           {/* Col droite - Rangée 1 : Navigation Cards Vertical Stack */}
-          <DashboardColumnCarousel className="min-w-0 min-h-0 order-2 my-0 hidden md:flex h-full" />
+          <DashboardColumnCarousel className="min-w-0 min-h-0 order-2 my-0 hidden lg:flex h-full" />
 
           {/* Mobile Navigation Cards - visible only on mobile (<768px) */}
-          <div className="md:hidden mt-2">
+          <div className="lg:hidden mt-2">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* AI Trade Setup */}
               <Card
@@ -401,7 +401,7 @@ export default function TradingDashboard() {
       />
 
       {/* Mobile News Badge - tablet only (hidden on mobile <768px) */}
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <MobileNewsBadge
           onClick={() => setIsMobileNewsOpen(true)}
           hasNewItems={false}
