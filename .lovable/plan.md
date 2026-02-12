@@ -1,123 +1,82 @@
 
+# Mobile Dashboard -- TradingView "Full Screen" par defaut + Cards compactes
 
-# Fix Mobile TradingView -- Chart Priority + Fullscreen + Compact Header
+## Objectif
 
-## Probleme actuel
+Sur mobile uniquement (< 768px), transformer le dashboard pour que :
+1. Le chart TradingView occupe tout l'espace vertical disponible (comme le mode fullscreen actuel mais inline, pas dans un Dialog)
+2. Les 3 cards features (AI Trade Setup, Macro Commentary, Reports) s'affichent en ligne compacte juste sous le chart
+3. Tout tient dans le viewport sans scroll (above the fold)
+4. Market News est place en dessous, accessible via scroll
 
-Sur mobile, le header du chart CandlestickChart consomme enormement de hauteur verticale avec **3 rangees** :
-1. Titre "Trading Dashboard" + controls (instrument badge, connection, timeframe)
-2. HybridSearchBar (barre de recherche AI complete)
-3. Popular Assets chips (17 boutons horizontaux scrollables)
+## Strategie technique
 
-Le chart n'a aucune hauteur minimale garantie sur mobile et se retrouve ecrase. Le conteneur dans TradingDashboard.tsx n'a pas de protection anti-shrink pour les ecrans < 768px.
+Le mode fullscreen actuel utilise `compact={true}` sur CandlestickChart (pas de searchbar/chips, pas de titre) et prend `100dvh`. On veut reproduire ce comportement inline sur mobile en utilisant un layout flex qui remplit le viewport.
 
-## Modifications par fichier
+### Changements dans `src/pages/TradingDashboard.tsx`
 
-### 1. `src/components/CandlestickChart.tsx` -- Compacter le header mobile
+**1. Verrouiller le viewport sur mobile aussi**
 
-**Row 1 (Titre + Controls)** :
-- Sur mobile (`< 768px`), cacher le titre "Trading Dashboard" et l'icone Activity. Garder uniquement la ligne de controls (instrument badge + connection + timeframe) qui est l'info essentielle.
-- Classes : wrapper du titre `hidden md:flex` au lieu de `flex`
-- Les controls passent en `w-full` sur mobile pour occuper toute la largeur
+Le conteneur principal (ligne 263) passe de `md:h-full md:overflow-hidden md:flex md:flex-col` a inclure le mobile egalement, mais avec une approche specifique :
+- Sur mobile : `h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col`
+- Cela verrouille la page au viewport exactement comme le fullscreen Dialog, mais inline avec la navbar
 
-**Row 2 (HybridSearchBar)** :
-- Sur mobile, cacher la searchbar par defaut et la rendre accessible via un bouton Search (icone loupe). Au clic, la searchbar s'affiche/se cache (toggle simple avec un state local).
-- Ajouter un bouton `<button>` avec icone `Search` visible uniquement sur mobile (`md:hidden`), et wrapper la searchbar avec `hidden md:block` + un state `showMobileSearch` qui override sur mobile.
+**2. Chart = flex-1 (prend tout l'espace restant)**
 
-**Row 3 (Asset Chips)** :
-- Sur mobile, cacher les chips par defaut. Les regrouper avec le toggle search ci-dessus : quand la searchbar est ouverte, les chips apparaissent aussi.
-- Wrapper avec `hidden md:block` + state `showMobileSearch`
+Le conteneur du chart (ligne 267) remplace les hauteurs fixes mobile (`min-h-[320px] h-[clamp(320px,50vh,520px)]`) par `flex-1 min-h-0` sur mobile. Cela force le chart a remplir tout l'espace entre la navbar et les cards.
+- Mobile : `flex-1 min-h-0 overflow-hidden`
+- Les hauteurs desktop/tablet restent inchangees via `md:h-full md:min-h-[500px]`
 
-**Bouton Fullscreen** :
-- Ajouter un bouton `Maximize2` (icone lucide) dans la ligne de controls mobile, visible uniquement `md:hidden`
-- Au clic, appelle une nouvelle prop `onFullscreenToggle` passee depuis TradingDashboard
+**3. CandlestickChart en mode compact sur mobile**
 
-**Resultat** : sur mobile, le header ne contient qu'une seule ligne (instrument + live + timeframe + search toggle + fullscreen), liberant ~150px de hauteur pour le chart.
+Passer `compact={true}` au CandlestickChart principal sur mobile pour supprimer le titre, la searchbar et les chips (exactement comme le fullscreen actuel). On va conditionner cela via le hook `useIsMobile` deja present dans le projet.
 
-### 2. `src/pages/TradingDashboard.tsx` -- Hauteur chart mobile + Fullscreen modal
+**4. Cards features ultra-compactes en ligne**
 
-**Hauteur du conteneur chart** :
-- Ligne 265 : ajouter une hauteur mobile explicite avec clamp
-- Classes : `min-h-[320px] h-[clamp(320px,50vh,520px)]` sur mobile (applique par defaut, override par `md:h-full md:min-h-[500px]`)
+Les 3 cards (lignes 301-355) sont actuellement des cards avec padding `p-4`, descriptions, et `ArrowRight`. Sur mobile, les reduire a des boutons compacts :
+- Grille forcee en 3 colonnes : `grid-cols-3`
+- Padding reduit a `p-2`
+- Masquer la description (`<p>`) sur mobile
+- Masquer le `ArrowRight` sur mobile
+- Icone + titre uniquement, empiles verticalement, texte `text-[11px]`
+- Le conteneur utilise `shrink-0` pour ne pas etre compresse par le flex
 
-**State fullscreen** :
-- Ajouter un state `isFullscreen` (boolean)
-- Passer `onFullscreenToggle={() => setIsFullscreen(true)}` au CandlestickChart
+**5. Masquer AssetInfoCard et MarketNewsCollapsible du viewport mobile**
 
-**Modal Fullscreen** :
-- Ajouter un composant Dialog (Radix, deja installe) qui s'ouvre quand `isFullscreen === true`
-- Contenu : un `CandlestickChart` avec `showHeader` minimal (uniquement controls, pas de searchbar/chips), hauteur `h-[100dvh]`
-- Bouton close (X) en haut a droite
-- Le dialog utilise `DialogContent` avec `className="max-w-none w-screen h-screen p-0 m-0"` pour etre veritablement plein ecran
-- Pas de DialogTitle visible (ajouter un `sr-only` pour l'accessibilite)
+- `AssetInfoCard` (ligne 359-362) : deja `md:hidden`, on le sort du conteneur flex verrouille pour qu'il soit apres, accessible via scroll
+- `MarketNewsCollapsible` (ligne 365) : idem, place apres le conteneur verrouille
 
-### 3. `src/components/CandlestickChart.tsx` -- Props supplementaires
+### Structure mobile resultante
 
-Ajouter les props :
-- `onFullscreenToggle?: () => void` -- callback pour le bouton fullscreen
-- `compact?: boolean` -- si true, force un header ultra-minimal (controls only, pas de searchbar/chips/titre). Utilise par le mode fullscreen.
-
-### 4. Landscape mobile (bonus)
-
-Dans le conteneur chart de TradingDashboard.tsx, ajouter une media query CSS via Tailwind pour landscape :
-- `@media (orientation: landscape) and (max-width: 1023px)` : chart prend `h-[85vh]`
-- Implementable via une classe utilitaire custom dans `index.css` :
-```css
-@media (orientation: landscape) and (max-width: 1023px) {
-  .chart-landscape-boost { height: 85vh !important; min-height: 280px; }
-}
+```text
++------------------------------------------+
+| NAVBAR (3.5rem fixe)                     |
++------------------------------------------+
+|                                          |
+|         TRADINGVIEW CHART                |
+|      (flex-1, compact header)            |
+|    [EUR/USD] [Live] [4H] [🔍] [⤢]      |
+|                                          |
+|                                          |
++------------------------------------------+
+| [⚡Setup] [🌐Macro] [📄Reports]         |  <- shrink-0, ~48px
++------------------------------------------+
+--- fin du viewport, scroll pour voir : ---
+| Market News                              |
+| Asset Info                               |
++------------------------------------------+
 ```
-- Appliquer cette classe au conteneur chart
 
-### 5. Scrollbars parasites
+## Fichiers modifies
 
-- Le conteneur chart a deja `overflow-hidden` -- pas de changement
-- Le `CardContent` utilise deja `overflow-hidden` -- OK
-- Les asset chips utilisent deja `scrollbar-hide` -- OK
-
-## Resume des fichiers modifies
-
-| Fichier | Changement |
-|---------|-----------|
-| `src/components/CandlestickChart.tsx` | Header compact mobile (titre cache, searchbar/chips toggle), bouton fullscreen, prop `compact` et `onFullscreenToggle` |
-| `src/pages/TradingDashboard.tsx` | Hauteur chart mobile avec clamp, state fullscreen, modal Dialog plein ecran |
-| `src/index.css` | Classe utilitaire `.chart-landscape-boost` pour landscape mobile |
+| Fichier | Modification |
+|---------|-------------|
+| `src/pages/TradingDashboard.tsx` | Layout flex viewport-locked sur mobile, chart flex-1, compact prop conditionnel, cards reduites, news hors viewport |
 
 ## Ce qui ne change pas
 
+- Desktop (`lg+`) : aucun changement
+- Tablet (`md`) : aucun changement
 - Logique metier, API, data, routing : zero changement
-- Desktop (`lg+`) : aucune modification visible
-- Tablet (`md`) : aucune modification (deja optimise precedemment)
-- Toutes les fonctionnalites preservees (searchbar, chips, prix, connection badge)
-- Les controles sont repositionnes/collapses, jamais supprimes
-
-## Section technique
-
-### Nouveau flux mobile header CandlestickChart
-
-```text
-+---------------------------------------------+
-| [EUR/USD] [Live] [4H ▾] [🔍] [⤢]          |  <- ligne unique, toujours visible
-+---------------------------------------------+
-| (SearchBar + Asset Chips)                    |  <- toggle, cache par defaut
-+---------------------------------------------+
-|                                              |
-|            TRADINGVIEW CHART                 |
-|         h: clamp(320px, 50vh, 520px)         |
-|                                              |
-+---------------------------------------------+
-```
-
-### Fullscreen modal
-
-```text
-+---------------------------------------------+
-| [X]  [EUR/USD] [Live] [4H ▾]               |
-+---------------------------------------------+
-|                                              |
-|            TRADINGVIEW CHART                 |
-|              height: 100dvh                  |
-|                                              |
-+---------------------------------------------+
-```
-
+- Le mode fullscreen Dialog reste disponible via le bouton
+- CandlestickChart.tsx : aucun changement (la prop `compact` existe deja)
