@@ -852,9 +852,9 @@ export default function Auth() {
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4 py-4">
               <img
-                src="/logos/alphalens-ai-text.png"
+                src="/logos/Alpha_no_BG.png"
                 alt="Alphalens AI"
-                className="h-36 w-auto object-contain drop-shadow-lg"
+                className="h-28 w-auto object-contain drop-shadow-lg"
               />
             </div>
             <CardTitle className="text-2xl font-bold">{t('welcomeToAlphalens')}</CardTitle>
