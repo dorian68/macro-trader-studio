@@ -1,120 +1,77 @@
 
+# Optimisation Tablet -- TradingView prioritaire
 
-# Optimisation Mobile UX/UI -- Passe Premium Sans Regression
+## Probleme identifie
 
-## Objectif
-Rendre l'affichage mobile (smartphone) premium, lisible, ergonomique et coherent, sans toucher a la logique metier, aux API, au routing ni aux fonctionnalites existantes.
+Le layout du dashboard utilise deux breakpoints extremes :
+- **Mobile** (`< 1024px`) : grille single-column, pas de verrouillage viewport
+- **Desktop** (`>= 1024px`, `lg`) : grille `2fr 1fr`, verrouillage viewport pleine hauteur
 
-## 1. Correctif immediat : Supprimer le badge "News" sur mobile
+Il n'y a **aucun breakpoint intermediaire pour tablette** (`md`, 768-1023px). Resultat : sur iPad/tablette, le dashboard se comporte exactement comme sur mobile -- le chart TradingView n'a pas de hauteur minimale garantie, le header du chart prend trop de place proportionnellement, et le carousel de navigation est completement masque.
 
-**Fichier** : `src/components/MobileNewsBadge.tsx`
-- Le composant utilise deja `fixed lg:hidden` (visible sur mobile/tablette, cache sur desktop)
-- Ajouter `hidden` par defaut et `md:fixed md:block` pour ne l'afficher qu'a partir de la tablette
-- Alternative plus propre : supprimer le rendu du `MobileNewsBadge` dans `TradingDashboard.tsx` en le wrappant avec une condition `lg:hidden` deja presente, mais en ajoutant `hidden md:block` sur le composant lui-meme
+## Strategie
 
-**Fichier** : `src/pages/TradingDashboard.tsx` (ligne ~404)
-- Wrapper le `<MobileNewsBadge>` dans un `<div className="hidden md:block">` pour le masquer sur mobile (<768px) tout en le gardant sur tablette/desktop
+Ajouter un **palier tablette** (`md`) qui :
+1. Verrouille le viewport comme sur desktop pour que le chart occupe tout l'espace disponible
+2. Garantit une hauteur minimale au chart via `min-h-[500px]` sur tablette
+3. Garde la grille single-column (pas assez de largeur pour 2 colonnes) mais avec le chart en zone primaire plein ecran
+4. Compacte le header du chart pour maximiser l'espace graphique
 
-## 2. Navigation et Header
+## Modifications par fichier
 
-### A) PublicNavbar (pages publiques)
-**Fichier** : `src/components/PublicNavbar.tsx`
-- Le header est deja correct sur mobile (logo + hamburger + login/signup)
-- Petit ajustement : reduire le padding vertical sur mobile de `py-3 sm:py-4` a `py-2 sm:py-4` pour gagner de l'espace vertical
-- S'assurer que les boutons Login/SignUp ne debordent pas sur petits ecrans : ajouter `whitespace-nowrap` et reduire le padding sur xs
+### 1. `src/components/Layout.tsx`
 
-### B) Layout Header (dashboard authentifie)
-**Fichier** : `src/components/Layout.tsx`
-- Le header est deja bien structure (h-14 sur mobile, h-16 sur sm+)
-- Ajustement du badge status "Live Markets" : le cacher sous `sm:flex` au lieu de le laisser toujours visible, car il prend de la place precieuse sur mobile
-- Le bouton Credits dans le header : reduire la taille du texte et cacher le label "Credits" sur mobile tres petit (<375px) en gardant juste le badge numerique
+**Viewport lock sur tablette** (actuellement `lg` seulement) :
+- Ligne ~309 : `lg:h-[calc(100vh-3.5rem)] lg:overflow-hidden` 
+  devient `md:h-[calc(100vh-3.5rem)] md:overflow-hidden`
+- Ligne ~317 : `lg:max-w-[1920px] lg:h-full lg:flex lg:flex-col`
+  devient `md:max-w-[1920px] md:h-full md:flex md:flex-col`
 
-### C) CreditsNavbar
-**Fichier** : `src/components/CreditsNavbar.tsx`
-- Cacher le texte "Credits" sur les petits ecrans : `<span className="hidden xs:inline">Credits</span>`
-- Garder le badge numerique toujours visible
+Cela verrouille la page en plein viewport des 768px, comme un vrai terminal de trading.
 
-## 3. Layout et Grilles
+### 2. `src/pages/TradingDashboard.tsx`
 
-### A) Homepage
-**Fichier** : `src/pages/Homepage.tsx`
-- Le logo hero est trop grand sur mobile (`h-72`). Reduire a `h-40 sm:h-56 md:h-72`
-- Le `h1` titre est trop gros sur mobile (`text-4xl`). Changer en `text-2xl sm:text-3xl md:text-5xl`
-- Le sous-titre `text-xl` : passer a `text-base sm:text-lg md:text-xl`
-- Le negative margin `-mt-16` cause un chevauchement : passer a `-mt-8 sm:-mt-12 md:-mt-16`
-- Section CTA : reduire le `text-4xl` a `text-2xl sm:text-3xl md:text-4xl`
-- Footer : utiliser le composant `Footer` importe au lieu du footer inline (coherence avec le reste du site)
+**Etendre le layout flex au breakpoint md** :
+- Ligne ~261 : `lg:h-full lg:overflow-hidden lg:flex lg:flex-col`
+  devient `md:h-full md:overflow-hidden md:flex md:flex-col`
+- Ligne ~263 : `lg:grid-cols-[2fr_1fr]` reste inchange (le carousel ne s'affiche qu'a `lg`)
+  mais ajouter `md:flex-1 md:min-h-0` pour que la grille prenne toute la hauteur sur tablette
+- Ligne ~265 (conteneur chart) : ajouter `md:min-h-[500px]` pour garantir que TradingView ne soit jamais ecrase sous 500px
 
-### B) Dashboard (TradingDashboard)
-**Fichier** : `src/pages/TradingDashboard.tsx`
-- Les mobile navigation cards (lignes 299-352) sont deja bien structurees en stack vertical
-- Reduire le `mt-4` a `mt-2` pour les cartes mobile pour un espacement plus serre
-- Le `MarketNewsCollapsible` en mobile est deja below-the-fold, correct
+**Navigation cards tablette** :
+- Ligne ~299 : les cartes mobile sont `lg:hidden` -- les garder visibles sur tablette mais les rendre plus compactes avec `md:grid-cols-3` (deja present via `sm:grid-cols-3`) et ajouter `md:mt-2` pour reduire l'espacement
+- Le `MarketNewsCollapsible` et `AssetInfoCard` (lignes ~356-362) : changer `lg:hidden` en gardant tel quel car ils sont below-the-fold et le scroll est desactive sur tablette avec le viewport lock. Les passer en `md:hidden` pour les masquer sur tablette (l'info est dans le carousel ou le badge news)
 
-### C) Auth Page
-**Fichier** : `src/pages/Auth.tsx`
-- La page est deja bien structuree sur mobile (card centree, formulaire lisible)
-- Ajuster le padding du container principal pour mobile : verifier que les marges laterales sont suffisantes mais pas excessives
+### 3. `src/components/CandlestickChart.tsx`
 
-### D) Pricing Page
-**Fichier** : `src/pages/Pricing.tsx`
-- La grille `md:grid-cols-3` est deja correcte (stack sur mobile)
-- Le `scale-105` sur la carte Premium peut causer un debordement horizontal sur mobile : ajouter `md:scale-105` pour ne l'appliquer qu'en desktop
-- Reduire les titres : `text-3xl md:text-4xl` -> `text-2xl sm:text-3xl md:text-4xl`
+**Compacter le header du chart sur tablette** :
+- Ligne ~182 : Le titre `text-xl sm:text-2xl md:text-3xl` -- reduire a `text-xl sm:text-2xl md:text-xl lg:text-3xl` pour que le titre soit plus petit sur tablette, laissant plus de place au chart
+- Ligne ~186 : Le sous-titre -- le cacher sur tablette avec `hidden md:hidden lg:block sm:block` (visible sur mobile petit et desktop, cache sur tablette pour gagner de la place)
 
-### E) Features Page
-**Fichier** : `src/pages/Features.tsx`
-- Titre hero `text-4xl md:text-5xl` -> `text-2xl sm:text-3xl md:text-5xl`
-- CTA section `text-4xl` -> `text-2xl sm:text-3xl md:text-4xl`
+### 4. `src/components/DashboardColumnCarousel.tsx`
 
-### F) About Page
-**Fichier** : `src/pages/About.tsx`
-- Logo `h-48 sm:h-64` -> `h-32 sm:h-48 md:h-64` pour mobile
-- Titre `text-3xl lg:text-4xl` -> `text-2xl sm:text-3xl lg:text-4xl`
+**Afficher le carousel sur tablette** :
+- Ligne ~296 dans TradingDashboard : `hidden lg:flex` devient `hidden md:flex`
+- Sur tablette, le carousel s'affichera dans la colonne droite. Activer aussi la grille 2 colonnes sur `md` : `md:grid-cols-[3fr_1fr] lg:grid-cols-[2fr_1fr]` -- ratio 3:1 sur tablette pour donner plus d'espace au chart
 
-## 4. Cards et Widgets
+### Resume des changements
 
-### A) Uniformiser les paddings mobile
-Deja fait dans `card.tsx` avec `p-4 sm:p-6` -- aucun changement necessaire.
-
-### B) Reduire le bruit visuel sur mobile
-- Badge "Most Complete" sur Pricing : ajouter un z-index suffisant (deja present avec `z-20`)
-- Les scrollbars sont deja cachees via `.scrollbar-hide` dans le CSS global
-
-## 5. Texte et Lisibilite
-
-- Tous les titres principaux passent de tailles fixes a des tailles responsive (detaille ci-dessus)
-- Les descriptions et sous-titres utilisent deja `text-muted-foreground` avec bon contraste
-- Aucun changement de couleur necessaire
-
-## 6. Interactions et Feedback
-
-- Les boutons ont deja `min-h-[44px]` pour les cibles tactiles (WCAG)
-- Les modals (MobileNewsModal) sont deja bien geres avec backdrop et animation
-- Les toasts utilisent le systeme sonner, pas de chevauchement constate
-
-## Resume des fichiers modifies
-
-| Fichier | Changements |
-|---------|------------|
-| `src/pages/TradingDashboard.tsx` | Cacher MobileNewsBadge sous md, reduire mt mobile cards |
-| `src/pages/Homepage.tsx` | Tailles responsive logo/titres, remplacer footer inline par Footer component |
-| `src/components/PublicNavbar.tsx` | Padding compact mobile |
-| `src/components/Layout.tsx` | Cacher badge status sur xs, optimiser credits |
-| `src/components/CreditsNavbar.tsx` | Cacher texte "Credits" sur xs |
-| `src/pages/Pricing.tsx` | Scale conditionnel Premium, titres responsive |
-| `src/pages/Features.tsx` | Titres responsive |
-| `src/pages/About.tsx` | Logo et titres responsive |
+| Fichier | Modification | Impact |
+|---------|-------------|--------|
+| `Layout.tsx` | Viewport lock etendu a `md` | Chart occupe tout l'ecran sur tablette |
+| `TradingDashboard.tsx` | Flex layout `md`, grille 2 colonnes `md`, min-height chart, masquer AssetInfo/News sur tablette | TradingView jamais ecrase, layout terminal |
+| `CandlestickChart.tsx` | Titre compact sur `md`, sous-titre cache sur tablette | Plus d'espace vertical pour le chart |
+| `DashboardColumnCarousel.tsx` | Visible a partir de `md` au lieu de `lg` | Navigation accessible sur tablette |
 
 ## Ce qui ne change pas
-- Routing, API, logique metier
-- Fonctionnalites existantes (toutes preservees)
-- Desktop et tablette (inchanges ou ameliores marginalement)
-- Composants UI de base (card, button, etc.)
 
-## Breakpoints utilises
-- `xs` : < 375px (via CSS custom)
-- `sm` : 640px (Tailwind default)
-- `md` : 768px (tablette)
-- `lg` : 1024px (desktop)
+- Aucune logique metier / API / data / routing
+- Desktop (`lg+`) : aucun changement
+- Mobile (`< 768px`) : aucun changement
+- Toutes les fonctionnalites preservees
+- Les pages publiques (Homepage, Pricing, Features, About, Auth) ne sont pas touchees
 
+## Breakpoints cibles
+
+- `md` : 768px-1023px (iPad portrait, tablettes Android standard)
+- `lg` : 1024px+ (iPad landscape, desktop) -- inchange
