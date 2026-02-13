@@ -264,8 +264,8 @@ export default function TradingDashboard() {
       {/* Main viewport-locked content */}
       <div className="h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col gap-1 md:h-full md:gap-2">
         {/* Mobile branding header */}
-        <div className="shrink-0 px-3 py-1.5 md:hidden border-b border-border/30">
-          <h1 className="text-base font-bold text-primary leading-tight tracking-tight">{t('dashboard:trading.title')}</h1>
+        <div className="shrink-0 px-3 py-2 md:hidden border-b border-border/30 bg-card/80 backdrop-blur-sm">
+          <h1 className="text-base font-bold text-foreground leading-tight tracking-tight">{t('dashboard:trading.title')}</h1>
           <p className="text-xs text-muted-foreground leading-tight mt-0.5">{t('dashboard:trading.subtitle')}</p>
         </div>
         {/* Row 1: Chart + Nav Cards */}
