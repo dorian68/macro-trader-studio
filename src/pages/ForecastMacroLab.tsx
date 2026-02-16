@@ -1327,7 +1327,7 @@ export default function ForecastMacroLab() {
                     Technical Analysis
                   </TabsTrigger>
                 </TabsList>
-                <TabsContent value="chart" className="p-4 pt-2">
+                <TabsContent value="chart" className="p-4 pt-2 min-h-[500px]">
                   <TradingViewWidget
                     selectedSymbol={selectedAsset.tradingViewSymbol}
                     timeframe={timeframe}
@@ -1337,7 +1337,7 @@ export default function ForecastMacroLab() {
                     }}
                   />
                 </TabsContent>
-                <TabsContent value="technical" className="p-4 pt-2">
+                <TabsContent value="technical" className="p-4 pt-2 min-h-[500px]">
                   <TechnicalDashboard selectedAsset={selectedAsset} timeframe={timeframe} />
                 </TabsContent>
               </Tabs>
