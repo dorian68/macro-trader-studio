@@ -1,45 +1,53 @@
 
-# Macro Lab -- Correction de l'ecrasement du widget TradingView
 
-## Probleme
+# Fix: TradingView Widget Crushed in Macro Lab
 
-Le `TradingViewWidget` dans Macro Lab s'ecrase (hauteur quasi nulle) car :
-- Le widget utilise `h-full` et `flex-1 min-h-0` pour s'adapter a son parent
-- Le parent (`TabsContent`) n'a aucune hauteur definie -- il utilise juste `p-4 pt-2`
-- Sans contrainte de hauteur, le conteneur flexbox se reduit a zero
+## Root Cause
 
-Dans le dashboard, ce probleme n'existe pas car le layout est verrouille au viewport.
+The `min-h-[500px]` applied in the previous fix sets a minimum height on the `TabsContent`, but it does not provide a **definite height** for the widget's `h-full` to resolve against. The chain is:
+
+```text
+TabsContent (min-h-[500px], flex, flex-col)
+  -> TradingViewWidget Card (h-full, flex, flex-col)
+    -> CardContent (flex-1, min-h-0, flex, flex-col)
+      -> chart div (flex-1, min-h-0)  --> resolves to 0px
+```
+
+`h-full` on the Card means "100% of parent height", but a `min-h` does not define the parent's height -- it only sets a floor. So `h-full` resolves to 0, and the entire flex chain collapses.
 
 ## Solution
 
-Donner une hauteur minimale explicite au `TabsContent` du chart pour que le widget TradingView ait de l'espace. Cela reproduit le pattern utilise ailleurs dans le projet.
+Replace the flex-based height delegation with an **explicit minimum height directly on the TradingViewWidget wrapper**, ensuring the chart container has a concrete size to render into.
 
-### Fichier : `src/pages/ForecastMacroLab.tsx`
+### File: `src/pages/ForecastMacroLab.tsx`
 
-**Ligne 1330** -- Ajouter une hauteur minimale au TabsContent du chart :
-
-```
-Avant : <TabsContent value="chart" className="p-4 pt-2">
-Apres : <TabsContent value="chart" className="p-4 pt-2 min-h-[500px]">
-```
-
-Cela garantit que le widget dispose d'au moins 500px de hauteur (coherent avec la `min-h` utilisee pour le chart sur tablette dans le dashboard). Le widget remplira cet espace grace a son `h-full`.
-
-### Meme correction pour l'onglet Technical Analysis (ligne 1340) :
+**Change 1 -- Line 1330**: Give the `TradingViewWidget` a concrete height by adding `h-[500px]` on the `TabsContent` instead of `min-h-[500px]`:
 
 ```
-Avant : <TabsContent value="technical" className="p-4 pt-2">
-Apres : <TabsContent value="technical" className="p-4 pt-2 min-h-[500px]">
+Before: <TabsContent value="chart" className="p-4 pt-2 min-h-[500px]">
+After:  <TabsContent value="chart" className="p-4 pt-2 h-[500px]">
 ```
 
-## Resume
+**Change 2 -- Line 1340**: Same for the technical tab:
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/pages/ForecastMacroLab.tsx` | `min-h-[500px]` sur les deux `TabsContent` (chart + technical) |
+```
+Before: <TabsContent value="technical" className="p-4 pt-2 min-h-[500px]">
+After:  <TabsContent value="technical" className="p-4 pt-2 h-[500px]">
+```
 
-## Ce qui ne change pas
+Using `h-[500px]` provides a **definite height** that `h-full` on the Card can resolve against, making the entire flex chain (`flex-1`) work as intended. The `TabsContent` already has `data-[state=active]:flex data-[state=active]:flex-col` from the global tabs.tsx override, so the child will stretch properly.
 
-- Dashboard, Trade Generator, autres pages : aucun impact
-- Logique API, donnees, WebSocket : zero changement
-- Layout mobile du dashboard : inchange
+## What does not change
+
+- Dashboard layout: unaffected (uses viewport-locked heights)
+- Trade Generator, Forecast Playground: no changes
+- Mobile/tablet behavior: the 500px fixed height is appropriate for all breakpoints on this page since it scrolls naturally (unlike the dashboard)
+- API logic, WebSocket, data fetching: zero impact
+
+## Summary
+
+| File | Change |
+|------|--------|
+| `src/pages/ForecastMacroLab.tsx` (line 1330) | `min-h-[500px]` replaced by `h-[500px]` on chart tab |
+| `src/pages/ForecastMacroLab.tsx` (line 1340) | `min-h-[500px]` replaced by `h-[500px]` on technical tab |
+
