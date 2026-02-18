@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Calendar, MessageSquare, TrendingUp, FileText, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, MessageSquare, TrendingUp, FileText, RefreshCw, Newspaper, BarChart3 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -197,6 +199,18 @@ function extractItemTitle(interaction: AIInteraction): string {
   if (feature === 'Macro Commentary') {
     // Try extracting instrument from response text
     if (typeof response === 'string') {
+      // Try parsing as JSON first (macro_lab returns stringified JSON)
+      try {
+        const parsed = JSON.parse(response);
+        if (parsed.content) {
+          const match = parsed.content.match(INSTRUMENT_REGEX);
+          if (match) return `${match[1]} Macro Analysis`;
+        }
+        if (parsed.request?.query) {
+          const match = parsed.request.query.match(INSTRUMENT_REGEX);
+          if (match) return `${match[1]} Macro Analysis`;
+        }
+      } catch {}
       const match = response.match(INSTRUMENT_REGEX);
       if (match) return `${match[1]} Macro Analysis`;
     }
@@ -395,7 +409,18 @@ export function AIInteractionHistory() {
 
       // Plain text (macro_lab)
       if (typeof response === 'string') {
-        // Try to extract instrument + bias
+        // Try parsing as JSON first (macro_lab stringified JSON)
+        try {
+          const parsed = JSON.parse(response);
+          if (parsed.content && typeof parsed.content === 'string') {
+            const instrumentMatch = parsed.content.match(INSTRUMENT_REGEX);
+            const biasMatch = parsed.content.match(/\b(Bullish|Bearish|Neutral)\b\s*(\d{1,3}%)?/i);
+            if (instrumentMatch && biasMatch) return `${instrumentMatch[1]} — ${biasMatch[0]}`;
+            const firstLine = parsed.content.split('\n').find((l: string) => l.trim()) || '';
+            return firstLine.length > 120 ? firstLine.slice(0, 120) + '…' : firstLine;
+          }
+        } catch {}
+        // Try to extract instrument + bias from raw text
         const instrumentMatch = response.match(INSTRUMENT_REGEX);
         const biasMatch = response.match(/\b(Bullish|Bearish|Neutral)\b\s*(\d{1,3}%)?/i);
         if (instrumentMatch && biasMatch) {
@@ -529,22 +554,34 @@ export function AIInteractionHistory() {
 
     // --- Macro Commentary ---
     if (feature === 'Macro Commentary') {
-      // Plain text response (from macro_lab)
+      // String response — may be stringified JSON from macro_lab
       if (typeof response === 'string') {
+        try {
+          const parsed = JSON.parse(response);
+          if (parsed.content && typeof parsed.content === 'string') {
+            return renderMacroLabResult(parsed);
+          }
+          if (parsed.executive_summary || parsed.fundamental_analysis || parsed.directional_bias) {
+            return <MacroCommentaryDisplay data={parsed} originalQuery={undefined} />;
+          }
+        } catch {}
+        // Truly plain text
         return renderPlainTextMacro(response);
       }
 
       // Structured JSON response (from RAG)
       try {
-        const parsedResponse = typeof response === 'string'
-          ? JSON.parse(response)
-          : response;
+        const parsedResponse = response;
 
         if (parsedResponse.executive_summary || parsedResponse.fundamental_analysis || parsedResponse.directional_bias) {
           return <MacroCommentaryDisplay data={parsedResponse} originalQuery={undefined} />;
         }
 
         if (parsedResponse.content && typeof parsedResponse.content === 'string') {
+          // Could also be an object with content + fundamentals
+          if (parsedResponse.fundamentals || parsedResponse.citations_news) {
+            return renderMacroLabResult(parsedResponse);
+          }
           return renderPlainTextMacro(parsedResponse.content);
         }
 
@@ -625,8 +662,133 @@ export function AIInteractionHistory() {
   };
 
   /**
-   * Parse plain text macro commentary into titled sections
+   * Render a rich macro lab result with fundamentals table & news citations
    */
+  const renderMacroLabResult = (parsed: { content: string; fundamentals?: any[]; citations_news?: any[]; market_data?: any; request?: any }) => {
+    const sections = parseMacroTextSections(parsed.content);
+    const instrumentMatch = parsed.content.match(INSTRUMENT_REGEX);
+    const instrument = instrumentMatch ? instrumentMatch[1] : null;
+    const query = parsed.request?.query;
+
+    return (
+      <div className="space-y-3">
+        {/* Instrument + query */}
+        <div className="flex items-center gap-2 mb-1">
+          <MessageSquare className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">
+            {instrument ? `${instrument} Analysis` : 'Macro Analysis'}
+          </span>
+        </div>
+        {query && (
+          <p className="text-xs italic text-muted-foreground mb-2 pl-6">
+            &ldquo;{query}&rdquo;
+          </p>
+        )}
+
+        {/* Content sections */}
+        {sections.map((section, index) => (
+          <Card key={index} className={index === 0 ? "border-l-4 border-l-primary/40" : ""}>
+            {section.title && (
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-sm font-semibold">{section.title}</CardTitle>
+              </CardHeader>
+            )}
+            <CardContent className={`${section.title ? "pt-0" : "py-3"} px-4`}>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                {section.content}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+
+        {/* Fundamentals table */}
+        {parsed.fundamentals && Array.isArray(parsed.fundamentals) && parsed.fundamentals.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Key Economic Data
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Indicator</TableHead>
+                      <TableHead className="text-xs text-right">Actual</TableHead>
+                      <TableHead className="text-xs text-right">Consensus</TableHead>
+                      <TableHead className="text-xs text-right">Previous</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parsed.fundamentals.map((item: any, idx: number) => {
+                      const actual = item.actual ?? item.value;
+                      const consensus = item.consensus ?? item.forecast ?? item.expected;
+                      const previous = item.previous ?? item.prior;
+                      const isSurprise = actual != null && consensus != null && actual !== consensus;
+                      const isPositive = actual != null && consensus != null && Number(actual) > Number(consensus);
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell className="text-xs font-medium py-2">
+                            {item.indicator || item.name || item.label || `Data ${idx + 1}`}
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-2">
+                            {actual != null ? (
+                              <span className={isSurprise ? (isPositive ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold') : ''}>
+                                {actual}
+                              </span>
+                            ) : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-2 text-muted-foreground">
+                            {consensus ?? '—'}
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-2 text-muted-foreground">
+                            {previous ?? '—'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Citations / News */}
+        {parsed.citations_news && Array.isArray(parsed.citations_news) && parsed.citations_news.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Newspaper className="h-4 w-4 text-primary" />
+                Market News
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4">
+              <ScrollArea className="max-h-48">
+                <div className="space-y-2">
+                  {parsed.citations_news.slice(0, 5).map((news: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs">
+                      {(news.publisher || news.source) && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          {news.publisher || news.source}
+                        </Badge>
+                      )}
+                      <span className="text-foreground break-words">
+                        {news.title || news.headline || news.text || JSON.stringify(news)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   const parseMacroTextSections = (text: string): { title: string; content: string }[] => {
     const sections: { title: string; content: string }[] = [];
     const lines = text.split('\n');
