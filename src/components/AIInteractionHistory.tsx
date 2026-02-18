@@ -960,7 +960,7 @@ export function AIInteractionHistory() {
           </Card>
         )}
 
-        {setup?.riskNotes && setup.riskNotes.length > 0 && (
+        {setup?.riskNotes && Array.isArray(setup.riskNotes) && setup.riskNotes.length > 0 && (
           <Card>
             <CardHeader className="pb-2 pt-3 px-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
