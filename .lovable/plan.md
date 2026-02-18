@@ -1,29 +1,60 @@
 
 
-# Compacter les lignes du Market News
+# Emails utilisateur : Bienvenue + Confirmation d'approbation
 
-## Probleme
-Les items de news ont trop d'espacement : `p-4` sur chaque ligne, `space-y-3` entre les lignes, `mb-2` sur plusieurs sous-elements, et des images de `w-20 h-20`. Cela cree beaucoup de vide.
+## Etat actuel
 
-## Modifications
+| Scenario | Email envoye ? | Destinataire |
+|----------|---------------|-------------|
+| Inscription (sign up) | Oui - `new_registration` | Admins uniquement |
+| Approbation par admin | Oui - `status_approved` | Utilisateur |
+| Rejet par admin | Oui - `status_rejected` | Utilisateur |
 
-**Fichier unique : `src/components/MarketNewsCollapsible.tsx`**
+**Probleme 1** : L'utilisateur qui s'inscrit ne recoit aucun email de bienvenue expliquant le produit et le processus d'approbation.
 
-1. **Reduire l'espacement entre les lignes** : `space-y-3` devient `space-y-1.5`
-2. **Reduire le padding interne de chaque item** : `p-4` devient `px-3 py-2`
-3. **Reduire la taille des images** : `w-20 h-20` devient `w-14 h-14`
-4. **Reduire les marges internes du contenu** :
-   - `mb-1` sur le titre devient `mb-0.5`
-   - `mb-2` sur la meta-ligne devient `mb-1`
-   - `mb-2` sur le summary devient `mb-0.5`
-   - `gap-3` entre image et contenu devient `gap-2`
-5. **Limiter le summary a 1 ligne** au lieu de 2 : `line-clamp-2` devient `line-clamp-1`
-6. **Reduire le border-radius** : `rounded-lg` devient `rounded-md`
+**Probleme 2** : L'email d'approbation existe mais le CTA pointe vers `/dashboard` au lieu de `/auth` (l'utilisateur doit d'abord se connecter).
+
+## Modifications prevues
+
+### 1. Nouveau template `welcome_signup` dans `send-admin-notification`
+
+Ajouter un nouveau type de notification `welcome_signup` dans l'Edge Function `send-admin-notification/index.ts` :
+- Sujet : "Bienvenue sur Alphalens - Votre inscription est en cours de validation"
+- Contenu :
+  - Presentation du produit (AI-powered trading insights, portfolio management, etc.)
+  - Explication du processus : compte en attente de validation par l'equipe
+  - Delai indicatif
+  - Lien vers le site pour en savoir plus
+- Pas de CTA de connexion (le compte n'est pas encore approuve)
+
+### 2. Envoi de l'email de bienvenue lors du sign up
+
+Dans `src/pages/Auth.tsx`, apres l'appel `notify-new-registration` (qui notifie les admins), ajouter un second appel fire-and-forget vers `send-admin-notification` avec le type `welcome_signup` envoye directement a l'email de l'utilisateur. Cela concerne les deux flux :
+- Email/password sign up (ligne ~449)
+- Google OAuth sign up (ligne ~291)
+
+### 3. Corriger le CTA de l'email d'approbation
+
+Dans le template `status_approved` de `send-admin-notification/index.ts` :
+- Changer le lien CTA de `https://alphalens.ai/dashboard` vers `https://macro-trader-studio.lovable.app/auth`
+- Modifier le texte du bouton : "Access Your Dashboard" devient "Sign In Now"
+- Cela garantit que l'utilisateur est redirige vers la page de connexion
+
+### 4. Mettre a jour l'interface du type
+
+Ajouter `welcome_signup` dans l'interface `AdminNotificationRequest.type` et dans le `switch/case` de `getEmailContent`.
+
+## Fichiers modifies
+
+| Fichier | Modification |
+|---------|-------------|
+| `supabase/functions/send-admin-notification/index.ts` | Ajout template `welcome_signup` + correction CTA `status_approved` |
+| `src/pages/Auth.tsx` | Ajout envoi email bienvenue a l'utilisateur (2 endroits) |
 
 ## Ce qui ne change pas
-- La logique de filtrage, categories, recherche
-- Le hook `useNewsFeed`
-- Le header avec tabs et search bar
-- Le `NewsFeedPanel` (side drawer, composant separe)
-- Toutes les autres pages
+
+- Le flux `notify-new-registration` vers les admins reste identique
+- Les templates existants (`status_rejected`, `credits_updated`, etc.) restent intacts
+- La logique d'approbation dans `useAdminActions.tsx` reste identique (elle envoie deja `status_approved`)
+- Aucune modification de base de donnees
 
