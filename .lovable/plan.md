@@ -1,73 +1,92 @@
 
 
-# Simplification de l'affichage des resultats Macro Lab
+# Refonte ergonomique de la page History -- Affichage client-ready
 
-## Probleme
+## Probleme actuel
 
-L'affichage actuel empile 4 niveaux de conteneurs redondants pour afficher une seule reponse :
-1. Titre H2 "Analysis Results" avec icone Brain
-2. Card avec header "Macro Analysis For..." + badge "Complete"
-3. Collapsible avec trigger repetant le titre de la section
-4. Div interne avec background et bordure supplementaire
-
-Resultat : le contenu est enfoui sous des couches inutiles et les titres se repetent.
+Chaque item de l'historique affiche des informations techniques inutiles pour un client :
+- Badge "Job: d537baf4..." visible
+- Label "Query:" dans un bloc gris avec style developpeur
+- Label "Response Preview:" en texte minuscule
+- Boutons "Expand" / "Collapse" avec texte (au lieu d'un simple chevron)
+- En mode expanse : bloc "Complete Query" redondant + label "AI Response" au-dessus du contenu
+- Les composants `TradeSetupDisplay` et `MacroCommentaryDisplay` affichent chacun un bloc "Original Query" qui fait doublon avec le header
 
 ## Solution
 
-Fusionner tout en une seule Card propre par analyse, sans collapsible interne ni titre redondant.
+Nettoyer l'affichage pour un rendu professionnel en un seul fichier : `src/components/AIInteractionHistory.tsx`.
 
-## Fichier modifie : `src/pages/ForecastMacroLab.tsx`
+## Fichier modifie : `src/components/AIInteractionHistory.tsx`
 
-### Structure actuelle (lignes 1083-1263)
+### 1. Item collapsed (lignes 996-1058)
 
-```text
-H2 "Analysis Results"
-  Card
-    CardHeader "Macro Analysis For..." + badge
-    CardContent
-      Collapsible (section title = "Analysis Results")
-        CollapsibleTrigger (encore un titre)
-        CollapsibleContent
-          div.bg-muted/20
-            TypewriterRenderer
-      "Extracted Trading Levels" (conditionnel)
-      Footer (Copy + TradingView)
+**Avant :**
+```
+[icone] [Badge Feature] [Calendar date] [Job: d537baf4...]
+        Query:
+        texte de la requete...
+        Response Preview:
+        resume de la reponse...                    [Expand v]
 ```
 
-### Nouvelle structure
-
-```text
-Card (par analyse)
-  CardHeader
-    Icone Activity + "Macro Analysis" + date + badge Complete
-    Sous-titre: la query de l'utilisateur (italique, muted)
-  CardContent
-    TypewriterRenderer (directement, sans wrapper superflu)
-    "Extracted Trading Levels" (inchange, conditionnel)
-    Footer (Copy + TradingView, inchange)
+**Apres :**
+```
+[icone] [Badge Feature]  date relative             [v]
+        Texte de la requete (1 ligne, sans label)
+        Resume de la reponse (1 ligne, muted)
 ```
 
-### Changements concrets
+Changements concrets :
+- Supprimer le badge `Job: {interaction.job_id.slice(0, 8)}...` (lignes 1013-1016)
+- Supprimer le bloc `bg-muted/30` "Query:" (lignes 1021-1026) et le remplacer par un simple `<p>` avec le texte de la query, `line-clamp-1`, sans label
+- Supprimer le label "Response Preview:" (ligne 1031) et garder juste le texte du resume en `line-clamp-1 text-muted-foreground`
+- Remplacer le bouton "Expand/Collapse" avec texte par un simple chevron sans texte (supprimer les `<span>` "Expand" et "Collapse")
 
-1. **Supprimer le H2 "Analysis Results"** (lignes 1084-1088) -- le titre de chaque card suffit
-2. **Supprimer le Collapsible interne** (lignes 1116-1156) -- le contenu est toujours visible, pas besoin de toggle expand/collapse
-3. **Supprimer le div wrapper `bg-muted/20`** autour du TypewriterRenderer -- une seule bordure (la Card) suffit
-4. **Simplifier le CardHeader** : garder un titre unique "Macro Analysis" + la query en sous-titre + date + badge
-5. **Rendre le TypewriterRenderer directement dans CardContent** sans intermediaire
+### 2. Item expanded (lignes 1062-1082)
 
-### Code mort a nettoyer
+**Avant :**
+```
+--- border-t ---
+Complete Query
+texte mono dans bg gris...
+AI Response
+[TradeSetupDisplay avec Original Query card]
+```
 
-- Supprimer le state `expandedSections` et `setExpandedSections` (plus de collapsibles)
-- Supprimer la fonction `toggleSection` (plus utilisee)
-- Retirer les imports devenus inutiles si plus utilises ailleurs dans le fichier (verifier `Collapsible` usage dans le debug panel)
+**Apres :**
+```
+--- border-t ---
+[TradeSetupDisplay SANS Original Query card]
+```
+
+Changements concrets :
+- Supprimer le bloc "Complete Query" (lignes 1066-1073) -- la query est deja visible dans le header
+- Supprimer le label `<h4>AI Response</h4>` (ligne 1077) -- le contenu parle de lui-meme
+- Passer `originalQuery={undefined}` aux composants `TradeSetupDisplay` et `MacroCommentaryDisplay` pour empecher l'affichage de leur carte "Original Query" interne (car deja dans le header de l'item)
+
+### 3. Amelioration du resume (extractSummary)
+
+- Pour Macro Commentary en texte brut : extraire l'instrument du texte (ex: "EUR/USD") et le bias ("Bearish 70%") au lieu de la premiere ligne brute
+- Pour AI Trade Setup : format "EUR/USD - Long - Entry 1.1784" au lieu du texte technique actuel
+
+### 4. Extraction intelligente du titre (extractItemTitle)
+
+Nouvelle fonction pour extraire un titre lisible :
+- Macro Commentary : chercher l'instrument dans le texte (regex sur paires forex, indices, etc.) puis afficher "EUR/USD Macro Analysis"
+- AI Trade Setup : extraire `instrument` + `direction` du payload
+- Report : extraire le H1/H2 du HTML
+- Affiche ce titre comme ligne principale au lieu du user_query brut
+
+### 5. Code mort a supprimer
+
+- `renderStructuredFallback` (lignes 818-839) -- plus utilise, les fallbacks sont geres par les composants existants
+- `renderStructuredResponse` (lignes 842-914) -- plus utilise
+- `renderTradeSetupFallback` (lignes 665-815) -- remplace par `TradeSetupDisplay` directement
 
 ### Ce qui ne change PAS
 
-- Le composant `TypewriterRenderer` et son hook
-- Le bloc "Extracted Trading Levels" (conditionnel, meme logique)
-- Le footer avec les boutons Copy et TradingView
-- Le skeleton de chargement
-- Le debug panel (HTTP debug)
-- Le panneau Market Analysis (TradingView + Technical)
-- La carte de generation avec le textarea et les suggestions
+- Les composants `TradeSetupDisplay`, `MacroCommentaryDisplay`, `DecisionSummaryCard` restent intacts
+- La logique de pagination, filtrage, refresh
+- Le deep extraction (`deepExtractContent`, `deepExtractUserQuery`)
+- La structure de la page `History.tsx`
 
