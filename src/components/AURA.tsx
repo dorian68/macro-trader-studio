@@ -1171,8 +1171,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                       isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-lg px-4 py-2',
                       msg.role === 'user'
                         ? isFullscreen 
-                          ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground'
-                          : 'bg-primary text-primary-foreground'
+                          ? 'bg-[#2a2d35] text-foreground'
+                          : 'bg-[#2a2d35] text-foreground'
                         : isFullscreen
                           ? 'bg-[#1a1d27] text-foreground'
                           : 'bg-muted'
