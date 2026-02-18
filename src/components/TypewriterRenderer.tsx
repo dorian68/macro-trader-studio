@@ -28,7 +28,7 @@ export function TypewriterRenderer({ content, originalQuery, isNew }: Typewriter
   const textContent = isString ? (content as string) : "";
 
   const { displayedText, isAnimating, skip } = useTypewriter(textContent, {
-    speed: 20,
+    speed: 5,
     enabled: isNew && isString && typewriterEnabled,
   });
 
