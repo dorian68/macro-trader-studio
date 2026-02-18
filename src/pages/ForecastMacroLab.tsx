@@ -36,6 +36,8 @@ import { useTranslation } from "react-i18next";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
 import { MacroCommentaryDisplay } from "@/components/MacroCommentaryDisplay";
+import { TypewriterRenderer } from "@/components/TypewriterRenderer";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const { useState, useEffect } = React;
@@ -957,12 +959,21 @@ export default function ForecastMacroLab() {
                 </div>
 
                 {isGenerating && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {jobStatus === "queued" && t("dashboard:macro.analysisQueued")}
-                    {jobStatus === "running" && t("dashboard:macro.analysisInProgress")}
-                    {!jobStatus && t("dashboard:macro.generatingAnalysis")}
-                  </div>
+                  <Card className="animate-fade-in border-0 shadow-none bg-transparent">
+                    <CardContent className="p-0 space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {jobStatus === "queued" && t("dashboard:macro.analysisQueued")}
+                        {jobStatus === "running" && t("dashboard:macro.analysisInProgress")}
+                        {!jobStatus && t("dashboard:macro.generatingAnalysis")}
+                      </div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-[90%]" />
+                      <Skeleton className="h-4 w-[75%]" />
+                      <Skeleton className="h-4 w-[85%]" />
+                      <Skeleton className="h-4 w-[60%]" />
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             </CardContent>
@@ -1132,13 +1143,11 @@ export default function ForecastMacroLab() {
 
                             <CollapsibleContent className="animate-accordion-down">
                               <div className="bg-muted/20 p-4 rounded-lg border">
-                                {typeof section.content === "object" ? (
-                                  <MacroCommentaryDisplay data={section.content} originalQuery={analysis.query} />
-                                ) : (
-                                  <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
-                                    {section.content}
-                                  </div>
-                                )}
+                                <TypewriterRenderer
+                                  content={section.content}
+                                  originalQuery={analysis.query}
+                                  isNew={index === 0 && sectionIndex === 0}
+                                />
                               </div>
                             </CollapsibleContent>
                           </div>
