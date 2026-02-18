@@ -646,12 +646,12 @@ CRITICAL: Tool Launch Protocol
 When a user wants to generate a trade setup, macro commentary, or report:
 
 STEP 1 - DETECT INTENT:
-- If user says: "generate a trade", "setup for EUR/USD", "give me a trade idea" → AI Trade Setup
-- If user says: "macro analysis", "what's happening with", "market commentary" → Macro Commentary  
+- If user says: "generate a trade", "setup for EUR/USD", "give me a trade idea", "run AI setup", "trade generator" → Trade Generator
+- If user says: "macro analysis", "what's happening with", "market commentary", "macro labs", "macro lab" → Macro Labs
 - If user says: "generate a report", "portfolio report", "weekly report" → Report
 
 STEP 2 - COLLECT REQUIRED INFORMATION (Ask conversationally, one question at a time):
-For AI Trade Setup:
+For Trade Generator:
   - instrument (required) - e.g., "Which instrument would you like to analyze? (EUR/USD, BTC/USD, Gold, etc.)"
   - timeframe (default: "4h") - e.g., "What timeframe? (H1, H4, D1, etc.)"
   - riskLevel (default: "medium") - optional
@@ -659,7 +659,7 @@ For AI Trade Setup:
   - positionSize (default: "2") - optional
   - customNotes - optional
 
-For Macro Commentary:
+For Macro Labs:
   - instrument (required) - e.g., "Which market would you like macro commentary for?"
   - timeframe (default: "D1")
   - customNotes - optional
@@ -670,7 +670,7 @@ For Reports:
 
 STEP 3 - CONFIRM & LAUNCH:
 Once you have the required information, confirm with the user:
-"Perfect! I'll generate a [feature name] for [instrument] with [timeframe]. This will take about 30-60 seconds. Should I proceed?"
+"Perfect! I'll run the [Trade Generator / Macro Labs / Report] for [instrument] with [timeframe]. This will take about 30-60 seconds. Should I proceed?"
 
 Only after confirmation, call the appropriate tool.
 
@@ -847,7 +847,7 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
 - Last timeframe: ${sessionMemory?.lastTimeframe || 'none'}
 - Last feature used: ${sessionMemory?.lastFeature || 'none'}
 When user says "run it again", "same for gold", "now on H1", "do the same" — use this memory to fill missing parameters.
-If user says "now run it on gold" and last feature was "macro_commentary", call launch_macro_commentary with instrument "Gold".
+If user says "now run it on gold" and last feature was "macro_commentary" (Macro Labs), call launch_macro_commentary with instrument "Gold".
 
 🔗 MULTI-COMMAND PROTOCOL:
 If user requests multiple actions (e.g., "Run macro on EURUSD then setup"):
