@@ -1,92 +1,107 @@
 
 
-# Refonte ergonomique de la page History -- Affichage client-ready
+# Fix: Affichage JSON dans History + Query dans Macro Lab
 
-## Probleme actuel
+## Diagnostic
 
-Chaque item de l'historique affiche des informations techniques inutiles pour un client :
-- Badge "Job: d537baf4..." visible
-- Label "Query:" dans un bloc gris avec style developpeur
-- Label "Response Preview:" en texte minuscule
-- Boutons "Expand" / "Collapse" avec texte (au lieu d'un simple chevron)
-- En mode expanse : bloc "Complete Query" redondant + label "AI Response" au-dessus du contenu
-- Les composants `TradeSetupDisplay` et `MacroCommentaryDisplay` affichent chacun un bloc "Original Query" qui fait doublon avec le header
+Le probleme vient de la chaine d'extraction des donnees. Voici ce qui se passe :
 
-## Solution
+1. `deepExtractContent` extrait correctement le contenu profondement imbrique de `response_payload`, mais retourne une **chaine JSON** (ex: `{"content": "Executive Summary\n...", "fundamentals": [...], "citations_news": [...]}`)
+2. Dans `renderFormattedResponse`, le check `typeof response === 'string'` est vrai, donc `renderPlainTextMacro(response)` est appele avec la **chaine JSON brute** au lieu du texte
+3. Le resultat : le JSON s'affiche comme du texte brut dans les cartes
 
-Nettoyer l'affichage pour un rendu professionnel en un seul fichier : `src/components/AIInteractionHistory.tsx`.
+De plus, les donnees contiennent des champs riches (`fundamentals`, `citations_news`, `market_data`) qui ne sont jamais exploites.
 
-## Fichier modifie : `src/components/AIInteractionHistory.tsx`
+## Plan de correction
 
-### 1. Item collapsed (lignes 996-1058)
+### Fichier : `src/components/AIInteractionHistory.tsx`
 
-**Avant :**
+### 1. Corriger `renderFormattedResponse` pour Macro Commentary
+
+Dans le bloc `feature === 'Macro Commentary'` (lignes 531-554), ajouter un parsing de la chaine JSON **avant** de decider quel rendu utiliser :
+
 ```
-[icone] [Badge Feature] [Calendar date] [Job: d537baf4...]
-        Query:
-        texte de la requete...
-        Response Preview:
-        resume de la reponse...                    [Expand v]
-```
-
-**Apres :**
-```
-[icone] [Badge Feature]  date relative             [v]
-        Texte de la requete (1 ligne, sans label)
-        Resume de la reponse (1 ligne, muted)
-```
-
-Changements concrets :
-- Supprimer le badge `Job: {interaction.job_id.slice(0, 8)}...` (lignes 1013-1016)
-- Supprimer le bloc `bg-muted/30` "Query:" (lignes 1021-1026) et le remplacer par un simple `<p>` avec le texte de la query, `line-clamp-1`, sans label
-- Supprimer le label "Response Preview:" (ligne 1031) et garder juste le texte du resume en `line-clamp-1 text-muted-foreground`
-- Remplacer le bouton "Expand/Collapse" avec texte par un simple chevron sans texte (supprimer les `<span>` "Expand" et "Collapse")
-
-### 2. Item expanded (lignes 1062-1082)
-
-**Avant :**
-```
---- border-t ---
-Complete Query
-texte mono dans bg gris...
-AI Response
-[TradeSetupDisplay avec Original Query card]
+if (typeof response === 'string') {
+  // Tenter de parser comme JSON (cas macro_lab)
+  try {
+    const parsed = JSON.parse(response);
+    if (parsed.content && typeof parsed.content === 'string') {
+      // C'est le format macro_lab : {content, fundamentals, citations_news, ...}
+      return renderMacroLabResult(parsed);
+    }
+  } catch {}
+  // Sinon c'est du texte brut
+  return renderPlainTextMacro(response);
+}
 ```
 
-**Apres :**
+### 2. Creer `renderMacroLabResult(parsed)` -- template structure
+
+Nouveau rendu qui exploite le JSON complet :
+
+- **Contenu principal** : parser `parsed.content` en sections via `parseMacroTextSections` et les afficher dans des cartes avec bordures colorees (identique a `renderPlainTextMacro` actuel)
+- **Fundamentals** (si `parsed.fundamentals` existe et non vide) : tableau compact avec colonnes Indicator / Actual / Consensus / Previous, badges colores pour les surprises (vert si actual > consensus, rouge sinon)
+- **News / Citations** (si `parsed.citations_news` existe) : liste avec publisher en badge + titre en texte, max 5 items dans un conteneur scrollable
+- **Query d'origine** (si `parsed.request?.query` existe) : affichee discretement sous le titre en italique muted
+
+### 3. Corriger `extractItemTitle` pour le cas macro string-JSON
+
+Actuellement l'extraction du titre echoue car elle fait un regex sur la chaine JSON au lieu du contenu textuel. Ajouter un parsing JSON :
+
 ```
---- border-t ---
-[TradeSetupDisplay SANS Original Query card]
+if (typeof response === 'string') {
+  try {
+    const parsed = JSON.parse(response);
+    if (parsed.content) {
+      const match = parsed.content.match(INSTRUMENT_REGEX);
+      if (match) return `${match[1]} Macro Analysis`;
+    }
+    if (parsed.request?.query) {
+      const match = parsed.request.query.match(INSTRUMENT_REGEX);
+      if (match) return `${match[1]} Macro Analysis`;
+    }
+  } catch {}
+  // Fallback regex sur string brute
+  const match = response.match(INSTRUMENT_REGEX);
+  if (match) return `${match[1]} Macro Analysis`;
+}
 ```
 
-Changements concrets :
-- Supprimer le bloc "Complete Query" (lignes 1066-1073) -- la query est deja visible dans le header
-- Supprimer le label `<h4>AI Response</h4>` (ligne 1077) -- le contenu parle de lui-meme
-- Passer `originalQuery={undefined}` aux composants `TradeSetupDisplay` et `MacroCommentaryDisplay` pour empecher l'affichage de leur carte "Original Query" interne (car deja dans le header de l'item)
+### 4. Corriger `extractSummary` pour le cas macro string-JSON
 
-### 3. Amelioration du resume (extractSummary)
-
-- Pour Macro Commentary en texte brut : extraire l'instrument du texte (ex: "EUR/USD") et le bias ("Bearish 70%") au lieu de la premiere ligne brute
-- Pour AI Trade Setup : format "EUR/USD - Long - Entry 1.1784" au lieu du texte technique actuel
-
-### 4. Extraction intelligente du titre (extractItemTitle)
-
-Nouvelle fonction pour extraire un titre lisible :
-- Macro Commentary : chercher l'instrument dans le texte (regex sur paires forex, indices, etc.) puis afficher "EUR/USD Macro Analysis"
-- AI Trade Setup : extraire `instrument` + `direction` du payload
-- Report : extraire le H1/H2 du HTML
-- Affiche ce titre comme ligne principale au lieu du user_query brut
-
-### 5. Code mort a supprimer
-
-- `renderStructuredFallback` (lignes 818-839) -- plus utilise, les fallbacks sont geres par les composants existants
-- `renderStructuredResponse` (lignes 842-914) -- plus utilise
-- `renderTradeSetupFallback` (lignes 665-815) -- remplace par `TradeSetupDisplay` directement
+Meme logique : parser le JSON pour extraire un resume depuis `parsed.content` au lieu de montrer le debut du JSON brut.
 
 ### Ce qui ne change PAS
 
-- Les composants `TradeSetupDisplay`, `MacroCommentaryDisplay`, `DecisionSummaryCard` restent intacts
-- La logique de pagination, filtrage, refresh
-- Le deep extraction (`deepExtractContent`, `deepExtractUserQuery`)
+- Le rendu des Reports (HTML) fonctionne correctement
+- Le rendu des AI Trade Setup fonctionne correctement
+- La page Macro Lab (deja corrigee au message precedent)
+- La pagination, les filtres, le refresh
+- Les composants `TradeSetupDisplay`, `MacroCommentaryDisplay`
 - La structure de la page `History.tsx`
+
+### Template visuel du rendu Macro Lab dans History (expanded)
+
+```text
+Card (border-l-4 primary)
+  "Executive Summary"
+  Texte du resume...
+
+Card
+  "Fundamental Analysis" 
+  Points en liste...
+
+Card
+  "AI Insights Breakdown"
+  Texte...
+
+Card (si fundamentals disponibles)
+  "Key Economic Data"
+  Tableau : Indicator | Actual | Consensus | Previous
+  (avec badges colores pour surprises)
+
+Card (si citations_news disponibles)  
+  "Market News"
+  Liste : [Publisher badge] Titre de l'article
+```
 
