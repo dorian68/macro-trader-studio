@@ -1,60 +1,56 @@
 
 
-# Emails utilisateur : Bienvenue + Confirmation d'approbation
+# 3 Ameliorations UX : Page de confirmation, PersistentToast auto-minimize, flux Pricing
 
-## Etat actuel
+## 1. Redirection vers une page de confirmation apres le Sign Up
 
-| Scenario | Email envoye ? | Destinataire |
-|----------|---------------|-------------|
-| Inscription (sign up) | Oui - `new_registration` | Admins uniquement |
-| Approbation par admin | Oui - `status_approved` | Utilisateur |
-| Rejet par admin | Oui - `status_rejected` | Utilisateur |
+**Probleme actuel** : Apres inscription, un simple toast s'affiche. L'utilisateur reste sur la page Auth sans retour visuel fort.
 
-**Probleme 1** : L'utilisateur qui s'inscrit ne recoit aucun email de bienvenue expliquant le produit et le processus d'approbation.
+**Solution** : Apres un signup reussi (email/password), rediriger vers la page `/email-confirmation` qui existe deja et qui affiche un message clair avec le logo, l'email de l'utilisateur, et un bouton pour renvoyer l'email.
 
-**Probleme 2** : L'email d'approbation existe mais le CTA pointe vers `/dashboard` au lieu de `/auth` (l'utilisateur doit d'abord se connecter).
+**Fichier** : `src/pages/Auth.tsx` (ligne ~474)
+- Remplacer le `toast(...)` de succes par un `navigate('/email-confirmation')` 
+- Le toast reste uniquement pour les erreurs
+- Le flux `free_trial` (intent) conserve sa redirection specifique vers `/payment-success`
 
-## Modifications prevues
+**Note** : La page `EmailConfirmation` existe deja avec un design adequat (logo, message, bouton resend, lien sign out). Pas besoin de creer une nouvelle page.
 
-### 1. Nouveau template `welcome_signup` dans `send-admin-notification`
+## 2. PersistentToast : auto-minimisation au changement de page
 
-Ajouter un nouveau type de notification `welcome_signup` dans l'Edge Function `send-admin-notification/index.ts` :
-- Sujet : "Bienvenue sur Alphalens - Votre inscription est en cours de validation"
-- Contenu :
-  - Presentation du produit (AI-powered trading insights, portfolio management, etc.)
-  - Explication du processus : compte en attente de validation par l'equipe
-  - Delai indicatif
-  - Lien vers le site pour en savoir plus
-- Pas de CTA de connexion (le compte n'est pas encore approuve)
+**Probleme actuel** : Quand l'utilisateur lance une query puis navigue, le PersistentToast reste en taille complete, ce qui donne une impression statique.
 
-### 2. Envoi de l'email de bienvenue lors du sign up
+**Solution** : Ajouter un `useEffect` dans `PersistentToast.tsx` qui ecoute les changements de route via `useLocation` de react-router-dom. Quand la route change et qu'il y a des jobs actifs, le toast se minimise automatiquement.
 
-Dans `src/pages/Auth.tsx`, apres l'appel `notify-new-registration` (qui notifie les admins), ajouter un second appel fire-and-forget vers `send-admin-notification` avec le type `welcome_signup` envoye directement a l'email de l'utilisateur. Cela concerne les deux flux :
-- Email/password sign up (ligne ~449)
-- Google OAuth sign up (ligne ~291)
+**Fichier** : `src/components/PersistentToast.tsx`
+- Importer `useLocation` de `react-router-dom`
+- Ajouter un `useEffect` qui surveille `location.pathname`
+- Quand le pathname change ET qu'il y a des `activeJobs`, appeler `setIsMinimized(true)`
+- Ne pas minimiser si le toast est deja minimise (eviter les re-renders inutiles)
 
-### 3. Corriger le CTA de l'email d'approbation
+## 3. Flux Pricing : gestion du parametre `plan` dans Auth
 
-Dans le template `status_approved` de `send-admin-notification/index.ts` :
-- Changer le lien CTA de `https://alphalens.ai/dashboard` vers `https://macro-trader-studio.lovable.app/auth`
-- Modifier le texte du bouton : "Access Your Dashboard" devient "Sign In Now"
-- Cela garantit que l'utilisateur est redirige vers la page de connexion
+**Probleme actuel** : La page Pricing redirige vers `/auth?plan=basic` pour les utilisateurs non connectes, mais Auth.tsx ne lit pas ce parametre `plan`. Apres inscription, le plan choisi est perdu.
 
-### 4. Mettre a jour l'interface du type
+**Solution** : 
+- Lire le parametre `plan` dans Auth.tsx via `searchParams`
+- Stocker le plan dans `localStorage` avant le signup
+- Apres la confirmation email et connexion, verifier si un plan est en attente et rediriger vers le checkout Stripe automatiquement
+- Afficher un badge discret sur le formulaire signup indiquant le plan selectionne (ex: "Selected plan: Premium")
 
-Ajouter `welcome_signup` dans l'interface `AdminNotificationRequest.type` et dans le `switch/case` de `getEmailContent`.
+**Fichiers modifies** :
+- `src/pages/Auth.tsx` : lire `plan` param, l'afficher, le stocker dans localStorage
+- `src/pages/Auth.tsx` : dans le flux post-login (onAuthStateChange), detecter un plan en attente et rediriger vers checkout
 
-## Fichiers modifies
+## Resume des fichiers impactes
 
 | Fichier | Modification |
 |---------|-------------|
-| `supabase/functions/send-admin-notification/index.ts` | Ajout template `welcome_signup` + correction CTA `status_approved` |
-| `src/pages/Auth.tsx` | Ajout envoi email bienvenue a l'utilisateur (2 endroits) |
+| `src/pages/Auth.tsx` | Redirect vers /email-confirmation + gestion param `plan` |
+| `src/components/PersistentToast.tsx` | Auto-minimize sur changement de route |
 
 ## Ce qui ne change pas
-
-- Le flux `notify-new-registration` vers les admins reste identique
-- Les templates existants (`status_rejected`, `credits_updated`, etc.) restent intacts
-- La logique d'approbation dans `useAdminActions.tsx` reste identique (elle envoie deja `status_approved`)
-- Aucune modification de base de donnees
-
+- Page EmailConfirmation (deja existante et adequate)
+- Page EmailConfirmationSuccess
+- PersistentNotificationProvider (aucune modification)
+- Logique des jobs, realtime, credits
+- Tous les autres composants
