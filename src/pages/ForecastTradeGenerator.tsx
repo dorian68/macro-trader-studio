@@ -66,6 +66,7 @@ import {
   interpolateProbability,
 } from "@/lib/surfaceInterpolation";
 import { cn } from "@/lib/utils";
+import { DecisionSummaryCard } from "@/components/DecisionSummaryCard";
 import { Loader2 } from "lucide-react";
 
 // ✅ NEW: Import hooks for credit management and job tracking
@@ -835,6 +836,50 @@ function extractConfidenceNote(raw: unknown): string | null {
     }
   }
   
+  return null;
+}
+
+/**
+ * Extract decision_summary from trade_generation_output (SuperUser only)
+ */
+function extractDecisionSummary(raw: unknown): Record<string, unknown> | null {
+  const obj = raw as Record<string, unknown>;
+  
+  const validate = (val: unknown): Record<string, unknown> | null => {
+    if (!val) return null;
+    if (typeof val === "string") {
+      try { val = JSON.parse(val); } catch { return null; }
+    }
+    if (typeof val === "object" && val !== null) return val as Record<string, unknown>;
+    return null;
+  };
+
+  // Path 1: body.message.message.content.content.decision_summary
+  try {
+    const body = obj?.body as Record<string, unknown>;
+    const m1 = body?.message as Record<string, unknown>;
+    const m2 = m1?.message as Record<string, unknown>;
+    const c1 = m2?.content as Record<string, unknown>;
+    const c2 = parseContentContent(c1?.content);
+    const result = validate(c2?.decision_summary);
+    if (result) return result;
+  } catch {}
+
+  // Path 2: output.trade_generation_output.decision_summary
+  try {
+    const output = obj?.output as Record<string, unknown>;
+    const tgo = output?.trade_generation_output as Record<string, unknown>;
+    const result = validate(tgo?.decision_summary);
+    if (result) return result;
+  } catch {}
+
+  // Path 3: trade_generation_output.decision_summary
+  try {
+    const tgo = obj?.trade_generation_output as Record<string, unknown>;
+    const result = validate(tgo?.decision_summary);
+    if (result) return result;
+  } catch {}
+
   return null;
 }
 
@@ -1769,6 +1814,7 @@ function ForecastTradeGeneratorContent() {
   const [riskSurfaceData, setRiskSurfaceData] = useState<SurfaceApiResponse | null>(null);
   const [finalAnswer, setFinalAnswer] = useState<string | null>(null);
   const [confidenceNote, setConfidenceNote] = useState<string | null>(null);
+  const [decisionSummary, setDecisionSummary] = useState<Record<string, unknown> | null>(null);
 
   // AI Setup API state (macro-lab-proxy)
   const [aiSetupLoading, setAiSetupLoading] = useState(false);
@@ -1839,6 +1885,13 @@ function ForecastTradeGeneratorContent() {
               console.log('✅ [TradeGenerator] Injected confidence note');
             }
             
+            // ✅ Extract decision_summary (SuperUser)
+            const ds = extractDecisionSummary(result.resultData);
+            if (ds) {
+              setDecisionSummary(ds);
+              console.log('✅ [TradeGenerator] Injected decision summary');
+            }
+            
             setRawResponse(result.resultData);
             
             // ✅ Auto-collapse inputs when injecting pending results
@@ -1869,6 +1922,7 @@ function ForecastTradeGeneratorContent() {
     setRiskSurfaceData(null);
     setFinalAnswer(null);
     setConfidenceNote(null);
+    setDecisionSummary(null);
     setAiSetupError(null);
     setExpandedRows(new Set());
 
@@ -2040,6 +2094,10 @@ function ForecastTradeGeneratorContent() {
       // Extract confidence_note
       const note = extractConfidenceNote(data);
       setConfidenceNote(note);
+
+      // Extract decision_summary (SuperUser)
+      const ds = extractDecisionSummary(data);
+      setDecisionSummary(ds);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
@@ -2539,6 +2597,11 @@ function ForecastTradeGeneratorContent() {
               aiSetup={aiSetupResult}
               forecastHorizons={forecastHorizons}
             />
+
+            {/* Section 4: Decision Summary (SuperUser only) */}
+            {isSuperUser && decisionSummary && (
+              <DecisionSummaryCard decisionSummary={decisionSummary} />
+            )}
           </div>
         )}
       </main>
