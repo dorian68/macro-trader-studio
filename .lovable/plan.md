@@ -1,149 +1,98 @@
 
 
-# AURA Chart Integration + Fullscreen Premium UI Upgrade
+# AURA Feature Routing Update: ai-setup/macro-commentary to trade-generator/macro-labs
 
-## Overview
+## Summary
 
-This upgrade adds three capabilities to AURA without breaking any existing feature:
-
-1. A new `MarketChartWidget` component for inline chart rendering in AURA messages
-2. A data parser (`extractMarketAttachments`) that detects chartable data in responses
-3. A premium fullscreen UI redesign with rounded pill inputs, softer bubbles, and smooth animations
+Update AURA's routing so that all trade setup and macro commentary commands route to `/trade-generator` and `/macro-lab` respectively, instead of the legacy `/ai-setup` and `/macro-analysis` pages. All changes are additive -- old aliases continue to work internally.
 
 ---
 
-## New File: `src/components/aura/MarketChartWidget.tsx`
+## Changes in `src/components/AURA.tsx`
 
-A self-contained, memoized chart component using `lightweight-charts` (already installed). Supports 3 modes:
+### 1. Mini-Widget "Open Full View" buttons (2 locations)
 
-- **Candlestick (OHLC)**: When `ohlc` data array is provided (from `twelve_data_time_series` or similar)
-- **Area (Equity/PnL curve)**: When `equity_curve` or `time_series` array is provided
-- **Line (Forecast)**: When `predictions` data with `{ds, yhat}` is provided
+**AuraMiniTradeSetup** (around line 364):
+- Change `navigate('/ai-setup')` to `navigate('/trade-generator')`
 
-Features:
-- Dark-themed card with rounded corners matching AURA's style
-- Header showing instrument + timeframe if available
-- Stats footer row (Net Profit, Win Rate, Max Drawdown) when data exists
-- Skeleton loader during chart initialization
-- Single chart instance per widget (no re-renders), using `React.memo` + `useRef`
-- Graceful fallback: renders nothing if data is insufficient
-- Responsive: adapts width to container, taller in fullscreen mode
+**AuraMiniMacro** (around line 386):
+- Change `navigate('/macro-analysis')` to `navigate('/macro-lab')`
 
-```text
-Props:
-  - data: { ohlc?, equity_curve?, predictions?, markers?, stats? }
-  - instrument?: string
-  - timeframe?: string
-  - className?: string
-  - fullscreen?: boolean (taller chart height)
+### 2. Job badge click routes (around line 1201-1204)
+
+Update the routes map:
+```
+const routes = {
+  ai_trade_setup: '/trade-generator',
+  macro_commentary: '/macro-lab',
+  reports: '/reports'
+};
 ```
 
+### 3. Toast descriptions (around line 911-912)
+
+Update the display names in the toast message:
+- `'trade setup'` becomes `'Trade Generator'`
+- `'macro analysis'` becomes `'Macro Labs'`
+
+### 4. Session memory feature label (around line 740-765)
+
+After saving `sessionMemory.current.lastFeature`, the display strings used in messages like "Launching..." should say "Trade Generator" / "Macro Labs" instead of "AI Trade Setup" / "Macro Commentary" -- but only in user-facing text. The internal `featureType` values (`ai_trade_setup`, `macro_commentary`) remain unchanged for DB compatibility.
+
 ---
 
-## New Utility: `extractMarketAttachments` (inside AURA.tsx)
+## Changes in `supabase/functions/aura/index.ts`
 
-A pure function that inspects a parsed response payload and returns chart-ready attachments:
+### 5. System prompt intent mapping (around line 648-651)
 
-```text
-Input: any (parsed job response_payload)
-Output: { type: 'market_chart', payload: { mode, data, instrument?, timeframe?, stats? } } | null
+Update the STEP 1 section:
+```
+STEP 1 - DETECT INTENT:
+- If user says: "generate a trade", "setup for EUR/USD", "give me a trade idea", "run AI setup" -> Trade Generator
+- If user says: "macro analysis", "what's happening with", "market commentary", "macro labs" -> Macro Labs
+- If user says: "generate a report", "portfolio report", "weekly report" -> Report
 ```
 
-Detection logic:
-1. If payload contains `market_data` or `twelve_data_time_series` with OHLC arrays -> candlestick mode
-2. If payload contains `predictions` with horizon keys containing `{ds, yhat}` arrays -> forecast line mode
-3. If payload contains `equity_curve` or `backtest_results` with PnL data -> area mode
-4. If payload contains `trade_setup` with entry/SL/TP -> extract price markers (for overlay on candlestick)
-5. If none detected -> return null (no chart rendered, no crash)
+### 6. System prompt feature labels (around line 653-675)
 
-All extraction wrapped in try/catch, so malformed data never crashes the UI.
+Rename display labels:
+- "For AI Trade Setup:" becomes "For Trade Generator:"
+- "For Macro Commentary:" becomes "For Macro Labs:"
 
----
+### 7. System prompt confirmation text (around line 673)
 
-## Message Attachment System
-
-Update the `Message` interface to support optional attachments:
-
-```text
-interface Message {
-  role: 'user' | 'assistant';
-  content: string | { type: string; data: any; summary: string };
-  attachments?: Array<{ type: 'market_chart'; payload: any }>;
-}
+Change:
 ```
+"I'll generate a [feature name]..." 
+```
+To reference "Trade Generator" or "Macro Labs" as the feature name.
 
-When a job completes (line 790-834 in current code), after building `richContent`, also run `extractMarketAttachments(parsedPayload)` and attach result to the message if non-null.
+### 8. Contextual memory instruction (around line 850)
 
-In `renderMessageContent`, after rendering the existing content (text/mini-widget), check for `msg.attachments` and render `MarketChartWidget` for each `market_chart` attachment below the message bubble.
-
----
-
-## Fullscreen Premium UI Redesign
-
-### Container Changes
-- Fullscreen background: `bg-[#0f1117]` (deep anthracite) instead of plain `bg-background`
-- Content area constrained to `max-w-5xl mx-auto` with generous `px-8` padding
-- Smooth entry animation: `animate-in fade-in slide-in-from-bottom-4 duration-300`
-
-### Header
-- Slightly larger logo (12x12)
-- Subtle border-b with gradient underline
-- Title uses larger text in fullscreen (`text-xl`)
-
-### Message Bubbles
-- Assistant bubbles: `bg-[#1a1d27] rounded-2xl` (softer than `bg-muted`)
-- User bubbles: `bg-gradient-to-r from-primary to-primary/80 rounded-2xl`
-- Both with `px-5 py-3` for more breathing room
-- Smooth appear animation (`animate-in fade-in-50 duration-200`)
-
-### Input Area
-- Pill-shaped container: `rounded-full bg-[#1a1d27] border-0 shadow-lg`
-- Search icon on the left inside the input
-- Send button: circular (`rounded-full`) with gradient background
-- Larger height in fullscreen (`h-14`)
-
-### Chart Widget in Fullscreen
-- Taller chart: 400px height vs 250px in panel mode
-- Full-width within the `max-w-5xl` container
+Change:
+```
+If user says "now run it on gold" and last feature was "macro_commentary", call launch_macro_commentary...
+```
+To also mention "Macro Labs" as the display name.
 
 ---
 
-## Performance Considerations
+## What does NOT change
 
-- `MarketChartWidget` uses `React.memo` to prevent re-renders
-- Chart instance created once via `useRef`, data set via `.setData()` on the series
-- No chart created if data array is empty (guard at top of effect)
-- `extractMarketAttachments` is a pure function called once per job completion, not on every render
-- Existing lightweight-charts dependency reused (no new install needed)
-
----
-
-## What Does NOT Change
-
-- No API endpoints modified
-- No edge function changes
-- No JSON schemas changed
-- Existing mini-widgets (AuraMiniTradeSetup, AuraMiniMacro, AuraMiniReport) preserved
-- Markdown rendering preserved
-- Contextual memory, command chaining, tool schemas all untouched
-- Job badge system unchanged
-- Quick actions, teaser, collective panel unchanged
-- Non-fullscreen panel mode keeps current styling (changes only apply inside fullscreen)
+- Tool function names remain `launch_ai_trade_setup`, `launch_macro_commentary`, `launch_report` (no API change)
+- Internal `featureType` values remain `ai_trade_setup`, `macro_commentary`, `reports` (DB constraint compatibility)
+- `createJob` calls remain the same (using DB-allowed feature strings)
+- Request payloads remain identical
+- No edge function endpoint changes
+- No schema changes
+- Report routing stays `/reports`
 
 ---
 
 ## Files Modified
 
-| File | Changes |
-|------|---------|
-| `src/components/aura/MarketChartWidget.tsx` | **NEW** -- Chart widget component |
-| `src/components/AURA.tsx` | Add `extractMarketAttachments`, update `Message` interface with `attachments`, update `renderMessageContent` to render charts, premium fullscreen CSS classes |
-
-## Implementation Order
-
-1. Create `MarketChartWidget.tsx` with 3 chart modes + skeleton + stats footer
-2. Add `extractMarketAttachments` utility in AURA.tsx
-3. Wire attachments into job completion handler
-4. Update `renderMessageContent` to render chart attachments
-5. Apply premium fullscreen CSS (bubbles, input pill, background, animations)
+| File | Scope |
+|------|-------|
+| `src/components/AURA.tsx` | 4 locations: mini-widget navigations, badge routes, toast text, message display names |
+| `supabase/functions/aura/index.ts` | System prompt text only: intent labels, feature names, confirmation wording |
 
