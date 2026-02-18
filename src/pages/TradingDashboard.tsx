@@ -255,12 +255,7 @@ export default function TradingDashboard() {
     >
 
       {/* Main viewport-locked content */}
-      <div className="h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col gap-1 md:h-full md:gap-2">
-        {/* Mobile branding header */}
-        <div className="shrink-0 px-3 py-2 md:hidden border-b border-border/30 bg-card/80 backdrop-blur-sm">
-          <h1 className="text-base font-bold text-foreground leading-tight tracking-tight">{t('dashboard:trading.title')}</h1>
-          <p className="text-xs text-muted-foreground leading-tight mt-0.5">{t('dashboard:trading.subtitle')}</p>
-        </div>
+      <div className="h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col gap-0.5 md:h-full md:gap-2">
         {/* Row 1: Chart + Nav Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch flex-1 min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
@@ -302,17 +297,17 @@ export default function TradingDashboard() {
 
         {/* Mobile compact feature cards - above the fold */}
         <div className="shrink-0 lg:hidden">
-          <div className="grid grid-cols-3 gap-2 px-1">
+          <div className="grid grid-cols-3 gap-1.5 px-1">
             {/* AI Trade Setup */}
             <Card
               className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
               onClick={() => navigate('/trade-generator')}
             >
-              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center">
-                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
-                  <Zap className="h-4 w-4 text-white" />
+              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center">
+                <div className="gradient-primary p-1 rounded-lg shrink-0">
+                  <Zap className="h-3.5 w-3.5 text-white" />
                 </div>
-                <h3 className="text-[11px] font-semibold text-foreground leading-tight">{t('dashboard:trading.aiTradeSetup')}</h3>
+                <h3 className="text-[10px] font-semibold text-foreground leading-tight">{t('dashboard:trading.aiTradeSetup')}</h3>
               </CardContent>
             </Card>
 
@@ -321,11 +316,11 @@ export default function TradingDashboard() {
               className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
               onClick={() => navigate('/macro-lab')}
             >
-              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center">
-                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
-                  <Globe className="h-4 w-4 text-white" />
+              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center">
+                <div className="gradient-primary p-1 rounded-lg shrink-0">
+                  <Globe className="h-3.5 w-3.5 text-white" />
                 </div>
-                <h3 className="text-[11px] font-semibold text-foreground leading-tight">{t('dashboard:trading.macroCommentary')}</h3>
+                <h3 className="text-[10px] font-semibold text-foreground leading-tight">{t('dashboard:trading.macroCommentary')}</h3>
               </CardContent>
             </Card>
 
@@ -334,11 +329,11 @@ export default function TradingDashboard() {
               className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
               onClick={() => navigate('/reports')}
             >
-              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center">
-                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
-                  <FileText className="h-4 w-4 text-white" />
+              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center">
+                <div className="gradient-primary p-1 rounded-lg shrink-0">
+                  <FileText className="h-3.5 w-3.5 text-white" />
                 </div>
-                <h3 className="text-[11px] font-semibold text-foreground leading-tight">{t('dashboard:trading.reports')}</h3>
+                <h3 className="text-[10px] font-semibold text-foreground leading-tight">{t('dashboard:trading.reports')}</h3>
               </CardContent>
             </Card>
           </div>

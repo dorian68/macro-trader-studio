@@ -36,7 +36,7 @@ export function AURATeaser({ teaser, onCTAClick, onDismiss, isVisible }: AURATea
         <Button
           onClick={() => onCTAClick(teaser.query)}
           size="sm"
-          className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
+          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
         >
           {teaser.cta}
         </Button>
