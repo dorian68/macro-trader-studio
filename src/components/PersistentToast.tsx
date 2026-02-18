@@ -228,8 +228,8 @@ export function PersistentToast() {
           ${isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab'}
           ${isMinimized 
             ? isMobile 
-              ? 'w-14 h-14 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-border/50 bg-card p-0 overflow-visible' 
-              : 'w-16 h-16 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-border/50 bg-card p-0 overflow-visible'
+              ? 'w-14 h-14 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-border/50 bg-card/98 backdrop-blur-md p-0 overflow-visible' 
+              : 'w-16 h-16 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-border/50 bg-card/98 backdrop-blur-md p-0 overflow-visible'
             : isMobile 
               ? 'w-[calc(100vw-2rem)] max-w-sm shadow-[0_8px_30px_rgba(0,0,0,0.6)] border-border bg-card/98 backdrop-blur-md' 
               : 'w-80 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border-border bg-card/98 backdrop-blur-md'
