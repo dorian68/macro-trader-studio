@@ -2292,6 +2292,7 @@ function ForecastTradeGeneratorContent() {
               subtitle="Why this trade exists"
               icon={<Lightbulb className="h-5 w-5" />}
               tagline="Human + AI Context"
+              defaultCollapsed={true}
             >
               {/* Powered by explanation */}
               <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 mb-4">
