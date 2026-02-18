@@ -92,7 +92,7 @@ export default function ForecastMacroLab() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [analyses, setAnalyses] = useState<MacroAnalysis[]>([]);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  
   const [selectedAsset, setSelectedAsset] = useState<AssetInfo>({
     symbol: "EUR/USD",
     display: "EUR/USD",
@@ -851,15 +851,6 @@ export default function ForecastMacroLab() {
     }
   };
 
-  const toggleSection = (analysisIndex: number, sectionIndex: number) => {
-    const sectionId = `${analysisIndex}-${sectionIndex}`;
-    setExpandedSections((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionId)) newSet.delete(sectionId);
-      else newSet.add(sectionId);
-      return newSet;
-    });
-  };
 
   const quickQueries = [
     "EUR/USD macro analysis for this week",
@@ -1082,10 +1073,6 @@ export default function ForecastMacroLab() {
 
           {analyses.length > 0 && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-foreground mb-6 flex items-center gap-2">
-                <Brain className="h-6 w-6 text-primary" />
-                {t("dashboard:macro.analysisResults")}
-              </h2>
               {analyses.map((analysis, index) => (
                 <Card
                   key={index}
@@ -1099,10 +1086,13 @@ export default function ForecastMacroLab() {
                         </div>
                         <div>
                           <CardTitle className="text-lg font-semibold text-foreground mb-1">
-                            {t("dashboard:macro.macroAnalysisFor")}
+                            Macro Analysis
                           </CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            {t("dashboard:macro.analysisFor")} {analysis.query} • {analysis.timestamp.toLocaleString()}
+                          <p className="text-sm text-muted-foreground italic">
+                            {analysis.query}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {analysis.timestamp.toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -1113,47 +1103,14 @@ export default function ForecastMacroLab() {
                   </CardHeader>
 
                   <CardContent className="space-y-4">
-                    {analysis.sections.map((section, sectionIndex) => {
-                      const sectionKey = `${index}-${sectionIndex}`;
-                      const isExpanded = section.expanded || expandedSections.has(sectionKey);
-                      return (
-                        <Collapsible
-                          key={sectionIndex}
-                          open={isExpanded}
-                          onOpenChange={() => toggleSection(index, sectionIndex)}
-                        >
-                          <div className="border border-border rounded-lg overflow-hidden">
-                            <CollapsibleTrigger className="w-full px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors flex justify-between items-center group">
-                              <div className="flex items-center gap-3">
-                                {section.type === "overview" && <Brain className="h-4 w-4 text-primary" />}
-                                {section.type === "technical" && <BarChart3 className="h-4 w-4 text-primary" />}
-                                {section.type === "fundamental" && <TrendingUp className="h-4 w-4 text-primary" />}
-                                {section.type === "outlook" && <Globe className="h-4 w-4 text-primary" />}
-                                <span className="font-medium text-foreground group-hover:text-primary transition-colors">
-                                  {section.title}
-                                </span>
-                              </div>
-                              <ChevronDown
-                                className={cn(
-                                  "h-4 w-4 transition-transform text-muted-foreground group-hover:text-primary",
-                                  isExpanded ? "rotate-180" : ""
-                                )}
-                              />
-                            </CollapsibleTrigger>
-
-                            <CollapsibleContent className="animate-accordion-down">
-                              <div className="bg-muted/20 p-4 rounded-lg border">
-                                <TypewriterRenderer
-                                  content={section.content}
-                                  originalQuery={analysis.query}
-                                  isNew={index === 0 && sectionIndex === 0}
-                                />
-                              </div>
-                            </CollapsibleContent>
-                          </div>
-                        </Collapsible>
-                      );
-                    })}
+                    {analysis.sections.map((section, sectionIndex) => (
+                      <TypewriterRenderer
+                        key={sectionIndex}
+                        content={section.content}
+                        originalQuery={analysis.query}
+                        isNew={index === 0 && sectionIndex === 0}
+                      />
+                    ))}
 
                     {analysis.sections.some(
                       (section) =>
