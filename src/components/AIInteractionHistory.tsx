@@ -55,12 +55,11 @@ const ITEMS_PER_PAGE_OPTIONS = [
   { value: '100', label: '100 items' }
 ];
 
+// Regex for common financial instruments
+const INSTRUMENT_REGEX = /\b(EUR\/USD|GBP\/USD|USD\/JPY|USD\/CHF|AUD\/USD|NZD\/USD|USD\/CAD|EUR\/GBP|EUR\/JPY|GBP\/JPY|AUD\/JPY|EUR\/CHF|GBP\/CHF|EUR\/AUD|EUR\/NZD|GBP\/AUD|GBP\/NZD|AUD\/NZD|CAD\/JPY|CHF\/JPY|NZD\/JPY|AUD\/CAD|AUD\/CHF|NZD\/CAD|NZD\/CHF|EUR\/CAD|GBP\/CAD|XAUUSD|XAGUSD|XAU\/USD|XAG\/USD|US500|US30|NAS100|SPX|NDX|DJI|FTSE|DAX|CAC40|NIKKEI|BTC\/USD|ETH\/USD|BTCUSD|ETHUSD|WTI|BRENT|USOIL)\b/i;
+
 /**
  * Deep-extract the actual content from deeply nested response payloads.
- * Handles structures like:
- *   - Macro Lab: response_payload.message.content.content.message.content.content (plain text)
- *   - Trade Generator: response_payload.body.message.message.content.content.trade_setup[0] (JSON string)
- *   - RAG/Legacy: response_payload.content (structured JSON)
  */
 function deepExtractContent(payload: any): any {
   if (!payload) return null;
@@ -71,7 +70,6 @@ function deepExtractContent(payload: any): any {
     if (level1 && typeof level1 === 'object') {
       const level2 = level1?.message?.content?.content;
       if (level2 && typeof level2 === 'string') {
-        // This is the actual macro commentary text
         return level2;
       }
     }
@@ -90,7 +88,7 @@ function deepExtractContent(payload: any): any {
     }
   } catch {}
 
-  // --- Legacy/RAG structured response: message.content.content (object with structured fields) ---
+  // --- Legacy/RAG structured response ---
   try {
     const structured = payload?.message?.content?.content;
     if (structured && typeof structured === 'object' && !structured.message) {
@@ -116,12 +114,10 @@ function deepExtractContent(payload: any): any {
 function deepExtractUserQuery(requestPayload: any, responsePayload: any): string {
   if (!requestPayload) return 'Unavailable';
 
-  // Handle macroInsight structure
   if (requestPayload.macroInsight?.message?.content) {
     return requestPayload.macroInsight.message.content;
   }
 
-  // Standard patterns
   if (requestPayload.question) return requestPayload.question;
   if (requestPayload.query) return requestPayload.query;
   if (requestPayload.user_query) return requestPayload.user_query;
@@ -129,11 +125,9 @@ function deepExtractUserQuery(requestPayload: any, responsePayload: any): string
   if (requestPayload.content) return requestPayload.content;
   if (requestPayload.text) return requestPayload.text;
 
-  // Nested analysis queries
   if (requestPayload.analysis?.query) return requestPayload.analysis.query;
   if (requestPayload.analysis?.question) return requestPayload.analysis.question;
 
-  // For AI Trade Setup, reconstruct from instrument
   if (requestPayload.instrument) {
     const parts = [`Generate AI Trade Setup for ${requestPayload.instrument}`];
     if (requestPayload.strategy) parts.push(`using ${requestPayload.strategy} strategy`);
@@ -141,19 +135,15 @@ function deepExtractUserQuery(requestPayload: any, responsePayload: any): string
     return parts.join(' ');
   }
 
-  // For macro_lab type: try to extract query from the response itself
   if (requestPayload.type === 'macro_lab') {
-    // Try to find instrument/asset from the response
     const content = deepExtractContent(responsePayload);
     if (typeof content === 'string') {
-      // Extract the first line or "Executive Summary" section as context
       const firstLine = content.split('\n').find(l => l.trim() && !l.startsWith('Executive'));
       if (firstLine) return `Macro Lab Analysis`;
     }
     return 'Macro Lab Analysis';
   }
 
-  // Try to find meaningful text from object
   if (typeof requestPayload === 'object') {
     const keys = Object.keys(requestPayload);
     const meaningfulKeys = keys.filter(key =>
@@ -168,6 +158,74 @@ function deepExtractUserQuery(requestPayload: any, responsePayload: any): string
 
   const fallback = JSON.stringify(requestPayload);
   return fallback.length > 200 ? fallback.substring(0, 200) + '...' : fallback;
+}
+
+/**
+ * Extract a clean, client-facing title from an interaction
+ */
+function extractItemTitle(interaction: AIInteraction): string {
+  const feature = getFeatureDisplayName(interaction.feature_name);
+  const response = interaction.ai_response;
+  const request = interaction.request_payload;
+
+  // --- AI Trade Setup ---
+  if (feature === 'AI Trade Setup') {
+    // From parsed trade setup
+    if (response?._type === 'trade_setup_parsed' && response?.data?.payload) {
+      const p = response.data.payload;
+      const h = p.horizons?.[0];
+      if (p.symbol && h?.direction) return `${p.symbol} — ${h.direction}`;
+      if (p.symbol) return p.symbol;
+    }
+    // From structured content
+    const content = interaction.response_payload?.content;
+    if (content?.instrument) {
+      const setup = content.setups?.[0];
+      const dir = setup?.direction ? ` — ${setup.direction}` : '';
+      return `${content.instrument}${dir}`;
+    }
+    // From response object
+    if (response?.instrument) {
+      const dir = response.direction ? ` — ${response.direction}` : '';
+      return `${response.instrument}${dir}`;
+    }
+    // From request payload
+    if (request?.instrument) return request.instrument;
+  }
+
+  // --- Macro Commentary ---
+  if (feature === 'Macro Commentary') {
+    // Try extracting instrument from response text
+    if (typeof response === 'string') {
+      const match = response.match(INSTRUMENT_REGEX);
+      if (match) return `${match[1]} Macro Analysis`;
+    }
+    // From structured response
+    if (response?.asset) return `${response.asset} Macro Analysis`;
+    // From request
+    if (request?.instrument) return `${request.instrument} Macro Analysis`;
+    if (request?.macroInsight?.message?.content) {
+      const q = request.macroInsight.message.content;
+      const match = q.match(INSTRUMENT_REGEX);
+      if (match) return `${match[1]} Macro Analysis`;
+    }
+    return 'Macro Analysis';
+  }
+
+  // --- Report ---
+  if (feature === 'Report') {
+    if (typeof response === 'string') {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = response;
+      const h1 = tempDiv.querySelector('h1');
+      const h2 = tempDiv.querySelector('h2');
+      const title = h1?.textContent || h2?.textContent;
+      if (title) return title.substring(0, 60);
+    }
+    return 'Report';
+  }
+
+  return feature;
 }
 
 export function AIInteractionHistory() {
@@ -335,78 +393,81 @@ export function AIInteractionHistory() {
     try {
       const normalizedFeature = normalizeFeatureName(featureName);
 
-      // Plain text response (common for macro_lab)
+      // Plain text (macro_lab)
       if (typeof response === 'string') {
-        // Extract first meaningful line
-        const lines = response.split('\n').filter(l => l.trim());
+        // Try to extract instrument + bias
+        const instrumentMatch = response.match(INSTRUMENT_REGEX);
+        const biasMatch = response.match(/\b(Bullish|Bearish|Neutral)\b\s*(\d{1,3}%)?/i);
+        if (instrumentMatch && biasMatch) {
+          return `${instrumentMatch[1]} — ${biasMatch[0]}`;
+        }
+        const lines = response.split('\n').filter((l: string) => l.trim());
         const firstLine = lines[0] || '';
-        return firstLine.length > 150 ? firstLine.slice(0, 150) + '...' : firstLine;
+        return firstLine.length > 120 ? firstLine.slice(0, 120) + '…' : firstLine;
       }
 
       // Parsed trade setup
       if (response?._type === 'trade_setup_parsed' && response?.data?.payload) {
         const p = response.data.payload;
         const h = p.horizons?.[0];
-        return `${p.symbol || 'N/A'} • ${h?.direction || ''} • Entry: ${h?.entry_price?.toFixed(2) || 'N/A'}`;
+        const parts = [p.symbol, h?.direction, h?.entry_price ? `Entry ${h.entry_price.toFixed(2)}` : null].filter(Boolean);
+        return parts.join(' — ');
       }
 
       if (normalizedFeature === 'ai_trade_setup' && typeof response === 'object') {
-        const { instrument, strategy, direction } = response;
+        const { instrument, strategy, direction, entry_price, entryPrice } = response;
         if (instrument) {
-          return `${instrument}${strategy ? ` • ${strategy}` : ''}${direction ? ` • ${direction}` : ''}`;
+          const parts = [instrument, direction, (entry_price || entryPrice) ? `Entry ${entry_price || entryPrice}` : null].filter(Boolean);
+          return parts.join(' — ');
         }
-        // Try setups array
         if (response.setups?.[0]) {
           const s = response.setups[0];
-          return `${response.instrument || s.instrument || 'N/A'} • ${s.direction || ''} • ${s.strategy || ''}`;
+          const inst = response.instrument || s.instrument || 'N/A';
+          const parts = [inst, s.direction, s.entryPrice ? `Entry ${s.entryPrice}` : null].filter(Boolean);
+          return parts.join(' — ');
         }
       }
 
       if (normalizedFeature === 'macro_commentary' && typeof response === 'object') {
-        const { asset, summary, market_outlook, executive_summary } = response;
-        if (executive_summary) {
-          return typeof executive_summary === 'string' ? executive_summary.substring(0, 150) + '...' : 'Analysis available';
+        const { asset, executive_summary, directional_bias } = response;
+        if (asset && directional_bias) {
+          const biasStr = typeof directional_bias === 'object' 
+            ? `${directional_bias.direction || ''} ${directional_bias.confidence || ''}`.trim()
+            : String(directional_bias);
+          return `${asset} — ${biasStr}`;
         }
-        if (asset) {
-          const preview = summary || market_outlook || 'Market analysis';
-          return `${asset} • ${typeof preview === 'string' ? preview.substring(0, 80) : 'Analysis available'}`;
+        if (executive_summary && typeof executive_summary === 'string') {
+          return executive_summary.substring(0, 120) + '…';
         }
       }
 
       if (normalizedFeature === 'report' && typeof response === 'string') {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = response;
-        const h1 = tempDiv.querySelector('h1');
-        const h2 = tempDiv.querySelector('h2');
-        const title = h1?.textContent || h2?.textContent;
-        if (title) return title.substring(0, 100);
         const textContent = tempDiv.textContent || tempDiv.innerText || '';
-        return textContent.substring(0, 100) + (textContent.length > 100 ? '...' : '');
+        return textContent.substring(0, 120) + (textContent.length > 120 ? '…' : '');
       }
 
       // Fallback for objects
       if (typeof response === 'object' && response !== null) {
         if (response.summary && typeof response.summary === 'string') {
-          return response.summary.slice(0, 150) + '...';
+          return response.summary.slice(0, 120) + '…';
         }
         if (response.content && typeof response.content === 'string') {
-          return response.content.slice(0, 150) + '...';
-        }
-        if (response.analysis && typeof response.analysis === 'string') {
-          return response.analysis.slice(0, 150) + '...';
+          return response.content.slice(0, 120) + '…';
         }
         const textContent = Object.values(response).find(value =>
           typeof value === 'string' && value.length > 20
         ) as string;
         if (textContent) {
-          return textContent.slice(0, 150) + (textContent.length > 150 ? '...' : '');
+          return textContent.slice(0, 120) + (textContent.length > 120 ? '…' : '');
         }
       }
 
-      return 'AI analysis completed successfully';
+      return 'Analysis completed';
     } catch (error) {
       console.error('Error extracting summary:', error);
-      return 'Response parsing error';
+      return 'Response available';
     }
   };
 
@@ -426,7 +487,7 @@ export function AIInteractionHistory() {
   };
 
   /**
-   * Render the AI response based on feature type
+   * Render the AI response based on feature type — no originalQuery passed to sub-components
    */
   const renderFormattedResponse = (interaction: AIInteraction) => {
     if (!interaction.ai_response) return null;
@@ -438,7 +499,7 @@ export function AIInteractionHistory() {
     if (feature === 'AI Trade Setup') {
       // Parsed trade setup from deep extraction
       if (response?._type === 'trade_setup_parsed' && response?.data) {
-        return renderParsedTradeSetup(response, interaction.user_query);
+        return renderParsedTradeSetup(response);
       }
 
       // Legacy structured content with setups array
@@ -453,23 +514,24 @@ export function AIInteractionHistory() {
             market_commentary_anchor: content.market_commentary_anchor,
             data_fresheners: content.data_fresheners
           };
-          return <TradeSetupDisplay data={enrichedData} originalQuery={interaction.user_query} />;
+          return <TradeSetupDisplay data={enrichedData} originalQuery={undefined} />;
         }
       } catch {}
 
       // Object with trade setup fields
       if (typeof response === 'object' && (response.instrument || response.direction || response.entry_price)) {
-        return <TradeSetupDisplay data={response} originalQuery={interaction.user_query} />;
+        return <TradeSetupDisplay data={response} originalQuery={undefined} />;
       }
 
-      return renderTradeSetupFallback(interaction.response_payload, interaction.user_query);
+      // Fallback: show raw JSON in a clean card
+      return renderRawFallback(interaction.response_payload);
     }
 
     // --- Macro Commentary ---
     if (feature === 'Macro Commentary') {
       // Plain text response (from macro_lab)
       if (typeof response === 'string') {
-        return renderPlainTextMacro(response, interaction.user_query);
+        return renderPlainTextMacro(response);
       }
 
       // Structured JSON response (from RAG)
@@ -478,19 +540,17 @@ export function AIInteractionHistory() {
           ? JSON.parse(response)
           : response;
 
-        // Check if it has the structured fields MacroCommentaryDisplay expects
         if (parsedResponse.executive_summary || parsedResponse.fundamental_analysis || parsedResponse.directional_bias) {
-          return <MacroCommentaryDisplay data={parsedResponse} originalQuery={interaction.user_query} />;
+          return <MacroCommentaryDisplay data={parsedResponse} originalQuery={undefined} />;
         }
 
-        // If it's a string inside the object
         if (parsedResponse.content && typeof parsedResponse.content === 'string') {
-          return renderPlainTextMacro(parsedResponse.content, interaction.user_query);
+          return renderPlainTextMacro(parsedResponse.content);
         }
 
-        return <MacroCommentaryDisplay data={parsedResponse} originalQuery={interaction.user_query} />;
+        return <MacroCommentaryDisplay data={parsedResponse} originalQuery={undefined} />;
       } catch {
-        return renderStructuredFallback(response, 'Macro Commentary');
+        return renderRawFallback(response);
       }
     }
 
@@ -502,80 +562,39 @@ export function AIInteractionHistory() {
           : JSON.stringify(response, null, 2);
 
         return (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Report</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="max-h-96 overflow-y-auto overflow-x-hidden">
-                <div
-                  className="prose prose-sm max-w-none dark:prose-invert break-words"
-                  dangerouslySetInnerHTML={{ __html: responseContent }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="max-h-96 overflow-y-auto overflow-x-hidden">
+            <div
+              className="prose prose-sm max-w-none dark:prose-invert break-words"
+              dangerouslySetInnerHTML={{ __html: responseContent }}
+            />
+          </div>
         );
       } catch {
-        return renderStructuredFallback(response, 'Report');
+        return renderRawFallback(response);
       }
     }
 
-    // --- Fallback for other features ---
-    try {
-      const parsedResponse = typeof response === 'string'
-        ? JSON.parse(response)
-        : response;
-      return <div className="break-words">{renderStructuredResponse(parsedResponse)}</div>;
-    } catch {
-      const responseContent = typeof response === 'string'
-        ? response
-        : JSON.stringify(response, null, 2);
-      return (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm space-y-2">
-              <p className="leading-relaxed whitespace-pre-wrap break-words">{responseContent}</p>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
+    // --- Fallback ---
+    return renderRawFallback(response);
   };
 
   /**
-   * Render plain text macro commentary with nice formatting
+   * Render plain text macro commentary with clean formatting (no "Original Query" card)
    */
-  const renderPlainTextMacro = (text: string, originalQuery?: string) => {
-    // Parse sections from the plain text
+  const renderPlainTextMacro = (text: string) => {
     const sections = parseMacroTextSections(text);
 
     return (
       <div className="space-y-4">
-        {originalQuery && originalQuery !== 'Unavailable' && originalQuery !== 'Macro Lab Analysis' && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Original Query</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm bg-muted/50 p-3 rounded-lg font-mono break-words">{originalQuery}</p>
-            </CardContent>
-          </Card>
-        )}
-
         {sections.map((section, index) => (
-          <Card key={index}>
+          <div key={index}>
             {section.title && (
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">{section.title}</CardTitle>
-              </CardHeader>
+              <h4 className="text-sm font-semibold text-foreground mb-1">{section.title}</h4>
             )}
-            <CardContent className={section.title ? "pt-0" : "p-4"}>
-              <div className="text-foreground leading-relaxed whitespace-pre-wrap break-words text-sm">
-                {section.content}
-              </div>
-            </CardContent>
-          </Card>
+            <div className="text-foreground leading-relaxed whitespace-pre-wrap break-words text-sm">
+              {section.content}
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -606,7 +625,6 @@ export function AIInteractionHistory() {
       );
 
       if (isHeading) {
-        // Save previous section
         if (currentTitle || currentContent.length > 0) {
           sections.push({
             title: currentTitle,
@@ -620,7 +638,6 @@ export function AIInteractionHistory() {
       }
     }
 
-    // Save last section
     if (currentTitle || currentContent.length > 0) {
       sections.push({
         title: currentTitle,
@@ -628,17 +645,16 @@ export function AIInteractionHistory() {
       });
     }
 
-    // Filter out empty sections
     return sections.filter(s => s.content.length > 0 || s.title.length > 0);
   };
 
   /**
    * Render a parsed trade setup from the deep extraction
    */
-  const renderParsedTradeSetup = (parsed: any, originalQuery?: string) => {
+  const renderParsedTradeSetup = (parsed: any) => {
     const tradeData = parsed?.data;
     if (!tradeData?.payload) {
-      return renderStructuredFallback(parsed, 'AI Trade Setup');
+      return renderRawFallback(parsed);
     }
 
     const payload = tradeData.payload;
@@ -658,258 +674,18 @@ export function AIInteractionHistory() {
       position_size: h?.position_size
     };
 
-    return <TradeSetupDisplay data={setupData} originalQuery={originalQuery} />;
+    return <TradeSetupDisplay data={setupData} originalQuery={undefined} />;
   };
 
-  // Render specialized fallback for AI Trade Setup
-  const renderTradeSetupFallback = (responsePayload: any, originalQuery: string) => {
-    const content = responsePayload?.content;
-
+  /**
+   * Minimal raw fallback — no developer labels
+   */
+  const renderRawFallback = (data: any) => {
+    const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-lg">AI Trade Setup Response</CardTitle>
-          {originalQuery && originalQuery !== 'Unavailable' && (
-            <p className="text-sm text-muted-foreground">Query: {originalQuery}</p>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {content?.instrument && (
-            <div>
-              <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-2">Instrument</h4>
-              <p className="text-lg font-mono">{content.instrument}</p>
-            </div>
-          )}
-
-          {content?.setups && content.setups.length > 0 && (
-            <div className="space-y-6">
-              <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Trade Setups</h4>
-              {content.setups.map((setup: any, index: number) => (
-                <Card key={index} className="bg-muted/30">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="font-semibold">Direction:</span>
-                        <span className={`ml-2 capitalize ${setup.direction === 'long' ? 'text-green-600' : 'text-red-600'}`}>
-                          {setup.direction}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Strategy:</span>
-                        <span className="ml-2 capitalize">{setup.strategy}</span>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Timeframe:</span>
-                        <span className="ml-2 font-mono">{setup.timeframe}</span>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Horizon:</span>
-                        <span className="ml-2 capitalize">{setup.horizon}</span>
-                      </div>
-                    </div>
-
-                    {setup.entryPrice && (
-                      <div>
-                        <span className="font-semibold">Entry Price:</span>
-                        <span className="ml-2 font-mono text-lg">{setup.entryPrice}</span>
-                      </div>
-                    )}
-
-                    {setup.stopLoss && (
-                      <div>
-                        <span className="font-semibold">Stop Loss:</span>
-                        <span className="ml-2 font-mono text-red-600">{setup.stopLoss}</span>
-                      </div>
-                    )}
-
-                    {setup.takeProfits && setup.takeProfits.length > 0 && (
-                      <div>
-                        <span className="font-semibold">Take Profits:</span>
-                        <div className="ml-2 flex gap-2 flex-wrap">
-                          {setup.takeProfits.map((tp: number, tpIndex: number) => (
-                            <span key={tpIndex} className="font-mono text-green-600 bg-green-50 px-2 py-1 rounded">
-                              {tp}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {setup.levels && (
-                      <div className="grid grid-cols-2 gap-4">
-                        {setup.levels.supports && setup.levels.supports.length > 0 && (
-                          <div>
-                            <span className="font-semibold">Supports:</span>
-                            <div className="ml-2">
-                              {setup.levels.supports.map((support: number, idx: number) => (
-                                <span key={idx} className="block font-mono text-sm">{support}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {setup.levels.resistances && setup.levels.resistances.length > 0 && (
-                          <div>
-                            <span className="font-semibold">Resistances:</span>
-                            <div className="ml-2">
-                              {setup.levels.resistances.map((resistance: number, idx: number) => (
-                                <span key={idx} className="block font-mono text-sm">{resistance}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {setup.context && (
-                      <div>
-                        <span className="font-semibold">Context:</span>
-                        <p className="ml-2 mt-1 text-sm text-muted-foreground break-words">{setup.context}</p>
-                      </div>
-                    )}
-
-                    {setup.riskNotes && (
-                      <div>
-                        <span className="font-semibold">Risk Notes:</span>
-                        <p className="ml-2 mt-1 text-sm text-muted-foreground break-words">{setup.riskNotes}</p>
-                      </div>
-                    )}
-
-                    {(setup.riskReward || setup.risk_reward_ratio || setup.risk_reward) && (
-                      <div>
-                        <span className="font-semibold">Risk/Reward Ratio:</span>
-                        <span className="ml-2 font-mono text-lg">{setup.riskReward || setup.risk_reward_ratio || setup.risk_reward}</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {content?.market_commentary_anchor?.summary && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-              <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">Market Commentary</h4>
-              <p className="text-sm text-blue-800 dark:text-blue-200 break-words">{content.market_commentary_anchor.summary}</p>
-            </div>
-          )}
-
-          {content?.disclaimer && (
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-              <p className="text-xs text-muted-foreground italic">{content.disclaimer}</p>
-            </div>
-          )}
-
-          {/* If no structured content found, show raw */}
-          {!content?.instrument && !content?.setups && (
-            <div className="bg-muted/30 p-4 rounded-lg">
-              <p className="text-xs text-muted-foreground mb-2">Raw Response:</p>
-              <pre className="text-xs whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
-                {JSON.stringify(responsePayload, null, 2)}
-              </pre>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // Structured fallback for parsing errors
-  const renderStructuredFallback = (data: any, featureType: string) => {
-    const responseContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            {getFeatureIcon(featureType)}
-            {featureType} Response
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="bg-muted/30 p-4 rounded-lg border-l-4 border-muted/50">
-            <p className="text-xs text-muted-foreground mb-2">Raw Response Data:</p>
-            <pre className="text-xs whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
-              {responseContent}
-            </pre>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // Enhanced structured response renderer
-  const renderStructuredResponse = (data: any) => {
-    if (!data || typeof data !== 'object') {
-      return (
-        <Card>
-          <CardContent className="p-4">
-            <div className="bg-muted/30 rounded-lg border-l-4 border-muted/50 p-4">
-              <p className="text-sm text-muted-foreground">No data available</p>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    const actualData = data.message?.content?.content || data.content || data;
-
-    return (
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          {Object.entries(actualData).map(([key, value], index) => (
-            <div key={index} className="border rounded-lg overflow-hidden bg-card">
-              <div className="bg-muted/50 px-4 py-3 border-b">
-                <h5 className="font-semibold text-sm text-foreground">
-                  {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).replace(/_/g, ' ')}
-                </h5>
-              </div>
-              <div className="p-4">
-                {typeof value === 'object' && value !== null ? (
-                  Array.isArray(value) ? (
-                    <div className="space-y-2">
-                      {value.map((item, idx) => (
-                        <div key={idx} className="bg-muted/20 p-3 rounded-md border-l-2 border-primary/20">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                            {typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {Object.entries(value).map(([subKey, subValue]) => (
-                        <div key={subKey} className="border-l-2 border-muted pl-3">
-                          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                            {subKey.replace(/([A-Z])/g, ' $1').trim().replace(/_/g, ' ')}
-                          </div>
-                          <div className="text-sm text-foreground">
-                            {typeof subValue === 'object' && subValue !== null ? (
-                              <div className="bg-muted/20 p-3 rounded-md max-h-40 overflow-y-auto">
-                                <pre className="text-xs whitespace-pre-wrap break-words">
-                                  {JSON.stringify(subValue, null, 2)}
-                                </pre>
-                              </div>
-                            ) : (
-                              <p className="whitespace-pre-wrap leading-relaxed break-words">
-                                {String(subValue)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                ) : (
-                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">
-                    {String(value)}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <div className="bg-muted/30 p-4 rounded-lg max-h-64 overflow-y-auto">
+        <pre className="text-xs whitespace-pre-wrap break-words font-mono">{content}</pre>
+      </div>
     );
   };
 
@@ -983,7 +759,7 @@ export function AIInteractionHistory() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {interactions.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -992,97 +768,60 @@ export function AIInteractionHistory() {
           </div>
         ) : (
           <>
-            {interactions.map((interaction) => (
-              <Card key={interaction.id} className="overflow-x-hidden">
-                <CardContent className="p-4 sm:p-6">
-                  {/* Header Section - Always Visible */}
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="flex-shrink-0">
-                        {getFeatureIcon(interaction.feature_name)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <Badge className={getFeatureColor(interaction.feature_name)}>
-                            {getFeatureLabel(interaction.feature_name)}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(interaction.created_at)}
-                          </span>
-                          {interaction.job_id && (
-                            <Badge variant="outline" className="text-xs">
-                              Job: {interaction.job_id.slice(0, 8)}...
+            {interactions.map((interaction) => {
+              const isExpanded = expandedItems.has(interaction.id);
+              const title = extractItemTitle(interaction);
+
+              return (
+                <Card key={interaction.id} className="overflow-x-hidden">
+                  <CardContent className="p-4">
+                    {/* Header — clean, client-facing */}
+                    <button
+                      onClick={() => toggleExpanded(interaction.id)}
+                      className="w-full text-left flex items-start justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <div className="flex-shrink-0 mt-0.5">
+                          {getFeatureIcon(interaction.feature_name)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <Badge className={getFeatureColor(interaction.feature_name)}>
+                              {getFeatureLabel(interaction.feature_name)}
                             </Badge>
-                          )}
-                        </div>
-
-                        {/* Query Preview */}
-                        <div className="bg-muted/30 p-2 rounded text-xs">
-                          <p className="font-medium text-muted-foreground mb-1">Query:</p>
-                          <p className="line-clamp-2 break-words text-foreground">
-                            {interaction.user_query}
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(interaction.created_at)}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-foreground line-clamp-1">
+                            {title}
                           </p>
-                        </div>
-
-                        {/* Response Preview when collapsed */}
-                        {!expandedItems.has(interaction.id) && (
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            <p className="font-medium">Response Preview:</p>
-                            <p className="line-clamp-2 break-words">
+                          {!isExpanded && (
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                               {extractSummary(interaction.ai_response, interaction.feature_name)}
                             </p>
-                          </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 mt-0.5">
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         )}
                       </div>
-                    </div>
+                    </button>
 
-                    {/* Toggle Button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleExpanded(interaction.id)}
-                      className="shrink-0 h-8 px-2"
-                    >
-                      {expandedItems.has(interaction.id) ? (
-                        <>
-                          <ChevronUp className="h-4 w-4 mr-1" />
-                          <span className="text-xs">Collapse</span>
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4 mr-1" />
-                          <span className="text-xs">Expand</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Expandable Content */}
-                  {expandedItems.has(interaction.id) && (
-                    <div className="border-t pt-4 animate-accordion-down">
-                      <div className="space-y-4">
-                        {/* Full Query Display */}
-                        <div>
-                          <div className="bg-muted/50 p-3 rounded-lg">
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Complete Query</p>
-                            <p className="text-sm font-mono break-words">
-                              {interaction.user_query}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Full Response Display */}
-                        <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-2">AI Response</h4>
-                          {renderFormattedResponse(interaction)}
-                        </div>
+                    {/* Expanded content — directly rendered, no redundant headers */}
+                    {isExpanded && (
+                      <div className="border-t mt-3 pt-4 animate-accordion-down">
+                        {renderFormattedResponse(interaction)}
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
 
             {hasMore && (
               <div className="flex justify-center pt-4">
