@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, Maximize2, Minimize2, ArrowUpRight } from 'lucide-react';
+import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, Maximize2, Minimize2, ArrowUpRight, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,7 @@ import { useGlobalLoading } from '@/components/GlobalLoadingProvider';
 import { useRealtimeJobManager } from '@/hooks/useRealtimeJobManager';
 import { useCreditEngagement } from '@/hooks/useCreditEngagement';
 import { enhancedPostRequest } from '@/lib/enhanced-request';
+import { MarketChartWidget } from '@/components/aura/MarketChartWidget';
 import auraLogo from '@/assets/aura-logo.png';
 
 interface AURAProps {
@@ -30,6 +31,56 @@ interface AURAProps {
 interface Message {
   role: 'user' | 'assistant';
   content: string | { type: string; data: any; summary: string };
+  attachments?: Array<{ type: 'market_chart'; payload: any }>;
+}
+
+// ===== EXTRACT MARKET ATTACHMENTS =====
+function extractMarketAttachments(payload: any): { type: 'market_chart'; payload: any } | null {
+  try {
+    if (!payload || typeof payload !== 'object') return null;
+
+    // Deep dig for nested content
+    const root = payload?.body?.message?.message?.content?.content || payload?.content || payload;
+
+    // 1. OHLC / twelve_data_time_series
+    const ohlcSource = root?.market_data || root?.twelve_data_time_series || root?.ohlc;
+    if (Array.isArray(ohlcSource) && ohlcSource.length > 2 && ohlcSource[0]?.open != null) {
+      const ohlc = ohlcSource.map((d: any) => ({
+        time: d.datetime || d.date || d.time || d.ds,
+        open: Number(d.open), high: Number(d.high), low: Number(d.low), close: Number(d.close),
+      })).filter((d: any) => d.time && !isNaN(d.open));
+      if (ohlc.length > 2) {
+        return { type: 'market_chart', payload: { mode: 'candlestick', data: { ohlc }, instrument: root?.instrument, timeframe: root?.timeframe } };
+      }
+    }
+
+    // 2. Predictions / forecast
+    const predictions = root?.predictions || root?.forecast_data?.predictions;
+    if (predictions && typeof predictions === 'object') {
+      // predictions may be keyed by horizon: { "7d": [{ds, yhat}], ... }
+      const horizonKey = Object.keys(predictions).find(k => Array.isArray(predictions[k]) && predictions[k].length > 0 && predictions[k][0]?.ds);
+      if (horizonKey) {
+        const pts = predictions[horizonKey].map((d: any) => ({ time: d.ds?.split('T')[0] || d.ds, value: Number(d.yhat) })).filter((d: any) => d.time && !isNaN(d.value));
+        if (pts.length > 1) {
+          return { type: 'market_chart', payload: { mode: 'line', data: { predictions: pts }, instrument: root?.instrument, timeframe: horizonKey } };
+        }
+      }
+    }
+
+    // 3. Equity curve / backtest
+    const eqCurve = root?.equity_curve || root?.backtest_results?.equity_curve;
+    if (Array.isArray(eqCurve) && eqCurve.length > 2) {
+      const pts = eqCurve.map((d: any) => ({ time: d.date || d.time || d.ds, value: Number(d.value ?? d.equity ?? d.pnl) })).filter((d: any) => d.time && !isNaN(d.value));
+      if (pts.length > 2) {
+        const stats = root?.backtest_results?.stats || root?.stats;
+        return { type: 'market_chart', payload: { mode: 'area', data: { equity_curve: pts, stats }, instrument: root?.instrument } };
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 interface AuraJobBadge {
@@ -357,22 +408,39 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
 
   // ===== RENDER MESSAGE CONTENT =====
   const renderMessageContent = (msg: Message) => {
-    if (typeof msg.content === 'string') {
-      if (msg.role === 'assistant') {
-        return <div className="text-sm">{renderMarkdown(msg.content)}</div>;
-      }
-      return <p className="text-sm whitespace-pre-wrap">{msg.content}</p>;
-    }
+    const chartAttachments = msg.attachments?.filter(a => a.type === 'market_chart') || [];
 
-    // Rich content (mini-widgets)
-    const rich = msg.content;
+    const renderContent = () => {
+      if (typeof msg.content === 'string') {
+        if (msg.role === 'assistant') {
+          return <div className="text-sm">{renderMarkdown(msg.content)}</div>;
+        }
+        return <p className="text-sm whitespace-pre-wrap">{msg.content}</p>;
+      }
+      const rich = msg.content;
+      return (
+        <div className="text-sm">
+          {rich.summary && <p className="mb-1">{rich.summary}</p>}
+          {rich.type === 'trade_setup' && <AuraMiniTradeSetup data={rich.data} />}
+          {rich.type === 'macro_commentary' && <AuraMiniMacro data={rich.data} />}
+          {rich.type === 'report' && <AuraMiniReport data={rich.data} />}
+        </div>
+      );
+    };
+
     return (
-      <div className="text-sm">
-        {rich.summary && <p className="mb-1">{rich.summary}</p>}
-        {rich.type === 'trade_setup' && <AuraMiniTradeSetup data={rich.data} />}
-        {rich.type === 'macro_commentary' && <AuraMiniMacro data={rich.data} />}
-        {rich.type === 'report' && <AuraMiniReport data={rich.data} />}
-      </div>
+      <>
+        {renderContent()}
+        {chartAttachments.map((att, i) => (
+          <MarketChartWidget
+            key={i}
+            data={att.payload.data}
+            instrument={att.payload.instrument}
+            timeframe={att.payload.timeframe}
+            fullscreen={isFullscreen}
+          />
+        ))}
+      </>
     );
   };
 
@@ -828,9 +896,13 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 richContent = { type: 'report', data: parsedPayload, summary: summaryText };
               }
 
+              // Extract chart attachments
+              const chartAttachment = extractMarketAttachments(parsedPayload);
+              const attachments = chartAttachment ? [chartAttachment] : undefined;
+
               setMessages((prev) => [
                 ...prev.slice(0, -1),
-                { role: 'assistant', content: richContent },
+                { role: 'assistant', content: richContent, attachments },
               ]);
               
               toast({ 
@@ -973,20 +1045,31 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       )}
 
       <div className={cn(
-        "fixed bg-background border-l border-border shadow-2xl flex flex-col",
+        "fixed border-l border-border shadow-2xl flex flex-col transition-all duration-300",
         isFullscreen
-          ? "inset-0 z-[10004]"
-          : "right-0 top-0 h-full w-full md:w-1/3 z-40"
+          ? "inset-0 z-[10004] bg-[#0f1117] animate-in fade-in slide-in-from-bottom-4"
+          : "right-0 top-0 h-full w-full md:w-1/3 z-40 bg-background"
       )}>
         {/* Header */}
-        <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background">
-          <div className="flex items-start justify-between">
+        <CardHeader className={cn(
+          "border-b shrink-0",
+          isFullscreen 
+            ? "bg-[#0f1117] border-white/5" 
+            : "bg-gradient-to-r from-primary/10 via-primary/5 to-background"
+        )}>
+          <div className={cn("flex items-start justify-between", isFullscreen && "max-w-5xl mx-auto w-full")}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
+              <div className={cn(
+                "bg-white rounded-xl flex items-center justify-center shadow-lg p-1",
+                isFullscreen ? "w-12 h-12" : "w-10 h-10"
+              )}>
                 <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
               </div>
               <div>
-                <CardTitle className="text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                <CardTitle className={cn(
+                  "bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent",
+                  isFullscreen ? "text-xl" : "text-lg"
+                )}>
                   AURA
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
@@ -1028,8 +1111,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         </CardHeader>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-          <div className={cn(isFullscreen && "max-w-4xl mx-auto")}>
+        <ScrollArea className={cn("flex-1", isFullscreen ? "px-8 py-6" : "p-4")} ref={scrollRef}>
+          <div className={cn(isFullscreen && "max-w-5xl mx-auto")}>
             {messages.length === 0 && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -1079,17 +1162,20 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 <div
                   key={idx}
                   className={cn(
-                    'flex',
+                    'flex animate-in fade-in-50 duration-200',
                     msg.role === 'user' ? 'justify-end' : 'justify-start'
                   )}
                 >
                   <div
                     className={cn(
-                      'rounded-lg px-4 py-2',
-                      isFullscreen ? 'max-w-[90%]' : 'max-w-[80%]',
+                      isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-lg px-4 py-2',
                       msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
+                        ? isFullscreen 
+                          ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground'
+                          : 'bg-primary text-primary-foreground'
+                        : isFullscreen
+                          ? 'bg-[#1a1d27] text-foreground'
+                          : 'bg-muted'
                     )}
                   >
                     {renderMessageContent(msg)}
@@ -1167,16 +1253,42 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         </ScrollArea>
 
         {/* Input */}
-        <div className={cn("p-4 border-t border-border bg-card", isFullscreen && "max-w-4xl mx-auto w-full")}>
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask AURA anything..."
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
+        <div className={cn(
+          "p-4 border-t shrink-0",
+          isFullscreen 
+            ? "border-white/5 bg-[#0f1117]" 
+            : "border-border bg-card"
+        )}>
+          <form onSubmit={handleSubmit} className={cn(
+            "flex gap-2 items-center",
+            isFullscreen && "max-w-5xl mx-auto"
+          )}>
+            <div className={cn(
+              "flex-1 flex items-center gap-2",
+              isFullscreen 
+                ? "rounded-full bg-[#1a1d27] border-0 shadow-lg px-4 h-14" 
+                : ""
+            )}>
+              {isFullscreen && <Search className="h-4 w-4 text-muted-foreground shrink-0" />}
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask AURA anything..."
+                disabled={isLoading}
+                className={cn(
+                  "flex-1",
+                  isFullscreen && "border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base"
+                )}
+              />
+            </div>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !input.trim()} 
+              size="icon"
+              className={cn(
+                isFullscreen && "rounded-full h-12 w-12 bg-gradient-to-r from-primary to-primary/80"
+              )}
+            >
               <Send className="h-4 w-4" />
             </Button>
           </form>
