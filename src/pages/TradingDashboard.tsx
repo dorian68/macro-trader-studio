@@ -43,17 +43,10 @@ const ALL_ASSETS = [
   // Crypto majeures
   { symbol: "Bitcoin", name: "Bitcoin", icon: "₿" },
   { symbol: "Ethereum", name: "Ethereum", icon: "Ξ" },
-  { symbol: "ADA-USD", name: "Cardano", icon: "🔷" },
-  { symbol: "SOL-USD", name: "Solana", icon: "🌞" },
-  { symbol: "DOGE-USD", name: "Dogecoin", icon: "🐕" },
 
   // Commodités principales
   { symbol: "GOLD", name: "Gold", icon: "🥇" },
-  { symbol: "SILVER", name: "Silver", icon: "🥈" },
-  { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️" },
-  { symbol: "NATGAS", name: "Natural Gas", icon: "🔥" },
-  { symbol: "COPPER", name: "Copper", icon: "🟤" },
-  { symbol: "PLATINUM", name: "Platinum", icon: "⚪" }
+  { symbol: "SILVER", name: "Silver", icon: "🥈" }
 ];
 
 export default function TradingDashboard() {
