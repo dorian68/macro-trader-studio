@@ -48,6 +48,7 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const { activateFreeTrial } = useCreditManager();
   const intent = searchParams.get('intent');
+  const selectedPlan = searchParams.get('plan');
   const { fetchActiveBrokers } = useBrokerActions();
 
   // ✅ Controlled tab state synchronized with URL query param
@@ -126,8 +127,26 @@ export default function Auth() {
             handleOAuthEvent(session);
           }, 0);
         } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
-          // Email/password flow - simple redirect
-          if (intent !== 'free_trial') {
+          // Email/password flow - check for pending plan from Pricing
+          const pendingPlan = localStorage.getItem('alphalens_pending_plan');
+          if (pendingPlan) {
+            localStorage.removeItem('alphalens_pending_plan');
+            // Defer checkout redirect to avoid async in callback
+            setTimeout(async () => {
+              try {
+                const { data, error } = await supabase.functions.invoke('create-checkout', {
+                  body: { planType: pendingPlan }
+                });
+                if (!error && data?.url) {
+                  window.location.href = data.url;
+                  return;
+                }
+              } catch (e) {
+                console.error('[Auth] Failed to create checkout for pending plan:', e);
+              }
+              navigate('/dashboard');
+            }, 0);
+          } else if (intent !== 'free_trial') {
             navigate('/dashboard');
           }
         }
@@ -471,10 +490,13 @@ export default function Auth() {
         }
       }).catch(err => console.error('[Auth] Failed to send welcome email:', err));
 
-      toast({
-        title: t('success.registrationSuccessful'),
-        description: t('success.registrationSuccessfulDescription')
-      });
+      // Store selected plan if coming from Pricing page
+      if (selectedPlan) {
+        localStorage.setItem('alphalens_pending_plan', selectedPlan);
+      }
+
+      // Redirect to confirmation page instead of just showing a toast
+      navigate('/email-confirmation');
 
       // If intent is free_trial, activate it after successful signup
       if (intent === 'free_trial') {
@@ -1013,6 +1035,12 @@ export default function Auth() {
               </TabsContent>
 
               <TabsContent value="signup">
+                {selectedPlan && (
+                  <div className="mb-4 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <span className="text-xs text-muted-foreground">Selected plan:</span>
+                    <span className="text-sm font-semibold text-primary capitalize">{selectedPlan}</span>
+                  </div>
+                )}
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <GoogleAuthButton
                     mode="signup"

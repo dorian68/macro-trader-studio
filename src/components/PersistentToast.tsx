@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, X, Minimize2, ChevronLeft, ChevronRight, Maximize2, Eye } from 'lucide-react';
@@ -12,6 +13,7 @@ type ViewMode = 'single' | 'list';
 export function PersistentToast() {
   const { activeJobs, completedJobs, flashMessages, removeFlashMessage, markJobAsViewed, navigateToResult } = usePersistentNotifications();
   const isMobile = useIsMobile();
+  const location = useLocation();
   
   const [isMinimized, setIsMinimized] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -45,6 +47,13 @@ export function PersistentToast() {
   
   const goToNextJob = () => { if (allJobs.length > 0) setSelectedJobIndex((prev) => (prev + 1) % allJobs.length); };
   const goToPreviousJob = () => { if (allJobs.length > 0) setSelectedJobIndex((prev) => (prev - 1 + allJobs.length) % allJobs.length); };
+
+  // Auto-minimize on route change when jobs are active
+  useEffect(() => {
+    if (activeJobs.length > 0 && !isMinimized) {
+      setIsMinimized(true);
+    }
+  }, [location.pathname]);
 
   // Individual timers for active jobs
   useEffect(() => {
