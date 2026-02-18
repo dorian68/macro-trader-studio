@@ -1,59 +1,59 @@
 
-# Suppression d'instruments du Dashboard
 
-## Changement
+# Add Decision Summary Card (SuperUser only)
 
-Retirer 7 instruments de la liste `ALL_ASSETS` dans `src/pages/TradingDashboard.tsx` :
+## Overview
 
-- **Crypto** : `ADA-USD` (Cardano), `SOL-USD` (Solana), `DOGE-USD` (Dogecoin)
-- **Commodites** : `CRUDE` (Crude Oil), `NATGAS` (Natural Gas), `COPPER` (Copper), `PLATINUM` (Platinum)
+Display a new card showing the `decision_summary` field from the API response. This card is only visible to SuperUser accounts and is placed after the existing Decision Layer (Step 3). No existing components are modified.
 
-## Liste resultante
+## Data Extraction
 
-| Categorie | Instruments conserves |
-|-----------|----------------------|
-| Forex | EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF |
-| Crypto | Bitcoin, Ethereum |
-| Commodites | Gold, Silver |
+A new `extractDecisionSummary(raw)` function follows the same 3-path extraction pattern used by `extractFinalAnswer`, `extractConfidenceNote`, etc:
+- Path 1: `body.message.message.content.content.decision_summary`
+- Path 2: `output.trade_generation_output.decision_summary`
+- Path 3: `trade_generation_output.decision_summary`
 
-## Fichier modifie
+Handles JSON-string and object formats via the existing `parseContentContent` helper.
 
-**`src/pages/TradingDashboard.tsx`** (lignes 46-56)
+## New State
 
-Avant (lignes 43-57) :
 ```
-  // Crypto majeures
-  { symbol: "Bitcoin", name: "Bitcoin", icon: "₿" },
-  { symbol: "Ethereum", name: "Ethereum", icon: "Ξ" },
-  { symbol: "ADA-USD", name: "Cardano", icon: "🔷" },
-  { symbol: "SOL-USD", name: "Solana", icon: "🌞" },
-  { symbol: "DOGE-USD", name: "Dogecoin", icon: "🐕" },
-
-  // Commodités principales
-  { symbol: "GOLD", name: "Gold", icon: "🥇" },
-  { symbol: "SILVER", name: "Silver", icon: "🥈" },
-  { symbol: "CRUDE", name: "Crude Oil", icon: "🛢️" },
-  { symbol: "NATGAS", name: "Natural Gas", icon: "🔥" },
-  { symbol: "COPPER", name: "Copper", icon: "🟤" },
-  { symbol: "PLATINUM", name: "Platinum", icon: "⚪" }
+const [decisionSummary, setDecisionSummary] = useState<Record<string, unknown> | null>(null);
 ```
 
-Apres :
-```
-  // Crypto majeures
-  { symbol: "Bitcoin", name: "Bitcoin", icon: "₿" },
-  { symbol: "Ethereum", name: "Ethereum", icon: "Ξ" },
+Set alongside other extractions in both `handleSubmit` and the `pendingResult` injection block. Reset to `null` on new submission.
 
-  // Commodités principales
-  { symbol: "GOLD", name: "Gold", icon: "🥇" },
-  { symbol: "SILVER", name: "Silver", icon: "🥈" }
-```
+## New Component: `DecisionSummaryCard`
 
-## Ce qui ne change pas
+Renders only when `isSuperUser && decisionSummary` is truthy. Placed right after `<DecisionLayer />` in the JSX.
 
-- Macro Lab, AI Setup, Forecast pages : leurs propres listes restent intactes
-- AssetSearchBar, HybridSearchBar : inchanges (listes independantes)
-- Services (marketDataService, assetMapping, instrument-mappings) : aucune modification
-- Layout, logique de selection, WebSocket, API : zero impact
+Visual structure:
+- Header with "Decision Summary" title + SuperUser badge + alignment/verdict/confidence badges
+- **Trade Card** section: direction badge, timeframe, horizon, Entry/SL/TP/R:R grid (reuses existing styling patterns), invalidation note
+- **Narrative** section: full text paragraph
+- **Key Risks** section: numbered list with warning icons
+- **Next Step** section: highlighted action box
+- **Disclaimer** at the bottom in italic
 
-Ce changement est purement declaratif (suppression d'entrees dans un tableau statique). Aucun code ne depend specifiquement de ces symboles dans le dashboard.
+Styling follows the existing card patterns (Card/CardHeader/CardContent, Badge, grid layouts, color coding for long/short).
+
+## Changes Summary
+
+| Location | Change |
+|----------|--------|
+| `extractDecisionSummary()` (new function, ~40 lines) | Multi-path extraction following existing pattern |
+| State declaration (~line 1771) | Add `decisionSummary` state |
+| `handleSubmit` (~line 2040) | Extract and set `decisionSummary` |
+| `handleSubmit` reset (~line 1871) | Reset `decisionSummary` to null |
+| Pending result injection (~line 1836) | Extract and set `decisionSummary` |
+| `DecisionSummaryCard` (new component, ~120 lines) | Visual card rendering |
+| JSX after DecisionLayer (~line 2541) | Render `DecisionSummaryCard` conditionally |
+
+## What does not change
+
+- DecisionLayer component: untouched
+- All existing extractors: untouched
+- API payload: no change
+- Other pages: no impact
+- Non-superuser experience: identical (card is hidden)
+
