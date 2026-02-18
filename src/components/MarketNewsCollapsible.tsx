@@ -98,32 +98,32 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
           </div>
         ) : (
           <ScrollArea className="h-full flex-1 min-h-0">
-            <div className="space-y-3 pr-4">
+            <div className="space-y-1.5 pr-4">
               {filteredNews.map((item) => (
                 <div 
                   key={item.id}
-                  className="border border-border/30 rounded-lg p-4 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer"
+                  className="border border-border/30 rounded-md px-3 py-2 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer"
                   onClick={() => item.url && window.open(item.url, '_blank')}
                 >
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     {/* Image thumbnail (if available) */}
                     {item.image && (
                       <img 
                         src={item.image} 
                         alt="" 
-                        className="w-20 h-20 object-cover rounded-md shrink-0"
+                        className="w-14 h-14 object-cover rounded-md shrink-0"
                       />
                     )}
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       {/* Title */}
-                      <h3 className="font-semibold text-sm mb-1 line-clamp-2">
+                      <h3 className="font-semibold text-sm mb-0.5 line-clamp-2">
                         {item.headline}
                       </h3>
 
                       {/* Meta: Time + Category */}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                         <span>{formatTime(item.datetime)}</span>
                         <span>•</span>
                         <Badge 
@@ -136,7 +136,7 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
 
                       {/* Summary */}
                       {item.summary && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                        <p className="text-xs text-muted-foreground line-clamp-1 mb-0.5">
                           {item.summary}
                         </p>
                       )}
