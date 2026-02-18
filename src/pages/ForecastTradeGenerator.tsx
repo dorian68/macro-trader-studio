@@ -39,7 +39,6 @@ import {
   Info,
   Lightbulb,
   BarChart3,
-  CheckCircle2,
   AlertTriangle,
   FileText,
 } from "lucide-react";
@@ -1629,162 +1628,6 @@ function NarrativeSection({ step, title, subtitle, icon, tagline, children, defa
   );
 }
 
-// ============================================================================
-// DECISION LAYER (Synthesis - no new calculations, just visual reformulation)
-// ============================================================================
-
-interface DecisionLayerProps {
-  aiSetup: N8nTradeResult | null;
-  forecastHorizons: ForecastHorizon[];
-}
-
-function DecisionLayer({ aiSetup, forecastHorizons }: DecisionLayerProps) {
-  // No new calculation - extraction of existing data only
-  const primarySetup = aiSetup?.setups?.[0];
-  const primaryHorizon = forecastHorizons[0];
-  
-  if (!primarySetup && !primaryHorizon) {
-    return null;
-  }
-
-  // Direction check - simple comparison of existing data
-  const aiDirection = primarySetup?.direction?.toLowerCase();
-  const quantDirection = primaryHorizon?.direction?.toLowerCase();
-  const directionsAlign = aiDirection && quantDirection && aiDirection === quantDirection;
-  
-  // Confidence check from existing data
-  const quantProb = primaryHorizon?.prob_hit_tp_before_sl;
-  
-  return (
-    <Card className="rounded-xl border-2 border-dashed border-emerald-500/30 bg-emerald-500/5">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-600">
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs font-mono border-emerald-500/50">
-                Step 3
-              </Badge>
-              <CardTitle className="text-lg">Decision Layer</CardTitle>
-            </div>
-            <CardDescription>Where thesis meets probability</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Convergence / Divergence Points */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Convergence */}
-          <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                Convergence Points
-              </span>
-            </div>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              {directionsAlign && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Direction aligned: Both suggest {aiDirection?.toUpperCase()}
-                </li>
-              )}
-              {quantProb && quantProb > 0.5 && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Probability favors TP: {(quantProb * 100).toFixed(0)}% chance
-                </li>
-              )}
-              {primaryHorizon?.riskReward && primaryHorizon.riskReward > 1 && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Positive R/R ratio: {primaryHorizon.riskReward.toFixed(2)}
-                </li>
-              )}
-              {(!directionsAlign && !quantProb) && (
-                <li className="text-muted-foreground italic">Generating...</li>
-              )}
-            </ul>
-          </div>
-
-          {/* Divergence */}
-          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Divergence Alerts
-              </span>
-            </div>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              {!directionsAlign && aiDirection && quantDirection && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Direction conflict: AI suggests {aiDirection?.toUpperCase()}, Quant suggests {quantDirection?.toUpperCase()}
-                </li>
-              )}
-              {quantProb && quantProb < 0.5 && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Low probability: Only {(quantProb * 100).toFixed(0)}% chance of TP
-                </li>
-              )}
-              {primarySetup?.riskNotes && (
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Risk flagged: {primarySetup.riskNotes.substring(0, 60)}...
-                </li>
-              )}
-              {(directionsAlign && (!quantProb || quantProb >= 0.5) && !primarySetup?.riskNotes) && (
-                <li className="text-emerald-600 italic">No divergence detected</li>
-              )}
-            </ul>
-          </div>
-        </div>
-
-        {/* Trade Recommendation Summary */}
-        <div className="p-4 rounded-lg bg-muted/30 border">
-          <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
-            Recommended Trade
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            {primarySetup?.direction && (
-              <Badge 
-                variant="outline" 
-                className={cn(
-                  "text-sm font-bold",
-                  primarySetup.direction.toLowerCase() === "long"
-                    ? "border-emerald-500 text-emerald-600 bg-emerald-500/10"
-                    : "border-rose-500 text-rose-600 bg-rose-500/10"
-                )}
-              >
-                {primarySetup.direction.toLowerCase() === "long" && <TrendingUp className="h-4 w-4 mr-1" />}
-                {primarySetup.direction.toLowerCase() === "short" && <TrendingDown className="h-4 w-4 mr-1" />}
-                {primarySetup.direction.toUpperCase()}
-              </Badge>
-            )}
-            {primarySetup?.entryPrice && (
-              <span className="text-sm">
-                Entry: <span className="font-mono font-semibold text-primary">{formatPrice(primarySetup.entryPrice)}</span>
-              </span>
-            )}
-            {primarySetup?.stopLoss && (
-              <span className="text-sm">
-                SL: <span className="font-mono font-semibold text-rose-600">{formatPrice(primarySetup.stopLoss)}</span>
-              </span>
-            )}
-            {primarySetup?.takeProfits?.[0] && (
-              <span className="text-sm">
-                TP: <span className="font-mono font-semibold text-emerald-600">{formatPrice(primarySetup.takeProfits[0])}</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ============================================================================
 // MAIN PAGE COMPONENT
@@ -2437,6 +2280,11 @@ function ForecastTradeGeneratorContent() {
         {/* Results Section */}
         {hasResults && !loading && (
           <div className="space-y-6">
+            {/* Decision Summary - visible to all users */}
+            {decisionSummary && (
+              <DecisionSummaryCard decisionSummary={decisionSummary} />
+            )}
+
             {/* Section 1: Market Thesis */}
             <NarrativeSection
               step={1}
@@ -2598,16 +2446,6 @@ function ForecastTradeGeneratorContent() {
               )}
             </NarrativeSection>
 
-            {/* Section 3: Decision Layer */}
-            <DecisionLayer 
-              aiSetup={aiSetupResult}
-              forecastHorizons={forecastHorizons}
-            />
-
-            {/* Section 4: Decision Summary (SuperUser only) */}
-            {isSuperUser && decisionSummary && (
-              <DecisionSummaryCard decisionSummary={decisionSummary} />
-            )}
           </div>
         )}
       </main>
