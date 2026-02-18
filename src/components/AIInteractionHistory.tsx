@@ -34,17 +34,17 @@ const FEATURES = [
 
 const FEATURE_ICONS = {
   ai_trade_setup: TrendingUp,
-  trade_setup: TrendingUp, // Legacy support
+  trade_setup: TrendingUp,
   macro_commentary: MessageSquare,
-  market_commentary: MessageSquare, // Legacy support
+  market_commentary: MessageSquare,
   report: FileText
 };
 
 const FEATURE_COLORS = {
   ai_trade_setup: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-  trade_setup: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400', // Legacy
+  trade_setup: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
   macro_commentary: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  market_commentary: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400', // Legacy
+  market_commentary: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
   report: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
 };
 
@@ -54,6 +54,121 @@ const ITEMS_PER_PAGE_OPTIONS = [
   { value: '50', label: '50 items' },
   { value: '100', label: '100 items' }
 ];
+
+/**
+ * Deep-extract the actual content from deeply nested response payloads.
+ * Handles structures like:
+ *   - Macro Lab: response_payload.message.content.content.message.content.content (plain text)
+ *   - Trade Generator: response_payload.body.message.message.content.content.trade_setup[0] (JSON string)
+ *   - RAG/Legacy: response_payload.content (structured JSON)
+ */
+function deepExtractContent(payload: any): any {
+  if (!payload) return null;
+
+  // --- Macro Lab path: message.content.content.message.content.content ---
+  try {
+    const level1 = payload?.message?.content?.content;
+    if (level1 && typeof level1 === 'object') {
+      const level2 = level1?.message?.content?.content;
+      if (level2 && typeof level2 === 'string') {
+        // This is the actual macro commentary text
+        return level2;
+      }
+    }
+  } catch {}
+
+  // --- Trade Generator path: body.message.message.content.content.trade_setup ---
+  try {
+    const tradeContent = payload?.body?.message?.message?.content?.content;
+    if (tradeContent?.trade_setup && Array.isArray(tradeContent.trade_setup)) {
+      const firstSetup = tradeContent.trade_setup[0];
+      if (typeof firstSetup === 'string') {
+        const parsed = JSON.parse(firstSetup);
+        return { _type: 'trade_setup_parsed', ...parsed };
+      }
+      return { _type: 'trade_setup_parsed', ...firstSetup };
+    }
+  } catch {}
+
+  // --- Legacy/RAG structured response: message.content.content (object with structured fields) ---
+  try {
+    const structured = payload?.message?.content?.content;
+    if (structured && typeof structured === 'object' && !structured.message) {
+      return structured;
+    }
+  } catch {}
+
+  // --- Direct content paths ---
+  if (payload?.content?.setups && Array.isArray(payload.content.setups)) {
+    return payload.content;
+  }
+  if (payload?.content) return payload.content;
+  if (payload?.response) return payload.response;
+  if (payload?.analysis) return payload.analysis;
+  if (payload?.result) return payload.result;
+
+  return payload;
+}
+
+/**
+ * Extract user query from request payload with deep path support
+ */
+function deepExtractUserQuery(requestPayload: any, responsePayload: any): string {
+  if (!requestPayload) return 'Unavailable';
+
+  // Handle macroInsight structure
+  if (requestPayload.macroInsight?.message?.content) {
+    return requestPayload.macroInsight.message.content;
+  }
+
+  // Standard patterns
+  if (requestPayload.question) return requestPayload.question;
+  if (requestPayload.query) return requestPayload.query;
+  if (requestPayload.user_query) return requestPayload.user_query;
+  if (requestPayload.message) return requestPayload.message;
+  if (requestPayload.content) return requestPayload.content;
+  if (requestPayload.text) return requestPayload.text;
+
+  // Nested analysis queries
+  if (requestPayload.analysis?.query) return requestPayload.analysis.query;
+  if (requestPayload.analysis?.question) return requestPayload.analysis.question;
+
+  // For AI Trade Setup, reconstruct from instrument
+  if (requestPayload.instrument) {
+    const parts = [`Generate AI Trade Setup for ${requestPayload.instrument}`];
+    if (requestPayload.strategy) parts.push(`using ${requestPayload.strategy} strategy`);
+    if (requestPayload.timeframe) parts.push(`on ${requestPayload.timeframe} timeframe`);
+    return parts.join(' ');
+  }
+
+  // For macro_lab type: try to extract query from the response itself
+  if (requestPayload.type === 'macro_lab') {
+    // Try to find instrument/asset from the response
+    const content = deepExtractContent(responsePayload);
+    if (typeof content === 'string') {
+      // Extract the first line or "Executive Summary" section as context
+      const firstLine = content.split('\n').find(l => l.trim() && !l.startsWith('Executive'));
+      if (firstLine) return `Macro Lab Analysis`;
+    }
+    return 'Macro Lab Analysis';
+  }
+
+  // Try to find meaningful text from object
+  if (typeof requestPayload === 'object') {
+    const keys = Object.keys(requestPayload);
+    const meaningfulKeys = keys.filter(key =>
+      typeof requestPayload[key] === 'string' &&
+      requestPayload[key].length > 5 &&
+      requestPayload[key].length < 100
+    );
+    if (meaningfulKeys.length > 0) {
+      return requestPayload[meaningfulKeys[0]];
+    }
+  }
+
+  const fallback = JSON.stringify(requestPayload);
+  return fallback.length > 200 ? fallback.substring(0, 200) + '...' : fallback;
+}
 
 export function AIInteractionHistory() {
   const { user } = useAuth();
@@ -70,77 +185,6 @@ export function AIInteractionHistory() {
   });
   const [totalCount, setTotalCount] = useState(0);
 
-  // Helper function to extract user query from job request payload
-  const extractUserQuery = (requestPayload: any): string => {
-    if (!requestPayload) return 'Unavailable';
-    
-    // Handle nested macroInsight structure
-    if (requestPayload.macroInsight?.message?.content) {
-      return requestPayload.macroInsight.message.content;
-    }
-    
-    // Standard patterns from jobs.request_payload
-    if (requestPayload.question) return requestPayload.question;
-    if (requestPayload.query) return requestPayload.query;
-    if (requestPayload.user_query) return requestPayload.user_query;
-    if (requestPayload.message) return requestPayload.message;
-    if (requestPayload.content) return requestPayload.content;
-    if (requestPayload.text) return requestPayload.text;
-    
-    // Handle nested analysis queries
-    if (requestPayload.analysis?.query) return requestPayload.analysis.query;
-    if (requestPayload.analysis?.question) return requestPayload.analysis.question;
-    
-    // For AI Trade Setup, try to reconstruct a clean query from instrument and other fields
-    if (requestPayload.instrument) {
-      const parts = [];
-      parts.push(`Generate AI Trade Setup for ${requestPayload.instrument}`);
-      if (requestPayload.strategy) parts.push(`using ${requestPayload.strategy} strategy`);
-      if (requestPayload.timeframe) parts.push(`on ${requestPayload.timeframe} timeframe`);
-      return parts.join(' ');
-    }
-    
-    // Try to extract meaningful text instead of raw JSON
-    if (typeof requestPayload === 'object') {
-      const keys = Object.keys(requestPayload);
-      const meaningfulKeys = keys.filter(key => 
-        typeof requestPayload[key] === 'string' && 
-        requestPayload[key].length > 5 && 
-        requestPayload[key].length < 100
-      );
-      if (meaningfulKeys.length > 0) {
-        return requestPayload[meaningfulKeys[0]];
-      }
-    }
-    
-    const fallback = JSON.stringify(requestPayload);
-    return fallback.length > 200 ? fallback.substring(0, 200) + '...' : fallback;
-  };
-
-  // Helper function to extract AI response from job response payload
-  const extractAIResponse = (responsePayload: any): any => {
-    if (!responsePayload) return 'Unavailable';
-    
-    // Handle nested response structures (like message.content.content)
-    if (responsePayload.message?.content?.content) {
-      return responsePayload.message.content.content;
-    }
-    
-    // For AI Trade Setup, preserve the complete response structure
-    if (responsePayload.content?.setups && Array.isArray(responsePayload.content.setups)) {
-      // Return the full content structure to preserve all data
-      return responsePayload.content;
-    }
-    
-    // Direct response content
-    if (responsePayload.content) return responsePayload.content;
-    if (responsePayload.response) return responsePayload.response;
-    if (responsePayload.analysis) return responsePayload.analysis;
-    if (responsePayload.result) return responsePayload.result;
-    
-    return responsePayload;
-  };
-
   const fetchTotalCount = async () => {
     if (!user?.id) return 0;
 
@@ -152,7 +196,6 @@ export function AIInteractionHistory() {
       .not('response_payload', 'is', null);
 
     if (selectedFeature !== 'all') {
-      // Map selected feature to jobs.feature format
       const jobsFeature = selectedFeature === 'ai_trade_setup' ? 'AI Trade Setup' :
                           selectedFeature === 'macro_commentary' ? 'Macro Commentary' :
                           selectedFeature === 'report' ? 'Report' : selectedFeature;
@@ -172,7 +215,6 @@ export function AIInteractionHistory() {
   const fetchInteractions = async (offset = 0, limit = 20) => {
     if (!user?.id) return [];
 
-    // Fetch directly from jobs table only
     let query = supabase
       .from('jobs')
       .select('id, feature, request_payload, response_payload, created_at, updated_at, status, user_id')
@@ -183,7 +225,6 @@ export function AIInteractionHistory() {
       .range(offset, offset + limit - 1);
 
     if (selectedFeature !== 'all') {
-      // Map selected feature to jobs.feature format
       const jobsFeature = selectedFeature === 'ai_trade_setup' ? 'AI Trade Setup' :
                           selectedFeature === 'macro_commentary' ? 'Macro Commentary' :
                           selectedFeature === 'report' ? 'Report' : selectedFeature;
@@ -202,12 +243,11 @@ export function AIInteractionHistory() {
       return [];
     }
 
-    // Convert jobs to AIInteraction format
     const interactions: AIInteraction[] = (jobs || []).map(job => ({
       id: job.id,
       feature_name: normalizeFeatureName(job.feature || 'unknown'),
-      user_query: extractUserQuery(job.request_payload),
-      ai_response: extractAIResponse(job.response_payload),
+      user_query: deepExtractUserQuery(job.request_payload, job.response_payload),
+      ai_response: deepExtractContent(job.response_payload),
       created_at: job.updated_at || job.created_at,
       user_id: job.user_id,
       job_id: job.id,
@@ -249,7 +289,7 @@ export function AIInteractionHistory() {
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
-    
+
     setLoadingMore(true);
     const newData = await fetchInteractions(interactions.length, itemsPerPage);
     setInteractions(prev => [...prev, ...newData]);
@@ -261,11 +301,6 @@ export function AIInteractionHistory() {
     const newItemsPerPage = parseInt(value);
     setItemsPerPage(newItemsPerPage);
     sessionStorage.setItem('history-items-per-page', value);
-    
-    // Reset and reload with new page size
-    setInteractions([]);
-    setExpandedItems(new Set());
-    loadInitialData();
   };
 
   useEffect(() => {
@@ -294,64 +329,63 @@ export function AIInteractionHistory() {
     }
   };
 
-  const extractInstrument = (userQuery: string): string => {
-    // Extract instrument from user query patterns
-    const patterns = [
-      /for\s+([A-Z]{3}\/[A-Z]{3})/i, // EUR/USD
-      /for\s+([A-Z]{3,4})/i, // GOLD, BTC
-      /([A-Z]{3}\/[A-Z]{3})/i, // Direct match
-      /([A-Z]{2,4}\/[A-Z]{2,4})/i // Flexible match
-    ];
-    
-    for (const pattern of patterns) {
-      const match = userQuery.match(pattern);
-      if (match) return match[1];
-    }
-    return 'N/A';
-  };
-
   const extractSummary = (response: any, featureName: string): string => {
     if (!response) return 'No response available';
-    
+
     try {
       const normalizedFeature = normalizeFeatureName(featureName);
-      
+
+      // Plain text response (common for macro_lab)
+      if (typeof response === 'string') {
+        // Extract first meaningful line
+        const lines = response.split('\n').filter(l => l.trim());
+        const firstLine = lines[0] || '';
+        return firstLine.length > 150 ? firstLine.slice(0, 150) + '...' : firstLine;
+      }
+
+      // Parsed trade setup
+      if (response?._type === 'trade_setup_parsed' && response?.data?.payload) {
+        const p = response.data.payload;
+        const h = p.horizons?.[0];
+        return `${p.symbol || 'N/A'} • ${h?.direction || ''} • Entry: ${h?.entry_price?.toFixed(2) || 'N/A'}`;
+      }
+
       if (normalizedFeature === 'ai_trade_setup' && typeof response === 'object') {
         const { instrument, strategy, direction } = response;
         if (instrument) {
           return `${instrument}${strategy ? ` • ${strategy}` : ''}${direction ? ` • ${direction}` : ''}`;
         }
+        // Try setups array
+        if (response.setups?.[0]) {
+          const s = response.setups[0];
+          return `${response.instrument || s.instrument || 'N/A'} • ${s.direction || ''} • ${s.strategy || ''}`;
+        }
       }
-      
+
       if (normalizedFeature === 'macro_commentary' && typeof response === 'object') {
-        const { asset, summary, market_outlook } = response;
+        const { asset, summary, market_outlook, executive_summary } = response;
+        if (executive_summary) {
+          return typeof executive_summary === 'string' ? executive_summary.substring(0, 150) + '...' : 'Analysis available';
+        }
         if (asset) {
           const preview = summary || market_outlook || 'Market analysis';
           return `${asset} • ${typeof preview === 'string' ? preview.substring(0, 80) : 'Analysis available'}`;
         }
       }
-      
+
       if (normalizedFeature === 'report' && typeof response === 'string') {
-        // Extract title or first meaningful text from HTML
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = response;
         const h1 = tempDiv.querySelector('h1');
         const h2 = tempDiv.querySelector('h2');
         const title = h1?.textContent || h2?.textContent;
-        if (title) {
-          return title.substring(0, 100);
-        }
+        if (title) return title.substring(0, 100);
         const textContent = tempDiv.textContent || tempDiv.innerText || '';
         return textContent.substring(0, 100) + (textContent.length > 100 ? '...' : '');
       }
-      
-      // Fallback for other cases
-      if (typeof response === 'string') {
-        return response.slice(0, 150) + (response.length > 150 ? '...' : '');
-      }
-      
+
+      // Fallback for objects
       if (typeof response === 'object' && response !== null) {
-        // Try to extract meaningful content from different response types
         if (response.summary && typeof response.summary === 'string') {
           return response.summary.slice(0, 150) + '...';
         }
@@ -361,25 +395,20 @@ export function AIInteractionHistory() {
         if (response.analysis && typeof response.analysis === 'string') {
           return response.analysis.slice(0, 150) + '...';
         }
-        
-        // Try to find any text content
-        const textContent = Object.values(response).find(value => 
+        const textContent = Object.values(response).find(value =>
           typeof value === 'string' && value.length > 20
         ) as string;
-        
         if (textContent) {
           return textContent.slice(0, 150) + (textContent.length > 150 ? '...' : '');
         }
       }
-      
+
       return 'AI analysis completed successfully';
     } catch (error) {
       console.error('Error extracting summary:', error);
       return 'Response parsing error';
     }
   };
-
-  // Note: Jobs cannot be deleted as they are managed by n8n
 
   const getFeatureIcon = (featureName: string) => {
     const normalized = normalizeFeatureName(featureName);
@@ -396,20 +425,27 @@ export function AIInteractionHistory() {
     return FEATURE_COLORS[normalized as keyof typeof FEATURE_COLORS] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
   };
 
+  /**
+   * Render the AI response based on feature type
+   */
   const renderFormattedResponse = (interaction: AIInteraction) => {
     if (!interaction.ai_response) return null;
 
     const feature = getFeatureDisplayName(interaction.feature_name);
-    
+    const response = interaction.ai_response;
+
+    // --- AI Trade Setup ---
     if (feature === 'AI Trade Setup') {
+      // Parsed trade setup from deep extraction
+      if (response?._type === 'trade_setup_parsed' && response?.data) {
+        return renderParsedTradeSetup(response, interaction.user_query);
+      }
+
+      // Legacy structured content with setups array
       try {
-        // Pass the complete content structure to TradeSetupDisplay
         const content = interaction.response_payload?.content;
-        
-        if (content && content.setups && content.setups.length > 0) {
-          // TradeSetupDisplay expects the first setup data
+        if (content?.setups && content.setups.length > 0) {
           const setupData = content.setups[0];
-          // Add additional context from the full response
           const enrichedData = {
             ...setupData,
             instrument: content.instrument,
@@ -417,34 +453,54 @@ export function AIInteractionHistory() {
             market_commentary_anchor: content.market_commentary_anchor,
             data_fresheners: content.data_fresheners
           };
-          
           return <TradeSetupDisplay data={enrichedData} originalQuery={interaction.user_query} />;
         }
-      } catch (error) {
-        console.error('Error rendering AI Trade Setup:', error);
+      } catch {}
+
+      // Object with trade setup fields
+      if (typeof response === 'object' && (response.instrument || response.direction || response.entry_price)) {
+        return <TradeSetupDisplay data={response} originalQuery={interaction.user_query} />;
       }
+
       return renderTradeSetupFallback(interaction.response_payload, interaction.user_query);
     }
 
+    // --- Macro Commentary ---
     if (feature === 'Macro Commentary') {
+      // Plain text response (from macro_lab)
+      if (typeof response === 'string') {
+        return renderPlainTextMacro(response, interaction.user_query);
+      }
+
+      // Structured JSON response (from RAG)
       try {
-        const parsedResponse = typeof interaction.ai_response === 'string' 
-          ? JSON.parse(interaction.ai_response) 
-          : interaction.ai_response;
+        const parsedResponse = typeof response === 'string'
+          ? JSON.parse(response)
+          : response;
+
+        // Check if it has the structured fields MacroCommentaryDisplay expects
+        if (parsedResponse.executive_summary || parsedResponse.fundamental_analysis || parsedResponse.directional_bias) {
+          return <MacroCommentaryDisplay data={parsedResponse} originalQuery={interaction.user_query} />;
+        }
+
+        // If it's a string inside the object
+        if (parsedResponse.content && typeof parsedResponse.content === 'string') {
+          return renderPlainTextMacro(parsedResponse.content, interaction.user_query);
+        }
+
         return <MacroCommentaryDisplay data={parsedResponse} originalQuery={interaction.user_query} />;
-      } catch (error) {
-        console.error('Error parsing Macro Commentary response:', error);
-        return renderStructuredFallback(interaction.ai_response, 'Macro Commentary');
+      } catch {
+        return renderStructuredFallback(response, 'Macro Commentary');
       }
     }
 
+    // --- Report ---
     if (feature === 'Report') {
       try {
-        const responseContent = typeof interaction.ai_response === 'string' 
-          ? interaction.ai_response 
-          : JSON.stringify(interaction.ai_response, null, 2);
-        
-        // For HTML content, render it directly in a contained, scrollable area
+        const responseContent = typeof response === 'string'
+          ? response
+          : JSON.stringify(response, null, 2);
+
         return (
           <Card>
             <CardHeader className="pb-3">
@@ -452,7 +508,7 @@ export function AIInteractionHistory() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="max-h-96 overflow-y-auto overflow-x-hidden">
-                <div 
+                <div
                   className="prose prose-sm max-w-none dark:prose-invert break-words"
                   dangerouslySetInnerHTML={{ __html: responseContent }}
                 />
@@ -460,22 +516,21 @@ export function AIInteractionHistory() {
             </CardContent>
           </Card>
         );
-      } catch (error) {
-        console.error('Error rendering report:', error);
-        return renderStructuredFallback(interaction.ai_response, 'Report');
+      } catch {
+        return renderStructuredFallback(response, 'Report');
       }
     }
 
-    // For other features, try to parse JSON first, then fall back to structured display
+    // --- Fallback for other features ---
     try {
-      const parsedResponse = typeof interaction.ai_response === 'string' 
-        ? JSON.parse(interaction.ai_response) 
-        : interaction.ai_response;
+      const parsedResponse = typeof response === 'string'
+        ? JSON.parse(response)
+        : response;
       return <div className="break-words">{renderStructuredResponse(parsedResponse)}</div>;
     } catch {
-      const responseContent = typeof interaction.ai_response === 'string' 
-        ? interaction.ai_response 
-        : JSON.stringify(interaction.ai_response, null, 2);
+      const responseContent = typeof response === 'string'
+        ? response
+        : JSON.stringify(response, null, 2);
       return (
         <Card>
           <CardContent className="p-4">
@@ -488,10 +543,128 @@ export function AIInteractionHistory() {
     }
   };
 
+  /**
+   * Render plain text macro commentary with nice formatting
+   */
+  const renderPlainTextMacro = (text: string, originalQuery?: string) => {
+    // Parse sections from the plain text
+    const sections = parseMacroTextSections(text);
+
+    return (
+      <div className="space-y-4">
+        {originalQuery && originalQuery !== 'Unavailable' && originalQuery !== 'Macro Lab Analysis' && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Original Query</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-sm bg-muted/50 p-3 rounded-lg font-mono break-words">{originalQuery}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {sections.map((section, index) => (
+          <Card key={index}>
+            {section.title && (
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">{section.title}</CardTitle>
+              </CardHeader>
+            )}
+            <CardContent className={section.title ? "pt-0" : "p-4"}>
+              <div className="text-foreground leading-relaxed whitespace-pre-wrap break-words text-sm">
+                {section.content}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+  /**
+   * Parse plain text macro commentary into titled sections
+   */
+  const parseMacroTextSections = (text: string): { title: string; content: string }[] => {
+    const sections: { title: string; content: string }[] = [];
+    const lines = text.split('\n');
+    let currentTitle = '';
+    let currentContent: string[] = [];
+
+    const sectionHeadings = [
+      'Executive Summary', 'Fundamental Analysis', 'Directional Bias',
+      'Confidence', 'Key Levels', 'AI Insights Breakdown',
+      'Toggle GPT', 'Toggle Curated', 'Fundamentals',
+      'Rate Differentials', 'Positioning', 'Balance of Payments',
+      'Central Bank Pricing', 'Sentiment Drivers', 'Event Watch',
+      'Risk Notes', 'Market Context', 'Technical Analysis'
+    ];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const isHeading = sectionHeadings.some(h =>
+        trimmed === h || trimmed.startsWith(h + '\n')
+      );
+
+      if (isHeading) {
+        // Save previous section
+        if (currentTitle || currentContent.length > 0) {
+          sections.push({
+            title: currentTitle,
+            content: currentContent.join('\n').trim()
+          });
+        }
+        currentTitle = trimmed;
+        currentContent = [];
+      } else {
+        currentContent.push(line);
+      }
+    }
+
+    // Save last section
+    if (currentTitle || currentContent.length > 0) {
+      sections.push({
+        title: currentTitle,
+        content: currentContent.join('\n').trim()
+      });
+    }
+
+    // Filter out empty sections
+    return sections.filter(s => s.content.length > 0 || s.title.length > 0);
+  };
+
+  /**
+   * Render a parsed trade setup from the deep extraction
+   */
+  const renderParsedTradeSetup = (parsed: any, originalQuery?: string) => {
+    const tradeData = parsed?.data;
+    if (!tradeData?.payload) {
+      return renderStructuredFallback(parsed, 'AI Trade Setup');
+    }
+
+    const payload = tradeData.payload;
+    const horizons = payload.horizons || [];
+    const h = horizons[0];
+
+    const setupData = {
+      instrument: payload.symbol,
+      direction: h?.direction,
+      entryPrice: h?.entry_price,
+      stopLoss: h?.sl,
+      takeProfits: h?.tp ? [h.tp] : [],
+      confidence: h?.confidence ? Math.round(h.confidence * 100) : undefined,
+      riskReward: h?.riskReward,
+      timeframe: payload.timeframe,
+      as_of: payload.as_of || payload.asOf,
+      position_size: h?.position_size
+    };
+
+    return <TradeSetupDisplay data={setupData} originalQuery={originalQuery} />;
+  };
+
   // Render specialized fallback for AI Trade Setup
   const renderTradeSetupFallback = (responsePayload: any, originalQuery: string) => {
     const content = responsePayload?.content;
-    
+
     return (
       <Card className="w-full">
         <CardHeader>
@@ -507,7 +680,7 @@ export function AIInteractionHistory() {
               <p className="text-lg font-mono">{content.instrument}</p>
             </div>
           )}
-          
+
           {content?.setups && content.setups.length > 0 && (
             <div className="space-y-6">
               <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Trade Setups</h4>
@@ -516,39 +689,39 @@ export function AIInteractionHistory() {
                   <CardContent className="p-4 space-y-3">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="font-semibold">Direction:</span> 
+                        <span className="font-semibold">Direction:</span>
                         <span className={`ml-2 capitalize ${setup.direction === 'long' ? 'text-green-600' : 'text-red-600'}`}>
                           {setup.direction}
                         </span>
                       </div>
                       <div>
-                        <span className="font-semibold">Strategy:</span> 
+                        <span className="font-semibold">Strategy:</span>
                         <span className="ml-2 capitalize">{setup.strategy}</span>
                       </div>
                       <div>
-                        <span className="font-semibold">Timeframe:</span> 
+                        <span className="font-semibold">Timeframe:</span>
                         <span className="ml-2 font-mono">{setup.timeframe}</span>
                       </div>
                       <div>
-                        <span className="font-semibold">Horizon:</span> 
+                        <span className="font-semibold">Horizon:</span>
                         <span className="ml-2 capitalize">{setup.horizon}</span>
                       </div>
                     </div>
-                    
+
                     {setup.entryPrice && (
                       <div>
-                        <span className="font-semibold">Entry Price:</span> 
+                        <span className="font-semibold">Entry Price:</span>
                         <span className="ml-2 font-mono text-lg">{setup.entryPrice}</span>
                       </div>
                     )}
-                    
+
                     {setup.stopLoss && (
                       <div>
-                        <span className="font-semibold">Stop Loss:</span> 
+                        <span className="font-semibold">Stop Loss:</span>
                         <span className="ml-2 font-mono text-red-600">{setup.stopLoss}</span>
                       </div>
                     )}
-                    
+
                     {setup.takeProfits && setup.takeProfits.length > 0 && (
                       <div>
                         <span className="font-semibold">Take Profits:</span>
@@ -561,7 +734,7 @@ export function AIInteractionHistory() {
                         </div>
                       </div>
                     )}
-                    
+
                     {setup.levels && (
                       <div className="grid grid-cols-2 gap-4">
                         {setup.levels.supports && setup.levels.supports.length > 0 && (
@@ -574,7 +747,7 @@ export function AIInteractionHistory() {
                             </div>
                           </div>
                         )}
-                        
+
                         {setup.levels.resistances && setup.levels.resistances.length > 0 && (
                           <div>
                             <span className="font-semibold">Resistances:</span>
@@ -587,21 +760,21 @@ export function AIInteractionHistory() {
                         )}
                       </div>
                     )}
-                    
+
                     {setup.context && (
                       <div>
                         <span className="font-semibold">Context:</span>
                         <p className="ml-2 mt-1 text-sm text-muted-foreground break-words">{setup.context}</p>
                       </div>
                     )}
-                    
+
                     {setup.riskNotes && (
                       <div>
                         <span className="font-semibold">Risk Notes:</span>
                         <p className="ml-2 mt-1 text-sm text-muted-foreground break-words">{setup.riskNotes}</p>
                       </div>
                     )}
-                    
+
                     {(setup.riskReward || setup.risk_reward_ratio || setup.risk_reward) && (
                       <div>
                         <span className="font-semibold">Risk/Reward Ratio:</span>
@@ -613,17 +786,27 @@ export function AIInteractionHistory() {
               ))}
             </div>
           )}
-          
+
           {content?.market_commentary_anchor?.summary && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
               <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">Market Commentary</h4>
               <p className="text-sm text-blue-800 dark:text-blue-200 break-words">{content.market_commentary_anchor.summary}</p>
             </div>
           )}
-          
+
           {content?.disclaimer && (
             <div className="mt-4 p-3 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground italic">{content.disclaimer}</p>
+            </div>
+          )}
+
+          {/* If no structured content found, show raw */}
+          {!content?.instrument && !content?.setups && (
+            <div className="bg-muted/30 p-4 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-2">Raw Response:</p>
+              <pre className="text-xs whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+                {JSON.stringify(responsePayload, null, 2)}
+              </pre>
             </div>
           )}
         </CardContent>
@@ -634,7 +817,7 @@ export function AIInteractionHistory() {
   // Structured fallback for parsing errors
   const renderStructuredFallback = (data: any, featureType: string) => {
     const responseContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    
+
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -655,7 +838,7 @@ export function AIInteractionHistory() {
     );
   };
 
-  // Enhanced structured response renderer with proper card layout
+  // Enhanced structured response renderer
   const renderStructuredResponse = (data: any) => {
     if (!data || typeof data !== 'object') {
       return (
@@ -669,7 +852,6 @@ export function AIInteractionHistory() {
       );
     }
 
-    // Handle nested structures like message.content.content
     const actualData = data.message?.content?.content || data.content || data;
 
     return (
@@ -834,7 +1016,7 @@ export function AIInteractionHistory() {
                             </Badge>
                           )}
                         </div>
-                        
+
                         {/* Query Preview */}
                         <div className="bg-muted/30 p-2 rounded text-xs">
                           <p className="font-medium text-muted-foreground mb-1">Query:</p>
@@ -842,7 +1024,7 @@ export function AIInteractionHistory() {
                             {interaction.user_query}
                           </p>
                         </div>
-                        
+
                         {/* Response Preview when collapsed */}
                         {!expandedItems.has(interaction.id) && (
                           <div className="mt-2 text-xs text-muted-foreground">
@@ -854,7 +1036,7 @@ export function AIInteractionHistory() {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Toggle Button */}
                     <Button
                       variant="ghost"
@@ -901,7 +1083,7 @@ export function AIInteractionHistory() {
                 </CardContent>
               </Card>
             ))}
-            
+
             {hasMore && (
               <div className="flex justify-center pt-4">
                 <Button
