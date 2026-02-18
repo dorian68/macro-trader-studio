@@ -863,6 +863,12 @@ function extractDecisionSummary(raw: unknown): Record<string, unknown> | null {
     const c2 = parseContentContent(c1?.content);
     const result = validate(c2?.decision_summary);
     if (result) return result;
+    // Also check inside final_answer (often a JSON string containing decision_summary)
+    if (c2?.final_answer) {
+      const fa = parseContentContent(c2.final_answer);
+      const faResult = validate(fa?.decision_summary);
+      if (faResult) return faResult;
+    }
   } catch {}
 
   // Path 2: output.trade_generation_output.decision_summary
