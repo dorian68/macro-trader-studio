@@ -228,8 +228,8 @@ export function PersistentToast() {
           ${isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab'}
           ${isMinimized 
             ? isMobile 
-              ? 'w-14 h-14 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-border/50 bg-card/98 backdrop-blur-md p-0 overflow-visible' 
-              : 'w-16 h-16 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.6)] border border-border/50 bg-card/98 backdrop-blur-md p-0 overflow-visible'
+              ? 'w-14 h-14 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5),inset_0_0_20px_rgba(255,255,255,0.08)] border border-white/20 bg-white/[0.12] backdrop-blur-xl p-0 overflow-visible' 
+              : 'w-16 h-16 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5),inset_0_0_20px_rgba(255,255,255,0.08)] border border-white/20 bg-white/[0.12] backdrop-blur-xl p-0 overflow-visible'
             : isMobile 
               ? 'w-[calc(100vw-2rem)] max-w-sm shadow-[0_8px_30px_rgba(0,0,0,0.6)] border-border bg-card/98 backdrop-blur-md' 
               : 'w-80 shadow-[0_8px_30px_rgba(0,0,0,0.6)] border-border bg-card/98 backdrop-blur-md'
@@ -258,7 +258,7 @@ export function PersistentToast() {
             {!hasActiveJobs && hasCompletedJobs ? (
               <CheckCircle className="h-7 w-7 text-success" />
             ) : (
-              <div className="h-7 w-7 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
+              <div className="h-7 w-7 border-[3px] border-orange-400 border-t-transparent rounded-full animate-spin" />
             )}
             
             {/* Badge counters */}

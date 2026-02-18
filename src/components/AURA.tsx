@@ -948,7 +948,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={onToggle}
-          className="p-4 bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-full animate-pulse-glow hover:scale-110 transition-all duration-300"
+          className="p-4 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] hover:scale-110 transition-all duration-300"
           aria-label="Open AURA"
         >
           <MessageCircle className="h-6 w-6" />
