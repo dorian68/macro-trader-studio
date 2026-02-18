@@ -1,107 +1,89 @@
 
 
-# Fix: Affichage JSON dans History + Query dans Macro Lab
+# Enrichissement AI Trade Setup dans History + Mode Fullscreen
 
-## Diagnostic
+## 1. Template riche pour AI Trade Setup (dans History)
 
-Le probleme vient de la chaine d'extraction des donnees. Voici ce qui se passe :
+### Probleme
+Actuellement, `deepExtractContent` extrait le champ `trade_setup` du payload mais ignore le `final_answer` qui contient toutes les donnees riches (instrument, setups avec context/riskNotes, decision_summary, market_commentary_anchor, data_fresheners). Le rendu se limite a `TradeSetupDisplay` avec des champs basiques.
 
-1. `deepExtractContent` extrait correctement le contenu profondement imbrique de `response_payload`, mais retourne une **chaine JSON** (ex: `{"content": "Executive Summary\n...", "fundamentals": [...], "citations_news": [...]}`)
-2. Dans `renderFormattedResponse`, le check `typeof response === 'string'` est vrai, donc `renderPlainTextMacro(response)` est appele avec la **chaine JSON brute** au lieu du texte
-3. Le resultat : le JSON s'affiche comme du texte brut dans les cartes
+### Solution
+Ajouter un nouveau chemin d'extraction dans `deepExtractContent` pour parser le `final_answer` (chaine JSON) et retourner un objet type `_type: 'full_trade_setup'`. Puis creer une fonction `renderFullTradeSetup` qui affiche :
 
-De plus, les donnees contiennent des champs riches (`fundamentals`, `citations_news`, `market_data`) qui ne sont jamais exploites.
+```text
+Card (border-l-4 yellow)
+  Header: "XAU/USD" + Badge direction (SHORT/LONG) + Badge timeframe
+  Sous-titre: strategy + horizon
 
-## Plan de correction
+Card "Trade Levels"
+  Grid: Entry | Stop Loss | Take Profits (colores)
+  Risk:Reward + Confidence badges
+
+Card "Decision Summary" (via DecisionSummaryCard existant)
+  Alignment, verdict, narrative, key_risks, next_step
+
+Card "Market Commentary" (si disponible)
+  Summary du market_commentary_anchor
+  Key drivers en liste
+
+Card "Data Fresheners" (si disponible)
+  Tabs ou sections: Macro Recent | Upcoming | CB Signals | Positioning
+
+Card "Risk Management Calculator" (collapsible, via PNLCalculator existant)
+```
 
 ### Fichier : `src/components/AIInteractionHistory.tsx`
 
-### 1. Corriger `renderFormattedResponse` pour Macro Commentary
+**Modifications :**
 
-Dans le bloc `feature === 'Macro Commentary'` (lignes 531-554), ajouter un parsing de la chaine JSON **avant** de decider quel rendu utiliser :
+1. **`deepExtractContent`** : Ajouter un chemin avant le trade_setup actuel pour extraire `final_answer` :
+   - Lire `payload.body.message.message.content.content.final_answer`
+   - Si c'est une string, `JSON.parse()` et retourner `{ _type: 'full_trade_setup', ...parsed }`
+   - Sinon fallback au chemin trade_setup existant
 
-```
-if (typeof response === 'string') {
-  // Tenter de parser comme JSON (cas macro_lab)
-  try {
-    const parsed = JSON.parse(response);
-    if (parsed.content && typeof parsed.content === 'string') {
-      // C'est le format macro_lab : {content, fundamentals, citations_news, ...}
-      return renderMacroLabResult(parsed);
-    }
-  } catch {}
-  // Sinon c'est du texte brut
-  return renderPlainTextMacro(response);
-}
-```
+2. **Nouvel import** : `DecisionSummaryCard` depuis `@/components/DecisionSummaryCard`
 
-### 2. Creer `renderMacroLabResult(parsed)` -- template structure
+3. **Nouvelle fonction `renderFullTradeSetup(data)`** : ~120 lignes, affiche le template structure ci-dessus avec :
+   - Header avec instrument, direction badge, timeframe, strategy
+   - Trade levels (entry, SL, TPs) dans une grille coloree
+   - `DecisionSummaryCard` si `decision_summary` presente
+   - Market commentary card si `market_commentary_anchor` presente
+   - Data fresheners sections si presentes
+   - PNLCalculator en collapsible
 
-Nouveau rendu qui exploite le JSON complet :
+4. **`renderFormattedResponse`** bloc AI Trade Setup : ajouter `if (response?._type === 'full_trade_setup')` avant le chemin `trade_setup_parsed` existant
 
-- **Contenu principal** : parser `parsed.content` en sections via `parseMacroTextSections` et les afficher dans des cartes avec bordures colorees (identique a `renderPlainTextMacro` actuel)
-- **Fundamentals** (si `parsed.fundamentals` existe et non vide) : tableau compact avec colonnes Indicator / Actual / Consensus / Previous, badges colores pour les surprises (vert si actual > consensus, rouge sinon)
-- **News / Citations** (si `parsed.citations_news` existe) : liste avec publisher en badge + titre en texte, max 5 items dans un conteneur scrollable
-- **Query d'origine** (si `parsed.request?.query` existe) : affichee discretement sous le titre en italique muted
+5. **`extractItemTitle`** : ajouter extraction depuis `response?.instrument` + `response?.setups?.[0]?.direction` pour le type `full_trade_setup`
 
-### 3. Corriger `extractItemTitle` pour le cas macro string-JSON
+6. **`extractSummary`** : ajouter extraction depuis `response?.setups?.[0]` pour le type `full_trade_setup`
 
-Actuellement l'extraction du titre echoue car elle fait un regex sur la chaine JSON au lieu du contenu textuel. Ajouter un parsing JSON :
+---
 
-```
-if (typeof response === 'string') {
-  try {
-    const parsed = JSON.parse(response);
-    if (parsed.content) {
-      const match = parsed.content.match(INSTRUMENT_REGEX);
-      if (match) return `${match[1]} Macro Analysis`;
-    }
-    if (parsed.request?.query) {
-      const match = parsed.request.query.match(INSTRUMENT_REGEX);
-      if (match) return `${match[1]} Macro Analysis`;
-    }
-  } catch {}
-  // Fallback regex sur string brute
-  const match = response.match(INSTRUMENT_REGEX);
-  if (match) return `${match[1]} Macro Analysis`;
-}
-```
+## 2. Mode Fullscreen
 
-### 4. Corriger `extractSummary` pour le cas macro string-JSON
+### Fonctionnalite
+Un bouton sur chaque carte de l'historique permet d'ouvrir le contenu en plein ecran dans un overlay avec fond floute.
 
-Meme logique : parser le JSON pour extraire un resume depuis `parsed.content` au lieu de montrer le debut du JSON brut.
+### Implementation
+
+**Dans `AIInteractionHistory.tsx` :**
+
+1. **Nouvel etat** : `const [fullscreenItem, setFullscreenItem] = useState<AIInteraction | null>(null)`
+
+2. **Bouton fullscreen** : icone `Maximize2` positionnee en haut a droite de chaque carte (a cote du chevron), avec `onClick={(e) => { e.stopPropagation(); setFullscreenItem(interaction); }}`
+
+3. **Overlay fullscreen** : un `Dialog` Radix (deja importe dans le projet) utilise en mode plein ecran :
+   - Overlay avec `backdrop-blur-md bg-black/60` (fond floute)
+   - Contenu positionne en `fixed inset-4 sm:inset-8` avec `z-[10004]` (au-dessus du dialog standard a `z-[10003]`)
+   - ScrollArea pour le contenu scrollable
+   - Header avec titre + badge feature + bouton fermer (X)
+   - Corps : appel a `renderFormattedResponse(fullscreenItem)` -- reutilise exactement le meme rendu
+
+4. **Fermeture** : clic sur overlay, bouton X, touche Escape
 
 ### Ce qui ne change PAS
-
-- Le rendu des Reports (HTML) fonctionne correctement
-- Le rendu des AI Trade Setup fonctionne correctement
-- La page Macro Lab (deja corrigee au message precedent)
-- La pagination, les filtres, le refresh
-- Les composants `TradeSetupDisplay`, `MacroCommentaryDisplay`
-- La structure de la page `History.tsx`
-
-### Template visuel du rendu Macro Lab dans History (expanded)
-
-```text
-Card (border-l-4 primary)
-  "Executive Summary"
-  Texte du resume...
-
-Card
-  "Fundamental Analysis" 
-  Points en liste...
-
-Card
-  "AI Insights Breakdown"
-  Texte...
-
-Card (si fundamentals disponibles)
-  "Key Economic Data"
-  Tableau : Indicator | Actual | Consensus | Previous
-  (avec badges colores pour surprises)
-
-Card (si citations_news disponibles)  
-  "Market News"
-  Liste : [Publisher badge] Titre de l'article
-```
+- `TradeSetupDisplay`, `MacroCommentaryDisplay`, `DecisionSummaryCard` restent intacts
+- Le rendu Macro Commentary et Report existants
+- La pagination, filtres, refresh
+- La structure de `History.tsx`
 
