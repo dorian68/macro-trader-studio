@@ -34,7 +34,7 @@ export function DecisionSummaryCard({ decisionSummary }: DecisionSummaryProps) {
             <Shield className="h-5 w-5 text-primary" />
             Decision Summary
           </CardTitle>
-          <Badge variant="outline" className="text-[10px] border-primary/50 text-primary">SuperUser</Badge>
+          
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           {alignment && (
