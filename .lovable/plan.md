@@ -1,188 +1,134 @@
 
 
-# AURA Upgrade — "Jarvis du Trading"
+# AURA Chart Integration + Fullscreen Premium UI Upgrade
 
-## Audit Results
+## Overview
 
-### What Works Well
-- Tool calling architecture (Lovable AI + edge function) correctly detects intent and routes to `launch_ai_trade_setup`, `launch_macro_commentary`, `launch_report`
-- Realtime job tracking via Supabase channels with badge status updates
-- Collective intelligence integration (community data, ABCG research)
-- Technical analysis with batch mode (price + indicators)
-- Language detection and conversation history (last 7 messages)
+This upgrade adds three capabilities to AURA without breaking any existing feature:
 
-### Frictions Identified
-
-1. **Results leave AURA**: When a job completes, user must click a badge that navigates away (`/ai-setup`, `/macro-analysis`, `/reports`). AURA loses context.
-2. **No mini-widgets**: Completed results show a generic text message ("Analysis complete, navigate to...") instead of a compact result card inside the chat.
-3. **No fullscreen mode**: AURA is locked to a 1/3 side panel with no expand option.
-4. **No contextual memory**: AURA doesn't remember last instrument/timeframe between messages. "Now run it on gold" would fail.
-5. **Plain text messages**: Assistant messages use `whitespace-pre-wrap` text — no markdown rendering (bold, lists, code blocks are shown as raw text).
-6. **Tool schema mismatch**: `launch_macro_commentary` tool only has a `focus` param but the `handleToolLaunch` function reads `parsedArgs.instrument`. If the AI puts the instrument in `focus`, it's lost.
-7. **No multi-command chaining**: "Run macro then trade setup" would only trigger one tool call.
+1. A new `MarketChartWidget` component for inline chart rendering in AURA messages
+2. A data parser (`extractMarketAttachments`) that detects chartable data in responses
+3. A premium fullscreen UI redesign with rounded pill inputs, softer bubbles, and smooth animations
 
 ---
 
-## Implementation Plan
+## New File: `src/components/aura/MarketChartWidget.tsx`
 
-### Phase 1: Contextual Memory
+A self-contained, memoized chart component using `lightweight-charts` (already installed). Supports 3 modes:
 
-**File: `src/components/AURA.tsx`**
+- **Candlestick (OHLC)**: When `ohlc` data array is provided (from `twelve_data_time_series` or similar)
+- **Area (Equity/PnL curve)**: When `equity_curve` or `time_series` array is provided
+- **Line (Forecast)**: When `predictions` data with `{ds, yhat}` is provided
 
-Add a `useRef` for session memory:
-```
-const sessionMemory = useRef<{
-  lastInstrument?: string;
-  lastTimeframe?: string;
-  lastFeature?: string;
-}>({});
-```
+Features:
+- Dark-themed card with rounded corners matching AURA's style
+- Header showing instrument + timeframe if available
+- Stats footer row (Net Profit, Win Rate, Max Drawdown) when data exists
+- Skeleton loader during chart initialization
+- Single chart instance per widget (no re-renders), using `React.memo` + `useRef`
+- Graceful fallback: renders nothing if data is insufficient
+- Responsive: adapts width to container, taller in fullscreen mode
 
-Update `handleToolLaunch` to save context after each tool execution:
-- After extracting `instrument`/`timeframe`/`functionName`, store them in `sessionMemory.current`
-
-Update `sendMessage` to inject memory into the edge function call:
-- Add `sessionMemory: sessionMemory.current` to the request body
-
-**File: `supabase/functions/aura/index.ts`**
-
-Read `sessionMemory` from request body and inject into system prompt:
-```
-CONTEXTUAL MEMORY:
-- Last instrument: ${sessionMemory?.lastInstrument || 'none'}
-- Last timeframe: ${sessionMemory?.lastTimeframe || 'none'}
-- Last feature: ${sessionMemory?.lastFeature || 'none'}
-When user says "run it again", "same for gold", "now on H1" — use this memory to fill missing parameters.
+```text
+Props:
+  - data: { ohlc?, equity_curve?, predictions?, markers?, stats? }
+  - instrument?: string
+  - timeframe?: string
+  - className?: string
+  - fullscreen?: boolean (taller chart height)
 ```
 
-### Phase 2: Fix Tool Schema for Macro Commentary
+---
 
-**File: `supabase/functions/aura/index.ts`**
+## New Utility: `extractMarketAttachments` (inside AURA.tsx)
 
-Update the `launch_macro_commentary` tool definition to include `instrument` and `timeframe`:
+A pure function that inspects a parsed response payload and returns chart-ready attachments:
+
+```text
+Input: any (parsed job response_payload)
+Output: { type: 'market_chart', payload: { mode, data, instrument?, timeframe?, stats? } } | null
 ```
-parameters: {
-  type: "object",
-  properties: {
-    instrument: { type: "string", description: "Market instrument (e.g., EUR/USD, Gold, BTC)" },
-    timeframe: { type: "string", description: "Analysis timeframe (default: D1)" },
-    focus: { type: "string", description: "Market sector focus" },
-    customNotes: { type: "string", description: "Additional context" }
-  },
-  required: ["instrument"]
+
+Detection logic:
+1. If payload contains `market_data` or `twelve_data_time_series` with OHLC arrays -> candlestick mode
+2. If payload contains `predictions` with horizon keys containing `{ds, yhat}` arrays -> forecast line mode
+3. If payload contains `equity_curve` or `backtest_results` with PnL data -> area mode
+4. If payload contains `trade_setup` with entry/SL/TP -> extract price markers (for overlay on candlestick)
+5. If none detected -> return null (no chart rendered, no crash)
+
+All extraction wrapped in try/catch, so malformed data never crashes the UI.
+
+---
+
+## Message Attachment System
+
+Update the `Message` interface to support optional attachments:
+
+```text
+interface Message {
+  role: 'user' | 'assistant';
+  content: string | { type: string; data: any; summary: string };
+  attachments?: Array<{ type: 'market_chart'; payload: any }>;
 }
 ```
 
-Same for `launch_ai_trade_setup` — add `riskLevel`, `strategy`, `positionSize`, `customNotes` to schema so the AI can pass them.
+When a job completes (line 790-834 in current code), after building `richContent`, also run `extractMarketAttachments(parsedPayload)` and attach result to the message if non-null.
 
-Same for `launch_report` — add `instrument` (single string) alongside `instruments` (array).
+In `renderMessageContent`, after rendering the existing content (text/mini-widget), check for `msg.attachments` and render `MarketChartWidget` for each `market_chart` attachment below the message bubble.
 
-### Phase 3: Markdown Rendering in Chat
+---
 
-**File: `src/components/AURA.tsx`**
+## Fullscreen Premium UI Redesign
 
-Install and use a lightweight markdown renderer for assistant messages. Since the project doesn't have `react-markdown`, use a simple approach:
+### Container Changes
+- Fullscreen background: `bg-[#0f1117]` (deep anthracite) instead of plain `bg-background`
+- Content area constrained to `max-w-5xl mx-auto` with generous `px-8` padding
+- Smooth entry animation: `animate-in fade-in slide-in-from-bottom-4 duration-300`
 
-Create a helper `renderMarkdown(text: string)` that converts:
-- `**bold**` to `<strong>`
-- `\n` to line breaks
-- `- item` to list items
-- `### Header` to styled headers
-- Emoji preserved as-is
+### Header
+- Slightly larger logo (12x12)
+- Subtle border-b with gradient underline
+- Title uses larger text in fullscreen (`text-xl`)
 
-Replace the plain text rendering (line 1080):
-```
-// Before
-<p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+### Message Bubbles
+- Assistant bubbles: `bg-[#1a1d27] rounded-2xl` (softer than `bg-muted`)
+- User bubbles: `bg-gradient-to-r from-primary to-primary/80 rounded-2xl`
+- Both with `px-5 py-3` for more breathing room
+- Smooth appear animation (`animate-in fade-in-50 duration-200`)
 
-// After
-<div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-  {renderMarkdown(msg.content)}
-</div>
-```
+### Input Area
+- Pill-shaped container: `rounded-full bg-[#1a1d27] border-0 shadow-lg`
+- Search icon on the left inside the input
+- Send button: circular (`rounded-full`) with gradient background
+- Larger height in fullscreen (`h-14`)
 
-### Phase 4: Mini-Widgets for Completed Results
+### Chart Widget in Fullscreen
+- Taller chart: 400px height vs 250px in panel mode
+- Full-width within the `max-w-5xl` container
 
-**File: `src/components/AURA.tsx`**
+---
 
-When a job completes (line 761-793), instead of just showing "Analysis completed", parse the `response_payload` and render a mini-widget inline in the chat.
+## Performance Considerations
 
-Create 3 mini-widget components inside AURA:
+- `MarketChartWidget` uses `React.memo` to prevent re-renders
+- Chart instance created once via `useRef`, data set via `.setData()` on the series
+- No chart created if data array is empty (guard at top of effect)
+- `extractMarketAttachments` is a pure function called once per job completion, not on every render
+- Existing lightweight-charts dependency reused (no new install needed)
 
-**`AuraMiniTradeSetup`**: Compact card showing:
-- Instrument + Direction badge (Long/Short)
-- Entry / SL / TP1 in a row
-- Risk:Reward + Confidence
-- "Open Full View" button (navigates to /ai-setup)
+---
 
-**`AuraMiniMacro`**: Compact card showing:
-- First 200 chars of executive summary (truncated)
-- Key drivers as badges
-- "Open Full View" button
+## What Does NOT Change
 
-**`AuraMiniReport`**: Compact card showing:
-- Report title
-- Key metrics summary
-- "Open Full View" button
-
-Implementation approach:
-- Change `Message` interface to support rich content: `content: string | { type: string; data: any; summary: string }`
-- When job completes, push a rich message instead of plain text
-- In the message rendering loop, check if content is object and render the appropriate mini-widget
-- Each mini-widget has a "View Full" button that navigates + closes AURA
-
-### Phase 5: Fullscreen Mode
-
-**File: `src/components/AURA.tsx`**
-
-Add fullscreen state:
-```
-const [isFullscreen, setIsFullscreen] = useState(false);
-```
-
-Add a "Maximize" button in the header (next to collapse/close buttons):
-```
-<Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)}>
-  {isFullscreen ? <Minimize2 /> : <Maximize2 />}
-</Button>
-```
-
-When fullscreen:
-- Change the panel container from `fixed right-0 top-0 h-full w-full md:w-1/3 z-40` to `fixed inset-0 z-[10004]`
-- Add `backdrop-blur-md` overlay behind (separate div with `fixed inset-0 z-[10003] bg-black/40 backdrop-blur-sm`)
-- Constrain content width: `max-w-4xl mx-auto` for readability
-- Header stays pinned, input stays pinned at bottom
-- Body scrolls independently
-- Escape key exits fullscreen
-
-The fullscreen AURA should feel like a cockpit:
-- Wider message bubbles (max-w-[90%] instead of 80%)
-- Larger font in fullscreen
-- More prominent quick actions sidebar (optional)
-
-### Phase 6: Multi-Command Chaining
-
-**File: `supabase/functions/aura/index.ts`**
-
-Update the system prompt to instruct the AI to handle sequential requests:
-```
-MULTI-COMMAND PROTOCOL:
-If user requests multiple actions (e.g., "Run macro on EURUSD then setup"):
-1. Execute the FIRST action by calling the appropriate tool
-2. In your text response, acknowledge both requests
-3. After the first job completes, the user can request the second action
-Note: You can only call ONE feature tool per message (launch_ai_trade_setup OR launch_macro_commentary OR launch_report).
-For technical analysis (price + indicators), you CAN call both tools simultaneously.
-```
-
-**File: `src/components/AURA.tsx`**
-
-Add a pending queue for chained commands:
-```
-const pendingCommands = useRef<string[]>([]);
-```
-
-When a job completes and there are pending commands, auto-send the next command after a 1-second delay.
+- No API endpoints modified
+- No edge function changes
+- No JSON schemas changed
+- Existing mini-widgets (AuraMiniTradeSetup, AuraMiniMacro, AuraMiniReport) preserved
+- Markdown rendering preserved
+- Contextual memory, command chaining, tool schemas all untouched
+- Job badge system unchanged
+- Quick actions, teaser, collective panel unchanged
+- Non-fullscreen panel mode keeps current styling (changes only apply inside fullscreen)
 
 ---
 
@@ -190,23 +136,14 @@ When a job completes and there are pending commands, auto-send the next command 
 
 | File | Changes |
 |------|---------|
-| `src/components/AURA.tsx` | Memory ref, markdown rendering, mini-widgets, fullscreen mode, message type enrichment, pending queue |
-| `supabase/functions/aura/index.ts` | Tool schema fixes, session memory injection, multi-command prompt, updated system prompt |
-
-## What Does NOT Change
-- No API endpoints modified
-- No JSON schemas changed
-- No existing components altered (TradeSetupDisplay, MacroCommentaryDisplay, etc.)
-- No database schema changes
-- Realtime job tracking architecture unchanged
-- Edge function URL unchanged
-- All existing features preserved (collective intelligence, batch technical analysis, language detection)
+| `src/components/aura/MarketChartWidget.tsx` | **NEW** -- Chart widget component |
+| `src/components/AURA.tsx` | Add `extractMarketAttachments`, update `Message` interface with `attachments`, update `renderMessageContent` to render charts, premium fullscreen CSS classes |
 
 ## Implementation Order
-1. Phase 2 (tool schema fix) — quick, high-impact
-2. Phase 3 (markdown rendering) — visual improvement
-3. Phase 1 (contextual memory) — UX improvement
-4. Phase 4 (mini-widgets) — core feature
-5. Phase 5 (fullscreen) — immersive mode
-6. Phase 6 (multi-command) — advanced feature
+
+1. Create `MarketChartWidget.tsx` with 3 chart modes + skeleton + stats footer
+2. Add `extractMarketAttachments` utility in AURA.tsx
+3. Wire attachments into job completion handler
+4. Update `renderMessageContent` to render chart attachments
+5. Apply premium fullscreen CSS (bubbles, input pill, background, animations)
 
