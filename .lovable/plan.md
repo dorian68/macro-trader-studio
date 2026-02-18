@@ -1,33 +1,29 @@
 
 
-# Remplacement du logo sur la page Auth
+# Compacter les lignes du Market News
 
-## Modification
+## Probleme
+Les items de news ont trop d'espacement : `p-4` sur chaque ligne, `space-y-3` entre les lignes, `mb-2` sur plusieurs sous-elements, et des images de `w-20 h-20`. Cela cree beaucoup de vide.
 
-Remplacer le logo actuel (`/logos/Alpha_no_BG.png`, icone Alpha seule) par le logo de la navbar (`/header_logo.png`, logo complet avec texte) dans la card Sign In / Sign Up.
+## Modifications
 
-## Detail technique
+**Fichier unique : `src/components/MarketNewsCollapsible.tsx`**
 
-**Fichier:** `src/pages/Auth.tsx`, lignes 853-858
+1. **Reduire l'espacement entre les lignes** : `space-y-3` devient `space-y-1.5`
+2. **Reduire le padding interne de chaque item** : `p-4` devient `px-3 py-2`
+3. **Reduire la taille des images** : `w-20 h-20` devient `w-14 h-14`
+4. **Reduire les marges internes du contenu** :
+   - `mb-1` sur le titre devient `mb-0.5`
+   - `mb-2` sur la meta-ligne devient `mb-1`
+   - `mb-2` sur le summary devient `mb-0.5`
+   - `gap-3` entre image et contenu devient `gap-2`
+5. **Limiter le summary a 1 ligne** au lieu de 2 : `line-clamp-2` devient `line-clamp-1`
+6. **Reduire le border-radius** : `rounded-lg` devient `rounded-md`
 
-- Changer `src` de `/logos/Alpha_no_BG.png` vers `/header_logo.png`
-- Ajuster la hauteur de `h-28` a `h-14` pour correspondre au style navbar et eviter un logo trop grand
-- Retirer le `drop-shadow-lg` qui etait specifique a l'icone ronde (le logo texte n'en a pas besoin)
-
-Avant :
-```
-src="/logos/Alpha_no_BG.png"
-className="h-28 w-auto object-contain drop-shadow-lg"
-```
-
-Apres :
-```
-src="/header_logo.png"
-className="h-14 w-auto object-contain"
-```
-
-## Impact
-
-- Aucune autre page ou composant n'est modifie
-- Le reste de la card (tabs, formulaires, boutons) reste identique
+## Ce qui ne change pas
+- La logique de filtrage, categories, recherche
+- Le hook `useNewsFeed`
+- Le header avec tabs et search bar
+- Le `NewsFeedPanel` (side drawer, composant separe)
+- Toutes les autres pages
 
