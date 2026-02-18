@@ -295,6 +295,15 @@ export default function Auth() {
             }
           }).catch(err => console.error('[Google Auth] Failed to notify admins:', err));
 
+          // Fire-and-forget welcome email to user
+          supabase.functions.invoke('send-admin-notification', {
+            body: {
+              to: session.user.email,
+              notificationType: 'welcome_signup',
+              userName: session.user.user_metadata?.full_name || session.user.email
+            }
+          }).catch(err => console.error('[Google Auth] Failed to send welcome email:', err));
+
           toast({
             title: t('success.accountCreated'),
             description: t('success.accountCreatedDescription'),
@@ -452,6 +461,15 @@ export default function Auth() {
           brokerName: selectedBrokerName
         }
       }).catch(err => console.error('[Auth] Failed to notify admins:', err));
+
+      // Fire-and-forget welcome email to user
+      supabase.functions.invoke('send-admin-notification', {
+        body: {
+          to: email,
+          notificationType: 'welcome_signup',
+          userName: fullName || email
+        }
+      }).catch(err => console.error('[Auth] Failed to send welcome email:', err));
 
       toast({
         title: t('success.registrationSuccessful'),
