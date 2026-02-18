@@ -1,59 +1,64 @@
 
 
-# Add Decision Summary Card (SuperUser only)
+# Reorganisation de la DecisionSummaryCard + Suppression de DecisionLayer
 
-## Overview
+## Objectif
 
-Display a new card showing the `decision_summary` field from the API response. This card is only visible to SuperUser accounts and is placed after the existing Decision Layer (Step 3). No existing components are modified.
+1. Deplacer la `DecisionSummaryCard` en premiere position (avant Step 1 - Market Thesis)
+2. Supprimer completement le composant `DecisionLayer` (Step 3)
+3. Rendre la `DecisionSummaryCard` accessible a tous les utilisateurs (pas uniquement SuperUser)
 
-## Data Extraction
+## Changements
 
-A new `extractDecisionSummary(raw)` function follows the same 3-path extraction pattern used by `extractFinalAnswer`, `extractConfidenceNote`, etc:
-- Path 1: `body.message.message.content.content.decision_summary`
-- Path 2: `output.trade_generation_output.decision_summary`
-- Path 3: `trade_generation_output.decision_summary`
+### Fichier: `src/pages/ForecastTradeGenerator.tsx`
 
-Handles JSON-string and object formats via the existing `parseContentContent` helper.
+**1. Supprimer le composant `DecisionLayer`** (lignes 1634-1787)
+- Retirer l'interface `DecisionLayerProps` et la fonction `DecisionLayer` entierement (~150 lignes)
 
-## New State
+**2. Deplacer la DecisionSummaryCard avant Step 1** (lignes 2438-2610)
+- La carte sera placee juste apres `{hasResults && !loading && (` et avant la `NarrativeSection` Step 1
+- Retirer la condition `isSuperUser` pour la rendre visible a tous
 
+Avant :
+```text
+hasResults
+  +-- Step 1: Market Thesis
+  +-- Step 2: Quant Validation
+  +-- Step 3: DecisionLayer          <-- supprime
+  +-- Section 4: DecisionSummaryCard <-- superuser only
 ```
-const [decisionSummary, setDecisionSummary] = useState<Record<string, unknown> | null>(null);
+
+Apres :
+```text
+hasResults
+  +-- DecisionSummaryCard            <-- visible par tous, en premier
+  +-- Step 1: Market Thesis
+  +-- Step 2: Quant Validation
 ```
 
-Set alongside other extractions in both `handleSubmit` and the `pendingResult` injection block. Reset to `null` on new submission.
+**3. Nettoyage des imports et references**
+- Retirer les icons `CheckCircle2` et `AlertTriangle` si elles ne sont plus utilisees ailleurs dans le fichier (verification necessaire)
+- Retirer le `useUserRole` et `isSuperUser` uniquement si plus utilises ailleurs (ils le sont encore pour le debug toggle, donc ils restent)
 
-## New Component: `DecisionSummaryCard`
+### Fichier: `src/components/DecisionSummaryCard.tsx`
+- Aucune modification. Le composant reste identique.
 
-Renders only when `isSuperUser && decisionSummary` is truthy. Placed right after `<DecisionLayer />` in the JSX.
+## Resume des modifications
 
-Visual structure:
-- Header with "Decision Summary" title + SuperUser badge + alignment/verdict/confidence badges
-- **Trade Card** section: direction badge, timeframe, horizon, Entry/SL/TP/R:R grid (reuses existing styling patterns), invalidation note
-- **Narrative** section: full text paragraph
-- **Key Risks** section: numbered list with warning icons
-- **Next Step** section: highlighted action box
-- **Disclaimer** at the bottom in italic
+| Action | Localisation | Detail |
+|--------|-------------|--------|
+| Supprimer | Lignes 1634-1787 | Composant `DecisionLayer` + interface |
+| Supprimer | Lignes 2601-2605 | Appel `<DecisionLayer />` dans le JSX |
+| Deplacer | Lignes 2607-2610 vers ~2440 | `DecisionSummaryCard` avant Step 1 |
+| Modifier | Ligne 2608 | Retirer la condition `isSuperUser &&` |
+| Supprimer | Commentaires "SuperUser only" | Mettre a jour les commentaires associes |
 
-Styling follows the existing card patterns (Card/CardHeader/CardContent, Badge, grid layouts, color coding for long/short).
+## Ce qui ne change pas
 
-## Changes Summary
-
-| Location | Change |
-|----------|--------|
-| `extractDecisionSummary()` (new function, ~40 lines) | Multi-path extraction following existing pattern |
-| State declaration (~line 1771) | Add `decisionSummary` state |
-| `handleSubmit` (~line 2040) | Extract and set `decisionSummary` |
-| `handleSubmit` reset (~line 1871) | Reset `decisionSummary` to null |
-| Pending result injection (~line 1836) | Extract and set `decisionSummary` |
-| `DecisionSummaryCard` (new component, ~120 lines) | Visual card rendering |
-| JSX after DecisionLayer (~line 2541) | Render `DecisionSummaryCard` conditionally |
-
-## What does not change
-
-- DecisionLayer component: untouched
-- All existing extractors: untouched
-- API payload: no change
-- Other pages: no impact
-- Non-superuser experience: identical (card is hidden)
+- `DecisionSummaryCard.tsx` : inchange
+- Logique d'extraction `extractDecisionSummary` : inchangee
+- State `decisionSummary` : inchange
+- Sections Step 1 et Step 2 : intactes
+- Debug toggle SuperUser : reste en place
+- Toutes les autres pages : zero impact
 
