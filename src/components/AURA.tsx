@@ -361,7 +361,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
           {tp && <div><span className="text-muted-foreground">TP</span><br /><span className="font-mono text-green-500">{Number(tp).toFixed(4)}</span></div>}
         </div>
         {rr && <p className="text-xs text-muted-foreground">R:R {Number(rr).toFixed(2)}</p>}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => { navigate('/ai-setup'); onToggle(); }}>
+        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => { navigate('/trade-generator'); onToggle(); }}>
           <ArrowUpRight className="h-3 w-3" /> Open Full View
         </Button>
       </div>
@@ -383,7 +383,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
             ))}
           </div>
         )}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => { navigate('/macro-analysis'); onToggle(); }}>
+        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => { navigate('/macro-lab'); onToggle(); }}>
           <ArrowUpRight className="h-3 w-3" /> Open Full View
         </Button>
       </div>
@@ -908,8 +908,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               toast({ 
                 title: t('toasts:aura.analysisCompletedTitle'), 
                 description: t('toasts:aura.analysisCompletedDescription', {
-                  type: featureType === 'ai_trade_setup' ? 'trade setup' :
-                        featureType === 'macro_commentary' ? 'macro analysis' : 'report',
+                  type: featureType === 'ai_trade_setup' ? 'Trade Generator' :
+                        featureType === 'macro_commentary' ? 'Macro Labs' : 'report',
                   instrument
                 }),
                 duration: 5000
@@ -1199,8 +1199,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                     onClick={() => {
                       if (badge.status === 'completed') {
                         const routes = {
-                          ai_trade_setup: '/ai-setup',
-                          macro_commentary: '/macro-analysis',
+                          ai_trade_setup: '/trade-generator',
+                          macro_commentary: '/macro-lab',
                           reports: '/reports'
                         };
                         navigate(routes[badge.type]);

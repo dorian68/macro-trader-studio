@@ -54,8 +54,8 @@ export function GlobalLoadingProvider({ children }: GlobalLoadingProviderProps) 
 
     // Navigate to the correct page based on request type
     const navigationMap = {
-      'ai_trade_setup': '/ai-setup',
-      'macro_commentary': '/macro-analysis',
+      'ai_trade_setup': '/trade-generator',
+      'macro_commentary': '/macro-lab',
       'reports': '/reports',
       'macro_lab': '/macro-lab',
       'trade_generator': '/trade-generator'
