@@ -562,12 +562,22 @@ export function AIInteractionHistory() {
           : JSON.stringify(response, null, 2);
 
         return (
-          <div className="max-h-96 overflow-y-auto overflow-x-hidden">
-            <div
-              className="prose prose-sm max-w-none dark:prose-invert break-words"
-              dangerouslySetInnerHTML={{ __html: responseContent }}
-            />
-          </div>
+          <Card className="border-l-4 border-l-purple-500/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <FileText className="h-4 w-4 text-purple-500" />
+                Generated Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="max-h-[500px] overflow-y-auto overflow-x-hidden">
+                <div
+                  className="prose prose-sm max-w-none dark:prose-invert break-words"
+                  dangerouslySetInnerHTML={{ __html: responseContent }}
+                />
+              </div>
+            </CardContent>
+          </Card>
         );
       } catch {
         return renderRawFallback(response);
@@ -583,18 +593,32 @@ export function AIInteractionHistory() {
    */
   const renderPlainTextMacro = (text: string) => {
     const sections = parseMacroTextSections(text);
+    
+    // Try to extract instrument from text
+    const instrumentMatch = text.match(INSTRUMENT_REGEX);
+    const instrument = instrumentMatch ? instrumentMatch[1] : null;
 
     return (
-      <div className="space-y-4">
-        {sections.map((section, index) => (
-          <div key={index}>
-            {section.title && (
-              <h4 className="text-sm font-semibold text-foreground mb-1">{section.title}</h4>
-            )}
-            <div className="text-foreground leading-relaxed whitespace-pre-wrap break-words text-sm">
-              {section.content}
-            </div>
+      <div className="space-y-3">
+        {instrument && (
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">{instrument} Analysis</span>
           </div>
+        )}
+        {sections.map((section, index) => (
+          <Card key={index} className={index === 0 ? "border-l-4 border-l-primary/40" : ""}>
+            {section.title && (
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-sm font-semibold">{section.title}</CardTitle>
+              </CardHeader>
+            )}
+            <CardContent className={`${section.title ? "pt-0" : "py-3"} px-4`}>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                {section.content}
+              </p>
+            </CardContent>
+          </Card>
         ))}
       </div>
     );

@@ -1086,11 +1086,9 @@ export default function ForecastMacroLab() {
                         </div>
                         <div>
                           <CardTitle className="text-lg font-semibold text-foreground mb-1">
-                            Macro Analysis
+                            Macro Analysis — {analysis.query}
                           </CardTitle>
-                          <p className="text-sm text-muted-foreground italic">
-                            {analysis.query}
-                          </p>
+                          
                           <p className="text-xs text-muted-foreground mt-1">
                             {analysis.timestamp.toLocaleString()}
                           </p>
