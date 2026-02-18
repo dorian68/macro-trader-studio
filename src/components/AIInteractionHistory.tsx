@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Calendar, MessageSquare, TrendingUp, FileText, RefreshCw, Newspaper, BarChart3 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, MessageSquare, TrendingUp, FileText, RefreshCw, Newspaper, BarChart3, Maximize2, X, ArrowUp, ArrowDown, Shield, AlertTriangle, Lightbulb, Globe, Radio } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { getFeatureDisplayName, normalizeFeatureName } from '@/lib/feature-mapper';
 import { TradeSetupDisplay } from '@/components/TradeSetupDisplay';
 import { MacroCommentaryDisplay } from '@/components/MacroCommentaryDisplay';
+import { DecisionSummaryCard } from '@/components/DecisionSummaryCard';
 
 interface AIInteraction {
   id: string;
@@ -74,6 +77,19 @@ function deepExtractContent(payload: any): any {
       if (level2 && typeof level2 === 'string') {
         return level2;
       }
+    }
+  } catch {}
+
+  // --- Full Trade Setup path: body.message.message.content.content.final_answer ---
+  try {
+    const tradeContent = payload?.body?.message?.message?.content?.content;
+    if (tradeContent?.final_answer && typeof tradeContent.final_answer === 'string') {
+      try {
+        const parsed = JSON.parse(tradeContent.final_answer);
+        if (parsed.instrument || parsed.setups || parsed.decision_summary) {
+          return { _type: 'full_trade_setup', ...parsed };
+        }
+      } catch {}
     }
   } catch {}
 
@@ -172,6 +188,13 @@ function extractItemTitle(interaction: AIInteraction): string {
 
   // --- AI Trade Setup ---
   if (feature === 'AI Trade Setup') {
+    // Full trade setup from final_answer
+    if (response?._type === 'full_trade_setup') {
+      const inst = response.instrument;
+      const dir = response.setups?.[0]?.direction;
+      if (inst && dir) return `${inst} — ${dir.toUpperCase()}`;
+      if (inst) return inst;
+    }
     // From parsed trade setup
     if (response?._type === 'trade_setup_parsed' && response?.data?.payload) {
       const p = response.data.payload;
@@ -197,9 +220,7 @@ function extractItemTitle(interaction: AIInteraction): string {
 
   // --- Macro Commentary ---
   if (feature === 'Macro Commentary') {
-    // Try extracting instrument from response text
     if (typeof response === 'string') {
-      // Try parsing as JSON first (macro_lab returns stringified JSON)
       try {
         const parsed = JSON.parse(response);
         if (parsed.content) {
@@ -214,9 +235,7 @@ function extractItemTitle(interaction: AIInteraction): string {
       const match = response.match(INSTRUMENT_REGEX);
       if (match) return `${match[1]} Macro Analysis`;
     }
-    // From structured response
     if (response?.asset) return `${response.asset} Macro Analysis`;
-    // From request
     if (request?.instrument) return `${request.instrument} Macro Analysis`;
     if (request?.macroInsight?.message?.content) {
       const q = request.macroInsight.message.content;
@@ -256,6 +275,7 @@ export function AIInteractionHistory() {
     return parseInt(sessionStorage.getItem('history-items-per-page') || '20');
   });
   const [totalCount, setTotalCount] = useState(0);
+  const [fullscreenItem, setFullscreenItem] = useState<AIInteraction | null>(null);
 
   const fetchTotalCount = async () => {
     if (!user?.id) return 0;
@@ -407,9 +427,18 @@ export function AIInteractionHistory() {
     try {
       const normalizedFeature = normalizeFeatureName(featureName);
 
+      // Full trade setup
+      if (response?._type === 'full_trade_setup') {
+        const s = response.setups?.[0];
+        if (s) {
+          const parts = [response.instrument, s.direction?.toUpperCase(), s.entryPrice ? `Entry ${Number(s.entryPrice).toFixed(5)}` : null].filter(Boolean);
+          return parts.join(' — ');
+        }
+        if (response.instrument) return response.instrument;
+      }
+
       // Plain text (macro_lab)
       if (typeof response === 'string') {
-        // Try parsing as JSON first (macro_lab stringified JSON)
         try {
           const parsed = JSON.parse(response);
           if (parsed.content && typeof parsed.content === 'string') {
@@ -420,7 +449,6 @@ export function AIInteractionHistory() {
             return firstLine.length > 120 ? firstLine.slice(0, 120) + '…' : firstLine;
           }
         } catch {}
-        // Try to extract instrument + bias from raw text
         const instrumentMatch = response.match(INSTRUMENT_REGEX);
         const biasMatch = response.match(/\b(Bullish|Bearish|Neutral)\b\s*(\d{1,3}%)?/i);
         if (instrumentMatch && biasMatch) {
@@ -512,7 +540,7 @@ export function AIInteractionHistory() {
   };
 
   /**
-   * Render the AI response based on feature type — no originalQuery passed to sub-components
+   * Render the AI response based on feature type
    */
   const renderFormattedResponse = (interaction: AIInteraction) => {
     if (!interaction.ai_response) return null;
@@ -522,6 +550,11 @@ export function AIInteractionHistory() {
 
     // --- AI Trade Setup ---
     if (feature === 'AI Trade Setup') {
+      // Full trade setup from final_answer
+      if (response?._type === 'full_trade_setup') {
+        return renderFullTradeSetup(response);
+      }
+
       // Parsed trade setup from deep extraction
       if (response?._type === 'trade_setup_parsed' && response?.data) {
         return renderParsedTradeSetup(response);
@@ -548,13 +581,11 @@ export function AIInteractionHistory() {
         return <TradeSetupDisplay data={response} originalQuery={undefined} />;
       }
 
-      // Fallback: show raw JSON in a clean card
       return renderRawFallback(interaction.response_payload);
     }
 
     // --- Macro Commentary ---
     if (feature === 'Macro Commentary') {
-      // String response — may be stringified JSON from macro_lab
       if (typeof response === 'string') {
         try {
           const parsed = JSON.parse(response);
@@ -565,11 +596,9 @@ export function AIInteractionHistory() {
             return <MacroCommentaryDisplay data={parsed} originalQuery={undefined} />;
           }
         } catch {}
-        // Truly plain text
         return renderPlainTextMacro(response);
       }
 
-      // Structured JSON response (from RAG)
       try {
         const parsedResponse = response;
 
@@ -578,7 +607,6 @@ export function AIInteractionHistory() {
         }
 
         if (parsedResponse.content && typeof parsedResponse.content === 'string') {
-          // Could also be an object with content + fundamentals
           if (parsedResponse.fundamentals || parsedResponse.citations_news) {
             return renderMacroLabResult(parsedResponse);
           }
@@ -621,7 +649,6 @@ export function AIInteractionHistory() {
       }
     }
 
-    // --- Fallback ---
     return renderRawFallback(response);
   };
 
@@ -835,6 +862,219 @@ export function AIInteractionHistory() {
   };
 
   /**
+   * Render a full trade setup from final_answer with decision summary, market commentary, data fresheners
+   */
+  const renderFullTradeSetup = (data: any) => {
+    const instrument = data.instrument || 'N/A';
+    const setups = data.setups || [];
+    const setup = setups[0];
+    const decisionSummary = data.decision_summary;
+    const marketCommentary = data.market_commentary_anchor;
+    const dataFresheners = data.data_fresheners;
+
+    const direction = setup?.direction;
+    const isLong = direction?.toLowerCase() === 'long';
+    const isShort = direction?.toLowerCase() === 'short';
+
+    const takeProfits = setup?.takeProfits || [];
+    const entryPrice = setup?.entryPrice;
+    const stopLoss = setup?.stopLoss;
+    const riskRewardRatio = setup?.riskRewardRatio;
+    const confidence = setup?.confidence;
+    const timeframe = setup?.timeframe;
+    const strategy = data.strategy || setup?.strategy;
+    const horizon = setup?.horizon;
+
+    return (
+      <div className="space-y-3">
+        {/* Header */}
+        <div className="flex flex-wrap items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-yellow-500" />
+          <span className="text-base font-bold text-foreground">{instrument}</span>
+          {direction && (
+            <Badge className={isLong ? "bg-success/15 text-success border-success/30" : isShort ? "bg-destructive/15 text-destructive border-destructive/30" : ""} variant="outline">
+              {isLong ? <ArrowUp className="h-3 w-3 mr-1" /> : <ArrowDown className="h-3 w-3 mr-1" />}
+              {direction.toUpperCase()}
+            </Badge>
+          )}
+          {timeframe && <Badge variant="secondary" className="text-xs">{timeframe}</Badge>}
+          {horizon && <Badge variant="secondary" className="text-xs">{horizon}</Badge>}
+        </div>
+        {strategy && <p className="text-xs text-muted-foreground pl-7">Strategy: {strategy}</p>}
+
+        {/* Trade Levels */}
+        {(entryPrice != null || stopLoss != null || takeProfits.length > 0) && (
+          <Card className="border-l-4 border-l-yellow-500/40">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold">Trade Levels</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {entryPrice != null && (
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase">Entry</p>
+                    <p className="text-sm font-mono font-semibold">{Number(entryPrice).toFixed(5)}</p>
+                  </div>
+                )}
+                {stopLoss != null && (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                    <p className="text-[10px] text-destructive uppercase">Stop Loss</p>
+                    <p className="text-sm font-mono font-semibold text-destructive">{Number(stopLoss).toFixed(5)}</p>
+                  </div>
+                )}
+                {takeProfits.length > 0 && (
+                  <div className="rounded-lg border border-success/20 bg-success/5 p-3">
+                    <p className="text-[10px] text-success uppercase">Take Profit{takeProfits.length > 1 ? 's' : ''}</p>
+                    {takeProfits.map((tp: number, i: number) => (
+                      <p key={i} className="text-sm font-mono font-semibold text-success">{Number(tp).toFixed(5)}</p>
+                    ))}
+                  </div>
+                )}
+                {riskRewardRatio != null && (
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase">R:R</p>
+                    <p className="text-sm font-mono font-semibold">{Number(riskRewardRatio).toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+              {confidence != null && (
+                <div className="mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    Confidence: {typeof confidence === 'number' && confidence <= 1 ? `${Math.round(confidence * 100)}%` : `${confidence}%`}
+                  </Badge>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Context & Risk Notes from setup */}
+        {setup?.context && (
+          <Card>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold">Market Context</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4">
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">{setup.context}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {setup?.riskNotes && setup.riskNotes.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                Risk Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4">
+              <ol className="space-y-1.5 pl-1">
+                {setup.riskNotes.map((note: string, i: number) => (
+                  <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
+                    <span className="text-xs text-muted-foreground font-mono mt-0.5">{i + 1}.</span>
+                    {note}
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Decision Summary */}
+        {decisionSummary && (
+          <DecisionSummaryCard decisionSummary={decisionSummary} />
+        )}
+
+        {/* Market Commentary */}
+        {marketCommentary && (
+          <Card>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" />
+                Market Commentary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4 space-y-2">
+              {marketCommentary.summary && (
+                <p className="text-sm text-foreground leading-relaxed">{marketCommentary.summary}</p>
+              )}
+              {marketCommentary.key_drivers && Array.isArray(marketCommentary.key_drivers) && marketCommentary.key_drivers.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Key Drivers</p>
+                  <ul className="space-y-1">
+                    {marketCommentary.key_drivers.map((driver: string, i: number) => (
+                      <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
+                        <span className="text-xs text-primary mt-0.5">•</span>
+                        {driver}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Data Fresheners */}
+        {dataFresheners && typeof dataFresheners === 'object' && Object.keys(dataFresheners).length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Radio className="h-4 w-4 text-primary" />
+                Data Fresheners
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4">
+              <div className="space-y-3">
+                {Object.entries(dataFresheners).map(([key, value]: [string, any]) => {
+                  if (!value || (Array.isArray(value) && value.length === 0)) return null;
+                  const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                  return (
+                    <Collapsible key={key}>
+                      <CollapsibleTrigger className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase hover:text-foreground transition-colors w-full">
+                        <ChevronDown className="h-3 w-3" />
+                        {label}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-1.5 pl-5">
+                        {Array.isArray(value) ? (
+                          <ul className="space-y-1">
+                            {value.map((item: any, i: number) => (
+                              <li key={i} className="text-xs text-foreground/80">
+                                {typeof item === 'string' ? item : (item?.label || item?.name || item?.title) ? `${item.label || item.name || item.title}: ${item.value || item.detail || ''}` : JSON.stringify(item)}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : typeof value === 'string' ? (
+                          <p className="text-xs text-foreground/80">{value}</p>
+                        ) : (
+                          <pre className="text-xs text-foreground/80 whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Invalidation / Disclaimer */}
+        {setup?.invalidation && (
+          <p className="text-xs text-muted-foreground italic border-l-2 border-warning/50 pl-3">
+            {setup.invalidation}
+          </p>
+        )}
+        {data.disclaimer && (
+          <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/50">
+            {data.disclaimer}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  /**
    * Render a parsed trade setup from the deep extraction
    */
   const renderParsedTradeSetup = (parsed: any) => {
@@ -864,7 +1104,7 @@ export function AIInteractionHistory() {
   };
 
   /**
-   * Minimal raw fallback — no developer labels
+   * Minimal raw fallback
    */
   const renderRawFallback = (data: any) => {
     const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
@@ -872,6 +1112,54 @@ export function AIInteractionHistory() {
       <div className="bg-muted/30 p-4 rounded-lg max-h-64 overflow-y-auto">
         <pre className="text-xs whitespace-pre-wrap break-words font-mono">{content}</pre>
       </div>
+    );
+  };
+
+  /**
+   * Fullscreen overlay for viewing an interaction in detail
+   */
+  const renderFullscreenOverlay = () => {
+    if (!fullscreenItem) return null;
+
+    const title = extractItemTitle(fullscreenItem);
+    const featureLabel = getFeatureLabel(fullscreenItem.feature_name);
+
+    return (
+      <Dialog open={!!fullscreenItem} onOpenChange={(open) => { if (!open) setFullscreenItem(null); }}>
+        <DialogPortal>
+          <DialogOverlay className="bg-black/60 backdrop-blur-md z-[10002]" />
+          <div className="fixed inset-3 sm:inset-6 lg:inset-10 z-[10003] flex flex-col bg-background rounded-xl border shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b bg-card shrink-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                {getFeatureIcon(fullscreenItem.feature_name)}
+                <Badge className={getFeatureColor(fullscreenItem.feature_name)}>
+                  {featureLabel}
+                </Badge>
+                <span className="text-sm font-semibold text-foreground truncate">{title}</span>
+                <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
+                  {formatDate(fullscreenItem.created_at)}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setFullscreenItem(null)}
+                className="shrink-0 ml-2"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Content */}
+            <ScrollArea className="flex-1 p-4 sm:p-6 lg:p-8">
+              <div className="max-w-4xl mx-auto">
+                {renderFormattedResponse(fullscreenItem)}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogPortal>
+      </Dialog>
     );
   };
 
@@ -897,139 +1185,159 @@ export function AIInteractionHistory() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            AI Interaction History
-            {totalCount > 0 && (
-              <Badge variant="outline" className="ml-2">
-                {totalCount} total
-              </Badge>
-            )}
-          </CardTitle>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Select value={selectedFeature} onValueChange={setSelectedFeature}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by feature" />
-              </SelectTrigger>
-              <SelectContent>
-                {FEATURES.map((feature) => (
-                  <SelectItem key={feature.value} value={feature.value}>
-                    {feature.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-              <SelectTrigger className="w-full sm:w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshData}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            </Button>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              AI Interaction History
+              {totalCount > 0 && (
+                <Badge variant="outline" className="ml-2">
+                  {totalCount} total
+                </Badge>
+              )}
+            </CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Select value={selectedFeature} onValueChange={setSelectedFeature}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by feature" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FEATURES.map((feature) => (
+                    <SelectItem key={feature.value} value={feature.value}>
+                      {feature.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                <SelectTrigger className="w-full sm:w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshData}
+                disabled={refreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {interactions.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No interactions found</p>
-            <p className="text-sm">Your AI interaction history will appear here</p>
-          </div>
-        ) : (
-          <>
-            {interactions.map((interaction) => {
-              const isExpanded = expandedItems.has(interaction.id);
-              const title = extractItemTitle(interaction);
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {interactions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No interactions found</p>
+              <p className="text-sm">Your AI interaction history will appear here</p>
+            </div>
+          ) : (
+            <>
+              {interactions.map((interaction) => {
+                const isExpanded = expandedItems.has(interaction.id);
+                const title = extractItemTitle(interaction);
 
-              return (
-                <Card key={interaction.id} className="overflow-x-hidden">
-                  <CardContent className="p-4">
-                    {/* Header — clean, client-facing */}
-                    <button
-                      onClick={() => toggleExpanded(interaction.id)}
-                      className="w-full text-left flex items-start justify-between gap-3"
-                    >
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div className="flex-shrink-0 mt-0.5">
-                          {getFeatureIcon(interaction.feature_name)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <Badge className={getFeatureColor(interaction.feature_name)}>
-                              {getFeatureLabel(interaction.feature_name)}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDate(interaction.created_at)}
-                            </span>
+                return (
+                  <Card key={interaction.id} className="overflow-x-hidden">
+                    <CardContent className="p-4">
+                      {/* Header */}
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => toggleExpanded(interaction.id)}
+                          className="flex-1 text-left flex items-start justify-between gap-3 min-w-0"
+                        >
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {getFeatureIcon(interaction.feature_name)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <Badge className={getFeatureColor(interaction.feature_name)}>
+                                  {getFeatureLabel(interaction.feature_name)}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDate(interaction.created_at)}
+                                </span>
+                              </div>
+                              <p className="text-sm font-medium text-foreground line-clamp-1">
+                                {title}
+                              </p>
+                              {!isExpanded && (
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                                  {extractSummary(interaction.ai_response, interaction.feature_name)}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm font-medium text-foreground line-clamp-1">
-                            {title}
-                          </p>
-                          {!isExpanded && (
-                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                              {extractSummary(interaction.ai_response, interaction.feature_name)}
-                            </p>
-                          )}
+                          <div className="flex-shrink-0 mt-0.5">
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Fullscreen button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-8 w-8 min-h-0 min-w-0 opacity-50 hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFullscreenItem(interaction);
+                          }}
+                        >
+                          <Maximize2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div className="border-t mt-3 pt-4 animate-accordion-down">
+                          {renderFormattedResponse(interaction)}
                         </div>
-                      </div>
-                      <div className="flex-shrink-0 mt-0.5">
-                        {isExpanded ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
 
-                    {/* Expanded content — directly rendered, no redundant headers */}
-                    {isExpanded && (
-                      <div className="border-t mt-3 pt-4 animate-accordion-down">
-                        {renderFormattedResponse(interaction)}
-                      </div>
+              {hasMore && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Loading more...
+                      </>
+                    ) : (
+                      'Load more'
                     )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-            {hasMore && (
-              <div className="flex justify-center pt-4">
-                <Button
-                  variant="outline"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Loading more...
-                    </>
-                  ) : (
-                    'Load more'
-                  )}
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+      {/* Fullscreen overlay */}
+      {renderFullscreenOverlay()}
+    </>
   );
 }
