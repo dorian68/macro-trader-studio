@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface AdminNotificationRequest {
-  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected' | 'new_registration';
+  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected' | 'new_registration' | 'welcome_signup';
   userEmail: string;
   userName: string;
   metadata?: any;
@@ -165,8 +165,8 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                     <li>Custom reports and analytics</li>
                   </ul>
                   
-                  <a href="https://alphalens.ai/dashboard" class="cta-button">
-                    Access Your Dashboard →
+                  <a href="https://macro-trader-studio.lovable.app/auth" class="cta-button">
+                    Sign In Now →
                   </a>
                   
                   <p>If you have any questions, feel free to reach out to our support team.</p>
@@ -446,6 +446,60 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
             </body>
           </html>
         `
+      };
+
+    case 'welcome_signup':
+      return {
+        subject: '🎉 Welcome to Alphalens – Your Registration is Being Reviewed',
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Welcome to Alphalens</title>
+              <style>${baseStyles}</style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <img src="https://jqrlegdulnnrpiixiecf.supabase.co/storage/v1/object/public/lovable-uploads/Full_logo_no_BG_2.png" alt="Alphalens AI" class="logo" />
+                  <p class="header-text">Research Platform for Intelligent Trading</p>
+                </div>
+                <div class="content">
+                  <h2>Welcome to Alphalens! 👋</h2>
+                  <p>Hello ${userName},</p>
+                  <p>Thank you for registering on <strong>Alphalens</strong>, the AI-powered research platform designed for intelligent trading.</p>
+                  
+                  <div class="highlight-box info">
+                    <p style="margin: 0; font-size: 16px; font-weight: 600; color: #002244;">⏳ Your account is being reviewed</p>
+                    <p style="margin: 10px 0 0 0; color: #4b5563;">Our team reviews every registration to ensure the best experience. You will receive a confirmation email once your account is approved — typically within 24 hours.</p>
+                  </div>
+
+                  <p style="margin-top: 25px;"><strong>What Alphalens offers:</strong></p>
+                  <ul style="color: #4b5563; line-height: 2;">
+                    <li>🤖 <strong>AI-Powered Trade Setups</strong> — Get data-driven entry, stop-loss, and take-profit levels</li>
+                    <li>📊 <strong>Portfolio Management</strong> — Track and optimize your portfolio with AI recommendations</li>
+                    <li>📈 <strong>Real-Time Market Insights</strong> — Stay ahead with macro analysis and live news</li>
+                    <li>📄 <strong>Custom Reports</strong> — Generate professional reports tailored to your assets</li>
+                  </ul>
+
+                  <p>In the meantime, feel free to explore our website to learn more about the platform.</p>
+                  
+                  <a href="https://macro-trader-studio.lovable.app" class="cta-button">
+                    Visit Alphalens →
+                  </a>
+
+                  <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">If you have any questions, don't hesitate to contact us at <a href="mailto:support@alphalens.ai" style="color: #f97316;">support@alphalens.ai</a></p>
+                </div>
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
+                  <p><a href="https://alphalens.ai/privacy">Privacy Policy</a> | <a href="https://alphalens.ai/terms">Terms of Service</a></p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
       };
 
     case 'new_registration':
