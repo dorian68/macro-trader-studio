@@ -1,89 +1,212 @@
 
 
-# Enrichissement AI Trade Setup dans History + Mode Fullscreen
+# AURA Upgrade — "Jarvis du Trading"
 
-## 1. Template riche pour AI Trade Setup (dans History)
+## Audit Results
 
-### Probleme
-Actuellement, `deepExtractContent` extrait le champ `trade_setup` du payload mais ignore le `final_answer` qui contient toutes les donnees riches (instrument, setups avec context/riskNotes, decision_summary, market_commentary_anchor, data_fresheners). Le rendu se limite a `TradeSetupDisplay` avec des champs basiques.
+### What Works Well
+- Tool calling architecture (Lovable AI + edge function) correctly detects intent and routes to `launch_ai_trade_setup`, `launch_macro_commentary`, `launch_report`
+- Realtime job tracking via Supabase channels with badge status updates
+- Collective intelligence integration (community data, ABCG research)
+- Technical analysis with batch mode (price + indicators)
+- Language detection and conversation history (last 7 messages)
 
-### Solution
-Ajouter un nouveau chemin d'extraction dans `deepExtractContent` pour parser le `final_answer` (chaine JSON) et retourner un objet type `_type: 'full_trade_setup'`. Puis creer une fonction `renderFullTradeSetup` qui affiche :
+### Frictions Identified
 
-```text
-Card (border-l-4 yellow)
-  Header: "XAU/USD" + Badge direction (SHORT/LONG) + Badge timeframe
-  Sous-titre: strategy + horizon
-
-Card "Trade Levels"
-  Grid: Entry | Stop Loss | Take Profits (colores)
-  Risk:Reward + Confidence badges
-
-Card "Decision Summary" (via DecisionSummaryCard existant)
-  Alignment, verdict, narrative, key_risks, next_step
-
-Card "Market Commentary" (si disponible)
-  Summary du market_commentary_anchor
-  Key drivers en liste
-
-Card "Data Fresheners" (si disponible)
-  Tabs ou sections: Macro Recent | Upcoming | CB Signals | Positioning
-
-Card "Risk Management Calculator" (collapsible, via PNLCalculator existant)
-```
-
-### Fichier : `src/components/AIInteractionHistory.tsx`
-
-**Modifications :**
-
-1. **`deepExtractContent`** : Ajouter un chemin avant le trade_setup actuel pour extraire `final_answer` :
-   - Lire `payload.body.message.message.content.content.final_answer`
-   - Si c'est une string, `JSON.parse()` et retourner `{ _type: 'full_trade_setup', ...parsed }`
-   - Sinon fallback au chemin trade_setup existant
-
-2. **Nouvel import** : `DecisionSummaryCard` depuis `@/components/DecisionSummaryCard`
-
-3. **Nouvelle fonction `renderFullTradeSetup(data)`** : ~120 lignes, affiche le template structure ci-dessus avec :
-   - Header avec instrument, direction badge, timeframe, strategy
-   - Trade levels (entry, SL, TPs) dans une grille coloree
-   - `DecisionSummaryCard` si `decision_summary` presente
-   - Market commentary card si `market_commentary_anchor` presente
-   - Data fresheners sections si presentes
-   - PNLCalculator en collapsible
-
-4. **`renderFormattedResponse`** bloc AI Trade Setup : ajouter `if (response?._type === 'full_trade_setup')` avant le chemin `trade_setup_parsed` existant
-
-5. **`extractItemTitle`** : ajouter extraction depuis `response?.instrument` + `response?.setups?.[0]?.direction` pour le type `full_trade_setup`
-
-6. **`extractSummary`** : ajouter extraction depuis `response?.setups?.[0]` pour le type `full_trade_setup`
+1. **Results leave AURA**: When a job completes, user must click a badge that navigates away (`/ai-setup`, `/macro-analysis`, `/reports`). AURA loses context.
+2. **No mini-widgets**: Completed results show a generic text message ("Analysis complete, navigate to...") instead of a compact result card inside the chat.
+3. **No fullscreen mode**: AURA is locked to a 1/3 side panel with no expand option.
+4. **No contextual memory**: AURA doesn't remember last instrument/timeframe between messages. "Now run it on gold" would fail.
+5. **Plain text messages**: Assistant messages use `whitespace-pre-wrap` text — no markdown rendering (bold, lists, code blocks are shown as raw text).
+6. **Tool schema mismatch**: `launch_macro_commentary` tool only has a `focus` param but the `handleToolLaunch` function reads `parsedArgs.instrument`. If the AI puts the instrument in `focus`, it's lost.
+7. **No multi-command chaining**: "Run macro then trade setup" would only trigger one tool call.
 
 ---
 
-## 2. Mode Fullscreen
+## Implementation Plan
 
-### Fonctionnalite
-Un bouton sur chaque carte de l'historique permet d'ouvrir le contenu en plein ecran dans un overlay avec fond floute.
+### Phase 1: Contextual Memory
 
-### Implementation
+**File: `src/components/AURA.tsx`**
 
-**Dans `AIInteractionHistory.tsx` :**
+Add a `useRef` for session memory:
+```
+const sessionMemory = useRef<{
+  lastInstrument?: string;
+  lastTimeframe?: string;
+  lastFeature?: string;
+}>({});
+```
 
-1. **Nouvel etat** : `const [fullscreenItem, setFullscreenItem] = useState<AIInteraction | null>(null)`
+Update `handleToolLaunch` to save context after each tool execution:
+- After extracting `instrument`/`timeframe`/`functionName`, store them in `sessionMemory.current`
 
-2. **Bouton fullscreen** : icone `Maximize2` positionnee en haut a droite de chaque carte (a cote du chevron), avec `onClick={(e) => { e.stopPropagation(); setFullscreenItem(interaction); }}`
+Update `sendMessage` to inject memory into the edge function call:
+- Add `sessionMemory: sessionMemory.current` to the request body
 
-3. **Overlay fullscreen** : un `Dialog` Radix (deja importe dans le projet) utilise en mode plein ecran :
-   - Overlay avec `backdrop-blur-md bg-black/60` (fond floute)
-   - Contenu positionne en `fixed inset-4 sm:inset-8` avec `z-[10004]` (au-dessus du dialog standard a `z-[10003]`)
-   - ScrollArea pour le contenu scrollable
-   - Header avec titre + badge feature + bouton fermer (X)
-   - Corps : appel a `renderFormattedResponse(fullscreenItem)` -- reutilise exactement le meme rendu
+**File: `supabase/functions/aura/index.ts`**
 
-4. **Fermeture** : clic sur overlay, bouton X, touche Escape
+Read `sessionMemory` from request body and inject into system prompt:
+```
+CONTEXTUAL MEMORY:
+- Last instrument: ${sessionMemory?.lastInstrument || 'none'}
+- Last timeframe: ${sessionMemory?.lastTimeframe || 'none'}
+- Last feature: ${sessionMemory?.lastFeature || 'none'}
+When user says "run it again", "same for gold", "now on H1" — use this memory to fill missing parameters.
+```
 
-### Ce qui ne change PAS
-- `TradeSetupDisplay`, `MacroCommentaryDisplay`, `DecisionSummaryCard` restent intacts
-- Le rendu Macro Commentary et Report existants
-- La pagination, filtres, refresh
-- La structure de `History.tsx`
+### Phase 2: Fix Tool Schema for Macro Commentary
+
+**File: `supabase/functions/aura/index.ts`**
+
+Update the `launch_macro_commentary` tool definition to include `instrument` and `timeframe`:
+```
+parameters: {
+  type: "object",
+  properties: {
+    instrument: { type: "string", description: "Market instrument (e.g., EUR/USD, Gold, BTC)" },
+    timeframe: { type: "string", description: "Analysis timeframe (default: D1)" },
+    focus: { type: "string", description: "Market sector focus" },
+    customNotes: { type: "string", description: "Additional context" }
+  },
+  required: ["instrument"]
+}
+```
+
+Same for `launch_ai_trade_setup` — add `riskLevel`, `strategy`, `positionSize`, `customNotes` to schema so the AI can pass them.
+
+Same for `launch_report` — add `instrument` (single string) alongside `instruments` (array).
+
+### Phase 3: Markdown Rendering in Chat
+
+**File: `src/components/AURA.tsx`**
+
+Install and use a lightweight markdown renderer for assistant messages. Since the project doesn't have `react-markdown`, use a simple approach:
+
+Create a helper `renderMarkdown(text: string)` that converts:
+- `**bold**` to `<strong>`
+- `\n` to line breaks
+- `- item` to list items
+- `### Header` to styled headers
+- Emoji preserved as-is
+
+Replace the plain text rendering (line 1080):
+```
+// Before
+<p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+
+// After
+<div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+  {renderMarkdown(msg.content)}
+</div>
+```
+
+### Phase 4: Mini-Widgets for Completed Results
+
+**File: `src/components/AURA.tsx`**
+
+When a job completes (line 761-793), instead of just showing "Analysis completed", parse the `response_payload` and render a mini-widget inline in the chat.
+
+Create 3 mini-widget components inside AURA:
+
+**`AuraMiniTradeSetup`**: Compact card showing:
+- Instrument + Direction badge (Long/Short)
+- Entry / SL / TP1 in a row
+- Risk:Reward + Confidence
+- "Open Full View" button (navigates to /ai-setup)
+
+**`AuraMiniMacro`**: Compact card showing:
+- First 200 chars of executive summary (truncated)
+- Key drivers as badges
+- "Open Full View" button
+
+**`AuraMiniReport`**: Compact card showing:
+- Report title
+- Key metrics summary
+- "Open Full View" button
+
+Implementation approach:
+- Change `Message` interface to support rich content: `content: string | { type: string; data: any; summary: string }`
+- When job completes, push a rich message instead of plain text
+- In the message rendering loop, check if content is object and render the appropriate mini-widget
+- Each mini-widget has a "View Full" button that navigates + closes AURA
+
+### Phase 5: Fullscreen Mode
+
+**File: `src/components/AURA.tsx`**
+
+Add fullscreen state:
+```
+const [isFullscreen, setIsFullscreen] = useState(false);
+```
+
+Add a "Maximize" button in the header (next to collapse/close buttons):
+```
+<Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)}>
+  {isFullscreen ? <Minimize2 /> : <Maximize2 />}
+</Button>
+```
+
+When fullscreen:
+- Change the panel container from `fixed right-0 top-0 h-full w-full md:w-1/3 z-40` to `fixed inset-0 z-[10004]`
+- Add `backdrop-blur-md` overlay behind (separate div with `fixed inset-0 z-[10003] bg-black/40 backdrop-blur-sm`)
+- Constrain content width: `max-w-4xl mx-auto` for readability
+- Header stays pinned, input stays pinned at bottom
+- Body scrolls independently
+- Escape key exits fullscreen
+
+The fullscreen AURA should feel like a cockpit:
+- Wider message bubbles (max-w-[90%] instead of 80%)
+- Larger font in fullscreen
+- More prominent quick actions sidebar (optional)
+
+### Phase 6: Multi-Command Chaining
+
+**File: `supabase/functions/aura/index.ts`**
+
+Update the system prompt to instruct the AI to handle sequential requests:
+```
+MULTI-COMMAND PROTOCOL:
+If user requests multiple actions (e.g., "Run macro on EURUSD then setup"):
+1. Execute the FIRST action by calling the appropriate tool
+2. In your text response, acknowledge both requests
+3. After the first job completes, the user can request the second action
+Note: You can only call ONE feature tool per message (launch_ai_trade_setup OR launch_macro_commentary OR launch_report).
+For technical analysis (price + indicators), you CAN call both tools simultaneously.
+```
+
+**File: `src/components/AURA.tsx`**
+
+Add a pending queue for chained commands:
+```
+const pendingCommands = useRef<string[]>([]);
+```
+
+When a job completes and there are pending commands, auto-send the next command after a 1-second delay.
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/components/AURA.tsx` | Memory ref, markdown rendering, mini-widgets, fullscreen mode, message type enrichment, pending queue |
+| `supabase/functions/aura/index.ts` | Tool schema fixes, session memory injection, multi-command prompt, updated system prompt |
+
+## What Does NOT Change
+- No API endpoints modified
+- No JSON schemas changed
+- No existing components altered (TradeSetupDisplay, MacroCommentaryDisplay, etc.)
+- No database schema changes
+- Realtime job tracking architecture unchanged
+- Edge function URL unchanged
+- All existing features preserved (collective intelligence, batch technical analysis, language detection)
+
+## Implementation Order
+1. Phase 2 (tool schema fix) — quick, high-impact
+2. Phase 3 (markdown rendering) — visual improvement
+3. Phase 1 (contextual memory) — UX improvement
+4. Phase 4 (mini-widgets) — core feature
+5. Phase 5 (fullscreen) — immersive mode
+6. Phase 6 (multi-command) — advanced feature
 
