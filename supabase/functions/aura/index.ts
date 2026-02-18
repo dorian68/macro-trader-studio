@@ -16,7 +16,7 @@ serve(async (req) => {
     console.log("Method:", req.method);
     console.log("Timestamp:", new Date().toISOString());
     
-    const { question, context, conversationHistory } = await req.json();
+    const { question, context, conversationHistory, sessionMemory } = await req.json();
     console.log("Question received:", question);
     console.log("Context page:", typeof context === 'string' ? context : context?.page);
     console.log("Conversation history length:", conversationHistory?.length || 0);
@@ -840,7 +840,23 @@ AURA Response (NO technical errors exposed):
 
 Which one would you like me to analyze instead? Or tell me more about XYZ123 if it's a specific asset you're tracking."
 
-🌍 LANGUAGE REMINDER: Unless the user clearly writes in another language (French/Spanish/German with proper grammar), you MUST respond in English. This is the default behavior.${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n⏰ TEMPORAL CONTEXT:\n- Current UTC time: ${new Date(detectedTimeframe.endDate).toUTCString()}\n- Analysis horizon: ${detectedTimeframe.horizon}\n- Data interval: ${detectedTimeframe.interval}\n- Data points: ${detectedTimeframe.outputsize}\n- Time window: ${detectedTimeframe.startDate ? new Date(detectedTimeframe.startDate).toUTCString() : 'Auto'} to ${new Date(detectedTimeframe.endDate).toUTCString()}\n\n**CRITICAL**: Mention this timeframe context in your analysis (e.g., "As of ${new Date(detectedTimeframe.endDate).toUTCString()}, based on the last ${detectedTimeframe.horizon} data...")\n` : ''}${languageInstruction}${collectiveContext}${proactiveGuidanceContext}`;
+🌍 LANGUAGE REMINDER: Unless the user clearly writes in another language (French/Spanish/German with proper grammar), you MUST respond in English. This is the default behavior.
+
+🧠 CONTEXTUAL MEMORY:
+- Last instrument: ${sessionMemory?.lastInstrument || 'none'}
+- Last timeframe: ${sessionMemory?.lastTimeframe || 'none'}
+- Last feature used: ${sessionMemory?.lastFeature || 'none'}
+When user says "run it again", "same for gold", "now on H1", "do the same" — use this memory to fill missing parameters.
+If user says "now run it on gold" and last feature was "macro_commentary", call launch_macro_commentary with instrument "Gold".
+
+🔗 MULTI-COMMAND PROTOCOL:
+If user requests multiple actions (e.g., "Run macro on EURUSD then setup"):
+1. Execute the FIRST action by calling the appropriate tool
+2. In your text response, acknowledge both requests and tell the user you'll handle the second one after the first completes
+3. After the first job completes, the user can request the second action
+Note: You can only call ONE feature tool per message (launch_ai_trade_setup OR launch_macro_commentary OR launch_report).
+For technical analysis (price + indicators), you CAN call both tools simultaneously.
+${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n⏰ TEMPORAL CONTEXT:\n- Current UTC time: ${new Date(detectedTimeframe.endDate).toUTCString()}\n- Analysis horizon: ${detectedTimeframe.horizon}\n- Data interval: ${detectedTimeframe.interval}\n- Data points: ${detectedTimeframe.outputsize}\n- Time window: ${detectedTimeframe.startDate ? new Date(detectedTimeframe.startDate).toUTCString() : 'Auto'} to ${new Date(detectedTimeframe.endDate).toUTCString()}\n\n**CRITICAL**: Mention this timeframe context in your analysis (e.g., "As of ${new Date(detectedTimeframe.endDate).toUTCString()}, based on the last ${detectedTimeframe.horizon} data...")\n` : ''}${languageInstruction}${collectiveContext}${proactiveGuidanceContext}`;
     
     messagesPayload.push({ role: "system", content: systemPrompt });
 
@@ -917,7 +933,11 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
                 properties: {
                   instrument: { type: "string", description: "Trading pair (e.g., EUR/USD, BTC/USD, Gold)" },
                   timeframe: { type: "string", enum: ["M1", "M5", "M15", "M30", "H1", "H4", "D1"], description: "Chart timeframe" },
-                  direction: { type: "string", enum: ["Long", "Short", "Both"], description: "Trade direction (default: Both)" }
+                  direction: { type: "string", enum: ["Long", "Short", "Both"], description: "Trade direction (default: Both)" },
+                  riskLevel: { type: "string", enum: ["low", "medium", "high"], description: "Risk tolerance level (default: medium)" },
+                  strategy: { type: "string", description: "Trading strategy (e.g., breakout, mean_reversion, trend_following)" },
+                  positionSize: { type: "string", description: "Position size in lots (default: 2)" },
+                  customNotes: { type: "string", description: "Additional context or instructions for the analysis" }
                 },
                 required: ["instrument", "timeframe"]
               }
@@ -927,12 +947,16 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
             type: "function",
             function: {
               name: "launch_macro_commentary",
-              description: "Generate a comprehensive macro market commentary",
+              description: "Generate a comprehensive macro market commentary for a specific instrument",
               parameters: {
                 type: "object",
                 properties: {
-                  focus: { type: "string", description: "Market sector focus (e.g., FX, Commodities, Crypto)" }
-                }
+                  instrument: { type: "string", description: "Market instrument to analyze (e.g., EUR/USD, Gold, BTC)" },
+                  timeframe: { type: "string", description: "Analysis timeframe (default: D1)" },
+                  focus: { type: "string", description: "Market sector focus (e.g., FX, Commodities, Crypto)" },
+                  customNotes: { type: "string", description: "Additional context or instructions" }
+                },
+                required: ["instrument"]
               }
             }
           },
@@ -944,8 +968,9 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
               parameters: {
                 type: "object",
                 properties: {
+                  instrument: { type: "string", description: "Primary instrument for the report (e.g., EUR/USD, Gold)" },
                   report_type: { type: "string", enum: ["daily", "weekly", "custom"], description: "Type of report" },
-                  instruments: { type: "array", items: { type: "string" }, description: "List of instruments" }
+                  instruments: { type: "array", items: { type: "string" }, description: "List of instruments to include" }
                 }
               }
             }
