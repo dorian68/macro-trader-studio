@@ -1,223 +1,100 @@
 
 
-# Fix: AURA Must Always Execute Macro-Labs on Clear Intent (No Refusals, Sanitize Political Phrasing)
+# Semantic Markdown Parsing for Macro-Labs Output
 
 ## Problem
 
-When a user asks AURA something like "do a macro commentary on EUR/USD and how Trump economic policy will affect EUR/USD", the LLM (Gemini) may refuse or respond with a text answer instead of calling the `launch_macro_lab` tool. This happens because:
+Macro-Labs output contains Markdown syntax (`**bold**`, `- bullet`, line breaks) that is rendered as raw plain text. Both the `TypewriterRenderer` (for string content) and `MacroCommentaryDisplay` (for structured `fundamental_analysis` items) display content via plain `<span>` or `<div>` elements with no markdown interpretation.
 
-1. The system prompt tells the LLM to "confirm with the user before launching" -- adding friction and giving the LLM a chance to refuse
-2. The LLM's safety filters may block politically-flavored prompts
-3. There is no client-side fallback to force execution when intent is obvious
+## Solution
 
-## Solution: Two-Layer Fix
+Create a lightweight, safe Markdown-to-React parser utility and integrate it into the two render paths that display macro content. No external library needed -- a custom parser keeps bundle size minimal and avoids sanitization concerns entirely (no `dangerouslySetInnerHTML`).
 
-### Layer 1: Client-Side Intent Interceptor (src/components/AURA.tsx)
+## Changes (3 files: 1 new, 2 modified)
 
-Add a `tryInterceptMacroLab` function (similar to the existing `tryInterceptPlotCommand`) that runs BEFORE sending the message to the LLM. This function:
+### 1. NEW: `src/lib/markdownParser.tsx`
 
-1. **Detects macro-lab intent** using regex patterns matching phrases like:
-   - "macro commentary on X"
-   - "macro analysis on/for X"
-   - "macro labs on X"
-   - "run macro on X"
-   - "do a macro on X"
-   - French equivalents: "commentaire macro sur X", "analyse macro de X"
+A pure function `parseMarkdownToReact(text: string): React.ReactNode[]` that converts a markdown string into an array of React elements. Supports:
 
-2. **Extracts the instrument** from the matched text (EUR/USD, BTC, Gold, etc.)
+- `**bold**` -- rendered as `<strong className="font-semibold text-foreground">`
+- Bullet lines starting with `- ` or `* ` -- rendered as styled list items
+- **Macro driver pattern**: bullet lines starting with `- **Title**: description` get special treatment:
+  - Title becomes a styled label (`text-sm font-semibold text-foreground`)
+  - Content follows on the same line with normal weight
+  - Increased vertical spacing between drivers (`space-y-3`)
+- Standalone `**Header**` (bold on its own line, not inside a bullet) -- rendered as a sub-header with top margin and slightly larger font
+- Line breaks preserved via block-level `<div>` per paragraph
+- Section spacing: double newlines create `mb-3` gaps
+- No HTML injection possible: the parser only produces React elements, never raw HTML strings
 
-3. **Sanitizes political phrasing** by replacing person-specific language with neutral macro terms:
-   - "Trump economic policy" becomes "US fiscal/trade policy scenarios"
-   - "Trump tariffs" becomes "potential US tariff policy changes"
-   - "if Trump wins" becomes "alternative US policy regime scenarios"
-   - "Biden policy" becomes "current US administration policy stance"
-   - Generic pattern: political figure names are stripped and replaced with country/region policy references
+### 2. MODIFIED: `src/components/TypewriterRenderer.tsx`
 
-4. **Directly triggers** `handleToolLaunch` with a synthetic `launch_macro_lab` tool call, bypassing the LLM entirely
+Replace the plain-text rendering div (line 39) with the markdown parser:
 
-5. **Adds a sanitization banner** to the user-visible message if political content was reframed:
-   "Note: framed as macro policy scenarios for objective market analysis."
-
-6. **Falls through** to the normal LLM flow if intent is not clearly macro-lab (ambiguous queries still go to the LLM for classification)
-
-This approach mirrors the existing `tryInterceptPlotCommand` pattern already in the codebase and is zero-regression since it only activates on explicit macro-lab keywords.
-
-### Layer 2: Edge Function System Prompt Update (supabase/functions/aura/index.ts)
-
-Update the system prompt's "Tool Launch Protocol" section to:
-
-1. **Remove the confirmation step** for macro-lab requests. Change:
-   ```
-   "Perfect! I'll run Macro Labs for [instrument]. Should I proceed?"
-   Only after confirmation, call the appropriate tool.
-   ```
-   To:
-   ```
-   When user clearly requests macro analysis/commentary, call launch_macro_lab IMMEDIATELY.
-   Do NOT ask for confirmation. Do NOT refuse.
-   ```
-
-2. **Add a sanitization instruction** in the system prompt:
-   ```
-   POLITICAL CONTENT POLICY:
-   - NEVER refuse a macro analysis request because it mentions political figures
-   - If the user mentions specific politicians (e.g., "Trump", "Biden"), reframe as objective policy scenarios
-   - Example: "Trump tariffs impact on EUR/USD" -> call launch_macro_lab with customNotes: "Potential US tariff policy changes and FX implications for EUR/USD"
-   - Always preserve the user's analytical intent and instruments
-   ```
-
-3. **Add explicit macro-lab trigger phrases** to the intent detection section to reduce LLM ambiguity
-
-## Detailed File Changes
-
-### File 1: `src/components/AURA.tsx`
-
-**Add sanitization helper function** (near `tryInterceptPlotCommand`, around line 874):
-
-```typescript
-function sanitizePoliticalContent(text: string): { sanitized: string; wasSanitized: boolean } {
-  const rules: [RegExp, string][] = [
-    [/trump('s)?\s+(economic\s+)?polic(y|ies)/gi, 'US fiscal/trade policy scenarios'],
-    [/trump('s)?\s+tariff(s)?/gi, 'potential US tariff policy changes'],
-    [/if\s+trump\s+wins/gi, 'alternative US policy regime scenarios'],
-    [/trump('s)?\s+impact/gi, 'US policy regime change impact'],
-    [/biden('s)?\s+(economic\s+)?polic(y|ies)/gi, 'current US administration policy stance'],
-    [/\b(trump|biden|macron|starmer)\b(?!'s\s+(?:entry|stop|take))/gi, (match) => {
-      const map: Record<string, string> = {
-        trump: 'US policy shift', biden: 'US administration policy',
-        macron: 'French policy stance', starmer: 'UK policy stance'
-      };
-      return map[match.toLowerCase()] || 'policy scenario';
-    }],
-  ];
-  let result = text;
-  let changed = false;
-  for (const [pattern, replacement] of rules) {
-    const before = result;
-    result = result.replace(pattern, replacement as any);
-    if (result !== before) changed = true;
-  }
-  return { sanitized: result, wasSanitized: changed };
-}
+**Before:**
+```tsx
+<div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
+  {shownText}
+</div>
 ```
 
-**Add `tryInterceptMacroLab` function** (after `tryInterceptPlotCommand`):
-
-```typescript
-const tryInterceptMacroLab = (question: string): boolean => {
-  // Match explicit macro-lab intent patterns
-  const macroPattern = /(?:do|run|launch|generate|give me|make|execute|perform|lancer?|fais?)\s+(?:a\s+|une?\s+)?(?:macro\s+(?:commentary|analysis|labs?|commentaire|analyse)|commentaire\s+macro|analyse\s+macro)\s+(?:on|for|sur|de|about)\s+(.+)/i;
-  const macroPattern2 = /(?:macro\s+(?:commentary|analysis|labs?)|commentaire\s+macro|analyse\s+macro)\s+(?:on|for|sur|de|about)\s+(.+)/i;
-
-  const match = question.match(macroPattern) || question.match(macroPattern2);
-  if (!match) return false;
-
-  const rawTail = match[1].trim();
-
-  // Extract instrument from the tail
-  const instrumentPattern = /\b(EUR\/USD|GBP\/USD|USD\/JPY|AUD\/USD|USD\/CHF|USD\/CAD|NZD\/USD|EUR\/GBP|EUR\/JPY|EURUSD|GBPUSD|USDJPY|AUDUSD|BTC\/USD|BTCUSD|ETH\/USD|ETHUSD|XAU\/USD|XAUUSD|XAG\/USD|GOLD|BITCOIN|SPX|NDX|DXY|DAX|SOL\/USD)\b/i;
-  const instrMatch = rawTail.match(instrumentPattern);
-  if (!instrMatch) return false; // No instrument found, let LLM ask
-
-  const instrument = instrMatch[0].toUpperCase();
-  const { sanitized, wasSanitized } = sanitizePoliticalContent(rawTail);
-
-  // Build synthetic tool call
-  const syntheticToolCall = {
-    function: {
-      name: 'launch_macro_lab',
-      arguments: JSON.stringify({
-        instrument,
-        timeframe: 'H4',
-        customNotes: sanitized
-      })
-    }
-  };
-
-  // If sanitized, add a note to messages
-  if (wasSanitized) {
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: '> *Note: framed as macro policy scenarios for objective market analysis.*'
-    }]);
-  }
-
-  console.log('[AURA] Macro-lab intent intercepted client-side', {
-    instrument, sanitizedPrompt: sanitized, wasSanitized
-  });
-
-  handleToolLaunch(syntheticToolCall, { collectOnly: false });
-  return true;
-};
+**After:**
+```tsx
+<div className="text-foreground text-sm leading-relaxed">
+  {parseMarkdownToReact(shownText)}
+</div>
 ```
 
-**Add the interceptor call** in `sendMessage` (right after the existing `tryInterceptPlotCommand` call, around line 907):
+- Import `parseMarkdownToReact` from the new utility
+- The typewriter effect continues to work identically -- it still reveals text progressively, but each render pass now parses whatever text is currently displayed
+- The parser is pure and lightweight (no state, no side effects), so calling it on every render during animation has negligible cost
+- Remove `whitespace-pre-wrap` since the parser handles line breaks via block elements
 
-```typescript
-if (tryInterceptPlotCommand(question)) return;
-if (tryInterceptMacroLab(question)) return;  // <-- NEW LINE
+### 3. MODIFIED: `src/components/MacroCommentaryDisplay.tsx`
+
+Apply markdown parsing to:
+
+1. **`executive_summary`** (line 93-94): wrap in parser instead of plain `<p>` tag
+2. **`fundamental_analysis` items** (line 111): each bullet point string gets parsed through the markdown parser, enabling bold indicator names to be styled
+3. **`ai_insights_breakdown` toggle content** (lines 199, 219): when content is a string, parse it through markdown parser instead of rendering as plain text
+
+This ensures structured data that contains markdown syntax (common in GPT/LLM output) renders correctly.
+
+## Macro Driver Styling
+
+When the parser detects the pattern `- **Label**: rest of text`, it produces:
+
+```tsx
+<div className="flex flex-col gap-0.5 py-1.5">
+  <span className="text-sm font-semibold text-foreground">Label</span>
+  <span className="text-sm text-muted-foreground leading-relaxed">rest of text</span>
+</div>
 ```
 
-### File 2: `supabase/functions/aura/index.ts`
+For standalone bold headers (`**Section Title**` on its own line):
 
-**Update the system prompt** in the "Tool Launch Protocol" section (around line 646-687). Replace the STEP 3 confirmation requirement with immediate execution for clear intent:
-
-Replace:
-```
-STEP 3 - CONFIRM & LAUNCH:
-Once you have the required information, confirm with the user:
-"Perfect! I'll run the [Trade Generator / Macro Labs / Report] for [instrument] with [timeframe]. This will take about 30-60 seconds. Should I proceed?"
-
-Only after confirmation, call the appropriate tool.
+```tsx
+<div className="mt-4 mb-2 text-sm font-semibold text-foreground border-b border-border/40 pb-1">
+  Section Title
+</div>
 ```
 
-With:
-```
-STEP 3 - LAUNCH IMMEDIATELY:
-Once you have the required information (instrument is present), call the tool IMMEDIATELY.
-Do NOT ask for confirmation. Do NOT refuse. Do NOT explain what you're about to do.
-Just call the tool.
-
-POLITICAL CONTENT POLICY (MANDATORY):
-- NEVER refuse a macro/trade analysis request because it mentions political figures or geopolitical scenarios
-- If user mentions specific politicians (Trump, Biden, Macron, etc.), reframe as objective policy scenarios in the customNotes field:
-  * "Trump tariffs" -> "Potential US tariff policy changes and trade war scenarios"
-  * "Trump economic policy impact" -> "US fiscal/trade policy regime scenarios and FX implications"
-  * "if Biden wins" -> "Current US administration policy continuation scenarios"
-- ALWAYS preserve the user's instruments, timeframe, and analytical intent
-- ALWAYS call the tool -- never respond with text-only refusal when a tool action is clearly intended
-```
-
-Also update the tool usage section to reinforce immediate execution:
-```
-TOOL USAGE (IMMEDIATE - NO CONFIRMATION NEEDED):
-- Use 'launch_trade_generator' when user wants a trade setup → CALL IT IMMEDIATELY
-- Use 'launch_macro_lab' when user wants macro analysis → CALL IT IMMEDIATELY
-- Use 'launch_report' when user wants a report → CALL IT IMMEDIATELY
-```
-
-## What This Fixes
-
-- "do a macro commentary on EUR USD and how trump economical politic will affect EUR USD and major g10 currencies" -> Client-side interceptor catches it, sanitizes "trump economical politic" to "US fiscal/trade policy scenarios", extracts EUR/USD, calls launch_macro_lab immediately
-- "run macro analysis on bitcoin" -> Client-side interceptor catches it, calls launch_macro_lab with BTC/USD
-- Ambiguous queries without explicit macro keywords still go to the LLM for proper classification
-- Even if the client-side interceptor misses, the updated system prompt ensures the LLM calls the tool instead of refusing
+These styles use existing Tailwind utilities and CSS variables, maintaining the institutional aesthetic.
 
 ## What is NOT Touched
 
-- No changes to handleToolLaunch logic, job creation, credit system, or Supabase storage
-- No changes to feature registry, response parsers, or widget rendering
-- No changes to AURAHistoryPanel, fullscreen layout, or styling
-- No changes to other edge functions
-- The existing tryInterceptPlotCommand remains unchanged
-- Trade Generator and Report flows are unaffected (only macro-lab gets client-side interception because it's the most commonly blocked)
+- No changes to `useTypewriter.ts` hook (animation logic unchanged)
+- No changes to `ForecastMacroLab.tsx` (page layout, toggles, debug panel, trading levels, chart widgets all untouched)
+- No changes to AURA components, routing, or tool logic
+- No changes to `AIInteractionHistory.tsx` (it already delegates to `MacroCommentaryDisplay`)
+- No changes to any edge functions or Supabase logic
+- Copy button functionality unchanged
+- TradingView widgets unchanged
+- Responsive layouts unchanged
 
-## Testing Acceptance Criteria
+## Performance
 
-1. "do a macro commentary on EUR USD and how trump economical politic will affect EUR USD" -> Macro-Labs call fires, result rendered
-2. "run macro analysis on bitcoin" -> Macro-Labs call fires with BTC/USD
-3. "what do you think about EUR/USD?" -> Still goes to LLM (no macro keyword), LLM provides proactive guidance as before
-4. "macro labs on Gold" -> Client-side intercept, Macro-Labs call fires
-5. Missing instrument: "run macro analysis" -> Falls through to LLM, which asks for instrument
-6. Collapsible sections in results remain stable on scroll (no regression from previous fix)
+- The parser is a single synchronous pass over the string (split by newlines, regex per line)
+- During typewriter animation, it re-parses on each chunk reveal -- this is the same cost as React re-rendering the text node, since the parser produces a flat array of elements
+- No DOM manipulation, no `innerHTML`, no external library overhead
 
