@@ -531,7 +531,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   }, [isFullscreen]);
 
   // ===== MINI-WIDGET COMPONENTS =====
-  const AuraMiniTradeSetup = ({ data }: { data: any }) => {
+  const AuraFullTradeSetup = ({ data }: { data: any }) => {
     const setup = data?.setups?.[0] || data;
     const instrument = data?.instrument || setup?.instrument || 'N/A';
     const direction = setup?.direction || 'N/A';
@@ -540,24 +540,135 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     const tp = setup?.takeProfits?.[0] || setup?.takeProfit || setup?.take_profit || setup?.tp;
     const rr = setup?.riskRewardRatio || setup?.risk_reward_ratio;
     const confidence = setup?.strategyMeta?.confidence || setup?.confidence;
+    const timeframe = setup?.timeframe || data?.timeframe;
+    const notes = setup?.strategyMeta?.notes || setup?.notes || setup?.strategy_notes || [];
+
+    // decision_summary fields
+    const ds = data?.decision_summary as Record<string, any> | undefined;
+    const alignment = ds?.alignment;
+    const verdict = ds?.verdict;
+    const confLabel = ds?.confidence_label;
+    const narrative = ds?.narrative;
+    const keyRisks = ds?.key_risks;
+    const nextStep = ds?.next_step;
+    const tradeCard = ds?.trade_card;
+
+    // Fallback to trade_card levels if setup levels are missing
+    const displayEntry = entry || tradeCard?.entryPrice;
+    const displaySl = sl || tradeCard?.stopLoss;
+    const displayTp = tp || tradeCard?.takeProfits?.[0] || tradeCard?.takeProfit;
+    const displayRr = rr || tradeCard?.riskRewardRatio;
+
+    const isBullish = direction?.toLowerCase() === 'long' || direction?.toLowerCase() === 'buy';
 
     return (
-      <div className="border border-border rounded-lg p-3 bg-card/50 space-y-2 mt-2">
+      <div className="border border-border rounded-lg p-4 bg-card/50 space-y-3 mt-2">
+        {/* Header: Instrument + Direction + Timeframe */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-sm">{instrument}</span>
-          <Badge variant={direction?.toLowerCase() === 'short' ? 'destructive' : 'default'} className="text-xs">
+          <Badge variant={isBullish ? 'default' : 'destructive'} className="text-xs">
             {direction}
           </Badge>
-          {confidence && (
-            <Badge variant="outline" className="text-xs">{Math.round(confidence * 100)}%</Badge>
-          )}
+          {timeframe && <Badge variant="outline" className="text-xs">{timeframe}</Badge>}
+          {confidence && <Badge variant="outline" className="text-xs">{Math.round(Number(confidence) * 100)}%</Badge>}
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          {entry && <div><span className="text-muted-foreground">Entry</span><br /><span className="font-mono font-semibold">{Number(entry).toFixed(4)}</span></div>}
-          {sl && <div><span className="text-muted-foreground">SL</span><br /><span className="font-mono text-destructive">{Number(sl).toFixed(4)}</span></div>}
-          {tp && <div><span className="text-muted-foreground">TP</span><br /><span className="font-mono text-green-500">{Number(tp).toFixed(4)}</span></div>}
+
+        {/* Verdict / Alignment / Confidence Label */}
+        {(alignment || verdict || confLabel) && (
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            {verdict && (
+              <Badge variant={verdict.toLowerCase() === 'go' ? 'default' : 'destructive'} className="text-xs">
+                {verdict}
+              </Badge>
+            )}
+            {confLabel && <span className="text-muted-foreground">Confidence: <strong>{confLabel}</strong></span>}
+            {alignment && <span className="text-muted-foreground">Alignment: <strong>{alignment}</strong></span>}
+          </div>
+        )}
+
+        {/* Trade Levels (always visible) */}
+        <div className="grid grid-cols-4 gap-2 text-xs">
+          {displayEntry && <div><span className="text-muted-foreground">Entry</span><br /><span className="font-mono font-semibold">{Number(displayEntry).toFixed(4)}</span></div>}
+          {displaySl && <div><span className="text-muted-foreground">SL</span><br /><span className="font-mono text-destructive">{Number(displaySl).toFixed(4)}</span></div>}
+          {displayTp && <div><span className="text-muted-foreground">TP</span><br /><span className="font-mono text-green-500">{Number(displayTp).toFixed(4)}</span></div>}
+          {displayRr && <div><span className="text-muted-foreground">R:R</span><br /><span className="font-mono font-semibold">{Number(displayRr).toFixed(2)}</span></div>}
         </div>
-        {rr && <p className="text-xs text-muted-foreground">R:R {Number(rr).toFixed(2)}</p>}
+
+        {/* Collapsible: Strategy Notes */}
+        {((Array.isArray(notes) && notes.length > 0) || (typeof notes === 'string' && notes)) && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <BookOpen className="h-3.5 w-3.5" />
+              <span>Strategy Notes</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              {Array.isArray(notes) ? (
+                <ul className="space-y-1 text-xs leading-relaxed">
+                  {notes.map((n: any, i: number) => (
+                    <li key={i} className="flex gap-1.5">
+                      <span className="text-muted-foreground mt-0.5">•</span>
+                      <span>{typeof n === 'string' ? n : n?.text || JSON.stringify(n)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs leading-relaxed">{String(notes)}</p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Collapsible: Narrative */}
+        {narrative && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <Globe className="h-3.5 w-3.5" />
+              <span>Narrative</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              <p className="text-xs leading-relaxed whitespace-pre-wrap">{String(narrative)}</p>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Collapsible: Key Risks */}
+        {Array.isArray(keyRisks) && keyRisks.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <XCircle className="h-3.5 w-3.5" />
+              <span>Key Risks ({keyRisks.length})</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              <ul className="space-y-1 text-xs leading-relaxed">
+                {keyRisks.map((r: any, i: number) => (
+                  <li key={i} className="flex gap-1.5">
+                    <span className="text-muted-foreground mt-0.5">{i + 1}.</span>
+                    <span>{typeof r === 'string' ? r : JSON.stringify(r)}</span>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Collapsible: Next Step */}
+        {nextStep && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <ChevronRight className="h-3.5 w-3.5" />
+              <span>Next Step</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              <p className="text-xs leading-relaxed whitespace-pre-wrap">{String(nextStep)}</p>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Open Full View */}
         <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
           storeResultForPage('trade_generator', data?.jobId || '', data);
           navigate(FEATURE_REGISTRY.trade_generator.pageRoute);
@@ -824,7 +935,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
         )}
 
         {/* 3. Mini-widget (Trade Card / Macro Card / Report) */}
-        {rich.type === 'trade_setup' && <div className="mt-3"><AuraMiniTradeSetup data={rich.data} /></div>}
+        {rich.type === 'trade_setup' && <div className="mt-3"><AuraFullTradeSetup data={rich.data} /></div>}
         {rich.type === 'macro_commentary' && <div className="mt-3"><AuraFullMacro data={rich.data} /></div>}
         {rich.type === 'report' && <div className="mt-3"><AuraMiniReport data={rich.data} /></div>}
         {rich.type === 'tool_error' && (
@@ -1095,9 +1206,9 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
         const latestPrice = priceData.data[priceData.data.length - 1];
         const priceInfo = dataType === 'quote' 
-          ? `Prix actuel: ${latestPrice.close} (Haut: ${latestPrice.high}, Bas: ${latestPrice.low})`
-          : `Prix récents:\n${priceData.data.slice(-5).map((d: any) => 
-              `- ${d.date}: Ouverture ${d.open}, Clôture ${d.close}`
+          ? `Current price: ${latestPrice.close} (High: ${latestPrice.high}, Low: ${latestPrice.low})`
+          : `Recent prices:\n${priceData.data.slice(-5).map((d: any) => 
+              `- ${d.date}: Open ${d.open}, Close ${d.close}`
             ).join('\n')}`;
 
         if (collectOnly && batchContextRef.current) {
@@ -1178,11 +1289,11 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
         setMessages((prev) => [...prev.slice(0, -1), {
           role: 'assistant',
-          content: `📊 **Indicateurs Techniques pour ${techInstrument}**\n\n${indicatorSummary}\n\n✨ Souhaitez-vous une analyse complète de ces indicateurs ?`
+          content: `📊 **Technical Indicators for ${techInstrument}**\n\n${indicatorSummary}\n\n✨ Would you like a full analysis of these indicators?`
         }]);
         return;
       } catch (error) {
-        const errorMsg = "❌ Échec de la récupération des indicateurs techniques. Veuillez réessayer.";
+        const errorMsg = "❌ Failed to retrieve technical indicators. Please try again.";
         if (collectOnly && batchContextRef.current) {
           batchContextRef.current.indicatorSummary = errorMsg;
         } else {
@@ -1222,7 +1333,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       const jobId = await createJob(
         featureType,
         instrument,
-        { type: featureType },
+        { type: featureType, source: 'aura' },
         dbFeature
       );
 
@@ -1336,15 +1447,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 { role: 'assistant', content: richContent, attachments },
               ]);
               
-              toast({ 
-                title: t('toasts:aura.analysisCompletedTitle'), 
-                description: t('toasts:aura.analysisCompletedDescription', {
-                  type: featureType === 'trade_generator' ? 'Trade Generator' :
-                        featureType === 'macro_lab' ? 'Macro Labs' : 'report',
-                  instrument
-                }),
-                duration: 5000
-              });
+              // Result renders in-chat; no toast needed
               
               setActiveJobId(null);
               supabase.removeChannel(channel);
@@ -1465,7 +1568,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
           { role: 'assistant', content: `✅ Request launched for ${instrument}. Waiting for result...` },
         ]);
       }
-      toast({ title: 'Request Launched', description: `Your analysis for ${instrument} is in progress...` });
+      // No toast — status shown in-chat
 
     } catch (error) {
       console.error('❌ [AURA] Failed to launch job:', error);
