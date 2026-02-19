@@ -1,67 +1,56 @@
 
 
-# Fix: TradingView Widget Not Rendering (DOM Conflict)
+# Fix: TradingView Chart Has Zero Height (Invisible)
 
 ## Root Cause
 
-In `TradingViewWidget.tsx`, the `chartContainerRef` div serves a dual purpose:
-1. React renders overlay children (title badge, refresh button) inside it (lines 397-410)
-2. `loadTradingViewFallback()` calls `chartContainerRef.current.innerHTML = ''` (line 177), destroying those React-managed elements, then injects a TradingView div via direct DOM manipulation
+The TradingView chart renders inside a container chain that uses `flex-1 min-h-0` at every level. When there is no intrinsic content (the chart is injected via raw DOM, not React children), `flex-1` with `min-h-0` collapses to **0px height**. The `absolute inset-0` chart div inherits this zero height. TradingView's `autosize: true` then reads 0x0 dimensions and renders nothing.
 
-When `setLoading(false)` triggers a React re-render, React reconciles the `chartContainerRef` children -- recreating the overlays it thinks should be there -- and in doing so corrupts or displaces the TradingView-injected iframe. The result: a blank chart area.
-
-## Fix
-
-Separate the TradingView injection target from the React-managed overlays using two sibling elements inside a common parent:
-
+The sizing chain:
 ```text
-<div className="relative ...">           <-- wrapper (no ref)
-  <div ref={chartContainerRef} />         <-- TradingView target (no React children)
-  <div className="absolute overlay" />    <-- React-managed overlays
-  <Button className="absolute" />         <-- React-managed refresh button
-</div>
+CardContent (flex-1 min-h-0)
+  -> div (h-full flex flex-col min-h-0)
+    -> TradingViewWidget root (h-full flex flex-col)
+      -> chart wrapper (flex-1 min-h-0)     <-- collapses to 0!
+        -> chartContainerRef (absolute inset-0) <-- 0x0
 ```
 
-This way, `innerHTML = ''` only clears the dedicated chart div, and React's overlay elements live in a separate DOM subtree that is never destroyed.
+## Fix (2 changes in 1 file)
 
-## Changes in `src/components/TradingViewWidget.tsx`
+### File: `src/components/TradingViewWidget.tsx`
 
-### Render (lines 396-411)
-
-Replace the current structure where overlays are children of `chartContainerRef`:
+**Change 1 (line 406):** Add a minimum height to the chart wrapper so it never collapses to zero:
 
 ```tsx
-{/* Wrapper div - NOT the ref target */}
+// Before:
 <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
-  {/* TradingView injection target - no React children */}
-  <div
-    ref={chartContainerRef}
-    className="absolute inset-0 [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&>div]:!m-0 [&>div]:!p-0"
-  />
-  {/* React-managed overlays - safe from innerHTML wipe */}
-  <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-card/80 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-foreground/80">
-    <span>{mapToTwelveDataSymbol(currentSymbol)}</span>
-    <span className="text-muted-foreground">|</span>
-    <span className="text-muted-foreground">{timeframe.toUpperCase()}</span>
-  </div>
-  <Button
-    variant="secondary"
-    size="icon"
-    onClick={fetchData}
-    className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full shadow-md opacity-70 hover:opacity-100 transition-opacity"
-  >
-    <RefreshCw className="h-3.5 w-3.5" />
-  </Button>
-</div>
+
+// After:
+<div className="relative w-full flex-1 min-h-[300px] overflow-hidden rounded-2xl">
 ```
 
-The `chartContainerRef` becomes an `absolute inset-0` div with NO React children, so `innerHTML = ''` is safe and React never interferes with TradingView's DOM.
+Replacing `min-h-0` with `min-h-[300px]` ensures the chart area always has at least 300px of height for TradingView to render into, while `flex-1` still allows it to grow larger when space is available.
 
-## No Other Files Modified
+**Change 2 (lines 399-402):** Remove the conditional loading spinner that competes for flex space and shows nothing useful (TradingView has its own loading screen configured at line 251). This prevents the layout from shifting during initialization:
 
-This is a single-file fix in `TradingViewWidget.tsx`. No backend, no Supabase, no other component changes.
+```tsx
+// Remove this block entirely:
+{loading && <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96">
+    <Loader2 className="h-8 w-8 animate-spin" />
+    <span className="ml-2">Loading market data...</span>
+  </div>}
+```
 
-## Why Previous Fixes Did Not Work
+## Why This Works
 
-The previous fix (moving `loadTradingViewFallback()` to `finally`) was correct in ensuring the widget always initializes. But it exposed this DOM conflict bug -- previously, when Supabase data was found, `loadTradingViewFallback()` was never called, so the `innerHTML` wipe never happened and the overlays were preserved (but the chart was blank for a different reason). Now that `loadTradingViewFallback()` always runs, the DOM conflict occurs every time.
+- `min-h-[300px]` gives the flex item a minimum intrinsic size, preventing the 0-height collapse
+- TradingView's own `loading_screen` config (already set at line 251) handles the visual loading state
+- The `flex-1` still lets the container expand to fill available space on larger screens
+- No other files need changes
+
+## No Regressions
+
+- LightweightChartWidget path is unaffected (it has its own sizing)
+- The fullscreen dialog chart will also benefit (same component)
+- Mobile and desktop layouts both work because `min-h-[300px]` is a floor, not a fixed size
 
