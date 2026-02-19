@@ -413,13 +413,13 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     const renderContent = () => {
       if (typeof msg.content === 'string') {
         if (msg.role === 'assistant') {
-          return <div className="text-sm">{renderMarkdown(msg.content)}</div>;
+          return <div className="text-[15px] leading-relaxed">{renderMarkdown(msg.content)}</div>;
         }
-        return <p className="text-sm whitespace-pre-wrap">{msg.content}</p>;
+        return <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>;
       }
       const rich = msg.content;
       return (
-        <div className="text-sm">
+        <div className="text-[15px] leading-relaxed">
           {rich.summary && <p className="mb-1">{rich.summary}</p>}
           {rich.type === 'trade_setup' && <AuraMiniTradeSetup data={rich.data} />}
           {rich.type === 'macro_commentary' && <AuraMiniMacro data={rich.data} />}
@@ -1170,8 +1170,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                     className={cn(
                       isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-lg px-4 py-2',
                       msg.role === 'user'
-                        ? 'bg-[#2f3e36] text-foreground'
-                        : 'bg-[#212121] text-foreground'
+                        ? 'bg-[#2f3e36] text-white'
+                        : 'bg-[#212121] text-[#d1d1d1]'
                     )}
                   >
                     {renderMessageContent(msg)}
