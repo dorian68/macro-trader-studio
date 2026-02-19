@@ -1764,46 +1764,49 @@ Now provide a complete, structured technical analysis based on this data.`;
   const conversationColumn = (
     <div className="flex-1 flex flex-col min-w-0 h-full relative">
       {/* Header */}
-      <CardHeader className="shrink-0 bg-[#0e1116] border-b border-white/[0.03]">
-        <div className="flex items-start justify-between max-w-[760px] mx-auto w-full">
-          <div className="flex items-center gap-3">
+      <CardHeader className="shrink-0 bg-[#0e1116] border-b border-white/[0.03] px-3 py-2">
+        <div className={cn(
+          "flex items-center justify-between gap-2 w-full",
+          isFullscreen && "max-w-[760px] mx-auto"
+        )}>
+          <div className="flex items-center gap-2 min-w-0">
             {/* Menu icon for overlay sidebar (reduced mode only) */}
             {!isFullscreen && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => { setShowHistory(!showHistory); refreshThreadList(); }}
-                className="hover:bg-primary/10"
+                className="hover:bg-primary/10 h-8 w-8 min-h-0 min-w-0 p-0 shrink-0"
                 aria-label="History"
               >
                 <PanelLeft className="h-4 w-4" />
               </Button>
             )}
             <div className={cn(
-              "bg-white rounded-xl flex items-center justify-center shadow-lg p-1",
-              isFullscreen ? "w-12 h-12" : "w-10 h-10"
+              "bg-white rounded-lg flex items-center justify-center shadow-lg p-0.5 shrink-0",
+              isFullscreen ? "w-9 h-9" : "w-8 h-8"
             )}>
               <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
             </div>
-            <div>
+            <div className="min-w-0">
               <CardTitle className={cn(
-                "bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent",
-                isFullscreen ? "text-xl" : "text-lg"
+                "bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent leading-tight",
+                isFullscreen ? "text-lg" : "text-base"
               )}>
                 AURA
               </CardTitle>
-              <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                {activeThread?.title && activeThread.title !== 'New Chat' ? activeThread.title : 'AlphaLens Unified Research Assistant'}
+              <p className="text-xs text-muted-foreground truncate max-w-[160px]">
+                {activeThread?.title && activeThread.title !== 'New Chat' ? activeThread.title : 'Research Assistant'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 shrink-0">
             {!isFullscreen && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={createNewChat}
-                className="hover:bg-primary/10"
+                className="hover:bg-primary/10 h-8 w-8 min-h-0 min-w-0 p-0"
                 aria-label="New chat"
                 title="New Chat"
               >
@@ -1812,27 +1815,27 @@ Now provide a complete, structured technical analysis based on this data.`;
             )}
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="hover:bg-primary/10"
+              className="hover:bg-primary/10 h-8 w-8 min-h-0 min-w-0 p-0"
               aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={() => { setIsFullscreen(false); onToggle(); }}
-              className="hidden md:flex hover:bg-primary/10"
+              className="hidden md:flex hover:bg-primary/10 h-8 w-8 min-h-0 min-w-0 p-0"
               aria-label="Collapse to side"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={() => { setIsFullscreen(false); onToggle(); }}
-              className="md:hidden hover:bg-primary/10"
+              className="md:hidden hover:bg-primary/10 h-8 w-8 min-h-0 min-w-0 p-0"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
