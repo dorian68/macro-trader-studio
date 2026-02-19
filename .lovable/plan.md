@@ -1,98 +1,78 @@
 
 
-# Fix: Collapsible Sections Collapse on Scroll in AURA Fullscreen
+# Plan: Make Admin Chart Display Settings Apply Globally to All Users
 
 ## Problem
 
-When you open a collapsible section (e.g., "Strategy Notes", "Fundamental Analysis") inside an AURA response widget, it collapses back as soon as you scroll. This makes reading the content impossible.
-
-## Root Cause
-
-The response widgets (`AuraFullTradeSetup`, `AuraFullMacro`, `AuraMiniReport`) are defined as **functions inside the AURA component**. Every time the scroll position changes, React updates the `showScrollButton` state, which re-renders the entire AURA component and **recreates** these widget functions. React sees a new function reference as a completely different component type -- it unmounts the old widget and mounts a fresh one, resetting all collapsible sections to their default (closed) state.
-
-```text
-User scrolls
-  --> scroll event fires
-  --> setShowScrollButton() called
-  --> AURA re-renders
-  --> AuraFullTradeSetup = new function (different reference)
-  --> React unmounts old widget, mounts new one
-  --> All Collapsible states reset to closed
-```
+The admin panel has a "Chart Display Settings" section that saves options (showGrid, showPriceScale, showTimeScale, showVolume, showStudies, showToolbar) to the `chart_provider_settings.display_options` column in Supabase. However, **neither chart widget actually reads these settings**. Both `TradingViewWidget` and `LightweightChartWidget` have hardcoded values (grid transparent, no volume, etc.). The settings are saved but never consumed.
 
 ## Solution
 
-Move the three widget components (`AuraFullTradeSetup`, `AuraFullMacro`, `AuraMiniReport`) **outside** the `AURA` component so they are stable references that never change between renders. Pass any needed callbacks (like `navigate`, `onToggle`) as props.
+Fetch `display_options` from Supabase at the chart orchestrator level (`CandlestickChart`), pass them as props to both chart widgets, and apply them dynamically instead of using hardcoded values.
 
-This is a standard React pattern: components must be defined at module scope (or memoized) so their identity is stable across renders.
+## Changes (3 files, front-end only)
 
-## Technical Details
+### 1. `src/components/CandlestickChart.tsx`
 
-### File: `src/components/AURA.tsx`
+- Fetch `display_options` alongside the existing `provider` query from `chart_provider_settings`
+- Parse the options with defaults and store in state as a `DisplayOptions` object
+- Pass this object as a new `displayOptions` prop to both `<TradingViewWidget>` and `<LightweightChartWidget>`
 
-**Step 1 -- Extract widget components to module scope (before the `AURA` function)**
+### 2. `src/components/TradingViewWidget.tsx`
 
-Move `AuraFullTradeSetup` (currently at line ~515), `AuraFullMacro` (line ~664), and `AuraMiniReport` (line ~850) out of the `AURA` component body and define them as standalone components at the top of the file (after imports/helpers, before `export default function AURA`).
+- Add `displayOptions` to the props interface
+- In the TradingView widget initialization config, conditionally apply:
+  - `showGrid`: toggle grid line colors between `transparent` and a subtle gray
+  - `showPriceScale`: toggle `hide_side_toolbar` / scale visibility
+  - `showTimeScale`: toggle bottom timeline visibility
+  - `showVolume`: add/remove `Volume` from the `studies` array
+  - `showStudies`: add/remove RSI/ADX from `studies` array
+  - `showToolbar`: toggle `hide_top_toolbar`
+- Add `displayOptions` to the dependency array of the chart initialization effect so the widget re-creates when settings change
 
-Each component will receive additional props for the callbacks it currently accesses via closure:
-- `onNavigate: (path: string) => void` -- replaces `navigate()`
-- `onClose: () => void` -- replaces `onToggle()`
-- `storeResult: (featureId: string, jobId: string, data: any) => void` -- replaces `storeResultForPage()`
+### 3. `src/components/LightweightChartWidget.tsx`
 
-**Step 2 -- Update the render call sites (line ~952)**
+- Add `displayOptions` to the props interface
+- In the `createChart()` config, conditionally apply:
+  - `showGrid`: set grid line colors to subtle gray or transparent
+  - `showPriceScale`: toggle `rightPriceScale.visible`
+  - `showTimeScale`: toggle `timeScale.visible`
+  - `showVolume`: after series creation, conditionally add a volume histogram series
+- Apply the options at chart creation time and via `chart.applyOptions()` when they change
 
-Pass the new props when rendering the widgets:
+## Data Flow
 
-```tsx
-{rich.type === 'trade_setup' && (
-  <div className="mt-3">
-    <AuraFullTradeSetup
-      data={rich.data}
-      onNavigate={(path) => navigate(path)}
-      onClose={onToggle}
-    />
-  </div>
-)}
-{rich.type === 'macro_commentary' && (
-  <div className="mt-3">
-    <AuraFullMacro
-      data={rich.data}
-      onNavigate={(path) => navigate(path)}
-      onClose={onToggle}
-    />
-  </div>
-)}
-{rich.type === 'report' && (
-  <div className="mt-3">
-    <AuraMiniReport
-      data={rich.data}
-      onNavigate={(path) => navigate(path)}
-      onClose={onToggle}
-    />
-  </div>
-)}
+```text
+Supabase (chart_provider_settings.display_options)
+  --> CandlestickChart fetches on mount
+  --> passes displayOptions prop to TradingViewWidget / LightweightChartWidget
+  --> widgets apply settings dynamically
 ```
 
-**Step 3 -- Stabilize callbacks with `useCallback`**
+Since the data lives in Supabase (not localStorage), it persists across all sessions and browsers. Since there is only one row in `chart_provider_settings` and any authenticated user can read it (RLS policy: `true` for SELECT), the admin's settings automatically apply to every user on every instance.
 
-Wrap the navigation/close handlers passed to widgets in `useCallback` to prevent unnecessary re-renders of the extracted components.
+## What is NOT touched
 
-### No other files modified
+- No database schema changes needed (the `display_options` JSONB column already exists)
+- No edge functions modified
+- No admin panel changes (it already saves correctly)
+- No RLS policy changes needed
+- No backend or API changes
 
-This is a single-file refactor in `AURA.tsx`. No backend, no Supabase, no API changes. The widget appearance and behavior remain identical -- only their React identity becomes stable.
+## Type Safety
 
-### What this fixes
+A shared `DisplayOptions` interface will be defined and reused across the three files to ensure consistency:
 
-- Collapsible sections stay open when scrolling
-- No more unmount/remount cycle on scroll
-- Slight performance improvement (fewer DOM operations per scroll)
+```typescript
+interface DisplayOptions {
+  showGrid: boolean;
+  showPriceScale: boolean;
+  showTimeScale: boolean;
+  showVolume: boolean;
+  showStudies: boolean;
+  showToolbar: boolean;
+}
+```
 
-### What is NOT touched
-
-- Tool routing, MCP calls, streaming logic
-- Supabase queries or realtime subscriptions
-- MarketChartWidget rendering
-- AURAHistoryPanel or sidebar behavior
-- Message parsing, markdown rendering
-- Any styling or colors
+Default values match what is currently hardcoded (grid off, price scale on, time scale on, volume off, studies off, toolbar off), ensuring zero visual change until an admin modifies the settings.
 
