@@ -6,7 +6,7 @@ import { CheckCircle, X, Minimize2, ChevronLeft, ChevronRight, Maximize2, Eye } 
 import { usePersistentNotifications } from './PersistentNotificationProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getFeatureDisplayName } from '@/lib/feature-mapper';
-
+import { MiniProgressBubble } from './MiniProgressBubble';
 
 type ViewMode = 'single' | 'list';
 
@@ -22,6 +22,11 @@ export function PersistentToast() {
   const [selectedJobIndex, setSelectedJobIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('single');
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showMiniBubble, setShowMiniBubble] = useState<{
+    feature: string;
+    message: string;
+    titleOverride?: string;
+  } | null>(null);
   const [jobTimers, setJobTimers] = useState<Record<string, number>>({});
 
   const totalCount = activeJobs.length + completedJobs.length + flashMessages.length;
@@ -63,6 +68,26 @@ export function PersistentToast() {
     return () => intervals.forEach(clearInterval);
   }, [activeJobs]);
 
+  // Mini bubble when minimized + progress updates
+  useEffect(() => {
+    if (isMinimized && currentJob && !isCompleted && 'progressMessage' in currentJob && currentJob.progressMessage) {
+      setShowMiniBubble({ feature: currentJob.feature || 'unknown', message: currentJob.progressMessage });
+    }
+  }, [isMinimized, isCompleted, currentJob?.progressMessage]);
+
+  useEffect(() => {
+    if (isMinimized && flashMessages.length > 0) {
+      const last = flashMessages[flashMessages.length - 1];
+      setShowMiniBubble({ feature: 'notification', message: last.description || last.title, titleOverride: last.title });
+    }
+  }, [isMinimized, flashMessages.length]);
+  
+  useEffect(() => {
+    if (isMinimized && completedJobs.length > 0) {
+      const job = completedJobs[completedJobs.length - 1];
+      setShowMiniBubble({ feature: job.feature || 'unknown', message: `${getFeatureDisplayName(job.feature)} completed` });
+    }
+  }, [isMinimized, completedJobs.length]);
   
   const getJobElapsedTime = (job: typeof currentJob) => job ? (jobTimers[job.id] || 0) : 0;
   
@@ -185,6 +210,16 @@ export function PersistentToast() {
 
   return (
     <>
+      {/* Mini Progress Bubble (when minimized) */}
+      {showMiniBubble && isMinimized && (
+        <MiniProgressBubble
+          feature={showMiniBubble.feature}
+          message={showMiniBubble.message}
+          titleOverride={showMiniBubble.titleOverride}
+          onDismiss={() => setShowMiniBubble(null)}
+        />
+      )}
+
       {/* Main Toast Card */}
       <Card
         ref={cardRef}
