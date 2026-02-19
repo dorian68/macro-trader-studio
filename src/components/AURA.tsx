@@ -19,6 +19,8 @@ import { useRealtimeJobManager } from '@/hooks/useRealtimeJobManager';
 import { useCreditEngagement } from '@/hooks/useCreditEngagement';
 import { enhancedPostRequest } from '@/lib/enhanced-request';
 import { MarketChartWidget } from '@/components/aura/MarketChartWidget';
+import { FEATURE_REGISTRY, resolveFeatureId, storeResultForPage } from '@/lib/auraFeatureRegistry';
+import type { FeatureId } from '@/lib/auraFeatureRegistry';
 import auraLogo from '@/assets/aura-logo.png';
 
 interface AURAProps {
@@ -373,7 +375,11 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
           {tp && <div><span className="text-muted-foreground">TP</span><br /><span className="font-mono text-green-500">{Number(tp).toFixed(4)}</span></div>}
         </div>
         {rr && <p className="text-xs text-muted-foreground">R:R {Number(rr).toFixed(2)}</p>}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => { navigate('/trade-generator'); onToggle(); }}>
+        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
+          storeResultForPage('trade_generator', data?.jobId || '', data);
+          navigate(FEATURE_REGISTRY.trade_generator.pageRoute);
+          onToggle();
+        }}>
           <ArrowUpRight className="h-3 w-3" /> Open Full View
         </Button>
       </div>
@@ -395,7 +401,11 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
             ))}
           </div>
         )}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => { navigate('/macro-lab'); onToggle(); }}>
+        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
+          storeResultForPage('macro_lab', data?.jobId || '', data);
+          navigate(FEATURE_REGISTRY.macro_lab.pageRoute);
+          onToggle();
+        }}>
           <ArrowUpRight className="h-3 w-3" /> Open Full View
         </Button>
       </div>
@@ -411,7 +421,11 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
       <div className="border border-border rounded-lg p-3 bg-card/50 space-y-2 mt-2">
         <p className="text-sm font-semibold">{title}</p>
         {truncated && <p className="text-xs text-muted-foreground">{truncated}{truncated.length >= 150 ? '...' : ''}</p>}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => { navigate('/reports'); onToggle(); }}>
+        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
+          storeResultForPage('reports', data?.jobId || '', data);
+          navigate(FEATURE_REGISTRY.reports.pageRoute);
+          onToggle();
+        }}>
           <ArrowUpRight className="h-3 w-3" /> Open Full View
         </Button>
       </div>
@@ -776,36 +790,19 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       }
     }
 
-    // Map tool function to feature type
-    let featureType: 'trade_generator' | 'macro_lab' | 'reports' = 'trade_generator';
-    let creditType: 'ideas' | 'queries' | 'reports' = 'ideas';
-    
-    // Resolve legacy alias usage for telemetry
-    const legacyAliases = ['launch_ai_trade_setup', 'launch_macro_commentary'];
-    const isLegacyAlias = legacyAliases.includes(functionName);
-    
-    switch (functionName) {
-      case 'launch_trade_generator':
-      case 'launch_ai_trade_setup': // Legacy alias
-        featureType = 'trade_generator';
-        creditType = 'ideas';
-        break;
-      case 'launch_macro_lab':
-      case 'launch_macro_commentary': // Legacy alias
-        featureType = 'macro_lab';
-        creditType = 'queries';
-        break;
-      case 'launch_report':
-        featureType = 'reports';
-        creditType = 'reports';
-        break;
-      default:
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: `${t('toasts:aura.unknownAction')}\n\n${t('toasts:aura.availableActions')}\n\n${t('toasts:aura.reformulateRequest', { instrument: instrument || 'the market' })}` }
-        ]);
-        return;
+    // Map tool function to feature type via registry
+    const featureId = resolveFeatureId(functionName);
+    if (!featureId) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: `${t('toasts:aura.unknownAction')}\n\n${t('toasts:aura.availableActions')}\n\n${t('toasts:aura.reformulateRequest', { instrument: instrument || 'the market' })}` }
+      ]);
+      return;
     }
+
+    const feature = FEATURE_REGISTRY[featureId];
+    const featureType = feature.featureId;
+    const creditType = feature.creditType;
 
     try {
       setMessages((prev) => [
@@ -814,57 +811,26 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       ]);
       setActiveJobId('pending');
 
-      let requestPayload: any = {
-        instrument,
-        timeframe,
-        question: customNotes || `Analyze ${instrument}`
-      };
-
       // Log telemetry before launching
       logTelemetry(featureType);
 
-      if (featureType === 'trade_generator') {
-        requestPayload = {
-          type: "trade_generator",
-          mode: "run",
-          instrument,
-          question: `Provide an institutional macro outlook and risks for ${instrument}, then a macro-grounded trade idea (entry/SL/TP).`,
-          isTradeQuery: true,
-          timeframe,
-          riskLevel,
-          positionSize,
-          strategy,
-          customNotes
-        };
-      } else if (featureType === 'macro_lab') {
-        requestPayload = {
-          type: "macro_lab",
-          mode: "run",
-          instrument,
-          question: `Provide comprehensive macro commentary for ${instrument}. ${customNotes}`,
-          timeframe
-        };
-      } else if (featureType === 'reports') {
-        requestPayload = {
-          mode: "run",
-          type: "reports",
-          question: `Generate report for ${instrument}. ${customNotes}`,
-          instrument,
-          timeframe: "1D",
-          exportFormat: "pdf"
-        };
-      }
 
-      // DB feature constraint: must be 'AI Trade Setup' | 'Macro Commentary' | 'Report'
-      // Routing type goes into request_payload.type
-      const dbFeature = featureType === 'trade_generator' ? 'AI Trade Setup' : 
-                         featureType === 'macro_lab' ? 'Macro Commentary' : 'Report';
+      // Build payload using registry (same structure as the actual page)
+      const dbFeature = feature.dbFeature;
       const jobId = await createJob(
-        featureType, // 'trade_generator' | 'macro_lab' | 'reports'
+        featureType,
         instrument,
-        requestPayload,
+        { type: featureType },
         dbFeature
       );
+
+      // Build the full payload AFTER we have jobId
+      const requestPayload = feature.buildPayload({
+        instrument, timeframe, riskLevel, strategy, customNotes,
+        question: customNotes || undefined,
+        jobId,
+        userEmail: user?.email,
+      });
 
       const creditResult = await tryEngageCredit(creditType, jobId);
       if (!creditResult.success) {
@@ -920,30 +886,22 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 }
               }
               
-              // Build rich mini-widget message
+              // Build rich mini-widget message using registry parser
               let richContent: Message['content'];
               const summaryText = `✅ ${t('toasts:aura.analysisCompleted', { instrument })} 🎉`;
 
-              if (featureType === 'trade_generator') {
-                // Try to extract final_answer for rich data
-                let tradeData = parsedPayload;
-                try {
-                  const fa = parsedPayload?.body?.message?.message?.content?.content?.final_answer 
-                    || parsedPayload?.content?.final_answer
-                    || parsedPayload?.final_answer;
-                  if (fa && typeof fa === 'string') {
-                    tradeData = JSON.parse(fa);
-                  } else if (fa && typeof fa === 'object') {
-                    tradeData = fa;
-                  }
-                } catch (e) { /* use parsedPayload as-is */ }
-                
-                richContent = { type: 'trade_setup', data: tradeData, summary: summaryText };
-              } else if (featureType === 'macro_lab') {
-                richContent = { type: 'macro_commentary', data: parsedPayload, summary: summaryText };
-              } else {
-                richContent = { type: 'report', data: parsedPayload, summary: summaryText };
-              }
+              const parsed = feature.parseResponse(parsedPayload);
+              const widgetData = parsed?.data || parsedPayload;
+
+              // Store result for "Open in page" preloading
+              storeResultForPage(featureType, jobId, parsedPayload);
+
+              const typeMap: Record<FeatureId, string> = {
+                trade_generator: 'trade_setup',
+                macro_lab: 'macro_commentary',
+                reports: 'report',
+              };
+              richContent = { type: typeMap[featureType], data: widgetData, summary: summaryText };
 
               // Extract chart attachments
               const chartAttachment = extractMarketAttachments(parsedPayload);
@@ -997,11 +955,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         .subscribe();
 
       // Route to correct backend: macro-lab-proxy for trade_generator & macro_lab, n8n for reports
-      const MACRO_LAB_PROXY_URL = 'https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/macro-lab-proxy';
-      const N8N_REPORTS_URL = 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1';
-      const endpointUrl = (featureType === 'trade_generator' || featureType === 'macro_lab')
-        ? MACRO_LAB_PROXY_URL
-        : N8N_REPORTS_URL;
+      // Use registry endpoint (no more hardcoded URLs)
+      const endpointUrl = feature.endpoint;
 
       console.log('📊 [AURA] Sending request:', { jobId, instrument, endpoint: endpointUrl, featureType });
 
