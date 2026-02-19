@@ -23,47 +23,47 @@ export interface AURATeaser {
 
 export const AURA_TEASERS: AURATeaser[] = [
   {
-    text: "👋 Need a quick market summary?",
+    text: "Need a quick market summary?",
     cta: "Ask AURA",
     query: "Give me a quick market summary",
   },
   {
-    text: "💡 Want to discover insights from your data?",
+    text: "Want to discover insights from your data?",
     cta: "Show Insights",
     query: "Show me key insights from my current data",
   },
   {
-    text: "🔁 Which setups had the highest win rate?",
+    text: "Which setups had the highest win rate?",
     cta: "Analyze Now",
     query: "Which trade setups had the highest win rate?",
     contexts: ["Backtester"],
   },
   {
-    text: "📊 Want to backtest your AI setups in one click?",
+    text: "Want to backtest your AI setups in one click?",
     cta: "Launch Backtest",
     query: "Help me backtest my AI-generated trade setups",
     contexts: ["Backtester"],
   },
   {
-    text: "📈 Curious how your portfolio performed this week?",
+    text: "Curious how your portfolio performed this week?",
     cta: "Analyze",
     query: "Analyze my portfolio performance for this week",
     contexts: ["Portfolio Analytics"],
   },
   {
-    text: "⚠️ Which trades were over-leveraged?",
+    text: "Which trades were over-leveraged?",
     cta: "Find Out",
     query: "Show me which trades were over-leveraged",
     contexts: ["Portfolio Analytics"],
   },
   {
-    text: "🧮 Try running a scenario — AURA can simulate macro shocks for you",
+    text: "Try running a scenario — AURA can simulate macro shocks for you",
     cta: "Open AURA",
     query: "Help me simulate a macroeconomic scenario",
     contexts: ["Scenario Simulator"],
   },
   {
-    text: "⚙️ Ready to generate your next market report?",
+    text: "Ready to generate your next market report?",
     cta: "Generate",
     query: "Generate a market report for me",
     contexts: ["default", "AlphaLens Labs"],
