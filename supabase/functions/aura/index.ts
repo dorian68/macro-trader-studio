@@ -649,6 +649,11 @@ STEP 1 - DETECT INTENT:
 - If user says: "generate a trade", "setup for EUR/USD", "give me a trade idea", "run AI setup", "trade generator" → Trade Generator
 - If user says: "macro analysis", "what's happening with", "market commentary", "macro labs", "macro lab" → Macro Labs
 - If user says: "generate a report", "portfolio report", "weekly report" → Report
+- If user says: "plot", "chart", "graph", "show price", "draw", "visualize", "courbe", "graphe", "affiche", "tracer" combined with a time window ("last 12h", "past 24h", "last 7 days") → call plot_price_chart
+  * Parse lookback: "last 12h" → 12 hours, "last 7d" → 168 hours, "past week" → 168 hours, "last 24 hours" → 24 hours
+  * Default interval heuristic: <=6h → "5min", <=12h → "15min", <=48h → "30min", <=7d → "1h", >7d → "4h"
+  * Map instrument names: "gold" → "XAU/USD", "btc" → "BTC/USD", etc. (use existing instrument mapping)
+  * If no time window specified, default to 24 hours
 
 STEP 2 - COLLECT REQUIRED INFORMATION (Ask conversationally, one question at a time):
 For Trade Generator:
@@ -1013,6 +1018,22 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n�
           {
             type: "function",
             function: {
+              name: "plot_price_chart",
+              description: "Plot/chart/graph price data for an instrument over a time window. Use when user asks to visualize, plot, chart, draw, graph, or show price movements. Parse the lookback from user's message (e.g., 'last 12h' → 12 hours, 'last 7d' → 168 hours, 'past week' → 168 hours). Default interval heuristic: <=6h → '5min', <=12h → '15min', <=48h → '30min', <=7d → '1h', >7d → '4h'. Default lookback if not specified: 24 hours.",
+              parameters: {
+                type: "object",
+                properties: {
+                  instrument: { type: "string", description: "Trading instrument (e.g., XAU/USD, EUR/USD, BTC/USD)" },
+                  interval: { type: "string", enum: ["5min", "15min", "30min", "1h", "4h", "1day"], description: "Candle interval. Use heuristic based on lookback_hours if user doesn't specify." },
+                  lookback_hours: { type: "number", description: "How many hours of historical data to show. Parse from user message: '12h' → 12, '7d' → 168, '1 week' → 168, '24h' → 24. Default: 24" }
+                },
+                required: ["instrument", "interval", "lookback_hours"]
+              }
+            }
+          },
+          {
+            type: "function",
+            function: {
               name: "get_technical_indicators",
               description: "Get technical indicators (RSI, ATR, SMA, EMA, MACD, Bollinger Bands) for an instrument with optional time window",
               parameters: {
@@ -1105,16 +1126,26 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n�
     if (toolCalls && toolCalls.length > 0) {
       console.log("Tool calls detected:", JSON.stringify(toolCalls));
       
+      // ✅ SPECIAL CASE: plot_price_chart (single tool, pass through directly)
+      if (toolCalls[0].function.name === 'plot_price_chart') {
+        console.log("📊 Plot price chart detected - sending to client");
+        return new Response(JSON.stringify({ 
+          toolCalls: [toolCalls[0]],
+          message: message?.content || "Fetching chart data..."
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // ✅ SPECIAL CASE: Technical Analysis (multiple tools needed)
       const hasPriceTool = toolCalls.some((tc: any) => tc.function.name === 'get_realtime_price');
       const hasIndicatorsTool = toolCalls.some((tc: any) => tc.function.name === 'get_technical_indicators');
       
       if (hasPriceTool && hasIndicatorsTool) {
         console.log("🔄 Technical analysis detected - sending both tools to client");
-        // Return both tool calls for sequential execution on client side
         return new Response(JSON.stringify({ 
-          toolCalls: toolCalls, // Send all tools
-          message: message?.content || "Préparation de l'analyse technique..."
+          toolCalls: toolCalls,
+          message: message?.content || "Preparing technical analysis..."
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
