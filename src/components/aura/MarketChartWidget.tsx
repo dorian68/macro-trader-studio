@@ -67,15 +67,20 @@ const MarketChartWidgetInner: React.FC<MarketChartWidgetProps> = ({ data, instru
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: 'rgba(255,255,255,0.04)' },
-        horzLines: { color: 'rgba(255,255,255,0.04)' },
+        vertLines: { visible: false },
+        horzLines: { visible: false },
       },
       crosshair: {
-        vertLine: { color: 'rgba(255,255,255,0.15)', width: 1, style: 2 },
-        horzLine: { color: 'rgba(255,255,255,0.15)', width: 1, style: 2 },
+        vertLine: { color: 'rgba(255,255,255,0.08)', width: 1, style: 2, labelVisible: false },
+        horzLine: { color: 'rgba(255,255,255,0.08)', width: 1, style: 2, labelVisible: false },
       },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-      timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true },
+      rightPriceScale: { visible: false },
+      leftPriceScale: { visible: false },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: true,
+        secondsVisible: false,
+      },
     });
 
     chartRef.current = chart;
