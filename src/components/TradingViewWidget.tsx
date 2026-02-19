@@ -58,6 +58,26 @@ const mapToTwelveDataSymbol = (asset: string): string => {
   return mappings[asset] || asset;
 };
 
+const mapToTradingViewSymbol = (symbol: string): string => {
+  const mapping: Record<string, string> = {
+    'EURUSD': 'FX:EURUSD',
+    'GBPUSD': 'FX:GBPUSD',
+    'USDJPY': 'FX:USDJPY',
+    'AUDUSD': 'FX:AUDUSD',
+    'NZDUSD': 'FX:NZDUSD',
+    'USDCAD': 'FX:USDCAD',
+    'USDCHF': 'FX:USDCHF',
+    'EURGBP': 'FX:EURGBP',
+    'EURJPY': 'FX:EURJPY',
+    'GBPJPY': 'FX:GBPJPY',
+    'BTCUSD': 'COINBASE:BTCUSD',
+    'ETHUSD': 'COINBASE:ETHUSD',
+    'XAUUSD': 'OANDA:XAUUSD',
+    'XAGUSD': 'OANDA:XAGUSD',
+  };
+  return mapping[symbol] || symbol;
+};
+
 // PERFORMANCE: Memoized component to prevent unnecessary re-renders
 const TradingViewWidget = memo(function TradingViewWidget({
   selectedSymbol,
@@ -239,7 +259,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
       // @ts-ignore
       const widget = new window.TradingView.widget({
         autosize: true,
-        symbol: currentSymbol,
+        symbol: mapToTradingViewSymbol(currentSymbol),
         interval,
         timezone: 'Etc/UTC',
         theme: 'dark',
@@ -280,15 +300,41 @@ const TradingViewWidget = memo(function TradingViewWidget({
           "scalesProperties.showSymbolLabels": false,
           "scalesProperties.backgroundColor": "#0e1116",
           "scalesProperties.lineColor": "transparent",
-          "mainSeriesProperties.priceLineVisible": false,
-          "mainSeriesProperties.priceLineColor": "transparent",
+          // Price line
+          "mainSeriesProperties.priceLineVisible": true,
+          "mainSeriesProperties.priceLineColor": "#68b4bc",
+          "mainSeriesProperties.priceLineWidth": 1,
+          // Enforce candle style
+          "mainSeriesProperties.style": 1,
           // Candle colors
           "mainSeriesProperties.candleStyle.upColor": "#22c55e",
           "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-          "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
-          "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
-          "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
-          "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
+          "mainSeriesProperties.candleStyle.wickUpColor": "#4ade80",
+          "mainSeriesProperties.candleStyle.wickDownColor": "#f87171",
+          "mainSeriesProperties.candleStyle.borderUpColor": "#16a34a",
+          "mainSeriesProperties.candleStyle.borderDownColor": "#dc2626",
+          "mainSeriesProperties.candleStyle.drawBorder": true,
+          "mainSeriesProperties.candleStyle.drawWick": true,
+          "mainSeriesProperties.candleStyle.barColorsOnPrevClose": false,
+          // Line/area fallback
+          "mainSeriesProperties.lineStyle.color": "#68b4bc",
+          "mainSeriesProperties.lineStyle.linewidth": 2,
+          "mainSeriesProperties.areaStyle.color1": "rgba(104,180,188,0.4)",
+          "mainSeriesProperties.areaStyle.color2": "rgba(104,180,188,0.02)",
+          "mainSeriesProperties.areaStyle.linecolor": "#68b4bc",
+          "mainSeriesProperties.areaStyle.linewidth": 2,
+          // Hollow candle fallback
+          "mainSeriesProperties.hollowCandleStyle.upColor": "#22c55e",
+          "mainSeriesProperties.hollowCandleStyle.downColor": "#ef4444",
+          "mainSeriesProperties.hollowCandleStyle.drawBorder": true,
+          "mainSeriesProperties.hollowCandleStyle.borderUpColor": "#22c55e",
+          "mainSeriesProperties.hollowCandleStyle.borderDownColor": "#ef4444",
+          "mainSeriesProperties.hollowCandleStyle.drawWick": true,
+          "mainSeriesProperties.hollowCandleStyle.wickUpColor": "#4ade80",
+          "mainSeriesProperties.hollowCandleStyle.wickDownColor": "#f87171",
+          // Bar fallback
+          "mainSeriesProperties.barStyle.upColor": "#22c55e",
+          "mainSeriesProperties.barStyle.downColor": "#ef4444",
         },
         studies_overrides: {
           "volume.volume.color.0": "#ef444480",
