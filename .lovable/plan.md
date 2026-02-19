@@ -1,113 +1,61 @@
 
-# Streamline Dashboard Charts + Admin Display Settings
 
-## Overview
+# Remove Grid Lines and Fix Dashboard Chart Spacing
 
-Make both chart widgets (LightweightChartWidget and TradingView fallback) display in a clean, minimalist style on the dashboard -- matching the aesthetic applied to the AURA MarketChartWidget. Add a new "Chart Display Settings" section in the existing Admin > Chart Settings tab to let admins toggle visual elements on/off.
+## Problem
+1. Grid lines still subtly visible in both chart widgets (opacity 0.03)
+2. Triple-nested Card wrappers create excessive whitespace around the chart area
+3. The chart doesn't fill its container properly -- too much padding between header and chart, and chart and container edges
 
-## What Changes
+## Changes
 
-### 1. LightweightChartWidget -- Clean Design (src/components/LightweightChartWidget.tsx)
+### 1. Remove Grid Lines Completely
 
-Apply the same minimalist treatment as the AURA chart:
-- **Grid lines**: reduce opacity to near-invisible (`hsl(var(--border) / 0.03)` instead of `0.1`)
-- **Right price scale**: hide border (`borderVisible: false`), keep scale visible for usability
-- **Time scale**: hide border (`borderVisible: false`)
-- **Crosshair**: reduce label visibility, use subtle styling
-- **Remove test markers**: delete the hard-coded "Test Point 1/2/3" markers (lines ~403-428) -- they are debug artifacts
-- **Candle colors**: keep current green/red scheme (already clean)
+**TradingViewWidget.tsx** (line 236-237): Change grid overrides from `rgba(255,255,255,0.03)` to `transparent`
 
-### 2. TradingView Fallback Widget -- Clean Design (src/components/TradingViewWidget.tsx)
+**LightweightChartWidget.tsx** (lines 182-183): Change grid colors from `hsl(var(--border) / 0.03)` to `transparent`
 
-Update the `new window.TradingView.widget({...})` configuration (line 218):
-- `hide_top_toolbar: true` (already false, change to true)
-- `hide_side_toolbar: true` (hide drawing tools)
-- `hide_legend: true`
-- `withdateranges: false` (remove date range buttons)
-- `studies: []` (remove RSI and ADX overlays by default)
-- `toolbar_bg: 'transparent'`
-- Add `overrides` for grid lines visibility and price line visibility:
-  ```
-  overrides: {
-    "paneProperties.vertGridProperties.color": "rgba(255,255,255,0.03)",
-    "paneProperties.horzGridProperties.color": "rgba(255,255,255,0.03)",
-    "scalesProperties.showSymbolLabels": false,
-    "mainSeriesProperties.priceLineVisible": false,
-  }
-  ```
+### 2. Remove Redundant Card Wrappers in Chart Widgets
 
-### 3. New Admin "Chart Display Settings" Component (src/components/admin/ChartDisplaySettings.tsx)
+**TradingViewWidget.tsx**: The component wraps everything in a `Card > CardContent` -- but when embedded inside CandlestickChart, this creates double Card nesting. Remove the Card wrapper entirely, return just the chart container div directly. The `className` prop (`border-0 shadow-none`) already tries to hide this Card but padding remains.
 
-Create a new admin component with toggleable options stored in the existing `chart_provider_settings` table (add a JSONB column `display_options`). Settings include:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Show grid lines | OFF | Vertical and horizontal grid |
-| Show price scale | ON | Right-side price axis |
-| Show time scale | ON | Bottom time axis |
-| Show volume | OFF | Volume bars |
-| Show studies (RSI/ADX) | OFF | Technical overlays |
-| Show toolbar | OFF | TradingView top toolbar |
-
-The component renders as a card with toggle switches, saving to `chart_provider_settings.display_options` as JSON.
-
-### 4. Database Schema Update
-
-Add a `display_options` JSONB column to `chart_provider_settings`:
-```sql
-ALTER TABLE chart_provider_settings
-ADD COLUMN IF NOT EXISTS display_options jsonb DEFAULT '{
-  "showGrid": false,
-  "showPriceScale": true,
-  "showTimeScale": true,
-  "showVolume": false,
-  "showStudies": false,
-  "showToolbar": false
-}'::jsonb;
+Before:
+```
+Card > CardContent > div.chartContainer
+```
+After:
+```
+div.flex-col > div.chartContainer (no Card, no CardContent)
 ```
 
-### 5. Wire Settings to Charts
+**LightweightChartWidget.tsx**: Same issue -- remove the Card/CardContent wrapper. Return the chart container directly.
 
-In `CandlestickChart.tsx`, fetch `display_options` alongside the existing `provider` query (line 131). Pass relevant options down to both `LightweightChartWidget` and `TradingViewWidget` as props.
+### 3. Reduce Padding in CandlestickChart Container
 
-- `LightweightChartWidget`: new prop `displayOptions` applied to chart config
-- `TradingViewWidget`: new prop `displayOptions` applied to widget init config
+**CandlestickChart.tsx** (line 332): Reduce the `CardContent` padding wrapping the chart area:
+- From: `pb-4 sm:pb-6 pt-4 sm:pt-6`
+- To: `p-2 sm:p-3` (minimal, uniform padding)
 
-### 6. Integrate in Admin Page (src/pages/Admin.tsx)
+This is where the actual "too much white space" comes from -- 24px top + 24px bottom padding on desktop.
 
-Add the new `ChartDisplaySettings` component inside the existing "chart-provider" tab content, right after `ChartProviderSettings`:
+### 4. Remove Fixed `minHeight: 500px` on LightweightChart Container
 
-```
-<TabsContent value="chart-provider">
-  <ChartProviderSettings />
-  <ChartDisplaySettings />    {/* NEW */}
-  {/* existing Dashboard Chart Mode Toggle card */}
-</TabsContent>
-```
+**LightweightChartWidget.tsx** (line 706): The chart container has `style={{ minHeight: '500px' }}` which prevents it from flexing to fill the parent. Change to use flex-1 instead, and set chart height dynamically via ResizeObserver (already exists in the code).
 
-### 7. Clean Up Emojis in ChartProviderSettings
+### 5. Remove Inner Border on TradingView Container
 
-Remove emojis from the existing `ChartProviderSettings` badge text:
-- `"TwelveData Active"` instead of `"✅ TwelveData Active"`
-- `"TradingView Fallback"` instead of `"⚠️ TradingView Fallback"`
-
-Also remove the emoji from Admin.tsx line 912 (`🔍` in the Realtime Diagnostic tab trigger).
+**TradingViewWidget.tsx** (line 367): Remove `border border-border rounded-lg` from the chart container div -- it adds visual clutter inside the already-bordered parent Card.
 
 ## Files Modified
 
-1. **`src/components/LightweightChartWidget.tsx`** -- Minimalist grid/scale/crosshair, remove test markers
-2. **`src/components/TradingViewWidget.tsx`** -- Clean widget config, accept displayOptions prop
-3. **`src/components/CandlestickChart.tsx`** -- Fetch and pass display_options to both chart widgets
-4. **`src/components/admin/ChartDisplaySettings.tsx`** -- NEW: Admin toggle panel for chart display options
-5. **`src/components/admin/ChartProviderSettings.tsx`** -- Remove emojis from badge text
-6. **`src/pages/Admin.tsx`** -- Import and render ChartDisplaySettings, remove emoji from diagnostic tab
-7. **SQL migration** -- Add `display_options` JSONB column to `chart_provider_settings`
+1. `src/components/TradingViewWidget.tsx` -- transparent grid, remove Card wrapper, remove inner border
+2. `src/components/LightweightChartWidget.tsx` -- transparent grid, remove Card wrapper, flex-1 sizing
+3. `src/components/CandlestickChart.tsx` -- reduce CardContent padding to p-2/p-3
 
-## What Does NOT Change
+## No Regressions
 
-- AURA MarketChartWidget (already clean)
-- Chart data fetching logic (REST/WebSocket)
-- Binance price feed
-- Asset mapping
-- Dashboard layout and one-screen philosophy
-- Credit system
+- Chart data fetching, WebSocket connections, and price updates are untouched
+- Trade levels overlay, header controls, asset selector all remain unchanged
+- AURA MarketChartWidget is not modified
+- Mobile layout and fullscreen dialog unaffected (they use the same CandlestickChart with compact mode)
+
