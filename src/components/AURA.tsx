@@ -297,6 +297,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const jobCompletedRef = useRef<Set<string>>(new Set());
   const batchContextRef = useRef<{instrument?: string; priceSummary?: string; indicatorSummary?: string} | null>(null);
   const sessionMemory = useRef<{ lastInstrument?: string; lastTimeframe?: string; lastFeature?: string }>({});
   const pendingCommands = useRef<string[]>([]);
@@ -1152,6 +1153,9 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               const chartAttachment = extractMarketAttachments(parsedPayload);
               const attachments = chartAttachment ? [chartAttachment] : undefined;
 
+              jobCompletedRef.current.add(jobId);
+              setTimeout(() => jobCompletedRef.current.delete(jobId), 5000);
+
               setMessages((prev) => [
                 ...prev.slice(0, -1),
                 { role: 'assistant', content: richContent, attachments },
@@ -1209,6 +1213,9 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 },
               };
               
+              jobCompletedRef.current.add(jobId);
+              setTimeout(() => jobCompletedRef.current.delete(jobId), 5000);
+
               setMessages((prev) => [
                 ...prev.slice(0, -1),
                 { role: 'assistant', content: errorRichContent },
@@ -1261,10 +1268,13 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         }
       }
 
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        { role: 'assistant', content: `✅ Requête lancée pour ${instrument}. Vous pouvez suivre la progression dans les notifications en bas à droite.` },
-      ]);
+      // Only show "request launched" if realtime hasn't already injected the result
+      if (!jobCompletedRef.current.has(jobId)) {
+        setMessages((prev) => [
+          ...prev.slice(0, -1),
+          { role: 'assistant', content: `✅ Requête lancée pour ${instrument}. En attente du résultat...` },
+        ]);
+      }
       toast({ title: 'Requête Lancée', description: `Votre analyse pour ${instrument} est en cours...` });
 
     } catch (error) {
