@@ -16,7 +16,7 @@ interface DashboardColumnCarouselProps {
 
 type ViewMode = 'list' | 'compact' | 'large';
 
-const ITEMS_MAP: Record<ViewMode, number> = { list: 5, compact: 3, large: 2 };
+const ITEMS_MAP: Record<ViewMode, number> = { list: 8, compact: 5, large: 3 };
 
 const CATEGORY_COLORS: Record<string, string> = {
   general: 'border-blue-500/50 text-blue-400',
@@ -82,7 +82,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
       return (
         <div
           key={item.id}
-          className="border border-border/30 rounded-lg px-3 py-2 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer flex items-center gap-2 flex-1 min-h-0"
+          className="border border-border/30 rounded-lg px-2.5 py-1.5 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer flex items-center gap-2 flex-1 min-h-0"
           onClick={openUrl}
         >
           <h4 className="text-xs font-semibold line-clamp-1 flex-1 min-w-0">{item.headline}</h4>
@@ -102,13 +102,13 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
           onClick={openUrl}
         >
           {item.image ? (
-            <img src={item.image} alt="" className="w-full h-24 object-cover rounded-t-lg" loading="lazy" />
+            <img src={item.image} alt="" className="w-full h-16 object-cover rounded-t-lg" loading="lazy" />
           ) : (
-            <ImagePlaceholder className="w-full h-24 rounded-t-lg" />
+            <ImagePlaceholder className="w-full h-16 rounded-t-lg" />
           )}
-          <div className="p-2.5 flex flex-col gap-1 flex-1 min-h-0">
-            <h4 className="text-sm font-semibold line-clamp-2">{item.headline}</h4>
-            {item.summary && <p className="text-xs text-muted-foreground line-clamp-2">{item.summary}</p>}
+          <div className="p-2 flex flex-col gap-0.5 flex-1 min-h-0">
+            <h4 className="text-xs font-semibold line-clamp-2">{item.headline}</h4>
+            {item.summary && <p className="text-xs text-muted-foreground line-clamp-1">{item.summary}</p>}
             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-auto">
               <span>{formatTime(item.datetime)}</span>
               <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', CATEGORY_COLORS[item.category])}>
@@ -125,7 +125,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
     return (
       <div
         key={item.id}
-        className="border border-border/30 rounded-lg p-2.5 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer flex-1 min-h-0 overflow-hidden flex items-start gap-2.5"
+        className="border border-border/30 rounded-lg px-2.5 py-1.5 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer flex-1 min-h-0 overflow-hidden flex items-start gap-2.5"
         onClick={openUrl}
       >
         {item.image ? (
@@ -134,8 +134,8 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
           <ImagePlaceholder className="w-10 h-10 rounded shrink-0" />
         )}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <h4 className="text-sm font-semibold line-clamp-2 mb-1">{item.headline}</h4>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <h4 className="text-xs font-medium line-clamp-1 mb-0.5">{item.headline}</h4>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{formatTime(item.datetime)}</span>
             <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', CATEGORY_COLORS[item.category])}>
               {item.category}
@@ -222,7 +222,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
         {/* Market Intelligence */}
         <TabsContent value="market-intel" className="flex-1 min-h-0 mt-2 overflow-hidden animate-fade-in">
           {/* Category filters + View mode toggle */}
-          <div className="flex items-center gap-1 mb-2 shrink-0">
+          <div className="flex items-center gap-1 mb-1 shrink-0">
             <div className="flex gap-1 flex-1 min-w-0">
               {['all', 'general', 'forex', 'crypto'].map(cat => (
                 <button
@@ -253,7 +253,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
           </div>
 
           {/* News items */}
-          <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col gap-1 overflow-hidden">
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
                 {t('dashboard:loading')}
@@ -268,7 +268,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between pt-2 shrink-0">
+          <div className="flex items-center justify-between pt-1 shrink-0">
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={currentPage === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>
               <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Prev
             </Button>
