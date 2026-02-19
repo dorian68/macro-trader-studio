@@ -184,7 +184,7 @@ const CandlestickChart = memo(function CandlestickChart({
       <Card className="gradient-card border border-border/50 shadow-medium rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Header Section - Integrated dashboard header */}
         {showHeader && (
-          <CardHeader className="pb-2 space-y-2 overflow-hidden shrink-0">
+          <CardHeader className="pb-1 space-y-2 overflow-hidden shrink-0">
             {/* Row 1: Trading Dashboard Title + Trading Controls & Price Widget */}
             {dashboardTitle && (
               <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-2 md:gap-4">
@@ -334,7 +334,7 @@ const CandlestickChart = memo(function CandlestickChart({
           </CardHeader>
         )}
 
-        <CardContent className="px-2 sm:px-3 pb-2 sm:pb-3 pt-0 flex-1 min-h-0 overflow-hidden">
+        <CardContent className="px-2 sm:px-3 pb-0 sm:pb-1 pt-0 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
             {!effectiveUseFallback && effectiveProvider === 'twelvedata' ? (
               <LightweightChartWidget
@@ -425,7 +425,7 @@ const CandlestickChart = memo(function CandlestickChart({
             </div>}
           </div>
 
-          {showHeader && <div className="mt-3 text-xs text-muted-foreground text-center hidden md:block">
+          {showHeader && <div className="mt-1 text-xs text-muted-foreground text-center hidden md:block">
             {!effectiveUseFallback ? 'Powered by TwelveData' : (hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`)}
           </div>}
         </CardContent>
