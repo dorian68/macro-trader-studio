@@ -329,7 +329,7 @@ const CandlestickChart = memo(function CandlestickChart({
           </CardHeader>
         )}
 
-        <CardContent className="pb-4 sm:pb-6 pt-4 sm:pt-6 flex-1 min-h-0 overflow-hidden">
+        <CardContent className="p-2 sm:p-3 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
             {!effectiveUseFallback && effectiveProvider === 'twelvedata' ? (
               <LightweightChartWidget
