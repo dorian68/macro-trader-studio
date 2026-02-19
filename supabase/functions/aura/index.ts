@@ -821,7 +821,7 @@ AURA Response (after fetching):
 Would you like me to:
 1. Generate a trade setup for BTC?
 2. Provide deeper technical analysis?
-3. Check macro commentary from ABCG Research?"
+3. Check macro analysis from ABCG Research?"
 
 ---
 

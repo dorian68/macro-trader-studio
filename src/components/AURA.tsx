@@ -860,7 +860,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       const dbFeature = featureType === 'trade_generator' ? 'AI Trade Setup' : 
                          featureType === 'macro_lab' ? 'Macro Commentary' : 'Report';
       const jobId = await createJob(
-        featureType === 'trade_generator' ? 'macro_commentary' : featureType === 'macro_lab' ? 'macro_commentary' : featureType,
+        featureType, // 'trade_generator' | 'macro_lab' | 'reports'
         instrument,
         requestPayload,
         dbFeature
@@ -996,8 +996,14 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         )
         .subscribe();
 
-      // Send HTTP request to n8n
-      console.log('📊 [AURA] Sending n8n request:', { jobId, instrument });
+      // Route to correct backend: macro-lab-proxy for trade_generator & macro_lab, n8n for reports
+      const MACRO_LAB_PROXY_URL = 'https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/macro-lab-proxy';
+      const N8N_REPORTS_URL = 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1';
+      const endpointUrl = (featureType === 'trade_generator' || featureType === 'macro_lab')
+        ? MACRO_LAB_PROXY_URL
+        : N8N_REPORTS_URL;
+
+      console.log('📊 [AURA] Sending request:', { jobId, instrument, endpoint: endpointUrl, featureType });
 
       try {
         const timeoutPromise = new Promise((_, reject) =>
@@ -1005,11 +1011,11 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         );
         
           const requestPromise = enhancedPostRequest(
-          'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+          endpointUrl,
           requestPayload,
           {
             enableJobTracking: true,
-            jobType: featureType === 'trade_generator' ? 'macro_commentary' : featureType === 'macro_lab' ? 'macro_commentary' : featureType,
+            jobType: featureType, // 'trade_generator' | 'macro_lab' | 'reports'
             instrument: instrument,
             feature: dbFeature,
             jobId: jobId
