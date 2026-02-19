@@ -881,7 +881,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
       }));
       
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 30000)
+        setTimeout(() => reject(new Error('timeout')), 90000)
       );
 
       const invokePromise = supabase.functions.invoke('aura', {
@@ -993,7 +993,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       parsedArgs = typeof args === 'string' ? JSON.parse(args) : args;
     } catch (e) {
       console.error("Failed to parse tool arguments:", e);
-      toast({ title: 'Erreur', description: 'Impossible de lancer la requête.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Unable to launch the request.', variant: 'destructive' });
       return;
     }
 
@@ -1462,18 +1462,18 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       if (!jobCompletedRef.current.has(jobId)) {
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { role: 'assistant', content: `✅ Requête lancée pour ${instrument}. En attente du résultat...` },
+          { role: 'assistant', content: `✅ Request launched for ${instrument}. Waiting for result...` },
         ]);
       }
-      toast({ title: 'Requête Lancée', description: `Votre analyse pour ${instrument} est en cours...` });
+      toast({ title: 'Request Launched', description: `Your analysis for ${instrument} is in progress...` });
 
     } catch (error) {
       console.error('❌ [AURA] Failed to launch job:', error);
       setMessages((prev) => [
         ...prev.slice(0, -1),
-        { role: 'assistant', content: `❌ Erreur lors du lancement de la requête.` },
+        { role: 'assistant', content: `❌ Error launching the request.` },
       ]);
-      toast({ title: 'Erreur', description: 'Impossible de lancer la requête.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Unable to launch the request.', variant: 'destructive' });
       setActiveJobId(null);
     }
   };
@@ -1695,7 +1695,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                   <div className="flex items-center gap-2 px-2 py-2">
                     <Loader2 className="h-4 w-4 animate-spin text-[#888]" />
                     <span className="text-sm text-[#888]">
-                      {activeJobId ? 'Lancement en cours...' : 'Analyzing...'}
+                      {activeJobId ? 'Launching...' : 'Analyzing...'}
                     </span>
                   </div>
                 </div>
