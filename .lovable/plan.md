@@ -1,90 +1,141 @@
 
 
-# AURA MCP: Enriched Tool Result Messages in Chat
+# AURA MCP Rendering Enforcement
 
-## Current State
+## Problem
 
-Tool results are **already posted as chat messages** with mini-widgets (Trade Card, Macro Card) and "Open Full View" buttons. The core flow works.
+When a tool completes, the chat message shows a generic "Analysis completed for EUR/USD" followed by a mini-widget and collapsible JSON. There is no natural language explanation of what the data means -- no interpretation of metrics, no contextual narrative, no strategy bullets.
 
-## What's Missing
+## Solution
 
-1. **No "View raw JSON" collapsible** on tool result messages
-2. **No elapsed time / metadata** shown on results
-3. **Error results** show text but no raw error JSON for debugging
-4. **Human summary** text could be richer (instrument + direction + confidence in one line)
+Add a **natural language summary generator** that reads the parsed response data and produces a structured, human-readable explanation. This sits between the existing `parseResponse()` call and the message injection -- no changes to routing, API calls, or backend logic.
 
-## Changes
+## Changes (single file: `src/components/AURA.tsx`)
 
-### 1. Extend the `Message` interface to carry raw data
+### 1. Add `generateNaturalSummary()` helper function
 
-Add an optional `rawJson` field and `meta` to the rich content type so the renderer can show a collapsible JSON block without changing the message shape.
+A pure function that takes `featureType` and `parsedData` and returns a multi-paragraph markdown string:
+
+**For Trade Generator:**
+- Paragraph 1: Instrument, direction, confidence, timeframe
+- Paragraph 2: Entry, SL, TP levels with context
+- Paragraph 3: Risk/reward ratio interpretation
+- Bullet points: strategy notes, risk factors if present
+
+Example output:
+```
+**Trade Setup: EUR/USD -- Long**
+
+AURA has identified a long opportunity on EUR/USD with 78% confidence on the 4h timeframe. The setup is based on a breakout strategy aligned with current macro conditions.
+
+**Levels:**
+- Entry: 1.0856
+- Stop Loss: 1.0820 (-36 pips)
+- Take Profit: 1.0940 (+84 pips)
+- Risk/Reward: 2.33
+
+**Strategy Notes:**
+- Momentum divergence detected on RSI
+- Price above 200 EMA on higher timeframe
+```
+
+**For Macro Lab:**
+- Paragraph 1: Executive summary (first 2-3 sentences)
+- Paragraph 2: Directional bias + confidence if available
+- Bullet points: Key drivers, fundamental factors
+
+**For Errors:**
+- Clear explanation of what went wrong
+- Actionable next steps
+
+### 2. Update display order in `renderMessageContent`
+
+Current order: summary -> metadata -> widget -> raw JSON
+
+New order (matching the spec):
+1. Natural language explanation (the new generated summary via `renderMarkdown`)
+2. MarketChartWidget (already rendered via `chartAttachments` -- move it BEFORE the mini-widget)
+3. Mini-widget (Trade Card / Macro Card) with stats
+4. Action buttons (Open Full View -- already in mini-widgets)
+5. Collapsible raw JSON (already present)
+
+The key change is rendering `chartAttachments` between the summary and the mini-widget, rather than after everything.
+
+### 3. Enhance `extractMarketAttachments` detection
+
+Add deeper scanning for data structures commonly returned:
+- Check for `time_series` key at any nesting level
+- Check for arrays of objects with `date`/`close` fields (generic time series)
+- Check for `backtest` objects containing `trades` arrays with entry/exit prices
+- Check for `entry`/`sl`/`tp` fields alongside OHLC data to add markers
+
+### 4. Update the completion handler (line 952)
+
+Replace the generic `summaryText` with the output of `generateNaturalSummary()`:
 
 ```typescript
-interface Message {
-  role: 'user' | 'assistant';
-  content: string | {
-    type: string;
-    data: any;
-    summary: string;
-    rawJson?: string;      // NEW: stringified raw response
-    meta?: {               // NEW: timing + feature info
-      featureId: string;
-      instrument: string;
-      elapsedMs?: number;
-    };
-  };
-  attachments?: Array<{ type: 'market_chart'; payload: any }>;
-}
+// Before
+const summaryText = `Analysis completed for ${instrument}`;
+
+// After  
+const summaryText = generateNaturalSummary(featureType, widgetData, instrument);
 ```
 
-### 2. Populate `rawJson` and `meta` on job completion (lines 890-912)
+## What does NOT change
 
-When building the `richContent` object after a successful job, add:
-- `rawJson`: `JSON.stringify(parsedPayload, null, 2)` (truncated to 100KB max)
-- `meta`: `{ featureId: featureType, instrument }`
+- Tool routing, `FEATURE_REGISTRY`, `resolveFeatureId()` -- untouched
+- API endpoints, `enhancedPostRequest`, `macro-lab-proxy` -- untouched
+- Realtime subscription logic -- untouched
+- Job badge system -- untouched
+- Mini-widget components (`AuraMiniTradeSetup`, `AuraMiniMacro`, `AuraMiniReport`) -- untouched
+- `MarketChartWidget` component -- untouched
+- Raw JSON collapsible -- untouched
+- localStorage persistence -- untouched
+- Input bar, message layout, fullscreen mode -- untouched
 
-### 3. Populate `rawJson` on job error (lines 934-951)
+## Technical Details
 
-When a job fails, post a rich error message instead of plain text:
-- `type: 'tool_error'`
-- `summary`: the existing error text
-- `rawJson`: stringified error payload if available
-- `meta`: feature + instrument info
+### `generateNaturalSummary(featureType, data, instrument)` logic
 
-### 4. Add "View raw JSON" collapsible to `renderMessageContent`
-
-Inside the rich content branch (lines 446-454), after the mini-widget, render a collapsible section:
-
+```text
+function generateNaturalSummary(featureType, data, instrument):
+  if featureType === 'trade_generator':
+    extract: instrument, direction, confidence, entry, sl, tp, rr, timeframe, strategy notes
+    build markdown with:
+      - H3: "Trade Setup: {instrument} -- {direction}"
+      - P1: confidence + timeframe context
+      - P2: levels table
+      - P3: risk/reward interpretation
+      - bullets: strategy notes, risk factors
+      
+  if featureType === 'macro_lab':
+    extract: executive_summary, directional_bias, confidence, key_drivers, fundamental_analysis
+    build markdown with:
+      - H3: "Macro Analysis: {instrument}"
+      - P1-P2: executive summary
+      - P3: bias + confidence
+      - bullets: key drivers
+      
+  if featureType === 'reports':
+    extract: title, executive_summary, sections
+    build markdown with summary paragraphs
+    
+  fallback: generic "Analysis completed" message
 ```
-[Collapsible trigger: "View raw JSON" with chevron]
-  [CollapsibleContent: <pre> block with monospace JSON, max-height 300px, overflow scroll]
+
+### Rendering order change in `renderMessageContent`
+
+```text
+Current:
+  renderContent() -> summary, metadata, mini-widget, raw JSON
+  chartAttachments (AFTER renderContent)
+
+New:
+  renderContent() -> natural language summary (via renderMarkdown), metadata
+  chartAttachments (MarketChartWidget) 
+  mini-widget (Trade Card / Macro Card)
+  raw JSON collapsible
 ```
 
-Uses the existing `@radix-ui/react-collapsible` already installed and exported from `src/components/ui/collapsible.tsx`.
-
-For large JSON (over 50KB), show "Raw JSON is large -- click to expand" with lazy rendering.
-
-### 5. Add metadata line to rich messages
-
-Below the summary text, show a subtle line:
-```
-Trade Generator | EUR/USD | completed in 12s
-```
-Using `text-xs text-muted-foreground` styling.
-
-## Files Modified
-
-| File | Change |
-|------|--------|
-| `src/components/AURA.tsx` | Extend Message interface, add rawJson/meta to rich content on completion/error, add Collapsible JSON viewer + metadata line in renderMessageContent |
-
-## No Regression Guarantees
-
-- Mini-widgets (Trade Card, Macro Card, Report Card) remain unchanged
-- "Open Full View" buttons remain unchanged
-- Message layout (left/right alignment, max-width, rounded) unchanged
-- Job badge system unchanged
-- Realtime subscription logic unchanged
-- Registry, endpoints, payload builders unchanged
-- localStorage conversation persistence unchanged (rawJson is included but capped)
+This requires moving `chartAttachments` rendering inside `renderContent()` for rich messages, placing it after the summary but before the mini-widget.
 
