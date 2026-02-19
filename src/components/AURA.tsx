@@ -1121,7 +1121,7 @@ Now provide a complete, structured technical analysis based on this data.`;
       toast({ title: t('aura.error'), description: errorMessage, variant: 'destructive' });
       setMessages((prev) => [
         ...prev.slice(0, -1),
-        { role: 'assistant', content: `❌ ${errorMessage}` },
+        { role: 'assistant', content: errorMessage },
       ]);
     } finally {
       setIsLoading(false);
@@ -1204,7 +1204,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         if (!collectOnly) {
           setMessages((prev) => [...prev, {
             role: 'assistant',
-            content: `📊 ${t('aura.fetchingData')} ${priceInstrument}...`
+            content: `${t('aura.fetchingData')} ${priceInstrument}...`
           }]);
         }
 
@@ -1228,7 +1228,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         );
 
         if (priceError || !priceData?.data || priceData.data.length === 0) {
-          const errorMsg = `⚠️ ${t('aura.dataFetchError')} ${priceInstrument}. ${priceError?.message || t('aura.noDataAvailable')}`;
+          const errorMsg = `${t('aura.dataFetchError')} ${priceInstrument}. ${priceError?.message || t('aura.noDataAvailable')}`;
           if (collectOnly && batchContextRef.current) {
             batchContextRef.current.priceSummary = errorMsg;
           } else {
@@ -1252,11 +1252,11 @@ Now provide a complete, structured technical analysis based on this data.`;
 
         setMessages((prev) => [...prev.slice(0, -1), {
           role: 'assistant',
-          content: `📊 **${t('aura.priceDataSuccess')} ${priceInstrument}**\n\n${priceInfo}\n\n${t('aura.analysisPrompt')}`
+          content: `**${t('aura.priceDataSuccess')} ${priceInstrument}**\n\n${priceInfo}\n\n${t('aura.analysisPrompt')}`
         }]);
         return;
       } catch (error) {
-        const errorMsg = `❌ ${t('aura.dataRetrievalFailed')}`;
+        const errorMsg = `${t('aura.dataRetrievalFailed')}`;
         if (collectOnly && batchContextRef.current) {
           batchContextRef.current.priceSummary = errorMsg;
         } else {
@@ -1277,7 +1277,7 @@ Now provide a complete, structured technical analysis based on this data.`;
 
         setMessages((prev) => [...prev, {
           role: 'assistant',
-          content: `📊 Fetching ${chartInstrument} chart (last ${lookbackHours}h, ${chartInterval} candles)...`
+          content: `Fetching ${chartInstrument} chart (last ${lookbackHours}h, ${chartInterval} candles)...`
         }]);
 
         const endDate = new Date();
@@ -1299,7 +1299,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         if (chartError || !chartData?.data || chartData.data.length === 0) {
           setMessages((prev) => [...prev.slice(0, -1), {
             role: 'assistant',
-            content: `⚠️ Could not fetch chart data for ${chartInstrument}. ${chartError?.message || 'No data available for this period.'}`
+            content: `Could not fetch chart data for ${chartInstrument}. ${chartError?.message || 'No data available for this period.'}`
           }]);
           return;
         }
@@ -1316,7 +1316,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         if (ohlcData.length === 0) {
           setMessages((prev) => [...prev.slice(0, -1), {
             role: 'assistant',
-            content: `⚠️ No valid OHLC data returned for ${chartInstrument}.`
+            content: `No valid OHLC data returned for ${chartInstrument}.`
           }]);
           return;
         }
@@ -1333,7 +1333,7 @@ Now provide a complete, structured technical analysis based on this data.`;
                               lookbackHours >= 24 ? `${Math.round(lookbackHours / 24)} day${Math.round(lookbackHours / 24) > 1 ? 's' : ''}` :
                               `${lookbackHours} hours`;
 
-        const summaryText = `📊 **${chartInstrument}** — Last ${lookbackLabel} (${chartInterval} candles)\n\n` +
+        const summaryText = `**${chartInstrument}** — Last ${lookbackLabel} (${chartInterval} candles)\n\n` +
           `**Current:** ${latestCandle.close.toFixed(latestCandle.close > 100 ? 2 : 5)} | ` +
           `**High:** ${periodHigh.toFixed(periodHigh > 100 ? 2 : 5)} | ` +
           `**Low:** ${periodLow.toFixed(periodLow > 100 ? 2 : 5)} | ` +
@@ -1359,7 +1359,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         console.error('Plot price chart error:', error);
         setMessages((prev) => [...prev.slice(0, -1), {
           role: 'assistant',
-          content: `❌ Failed to fetch chart data. Please try again.`
+          content: `Failed to fetch chart data. Please try again.`
         }]);
         return;
       }
@@ -1383,7 +1383,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         if (!collectOnly) {
           setMessages((prev) => [...prev, {
             role: 'assistant',
-            content: `📈 ${t('aura.fetchingData')} ${techInstrument} (${indicators.join(', ')}...`
+            content: `${t('aura.fetchingData')} ${techInstrument} (${indicators.join(', ')}...`
           }]);
         }
 
@@ -1395,7 +1395,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         );
 
         if (techError || !techData?.indicators) {
-          const errorMsg = `⚠️ ${t('aura.indicatorsError')} ${techInstrument}. ${techError?.message || t('aura.noDataAvailable')}`;
+          const errorMsg = `${t('aura.indicatorsError')} ${techInstrument}. ${techError?.message || t('aura.noDataAvailable')}`;
           if (collectOnly && batchContextRef.current) {
             batchContextRef.current.indicatorSummary = errorMsg;
           } else {
@@ -1409,7 +1409,7 @@ Now provide a complete, structured technical analysis based on this data.`;
           if (data.values && data.values.length > 0) {
             const latest = data.values[0];
             const value = latest[indicator];
-            indicatorSummary += `✅ **${indicator.toUpperCase()}**: ${value}\n`;
+            indicatorSummary += `**${indicator.toUpperCase()}**: ${value}\n`;
           }
         });
 
@@ -1421,11 +1421,11 @@ Now provide a complete, structured technical analysis based on this data.`;
 
         setMessages((prev) => [...prev.slice(0, -1), {
           role: 'assistant',
-          content: `📊 **Technical Indicators for ${techInstrument}**\n\n${indicatorSummary}\n\n✨ Would you like a full analysis of these indicators?`
+          content: `**Technical Indicators for ${techInstrument}**\n\n${indicatorSummary}\nWould you like a full analysis of these indicators?`
         }]);
         return;
       } catch (error) {
-        const errorMsg = "❌ Failed to retrieve technical indicators. Please try again.";
+        const errorMsg = "Failed to retrieve technical indicators. Please try again.";
         if (collectOnly && batchContextRef.current) {
           batchContextRef.current.indicatorSummary = errorMsg;
         } else {
@@ -1483,7 +1483,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         toast({ title: "Insufficient Credits", description: "You've run out of credits.", variant: "destructive" });
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { role: 'assistant', content: "❌ You've run out of credits. Please recharge to continue using AlphaLens." }
+          { role: 'assistant', content: "You've run out of credits. Please recharge to continue using AlphaLens." }
         ]);
         setActiveJobId(null);
         return;
@@ -1697,7 +1697,7 @@ Now provide a complete, structured technical analysis based on this data.`;
       if (!jobCompletedRef.current.has(jobId)) {
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { role: 'assistant', content: `✅ Request launched for ${instrument}. Waiting for result...` },
+          { role: 'assistant', content: `Request launched for ${instrument}. Waiting for result...` },
         ]);
       }
       // No toast — status shown in-chat
@@ -1706,7 +1706,7 @@ Now provide a complete, structured technical analysis based on this data.`;
       console.error('❌ [AURA] Failed to launch job:', error);
       setMessages((prev) => [
         ...prev.slice(0, -1),
-        { role: 'assistant', content: `❌ Error launching the request.` },
+        { role: 'assistant', content: `Error launching the request.` },
       ]);
       toast({ title: 'Error', description: 'Unable to launch the request.', variant: 'destructive' });
       setActiveJobId(null);
