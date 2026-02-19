@@ -302,7 +302,7 @@ export const FEATURE_REGISTRY: Record<FeatureId, FeatureEntry> = {
     endpoint: MACRO_LAB_PROXY_URL,
     creditType: 'ideas',
     dbFeature: 'AI Trade Setup',
-    buildPayload: ({ instrument, timeframe = '4h', riskLevel = 'medium', strategy = 'breakout', customNotes = '', jobId }) => {
+    buildPayload: ({ instrument, timeframe = '4h', riskLevel = 'medium', strategy = 'breakout', customNotes = '', jobId, userEmail }) => {
       const horizons = [HORIZON_BY_TIMEFRAME[timeframe] || 24];
       return {
         job_id: jobId,
@@ -310,6 +310,7 @@ export const FEATURE_REGISTRY: Record<FeatureId, FeatureEntry> = {
         mode: 'trade_generation',
         instrument,
         question: buildTradeQuestion({ instrument, timeframe, riskLevel, strategy, customNotes, horizons }),
+        user_email: userEmail || null,
         isTradeQuery: true,
         timeframe,
         riskLevel,

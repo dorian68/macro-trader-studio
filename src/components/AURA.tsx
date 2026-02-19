@@ -998,7 +998,14 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
     }
 
     const instrument = parsedArgs.instrument || '';
-    const timeframe = parsedArgs.timeframe || '4h';
+    // Normalize timeframe: LLM may return M15/M30/H1/H4 but registry expects 15min/30min/1h/4h
+    const rawTf = (parsedArgs.timeframe || '4h').toUpperCase();
+    const TIMEFRAME_ALIASES: Record<string, string> = {
+      'M15': '15min', 'M30': '30min', 'H1': '1h', 'H4': '4h',
+      '15M': '15min', '30M': '30min', '1H': '1h', '4H': '4h',
+      '15MIN': '15min', '30MIN': '30min',
+    };
+    const timeframe = TIMEFRAME_ALIASES[rawTf] || parsedArgs.timeframe || '4h';
     const riskLevel = parsedArgs.riskLevel || 'medium';
     const strategy = parsedArgs.strategy || 'breakout';
     const positionSize = parsedArgs.positionSize || '2';
@@ -1403,40 +1410,55 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
       console.log('📊 [AURA] Sending request:', { jobId, instrument, endpoint: endpointUrl, featureType });
 
-      try {
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('HTTP_TIMEOUT')), 25000)
-        );
-        
-          const requestPromise = enhancedPostRequest(
-          endpointUrl,
-          requestPayload,
-          {
-            enableJobTracking: true,
-            jobType: featureType, // 'trade_generator' | 'macro_lab' | 'reports'
-            instrument: instrument,
-            feature: dbFeature,
-            jobId: jobId
-          }
-        );
-        
-        await Promise.race([requestPromise, timeoutPromise]);
-      } catch (httpError: any) {
-        if (httpError.message === 'HTTP_TIMEOUT') {
-          console.log('⏱️ [AURA HTTP] Timeout HTTP (expected), continuing with Realtime listener...');
-        } else {
-          supabase.removeChannel(channel);
-          setMessages((prev) => [
-            ...prev.slice(0, -1),
-            { role: 'assistant', content: t('toasts:aura.cannotContactServer') },
-          ]);
-          toast({ title: t('toasts:aura.networkErrorTitle'), description: t('toasts:aura.cannotSendRequest'), variant: "destructive" });
-          setActiveJobId(null);
-          return;
+      // FIX: Don't race-timeout. Instead, fire the request and attach a background
+      // handler that updates the job on HTTP success (same as the page does).
+      // The Realtime listener above will pick up the job update.
+      const requestPromise = enhancedPostRequest(
+        endpointUrl,
+        requestPayload,
+        {
+          enableJobTracking: true,
+          jobType: featureType,
+          instrument: instrument,
+          feature: dbFeature,
+          jobId: jobId
         }
-      }
+      );
 
-      // Only show "request launched" if realtime hasn't already injected the result
+      // Background handler: when HTTP completes, update job in Supabase
+      // (mirrors ForecastTradeGenerator.tsx line 1877-1883)
+      requestPromise.then(async ({ response }) => {
+        try {
+          if (response.ok) {
+            const data = await response.json();
+            console.log('✅ [AURA HTTP] Response received for job:', jobId, 'status:', response.status);
+            // Update job — Realtime listener will fire and render the result
+            if (!jobCompletedRef.current.has(jobId)) {
+              await supabase.from('jobs').update({
+                status: 'completed',
+                response_payload: data
+              }).eq('id', jobId);
+              console.log('✅ [AURA] Job marked as completed via HTTP response:', jobId);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error('❌ [AURA HTTP] Non-OK response:', response.status, errorText.slice(0, 200));
+            if (!jobCompletedRef.current.has(jobId)) {
+              await supabase.from('jobs').update({ status: 'error' }).eq('id', jobId);
+            }
+          }
+        } catch (parseErr) {
+          console.error('❌ [AURA HTTP] Failed to process response:', parseErr);
+          if (!jobCompletedRef.current.has(jobId)) {
+            await supabase.from('jobs').update({ status: 'error' }).eq('id', jobId);
+          }
+        }
+      }).catch((httpError) => {
+        console.error('❌ [AURA HTTP] Request failed:', httpError);
+        // Network error — don't touch the channel, Realtime may still deliver
+      });
+
+      // Show "request launched" immediately (don't await the HTTP)
       if (!jobCompletedRef.current.has(jobId)) {
         setMessages((prev) => [
           ...prev.slice(0, -1),
