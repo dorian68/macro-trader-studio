@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { parseMarkdownToReact } from "@/lib/markdownParser";
 
 interface MacroCommentaryDisplayProps {
   data: any;
@@ -90,9 +91,9 @@ export function MacroCommentaryDisplay({ data, originalQuery }: MacroCommentaryD
             <CardTitle className="text-lg font-semibold">Executive Summary</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-foreground leading-relaxed break-words">
-              {executive_summary}
-            </p>
+            <div className="text-foreground leading-relaxed break-words">
+              {parseMarkdownToReact(executive_summary)}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -108,7 +109,7 @@ export function MacroCommentaryDisplay({ data, originalQuery }: MacroCommentaryD
               {fundamental_analysis.map((point: string, index: number) => (
                 <li key={index} className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 shrink-0" />
-                  <span className="text-foreground break-words">{point}</span>
+                  <span className="text-foreground break-words">{parseMarkdownToReact(point)}</span>
                 </li>
               ))}
             </ul>
@@ -197,7 +198,7 @@ export function MacroCommentaryDisplay({ data, originalQuery }: MacroCommentaryD
                 <CollapsibleContent className="mt-3">
                   <div className="bg-muted/30 p-4 rounded-lg break-words">
                     {typeof ai_insights_breakdown.toggle_gpt === 'string' 
-                      ? ai_insights_breakdown.toggle_gpt 
+                      ? parseMarkdownToReact(ai_insights_breakdown.toggle_gpt)
                       : JSON.stringify(ai_insights_breakdown.toggle_gpt, null, 2)}
                   </div>
                 </CollapsibleContent>
@@ -216,7 +217,7 @@ export function MacroCommentaryDisplay({ data, originalQuery }: MacroCommentaryD
                 <CollapsibleContent className="mt-3">
                   <div className="bg-muted/30 p-4 rounded-lg break-words">
                     {typeof ai_insights_breakdown.toggle_curated === 'string' 
-                      ? ai_insights_breakdown.toggle_curated 
+                      ? parseMarkdownToReact(ai_insights_breakdown.toggle_curated)
                       : JSON.stringify(ai_insights_breakdown.toggle_curated, null, 2)}
                   </div>
                 </CollapsibleContent>

@@ -3,6 +3,7 @@ import { useTypewriter } from "@/hooks/useTypewriter";
 import { MacroCommentaryDisplay } from "@/components/MacroCommentaryDisplay";
 import { Button } from "@/components/ui/button";
 import { FastForward } from "lucide-react";
+import { parseMarkdownToReact } from "@/lib/markdownParser";
 
 interface TypewriterRendererProps {
   content: string | object;
@@ -36,8 +37,8 @@ export function TypewriterRenderer({ content, originalQuery, isNew }: Typewriter
           </Button>
         </div>
       )}
-      <div className="whitespace-pre-wrap text-foreground text-sm leading-relaxed">
-        {shownText}
+      <div className="text-foreground text-sm leading-relaxed">
+        {parseMarkdownToReact(shownText)}
         {isAnimating && (
           <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
         )}
