@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, Maximize2, Minimize2, ArrowUpRight, Search } from 'lucide-react';
+import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
@@ -30,9 +31,21 @@ interface AURAProps {
   contextData?: import('@/lib/auraMessages').AURAContextData;
 }
 
+interface RichContent {
+  type: string;
+  data: any;
+  summary: string;
+  rawJson?: string;
+  meta?: {
+    featureId: string;
+    instrument: string;
+    elapsedMs?: number;
+  };
+}
+
 interface Message {
   role: 'user' | 'assistant';
-  content: string | { type: string; data: any; summary: string };
+  content: string | RichContent;
   attachments?: Array<{ type: 'market_chart'; payload: any }>;
 }
 
@@ -443,13 +456,60 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
         }
         return <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>;
       }
-      const rich = msg.content;
+      const rich = msg.content as RichContent;
       return (
         <div className="text-[15px] leading-relaxed">
           {rich.summary && <p className="mb-1">{rich.summary}</p>}
+          {/* Metadata line */}
+          {rich.meta && (
+            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+              <span>{rich.meta.featureId === 'trade_generator' ? 'Trade Generator' : rich.meta.featureId === 'macro_lab' ? 'Macro Labs' : 'Reports'}</span>
+              <span>•</span>
+              <span>{rich.meta.instrument}</span>
+              {rich.meta.elapsedMs != null && (
+                <>
+                  <span>•</span>
+                  <span>{(rich.meta.elapsedMs / 1000).toFixed(1)}s</span>
+                </>
+              )}
+            </p>
+          )}
           {rich.type === 'trade_setup' && <AuraMiniTradeSetup data={rich.data} />}
           {rich.type === 'macro_commentary' && <AuraMiniMacro data={rich.data} />}
           {rich.type === 'report' && <AuraMiniReport data={rich.data} />}
+          {rich.type === 'tool_error' && (
+            <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5 mt-2">
+              <p className="text-sm text-destructive font-medium">Tool Error</p>
+            </div>
+          )}
+          {/* Raw JSON collapsible */}
+          {rich.rawJson && (
+            <Collapsible className="mt-2">
+              <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+                <Code className="h-3 w-3" />
+                <span>{rich.rawJson.length > 50000 ? 'Raw JSON (large — click to expand)' : 'View raw JSON'}</span>
+                <ChevronDown className="h-3 w-3" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="relative mt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      navigator.clipboard.writeText(rich.rawJson!);
+                      toast({ title: 'Copied', description: 'JSON copied to clipboard' });
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  <pre className="text-xs font-mono bg-black/30 rounded-md p-3 overflow-auto max-h-[300px] whitespace-pre-wrap break-all text-muted-foreground">
+                    {rich.rawJson}
+                  </pre>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       );
     };
@@ -845,6 +905,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       }
 
       setActiveJobId(jobId);
+      const jobCreatedAt = Date.now();
       setJobBadges((prev) => [
         ...prev,
         { jobId, type: featureType, instrument, status: 'pending', createdAt: new Date() }
@@ -901,7 +962,25 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 macro_lab: 'macro_commentary',
                 reports: 'report',
               };
-              richContent = { type: typeMap[featureType], data: widgetData, summary: summaryText };
+
+              // Truncate rawJson to 100KB max
+              let rawJsonStr: string | undefined;
+              try {
+                const full = JSON.stringify(parsedPayload, null, 2);
+                rawJsonStr = full.length > 100_000 ? full.slice(0, 100_000) + '\n... (truncated)' : full;
+              } catch { /* ignore serialization errors */ }
+
+              richContent = {
+                type: typeMap[featureType],
+                data: widgetData,
+                summary: summaryText,
+                rawJson: rawJsonStr,
+                meta: {
+                  featureId: featureType,
+                  instrument,
+                  elapsedMs: Date.now() - jobCreatedAt,
+                },
+              };
 
               // Extract chart attachments
               const chartAttachment = extractMarketAttachments(parsedPayload);
@@ -940,10 +1019,33 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               else if (errorMsg.toLowerCase().includes('no data')) userMessage += t('toasts:aura.noDataError');
               else if (errorMsg.toLowerCase().includes('credit')) userMessage += t('toasts:aura.creditError');
               else userMessage += `Details: ${errorMsg}`;
+
+              // Build raw error JSON
+              let errorRawJson: string | undefined;
+              try {
+                errorRawJson = JSON.stringify({
+                  status: 'error',
+                  error_message: errorMsg,
+                  job_id: job.id,
+                  response_payload: job.response_payload,
+                }, null, 2);
+              } catch { /* ignore */ }
+
+              const errorRichContent: RichContent = {
+                type: 'tool_error',
+                data: null,
+                summary: userMessage,
+                rawJson: errorRawJson,
+                meta: {
+                  featureId: featureType,
+                  instrument,
+                  elapsedMs: Date.now() - jobCreatedAt,
+                },
+              };
               
               setMessages((prev) => [
                 ...prev.slice(0, -1),
-                { role: 'assistant', content: userMessage },
+                { role: 'assistant', content: errorRichContent },
               ]);
               
               toast({ title: t('toasts:aura.analysisFailedTitle'), description: errorMsg, variant: "destructive", duration: 7000 });
