@@ -5,7 +5,7 @@ import { useLoadingManager } from "@/hooks/useLoadingManager";
 
 interface LoadingContextType {
   createRequest: (
-    type: 'ai_trade_setup' | 'macro_commentary' | 'reports',
+    type: 'trade_generator' | 'macro_lab' | 'reports',
     instrument: string,
     requestContent: string,
     parameters?: any
@@ -53,12 +53,10 @@ export function GlobalLoadingProvider({ children }: GlobalLoadingProviderProps) 
     }));
 
     // Navigate to the correct page based on request type
-    const navigationMap = {
-      'ai_trade_setup': '/trade-generator',
-      'macro_commentary': '/macro-lab',
-      'reports': '/reports',
+    const navigationMap: Record<string, string> = {
+      'trade_generator': '/trade-generator',
       'macro_lab': '/macro-lab',
-      'trade_generator': '/trade-generator'
+      'reports': '/reports'
     };
 
     const targetPath = navigationMap[request.type as keyof typeof navigationMap];

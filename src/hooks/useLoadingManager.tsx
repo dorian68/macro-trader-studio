@@ -7,7 +7,7 @@ const { useState, useCallback } = React;
 
 interface LoadingRequest {
   id: string;
-  type: 'ai_trade_setup' | 'macro_commentary' | 'reports';
+  type: 'trade_generator' | 'macro_lab' | 'reports';
   instrument: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress: number;
@@ -33,8 +33,8 @@ export function useLoadingManager() {
     const startTime = new Date();
     // Dynamic estimation based on request type
     const estimationMinutes = {
-      'ai_trade_setup': 2,
-      'macro_commentary': 1.5,
+      'trade_generator': 2,
+      'macro_lab': 1.5,
       'reports': 3
     };
     const estimatedCompletion = new Date(Date.now() + (estimationMinutes[type] || 2) * 60000);

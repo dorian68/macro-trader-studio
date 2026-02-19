@@ -85,7 +85,7 @@ function extractMarketAttachments(payload: any): { type: 'market_chart'; payload
 
 interface AuraJobBadge {
   jobId: string;
-  type: 'ai_trade_setup' | 'macro_commentary' | 'reports';
+  type: 'trade_generator' | 'macro_lab' | 'reports';
   instrument: string;
   status: 'pending' | 'running' | 'completed' | 'error';
   createdAt: Date;
@@ -602,6 +602,31 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
     
     console.log('🚀 [AURA] Launching tool:', { functionName, instrument, parsedArgs, collectOnly });
     console.log('🧠 [AURA] Session memory updated:', sessionMemory.current);
+
+    // Dev-only telemetry (will be populated after featureType is resolved)
+    const logTelemetry = (resolvedFeatureType: string) => {
+      if (import.meta.env.DEV) {
+        const routeMap: Record<string, string> = {
+          'trade_generator': '/trade-generator',
+          'macro_lab': '/macro-lab',
+          'reports': '/reports'
+        };
+        const featureKeyMap: Record<string, string> = {
+          'trade_generator': 'TRADE_SETUP',
+          'macro_lab': 'MACRO_COMMENTARY',
+          'reports': 'REPORT'
+        };
+        const lastUserMsg = messages.length > 0 ? getMessageText(messages[messages.length - 1]) : '';
+        console.log('🔍 [AURA Telemetry]', {
+          intent_detected: functionName,
+          user_phrase: lastUserMsg.slice(0, 100),
+          resolved_feature_key: featureKeyMap[resolvedFeatureType] || resolvedFeatureType,
+          tool_called: functionName,
+          route_targeted: routeMap[resolvedFeatureType] || 'unknown',
+          legacy_alias_used: ['launch_ai_trade_setup', 'launch_macro_commentary'].includes(functionName)
+        });
+      }
+    };
     
     // Handle get_realtime_price separately
     if (functionName === 'get_realtime_price') {
@@ -752,16 +777,22 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
     }
 
     // Map tool function to feature type
-    let featureType: 'ai_trade_setup' | 'macro_commentary' | 'reports' = 'ai_trade_setup';
+    let featureType: 'trade_generator' | 'macro_lab' | 'reports' = 'trade_generator';
     let creditType: 'ideas' | 'queries' | 'reports' = 'ideas';
     
+    // Resolve legacy alias usage for telemetry
+    const legacyAliases = ['launch_ai_trade_setup', 'launch_macro_commentary'];
+    const isLegacyAlias = legacyAliases.includes(functionName);
+    
     switch (functionName) {
-      case 'launch_ai_trade_setup':
-        featureType = 'ai_trade_setup';
+      case 'launch_trade_generator':
+      case 'launch_ai_trade_setup': // Legacy alias
+        featureType = 'trade_generator';
         creditType = 'ideas';
         break;
-      case 'launch_macro_commentary':
-        featureType = 'macro_commentary';
+      case 'launch_macro_lab':
+      case 'launch_macro_commentary': // Legacy alias
+        featureType = 'macro_lab';
         creditType = 'queries';
         break;
       case 'launch_report':
@@ -789,9 +820,12 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         question: customNotes || `Analyze ${instrument}`
       };
 
-      if (functionName === 'launch_ai_trade_setup') {
+      // Log telemetry before launching
+      logTelemetry(featureType);
+
+      if (featureType === 'trade_generator') {
         requestPayload = {
-          type: "RAG",
+          type: "trade_generator",
           mode: "run",
           instrument,
           question: `Provide an institutional macro outlook and risks for ${instrument}, then a macro-grounded trade idea (entry/SL/TP).`,
@@ -802,15 +836,15 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
           strategy,
           customNotes
         };
-      } else if (functionName === 'launch_macro_commentary') {
+      } else if (featureType === 'macro_lab') {
         requestPayload = {
-          type: "RAG",
+          type: "macro_lab",
           mode: "run",
           instrument,
           question: `Provide comprehensive macro commentary for ${instrument}. ${customNotes}`,
           timeframe
         };
-      } else if (functionName === 'launch_report') {
+      } else if (featureType === 'reports') {
         requestPayload = {
           mode: "run",
           type: "reports",
@@ -821,12 +855,15 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         };
       }
 
+      // DB feature constraint: must be 'AI Trade Setup' | 'Macro Commentary' | 'Report'
+      // Routing type goes into request_payload.type
+      const dbFeature = featureType === 'trade_generator' ? 'AI Trade Setup' : 
+                         featureType === 'macro_lab' ? 'Macro Commentary' : 'Report';
       const jobId = await createJob(
-        featureType === 'ai_trade_setup' ? 'macro_commentary' : featureType,
+        featureType === 'trade_generator' ? 'macro_commentary' : featureType === 'macro_lab' ? 'macro_commentary' : featureType,
         instrument,
         requestPayload,
-        featureType === 'ai_trade_setup' ? 'AI Trade Setup' : 
-        featureType === 'macro_commentary' ? 'Macro Commentary' : 'Report'
+        dbFeature
       );
 
       const creditResult = await tryEngageCredit(creditType, jobId);
@@ -887,7 +924,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               let richContent: Message['content'];
               const summaryText = `✅ ${t('toasts:aura.analysisCompleted', { instrument })} 🎉`;
 
-              if (featureType === 'ai_trade_setup') {
+              if (featureType === 'trade_generator') {
                 // Try to extract final_answer for rich data
                 let tradeData = parsedPayload;
                 try {
@@ -902,7 +939,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 } catch (e) { /* use parsedPayload as-is */ }
                 
                 richContent = { type: 'trade_setup', data: tradeData, summary: summaryText };
-              } else if (featureType === 'macro_commentary') {
+              } else if (featureType === 'macro_lab') {
                 richContent = { type: 'macro_commentary', data: parsedPayload, summary: summaryText };
               } else {
                 richContent = { type: 'report', data: parsedPayload, summary: summaryText };
@@ -920,8 +957,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               toast({ 
                 title: t('toasts:aura.analysisCompletedTitle'), 
                 description: t('toasts:aura.analysisCompletedDescription', {
-                  type: featureType === 'ai_trade_setup' ? 'Trade Generator' :
-                        featureType === 'macro_commentary' ? 'Macro Labs' : 'report',
+                  type: featureType === 'trade_generator' ? 'Trade Generator' :
+                        featureType === 'macro_lab' ? 'Macro Labs' : 'report',
                   instrument
                 }),
                 duration: 5000
@@ -967,15 +1004,14 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
           setTimeout(() => reject(new Error('HTTP_TIMEOUT')), 25000)
         );
         
-        const requestPromise = enhancedPostRequest(
+          const requestPromise = enhancedPostRequest(
           'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
           requestPayload,
           {
             enableJobTracking: true,
-            jobType: featureType === 'ai_trade_setup' ? 'macro_commentary' : featureType,
+            jobType: featureType === 'trade_generator' ? 'macro_commentary' : featureType === 'macro_lab' ? 'macro_commentary' : featureType,
             instrument: instrument,
-            feature: featureType === 'ai_trade_setup' ? 'AI Trade Setup' : 
-                     featureType === 'macro_commentary' ? 'Macro Commentary' : 'Report',
+            feature: dbFeature,
             jobId: jobId
           }
         );
@@ -1221,9 +1257,9 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                     )}
                     onClick={() => {
                       if (badge.status === 'completed') {
-                        const routes = {
-                          ai_trade_setup: '/trade-generator',
-                          macro_commentary: '/macro-lab',
+                        const routes: Record<string, string> = {
+                          trade_generator: '/trade-generator',
+                          macro_lab: '/macro-lab',
                           reports: '/reports'
                         };
                         navigate(routes[badge.type]);

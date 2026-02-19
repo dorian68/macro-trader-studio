@@ -15,7 +15,7 @@ interface ActiveJob {
   instrument: string;
   status: 'pending' | 'running';
   createdAt: Date;
-  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
+  originatingFeature: 'trade-generator' | 'macro-lab' | 'reports';
   progressMessage?: string;
   userQuery?: string;
 }
@@ -27,7 +27,7 @@ interface CompletedJob {
   instrument: string;
   resultData: any;
   completedAt: Date;
-  originatingFeature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator';
+  originatingFeature: 'trade-generator' | 'macro-lab' | 'reports';
   progressMessage?: string;
   userQuery?: string;
 }
@@ -103,24 +103,24 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
   };
 
   // Map job to originating feature using request_payload.type for routing
-  const mapJobToOriginatingFeature = (job: any): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
+  const mapJobToOriginatingFeature = (job: any): 'trade-generator' | 'macro-lab' | 'reports' => {
     const effectiveType = getEffectiveType(job).toLowerCase();
     
-    // New Lab pages (check request_payload.type first)
+    // Check request_payload.type first (canonical routing)
     if (effectiveType === 'macro_lab') return 'macro-lab';
     if (effectiveType === 'trade_generator') return 'trade-generator';
     
-    // Legacy pages (fallback to feature-based routing)
+    // Fallback to feature-based routing (legacy DB values → new routes)
     const f = (job.feature || '').toLowerCase();
-    if (f === 'ai trade setup' || f === 'ai_trade_setup') return 'ai-setup';
-    if (f.includes('macro') || f.includes('commentary')) return 'macro-analysis';
+    if (f === 'ai trade setup' || f === 'ai_trade_setup' || f.includes('trade')) return 'trade-generator';
+    if (f.includes('macro') || f.includes('commentary')) return 'macro-lab';
     if (f.includes('report')) return 'reports';
     
-    return 'ai-setup'; // fallback
+    return 'trade-generator'; // fallback
   };
 
   // Legacy function for backward compatibility
-  const mapFeatureToOriginatingFeature = (feature: string): 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator' => {
+  const mapFeatureToOriginatingFeature = (feature: string): 'trade-generator' | 'macro-lab' | 'reports' => {
     return mapJobToOriginatingFeature({ feature });
   };
 
@@ -134,14 +134,12 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
   };
 
   // Map features to routes
-  const mapFeatureToRoute = (feature: 'ai-setup' | 'macro-analysis' | 'reports' | 'macro-lab' | 'trade-generator'): string => {
+  const mapFeatureToRoute = (feature: 'trade-generator' | 'macro-lab' | 'reports'): string => {
     switch (feature) {
-      case 'ai-setup': return '/ai-setup';
-      case 'macro-analysis': return '/macro-analysis';
-      case 'reports': return '/reports';
-      case 'macro-lab': return '/macro-lab';
       case 'trade-generator': return '/trade-generator';
-      default: return '/ai-setup';
+      case 'macro-lab': return '/macro-lab';
+      case 'reports': return '/reports';
+      default: return '/trade-generator';
     }
   };
 
@@ -329,12 +327,10 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
             
             // Show error toast with retry button
             const originatingFeature = mapFeatureToOriginatingFeature(updatedJob.feature || '');
-            const routeMap = {
-              'ai-setup': '/ai-setup',
-              'macro-analysis': '/macro-analysis',
-              'reports': '/reports',
-              'macro-lab': '/forecast-playground/macro-commentary',
-              'trade-generator': '/forecast-playground/trade-generator'
+            const routeMap: Record<string, string> = {
+              'trade-generator': '/trade-generator',
+              'macro-lab': '/macro-lab',
+              'reports': '/reports'
             };
             
             toast({

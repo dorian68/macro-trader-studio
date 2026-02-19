@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 export interface JobStatus {
   id: string;
-  type: 'ai_setup' | 'macro_commentary' | 'report';
+  type: 'trade_generator' | 'macro_lab' | 'report';
   status: 'pending' | 'running' | 'completed' | 'failed';
   title: string;
   progress?: number;
@@ -25,14 +25,14 @@ interface JobStatusCardProps {
 }
 
 const JOB_TYPE_LABELS = {
-  ai_setup: 'AI Trade Setup',
-  macro_commentary: 'Macro Commentary',
+  trade_generator: 'Trade Generator',
+  macro_lab: 'Macro Lab',
   report: 'Report Generation'
 };
 
 const JOB_TYPE_COLORS = {
-  ai_setup: 'bg-blue-100 text-blue-800',
-  macro_commentary: 'bg-green-100 text-green-800',
+  trade_generator: 'bg-blue-100 text-blue-800',
+  macro_lab: 'bg-green-100 text-green-800',
   report: 'bg-purple-100 text-purple-800'
 };
 
