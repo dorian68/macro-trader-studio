@@ -9,6 +9,7 @@ import { TradingViewWidget } from './TradingViewWidget';
 import LightweightChartWidget from './LightweightChartWidget';
 import { supabase } from '@/integrations/supabase/client';
 import { HybridSearchBar } from './HybridSearchBar';
+import { DisplayOptions, DEFAULT_DISPLAY_OPTIONS } from '@/types/chartDisplayOptions';
 interface TradeLevels {
   entry: number;
   stopLoss: number;
@@ -120,6 +121,7 @@ const CandlestickChart = memo(function CandlestickChart({
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [useFallback, setUseFallback] = useState(false);
   const [globalProvider, setGlobalProvider] = useState<'twelvedata' | 'tradingview'>('twelvedata');
+  const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
@@ -129,10 +131,13 @@ const CandlestickChart = memo(function CandlestickChart({
 
   useEffect(() => {
     const fetchProvider = async () => {
-      const { data } = await supabase.from('chart_provider_settings').select('provider').single();
+      const { data } = await supabase.from('chart_provider_settings').select('provider, display_options').single();
       if (data) {
         setGlobalProvider(data.provider as 'twelvedata' | 'tradingview');
         if (data.provider === 'tradingview') setUseFallback(true);
+        if (data.display_options) {
+          setDisplayOptions({ ...DEFAULT_DISPLAY_OPTIONS, ...(data.display_options as Partial<DisplayOptions>) });
+        }
       }
     };
     fetchProvider();
@@ -335,6 +340,7 @@ const CandlestickChart = memo(function CandlestickChart({
               <LightweightChartWidget
                 selectedSymbol={asset}
                 timeframe={timeframe}
+                displayOptions={displayOptions}
                 onPriceUpdate={(price) => {
                   setCurrentPrice(price);
                   setIsConnected(true);
@@ -349,6 +355,7 @@ const CandlestickChart = memo(function CandlestickChart({
               <TradingViewWidget
                 selectedSymbol={binanceSymbol}
                 timeframe={timeframe}
+                displayOptions={displayOptions}
                 onPriceUpdate={price => setCurrentPrice(price)}
                 className="border-0 shadow-none"
               />

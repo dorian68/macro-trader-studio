@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TrendingUp, BarChart3, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DisplayOptions, DEFAULT_DISPLAY_OPTIONS } from '@/types/chartDisplayOptions';
 
 declare global {
   interface Window {
@@ -18,6 +19,7 @@ interface TradingViewWidgetProps {
   onSymbolChange?: (symbol: string) => void;
   onPriceUpdate?: (price: string) => void;
   className?: string;
+  displayOptions?: DisplayOptions;
 }
 
 interface CombinedData {
@@ -62,7 +64,8 @@ const TradingViewWidget = memo(function TradingViewWidget({
   timeframe: propTimeframe,
   onSymbolChange,
   onPriceUpdate,
-  className = ""
+  className = "",
+  displayOptions = DEFAULT_DISPLAY_OPTIONS,
 }: TradingViewWidgetProps) {
   const [timeframe, setTimeframe] = useState<string>(propTimeframe || "1h");
   const [data, setData] = useState<CombinedData[]>([]);
@@ -221,6 +224,17 @@ const TradingViewWidget = memo(function TradingViewWidget({
       if (loadIdRef.current !== thisLoadId) return;
       // Map timeframe to TradingView intervals
       const interval = timeframe === '1m' ? '1' : timeframe === '5m' ? '5' : timeframe === '15m' ? '15' : timeframe === '30m' ? '30' : timeframe === '1h' ? '60' : timeframe === '4h' ? '240' : timeframe === 'D' ? 'D' : timeframe === 'W' ? 'W' : timeframe === 'M' ? 'M' : '60';
+
+      // Build studies array based on displayOptions
+      const studies: string[] = [];
+      if (displayOptions.showVolume) studies.push('Volume@tv-basicstudies');
+      if (displayOptions.showStudies) {
+        studies.push('RSI@tv-basicstudies');
+        studies.push('ADX@tv-basicstudies');
+      }
+
+      const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.06)' : 'transparent';
+
       // Initialize widget
       // @ts-ignore
       const widget = new window.TradingView.widget({
@@ -232,32 +246,32 @@ const TradingViewWidget = memo(function TradingViewWidget({
         style: '1',
         locale: 'en',
         enable_publishing: false,
-        hide_top_toolbar: true,
-        hide_side_toolbar: true,
+        hide_top_toolbar: !displayOptions.showToolbar,
+        hide_side_toolbar: !displayOptions.showPriceScale,
         hide_legend: true,
         allow_symbol_change: false,
         withdateranges: false,
-        studies: [],
+        studies,
         toolbar_bg: 'transparent',
         container_id: CONTAINER_ID,
         disabled_features: [
-          "header_widget",
-          "left_toolbar",
+          ...(displayOptions.showToolbar ? [] : ["header_widget"]),
+          ...(displayOptions.showPriceScale ? [] : ["left_toolbar"]),
           "timeline_marks",
           "control_bar",
-          "timeframes_toolbar",
+          ...(displayOptions.showTimeScale ? [] : ["timeframes_toolbar"]),
           "volume_force_overlay",
         ],
         loading_screen: { backgroundColor: "#0e1116", foregroundColor: "#0e1116" },
         overrides: {
-          // Grid removal — cover all known TradingView override key variants
-          "paneProperties.vertGridProperties.color": "transparent",
-          "paneProperties.horzGridProperties.color": "transparent",
-          "paneProperties.vertGridProperties.style": 0,
-          "paneProperties.horzGridProperties.style": 0,
-          "paneProperties.gridProperties.color": "transparent",
-          "paneProperties.gridProperties.style": 0,
-          "paneProperties.gridLinesMode": "none",
+          // Grid — conditionally visible
+          "paneProperties.vertGridProperties.color": gridColor,
+          "paneProperties.horzGridProperties.color": gridColor,
+          "paneProperties.vertGridProperties.style": displayOptions.showGrid ? 1 : 0,
+          "paneProperties.horzGridProperties.style": displayOptions.showGrid ? 1 : 0,
+          "paneProperties.gridProperties.color": gridColor,
+          "paneProperties.gridProperties.style": displayOptions.showGrid ? 1 : 0,
+          "paneProperties.gridLinesMode": displayOptions.showGrid ? "both" : "none",
           "paneProperties.crossHairProperties.style": 2,
           // Background
           "paneProperties.backgroundType": "solid",
@@ -292,7 +306,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
   // Load data when symbol or timeframe changes
   useEffect(() => {
     fetchData();
-  }, [currentSymbol, timeframe]);
+  }, [currentSymbol, timeframe, displayOptions]);
 
   // WebSocket for real-time Binance prices
   useEffect(() => {
@@ -419,9 +433,9 @@ const TradingViewWidget = memo(function TradingViewWidget({
         </div>
     </div>;
 }, (prevProps, nextProps) => {
-  // Only re-render if symbol or timeframe changes
   return prevProps.selectedSymbol === nextProps.selectedSymbol && 
-         prevProps.timeframe === nextProps.timeframe;
+         prevProps.timeframe === nextProps.timeframe &&
+         prevProps.displayOptions === nextProps.displayOptions;
 });
 
 export { TradingViewWidget };

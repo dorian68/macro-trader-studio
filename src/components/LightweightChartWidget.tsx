@@ -19,12 +19,14 @@ import {
   ISeriesApi, 
   CandlestickData, 
   CandlestickSeries,
+  HistogramSeries,
   UTCTimestamp
 } from 'lightweight-charts';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSymbolForAsset } from '@/lib/assetMapping';
+import { DisplayOptions, DEFAULT_DISPLAY_OPTIONS } from '@/types/chartDisplayOptions';
 
 interface LightweightChartWidgetProps {
   selectedSymbol: string;
@@ -32,6 +34,7 @@ interface LightweightChartWidgetProps {
   onPriceUpdate?: (price: string) => void;
   onFallback?: () => void;
   className?: string;
+  displayOptions?: DisplayOptions;
 }
 
 interface CachedChartData {
@@ -100,7 +103,8 @@ export default function LightweightChartWidget({
   timeframe,
   onPriceUpdate,
   onFallback,
-  className = ''
+  className = '',
+  displayOptions = DEFAULT_DISPLAY_OPTIONS,
 }: LightweightChartWidgetProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -172,14 +176,16 @@ export default function LightweightChartWidget({
     }
 
     try {
+      const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.06)' : 'transparent';
+
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: 'transparent' },
           textColor: 'hsl(var(--foreground))',
         },
         grid: {
-          vertLines: { color: 'transparent' },
-          horzLines: { color: 'transparent' },
+          vertLines: { color: gridColor },
+          horzLines: { color: gridColor },
         },
         width: chartContainerRef.current.clientWidth,
         height: 500,
@@ -187,9 +193,11 @@ export default function LightweightChartWidget({
           timeVisible: true,
           secondsVisible: false,
           borderVisible: false,
+          visible: displayOptions.showTimeScale,
         },
         rightPriceScale: {
           borderVisible: false,
+          visible: displayOptions.showPriceScale,
         },
         crosshair: {
           vertLine: { labelVisible: false },
@@ -246,6 +254,24 @@ export default function LightweightChartWidget({
       setError('Failed to initialize chart');
     }
   }, []); // ✅ Empty deps = run ONCE on mount, cleanup ONLY on unmount
+
+  // Apply display options changes dynamically
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.06)' : 'transparent';
+    chartRef.current.applyOptions({
+      grid: {
+        vertLines: { color: gridColor },
+        horzLines: { color: gridColor },
+      },
+      timeScale: {
+        visible: displayOptions.showTimeScale,
+      },
+      rightPriceScale: {
+        visible: displayOptions.showPriceScale,
+      },
+    });
+  }, [displayOptions]);
   
   // Reset chart data when instrument or timeframe changes (DO NOT re-create chart)
   useEffect(() => {
