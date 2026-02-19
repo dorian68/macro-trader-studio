@@ -85,13 +85,30 @@ const TradingViewWidget = memo(function TradingViewWidget({
   onSymbolChange,
   onPriceUpdate,
   className = "",
-  displayOptions = DEFAULT_DISPLAY_OPTIONS,
+  displayOptions: propDisplayOptions = DEFAULT_DISPLAY_OPTIONS,
 }: TradingViewWidgetProps) {
   const [timeframe, setTimeframe] = useState<string>(propTimeframe || "1h");
   const [data, setData] = useState<CombinedData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFallback, setHasFallback] = useState(false);
+  const [fetchedOptions, setFetchedOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
+
+  // Self-fetch admin settings if no explicit displayOptions provided
+  useEffect(() => {
+    if (propDisplayOptions !== DEFAULT_DISPLAY_OPTIONS) return;
+    supabase.from('chart_provider_settings')
+      .select('display_options')
+      .single()
+      .then(({ data }) => {
+        if (data?.display_options) {
+          setFetchedOptions({ ...DEFAULT_DISPLAY_OPTIONS, ...(data.display_options as Partial<DisplayOptions>) });
+        }
+      });
+  }, []);
+
+  // Use explicit props if provided, otherwise use fetched admin settings
+  const displayOptions = propDisplayOptions !== DEFAULT_DISPLAY_OPTIONS ? propDisplayOptions : fetchedOptions;
   const {
     toast
   } = useToast();
@@ -253,7 +270,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
         studies.push('ADX@tv-basicstudies');
       }
 
-      const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.06)' : 'transparent';
+      const gridColor = displayOptions.showGrid ? 'rgba(0,0,0,0.06)' : 'transparent';
 
       // Initialize widget
       // @ts-ignore
@@ -262,7 +279,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
         symbol: mapToTradingViewSymbol(currentSymbol),
         interval,
         timezone: 'Etc/UTC',
-        theme: 'dark',
+        theme: 'light',
         style: '1',
         locale: 'en',
         enable_publishing: false,
@@ -285,7 +302,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
           ...(displayOptions.showTimeScale ? [] : ["timeframes_toolbar"]),
           "volume_force_overlay",
         ],
-        loading_screen: { backgroundColor: "#0e1116", foregroundColor: "#0e1116" },
+        loading_screen: { backgroundColor: "#ffffff", foregroundColor: "#68b4bc" },
         overrides: {
           // Grid — conditionally visible
           "paneProperties.vertGridProperties.color": gridColor,
@@ -298,10 +315,10 @@ const TradingViewWidget = memo(function TradingViewWidget({
           "paneProperties.crossHairProperties.style": 2,
           // Background
           "paneProperties.backgroundType": "solid",
-          "paneProperties.background": "#0e1116",
+          "paneProperties.background": "#ffffff",
           // Scale & price line
           "scalesProperties.showSymbolLabels": false,
-          "scalesProperties.backgroundColor": "#0e1116",
+          "scalesProperties.backgroundColor": "#ffffff",
           "scalesProperties.lineColor": "transparent",
           // Price line
           "mainSeriesProperties.priceLineVisible": true,
@@ -349,6 +366,18 @@ const TradingViewWidget = memo(function TradingViewWidget({
             widget.activeChart().executeActionById("maximizeChart");
           } catch (e) {
             console.log('maximizeChart not available in this widget version');
+          }
+          // Ensure price scale is in Normal mode for full pip precision
+          try {
+            const chart = widget.activeChart();
+            const priceScale = chart.getPanes()[0].getRightPriceScales()[0];
+            priceScale.setMode(0); // Normal mode (not percentage/log)
+            chart.applyOverrides({
+              "scalesProperties.showSeriesLastValue": true,
+              "scalesProperties.showStudyLastValue": true,
+            });
+          } catch (e) {
+            console.log('Price scale config not available');
           }
         }
       });
@@ -471,7 +500,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
             className="absolute inset-0 [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&>div]:!m-0 [&>div]:!p-0"
           />
           {/* React-managed overlays - safe from innerHTML wipe */}
-          <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-card/80 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-foreground/80">
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-white/90">
             <span>{mapToTwelveDataSymbol(currentSymbol)}</span>
             <span className="text-muted-foreground">|</span>
             <span className="text-muted-foreground">{timeframe.toUpperCase()}</span>
