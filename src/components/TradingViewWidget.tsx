@@ -171,13 +171,19 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
   // Load TradingView widget via tv.js (more reliable in SPAs)
   const loadTradingViewFallback = async () => {
-    if (!chartContainerRef.current) return;
+    const container = chartContainerRef.current;
+    if (!container) return;
 
-    // Clear container and wait a bit for cleanup
-    chartContainerRef.current.innerHTML = '';
+    // Safe cleanup: remove children one-by-one instead of innerHTML
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
 
     // Small delay to ensure proper cleanup
     await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Guard: component may have unmounted during the delay
+    if (!chartContainerRef.current) return;
 
     // Create inner container for the chart with unique ID
     const chartEl = document.createElement('div');
