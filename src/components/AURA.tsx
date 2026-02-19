@@ -279,8 +279,18 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     const flushList = () => {
       if (listItems.length > 0) {
         elements.push(
-          <ul key={`list-${elements.length}`} className="list-disc list-inside space-y-1 my-1">
-            {listItems.map((item, i) => <li key={i} className="text-sm">{renderInline(item)}</li>)}
+          <ul key={`list-${elements.length}`} className={cn(
+            isFullscreen 
+              ? "list-none space-y-2 my-2 pl-0" 
+              : "list-disc list-inside space-y-1 my-1"
+          )}>
+            {listItems.map((item, i) => (
+              <li key={i} className={cn(
+                isFullscreen 
+                  ? "text-[15px] leading-relaxed text-[#c8c8c8] before:content-['•'] before:mr-3 before:text-[#555]" 
+                  : "text-sm"
+              )}>{renderInline(item)}</li>
+            ))}
           </ul>
         );
         listItems = [];
@@ -288,7 +298,6 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     };
 
     const renderInline = (line: string): React.ReactNode => {
-      // Bold: **text**
       const parts = line.split(/(\*\*[^*]+\*\*)/g);
       return parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**')) {
@@ -299,39 +308,42 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     };
 
     lines.forEach((line, idx) => {
-      // Headers
       if (line.startsWith('### ')) {
         flushList();
-        elements.push(<h4 key={idx} className="text-sm font-bold mt-2 mb-1">{renderInline(line.slice(4))}</h4>);
+        elements.push(<h4 key={idx} className={cn(
+          isFullscreen ? "text-[15px] font-semibold mt-3 mb-1 text-white" : "text-sm font-bold mt-2 mb-1"
+        )}>{renderInline(line.slice(4))}</h4>);
       } else if (line.startsWith('## ')) {
         flushList();
-        elements.push(<h3 key={idx} className="text-base font-bold mt-3 mb-1">{renderInline(line.slice(3))}</h3>);
+        elements.push(<h3 key={idx} className={cn(
+          isFullscreen ? "text-base font-semibold mt-4 mb-1.5 text-white" : "text-base font-bold mt-3 mb-1"
+        )}>{renderInline(line.slice(3))}</h3>);
       } else if (line.startsWith('# ')) {
         flushList();
-        elements.push(<h2 key={idx} className="text-lg font-bold mt-3 mb-1">{renderInline(line.slice(2))}</h2>);
+        elements.push(<h2 key={idx} className={cn(
+          isFullscreen ? "text-lg font-semibold mt-4 mb-1.5 text-white" : "text-lg font-bold mt-3 mb-1"
+        )}>{renderInline(line.slice(2))}</h2>);
       }
-      // List items
       else if (line.match(/^[-•]\s/)) {
         listItems.push(line.replace(/^[-•]\s/, ''));
       }
-      // Numbered list
       else if (line.match(/^\d+\.\s/)) {
         listItems.push(line.replace(/^\d+\.\s/, ''));
       }
-      // Empty line
       else if (line.trim() === '') {
         flushList();
-        elements.push(<div key={idx} className="h-2" />);
+        elements.push(<div key={idx} className={isFullscreen ? "h-3" : "h-2"} />);
       }
-      // Regular paragraph
       else {
         flushList();
-        elements.push(<p key={idx} className="text-sm leading-relaxed">{renderInline(line)}</p>);
+        elements.push(<p key={idx} className={cn(
+          isFullscreen ? "text-[15px] leading-relaxed text-[#c8c8c8]" : "text-sm leading-relaxed"
+        )}>{renderInline(line)}</p>);
       }
     });
     flushList();
-    return <div className="space-y-0.5">{elements}</div>;
-  }, []);
+    return <div className={cn(isFullscreen ? "space-y-1.5" : "space-y-0.5")}>{elements}</div>;
+  }, [isFullscreen]);
 
   // ===== MINI-WIDGET COMPONENTS =====
   const AuraMiniTradeSetup = ({ data }: { data: any }) => {
@@ -1045,17 +1057,17 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       )}
 
       <div className={cn(
-        "fixed border-l border-border shadow-2xl flex flex-col transition-all duration-300",
+       "fixed shadow-2xl flex flex-col transition-all duration-300",
         isFullscreen
-          ? "inset-0 z-[10004] bg-[#0f1117] animate-in fade-in slide-in-from-bottom-4"
-          : "right-0 top-0 h-full w-full md:w-1/3 z-40 bg-background"
+          ? "inset-0 z-[10004] bg-[#0e1116] animate-in fade-in slide-in-from-bottom-4 duration-300"
+          : "right-0 top-0 h-full w-full md:w-1/3 z-40 bg-background border-l border-border"
       )}>
         {/* Header */}
         <CardHeader className={cn(
-          "border-b shrink-0",
+          "shrink-0",
           isFullscreen 
-            ? "bg-[#0f1117] border-white/5" 
-            : "bg-gradient-to-r from-primary/10 via-primary/5 to-background"
+            ? "bg-[#0e1116] border-b border-white/[0.03]" 
+            : "border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background"
         )}>
           <div className={cn("flex items-start justify-between", isFullscreen && "max-w-5xl mx-auto w-full")}>
             <div className="flex items-center gap-3">
@@ -1114,17 +1126,20 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         <ScrollArea className={cn("flex-1", isFullscreen ? "px-8 py-6" : "p-4")} ref={scrollRef}>
           <div className={cn(isFullscreen && "max-w-5xl mx-auto")}>
             {messages.length === 0 && (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
+              <div className={cn("space-y-4", isFullscreen && "flex flex-col items-center justify-center min-h-[50vh]")}>
+                <p className={cn(
+                  "text-muted-foreground",
+                  isFullscreen ? "text-base text-center text-[#888]" : "text-sm"
+                )}>
                   Your contextual market intelligence companion for {context}.
                 </p>
                 
                 <div className="flex justify-center">
                   <Button
-                    variant="outline"
+                    variant={isFullscreen ? "ghost" : "outline"}
                     size="sm"
                     onClick={() => setShowCollectivePanel(!showCollectivePanel)}
-                    className="gap-2"
+                    className={cn("gap-2", isFullscreen && "text-[#888] hover:text-white border-0")}
                   >
                     <Globe className="h-4 w-4" />
                     {showCollectivePanel ? 'Hide' : 'Show'} Collective Intelligence
@@ -1140,14 +1155,20 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                   />
                 )}
                 
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground">Quick Actions:</p>
+                <div className={cn("space-y-2", isFullscreen && "w-full max-w-2xl")}>
+                  <p className={cn(
+                    "font-semibold text-muted-foreground",
+                    isFullscreen ? "text-sm text-[#666]" : "text-xs"
+                  )}>Quick Actions:</p>
                   {quickActions.map((action, idx) => (
                     <Button
                       key={idx}
-                      variant="outline"
+                      variant={isFullscreen ? "ghost" : "outline"}
                       size="sm"
-                      className="w-full justify-start text-left h-auto py-2 px-3"
+                      className={cn(
+                        "w-full justify-start text-left h-auto py-2 px-3",
+                        isFullscreen && "text-[#888] hover:text-white hover:bg-white/5 border-0"
+                      )}
                       onClick={() => handleQuickAction(action)}
                     >
                       {action}
@@ -1157,21 +1178,27 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className={cn("space-y-4", isFullscreen && "space-y-6")}>
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
                   className={cn(
-                    'flex animate-in fade-in-50 duration-200',
+                    'flex animate-in fade-in-50 duration-300',
                     msg.role === 'user' ? 'justify-end' : 'justify-start'
                   )}
                 >
                   <div
                     className={cn(
-                      isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-2xl px-4 py-3',
-                      msg.role === 'user'
+                      // Fullscreen: assistant = no bubble, user = subtle bubble
+                      isFullscreen
+                        ? msg.role === 'user'
+                          ? 'max-w-[70%] rounded-2xl px-5 py-3 bg-[#1a1f1e] text-white'
+                          : 'w-full text-[#c8c8c8]'
+                        : 'max-w-[80%] rounded-2xl px-4 py-3',
+                      // Non-fullscreen colors
+                      !isFullscreen && (msg.role === 'user'
                         ? 'bg-[#2f3e36] text-white'
-                        : 'bg-[#212121] text-[#d1d1d1]'
+                        : 'bg-[#212121] text-[#d1d1d1]')
                     )}
                   >
                     {renderMessageContent(msg)}
@@ -1221,9 +1248,17 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-4 py-2 flex items-center gap-2">
+                  <div className={cn(
+                    "flex items-center gap-2",
+                    isFullscreen 
+                      ? "px-0 py-2" 
+                      : "bg-muted rounded-lg px-4 py-2"
+                  )}>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">
+                    <span className={cn(
+                      "text-sm",
+                      isFullscreen ? "text-[#888]" : "text-muted-foreground"
+                    )}>
                       {activeJobId ? 'Lancement en cours...' : 'Analyzing...'}
                     </span>
                   </div>
@@ -1250,10 +1285,10 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
         {/* Input */}
         <div className={cn(
-          "p-4 border-t shrink-0",
+          "shrink-0",
           isFullscreen 
-            ? "border-white/5 bg-[#0f1117]" 
-            : "border-border bg-card"
+            ? "px-4 pb-8 pt-4 bg-[#0e1116]" 
+            : "p-4 border-t border-border bg-card"
         )}>
           <form onSubmit={handleSubmit} className={cn(
             "flex gap-2 items-center",
@@ -1262,10 +1297,15 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
             <div className={cn(
               "flex-1 flex items-center gap-2",
               isFullscreen 
-                ? "rounded-full bg-[#1a1d27] border-0 shadow-lg px-4 h-14" 
+                ? "rounded-full bg-[#161b22] border-0 shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14" 
                 : ""
             )}>
-              {isFullscreen && <Search className="h-4 w-4 text-muted-foreground shrink-0" />}
+              {isFullscreen && <Search className="h-4 w-4 text-[#555] shrink-0" />}
+              {isFullscreen && (
+                <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#888] border-0 shrink-0 px-2 py-0.5">
+                  AURA v2
+                </Badge>
+              )}
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1273,7 +1313,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 disabled={isLoading}
                 className={cn(
                   "flex-1",
-                  isFullscreen && "border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base"
+                  isFullscreen && "border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base placeholder:text-white/30"
                 )}
               />
             </div>
