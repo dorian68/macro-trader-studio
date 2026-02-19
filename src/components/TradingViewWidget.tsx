@@ -302,7 +302,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
           ...(displayOptions.showTimeScale ? [] : ["timeframes_toolbar"]),
           "volume_force_overlay",
         ],
-        loading_screen: { backgroundColor: "#ffffff", foregroundColor: "#68b4bc" },
+        loading_screen: { backgroundColor: "transparent", foregroundColor: "#68b4bc" },
         overrides: {
           // Grid — conditionally visible
           "paneProperties.vertGridProperties.color": gridColor,
@@ -313,12 +313,8 @@ const TradingViewWidget = memo(function TradingViewWidget({
           "paneProperties.gridProperties.style": displayOptions.showGrid ? 1 : 0,
           "paneProperties.gridLinesMode": displayOptions.showGrid ? "both" : "none",
           "paneProperties.crossHairProperties.style": 2,
-          // Background
-          "paneProperties.backgroundType": "solid",
-          "paneProperties.background": "#ffffff",
           // Scale & price line
           "scalesProperties.showSymbolLabels": false,
-          "scalesProperties.backgroundColor": "#ffffff",
           "scalesProperties.lineColor": "transparent",
           // Price line
           "mainSeriesProperties.priceLineVisible": true,

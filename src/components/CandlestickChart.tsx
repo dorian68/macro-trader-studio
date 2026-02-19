@@ -144,9 +144,12 @@ const CandlestickChart = memo(function CandlestickChart({
   }, []);
 
   // Reset fallback when asset or timeframe changes - give TwelveData another try
+  // But NOT when admin has set provider to tradingview (keep TradingView active for pip precision)
   useEffect(() => {
-    setUseFallback(false);
-  }, [asset, timeframe]);
+    if (globalProvider !== 'tradingview') {
+      setUseFallback(false);
+    }
+  }, [asset, timeframe, globalProvider]);
 
   // Prix de fallback mis à jour (utilisés seulement en attendant WebSocket)
   useEffect(() => {
