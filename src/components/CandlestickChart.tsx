@@ -194,7 +194,7 @@ const CandlestickChart = memo(function CandlestickChart({
             {dashboardTitle && (
               <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-2 md:gap-4">
                 {/* Left: Dashboard Title - hidden on mobile for compact layout */}
-                <div className="hidden md:flex items-center gap-3">
+                <div className="flex items-center gap-3">
                   <div className="gradient-primary p-2 sm:p-3 rounded-xl shadow-glow-primary shrink-0">
                     <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
@@ -237,30 +237,6 @@ const CandlestickChart = memo(function CandlestickChart({
                       </SelectContent>
                     </Select>
 
-                    {/* Mobile-only: Search toggle + Fullscreen */}
-                    {showSearchAndChips && onAssetSelect && (
-                      <button
-                        onClick={() => setShowMobileSearch(prev => !prev)}
-                        className={cn(
-                          "md:hidden p-2 rounded-lg border transition-smooth touch-manipulation min-h-[36px] min-w-[36px] flex items-center justify-center",
-                          showMobileSearch
-                            ? "bg-primary/20 border-primary/40 text-primary"
-                            : "bg-background/50 border-border/30 text-muted-foreground hover:text-foreground"
-                        )}
-                        aria-label="Toggle search"
-                      >
-                        <Search className="h-4 w-4" />
-                      </button>
-                    )}
-                    {onFullscreenToggle && (
-                      <button
-                        onClick={onFullscreenToggle}
-                        className="md:hidden p-2 rounded-lg border bg-background/50 border-border/30 text-muted-foreground hover:text-foreground transition-smooth touch-manipulation min-h-[36px] min-w-[36px] flex items-center justify-center"
-                        aria-label="Fullscreen chart"
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                      </button>
-                    )}
                   </div>
 
                   {/* Bottom row: Price Widget */}
@@ -295,10 +271,7 @@ const CandlestickChart = memo(function CandlestickChart({
 
             {/* Row 2: HybridSearchBar - hidden on mobile by default, toggle via search icon */}
             {showSearchAndChips && onAssetSelect && allAssets && (
-              <div className={cn(
-                "w-full",
-                showMobileSearch ? "block" : "hidden md:block"
-              )}>
+              <div className="w-full">
                 <HybridSearchBar
                   assets={allAssets}
                   selectedAsset={selectedAsset || asset}
@@ -312,10 +285,7 @@ const CandlestickChart = memo(function CandlestickChart({
 
             {/* Row 3: Popular Assets Selector - hidden on mobile by default, toggle via search icon */}
             {showSearchAndChips && allAssets && onAssetSelect && (
-              <div className={cn(
-                "w-full -mx-2 sm:mx-0",
-                showMobileSearch ? "block" : "hidden md:block"
-              )}>
+              <div className="w-full -mx-2 sm:mx-0">
                 <div className="flex gap-2 overflow-x-auto pb-0 px-2 sm:px-0 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {allAssets.map((assetItem) => (
                     <button
@@ -431,7 +401,7 @@ const CandlestickChart = memo(function CandlestickChart({
             </div>}
           </div>
 
-          {showHeader && <div className="mt-1 text-xs text-muted-foreground text-center hidden md:block">
+          {showHeader && <div className="mt-1 text-xs text-muted-foreground text-center">
             {!effectiveUseFallback ? 'Powered by TwelveData' : (hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`)}
           </div>}
         </CardContent>

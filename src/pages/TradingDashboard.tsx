@@ -255,7 +255,7 @@ export default function TradingDashboard() {
     >
 
       {/* Main viewport-locked content */}
-      <div className="h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col gap-0.5 md:h-full md:gap-2">
+      <div className="h-full flex flex-col gap-2">
         {/* Row 1: Chart + Nav Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch flex-1 min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
@@ -264,7 +264,7 @@ export default function TradingDashboard() {
               forceMode={sessionChartMode}
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
               showHeader={true}
-              compact={isMobile}
+              compact={false}
               height={350}
               tradeLevels={activeTradeLevels}
               onLevelUpdate={(type, value) => {
@@ -303,11 +303,11 @@ export default function TradingDashboard() {
               className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
               onClick={() => navigate('/trade-generator')}
             >
-              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center">
-                <div className="gradient-primary p-1 rounded-lg shrink-0">
-                  <Zap className="h-3.5 w-3.5 text-white" />
+              <CardContent className="p-3 flex flex-col items-center justify-center gap-1 text-center">
+                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
+                  <Zap className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-[10px] font-semibold text-foreground leading-tight">{t('dashboard:trading.aiTradeSetup')}</h3>
+                <h3 className="text-xs font-semibold text-foreground leading-tight">{t('dashboard:trading.aiTradeSetup')}</h3>
               </CardContent>
             </Card>
 
@@ -316,11 +316,11 @@ export default function TradingDashboard() {
               className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
               onClick={() => navigate('/macro-lab')}
             >
-              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center">
-                <div className="gradient-primary p-1 rounded-lg shrink-0">
-                  <Globe className="h-3.5 w-3.5 text-white" />
+              <CardContent className="p-3 flex flex-col items-center justify-center gap-1 text-center">
+                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
+                  <Globe className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-[10px] font-semibold text-foreground leading-tight">{t('dashboard:trading.macroCommentary')}</h3>
+                <h3 className="text-xs font-semibold text-foreground leading-tight">{t('dashboard:trading.macroCommentary')}</h3>
               </CardContent>
             </Card>
 
@@ -329,23 +329,17 @@ export default function TradingDashboard() {
               className="gradient-card border-primary/20 cursor-pointer active:scale-[0.96] transition-all touch-manipulation"
               onClick={() => navigate('/reports')}
             >
-              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center">
-                <div className="gradient-primary p-1 rounded-lg shrink-0">
-                  <FileText className="h-3.5 w-3.5 text-white" />
+              <CardContent className="p-3 flex flex-col items-center justify-center gap-1 text-center">
+                <div className="gradient-primary p-1.5 rounded-lg shrink-0">
+                  <FileText className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-[10px] font-semibold text-foreground leading-tight">{t('dashboard:trading.reports')}</h3>
+                <h3 className="text-xs font-semibold text-foreground leading-tight">{t('dashboard:trading.reports')}</h3>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
 
-      {/* Below the fold - scroll to see */}
-      <AssetInfoCard
-        symbol={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
-        className="w-full md:hidden mt-2"
-      />
-      <MarketNewsCollapsible className="w-full md:hidden mt-2" />
 
       {/* SECTION 3: Normal width - Navigation Cards, Job Status */}
       <div className="space-y-4 sm:space-y-6">
