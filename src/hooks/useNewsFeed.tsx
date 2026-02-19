@@ -18,7 +18,7 @@ interface NewsCache {
   timestamp: number;
 }
 
-export function useNewsFeed(initialCategory: string = 'general') {
+export function useNewsFeed(initialCategory: string = 'all') {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsCache, setNewsCache] = useState<Map<string, NewsCache>>(new Map());
   const [currentCategory, setCurrentCategory] = useState(initialCategory);

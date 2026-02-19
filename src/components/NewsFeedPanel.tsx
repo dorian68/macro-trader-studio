@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
+  { id: 'all', label: 'All', color: 'bg-primary/20' },
   { id: 'general', label: 'General', color: 'bg-gray-500/20' },
   { id: 'forex', label: 'Forex', color: 'bg-blue-500/20' },
   { id: 'crypto', label: 'Crypto', color: 'bg-purple-500/20' },
@@ -20,6 +21,7 @@ const CATEGORIES = [
 ] as const;
 
 const CATEGORY_COLORS: Record<string, string> = {
+  all: 'bg-primary/20 text-primary border-primary/30',
   general: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
   forex: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   crypto: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
@@ -37,7 +39,7 @@ export function NewsFeedPanel() {
   
   // Get preferred category from localStorage
   const [selectedCategory, setSelectedCategory] = useState<string>(() => {
-    return localStorage.getItem('news_preferred_category') || 'general';
+    return localStorage.getItem('news_preferred_category') || 'all';
   });
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -149,7 +151,7 @@ export function NewsFeedPanel() {
 
           {/* Category Tabs (horizontal) */}
           <Tabs value={currentCategory} onValueChange={handleCategoryChange}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               {CATEGORIES.map(cat => (
                 <TabsTrigger 
                   key={cat.id} 
@@ -191,46 +193,38 @@ export function NewsFeedPanel() {
               {t('newsFeed.noNews')}
             </div>
           ) : (
-            <div className="space-y-4 pb-6">
+            <div className="space-y-1.5 pb-4">
               {filteredNews.map((item) => (
                 <Card
                   key={item.id}
-                  className="group overflow-hidden transition-smooth hover:shadow-glow-primary hover:scale-[1.02] cursor-pointer"
+                  className="group overflow-hidden transition-smooth hover:shadow-glow-primary cursor-pointer"
                   onClick={() => window.open(item.url, '_blank')}
                 >
-                  <div className="relative">
+                  <div className="flex items-start gap-3 px-3 py-2">
                     {item.image && (
-                      <div className="relative h-32 overflow-hidden">
-                        <img
-                          src={item.image}
-                          alt={item.headline}
-                          loading="lazy"
-                          className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
-                      </div>
+                      <img
+                        src={item.image}
+                        alt=""
+                        loading="lazy"
+                        className="w-14 h-14 rounded object-cover shrink-0"
+                      />
                     )}
-                    
-                    <div className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <Badge className={cn('text-xs', CATEGORY_COLORS[item.category] || CATEGORY_COLORS.general)}>
+                    <div className="flex-1 min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <Badge className={cn('text-[10px] px-1.5 py-0', CATEGORY_COLORS[item.category] || CATEGORY_COLORS.general)}>
                           {item.category.toUpperCase()}
                         </Badge>
-                        <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
+                          {format(new Date(item.datetime), 'MMM dd, HH:mm')}
+                        </span>
                       </div>
-
-                      <h4 className="font-semibold text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                      <h4 className="font-semibold text-xs leading-tight line-clamp-2 group-hover:text-primary transition-colors">
                         {item.headline}
                       </h4>
-
-                      <p className="text-xs text-muted-foreground line-clamp-2">
+                      <p className="text-[11px] text-muted-foreground line-clamp-1">
                         {item.summary}
                       </p>
-
-                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-                        <span className="font-medium">{item.source}</span>
-                        <span>{format(new Date(item.datetime), 'MMM dd, HH:mm')}</span>
-                      </div>
+                      <span className="text-[10px] text-muted-foreground font-medium">{item.source}</span>
                     </div>
                   </div>
                 </Card>
