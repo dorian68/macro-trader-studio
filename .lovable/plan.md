@@ -1,136 +1,92 @@
 
+# AURA Tool Result Pipeline Fix — Eliminate Race Condition
 
-# Refactorisation UX du Systeme Conversationnel AURA
+## Root Cause
 
-## Problemes identifies
+The tool result rendering pipeline (rich content, mini-widgets, charts) is **already implemented** in lines 1100-1158 of `AURA.tsx`. The problem is a **race condition**:
 
-1. **Scroll**: Le `useEffect` sur `[messages, jobBadges, isLoading]` utilise `behavior: 'smooth'` meme a l'ouverture, ce qui peut laisser la vue au milieu. Pas de scroll instant a l'ouverture.
-2. **Restauration de position**: A la reouverture, les messages sont restaures depuis localStorage mais aucun scroll instant n'est declenche apres le render.
-3. **Largeur des messages**: Les bulles utilisent `max-w-[75%]` sans contrainte absolue, ce qui etale le texte sur grand ecran. Pas de `max-width` en pixels sur le conteneur conversationnel.
-4. **Ordre d'affichage texte/widget**: Deja corrige dans le plan precedent, mais le spacing entre blocs est inconsistant (mix de `mt-2`, `mb-2`).
+1. Line 1034: Adds "Launching request..." message
+2. Line 1081-1223: Subscribes to realtime job updates (correctly builds rich content on completion)
+3. Line 1248: Sends HTTP request
+4. **Line 1264-1267: ALWAYS replaces the last message with a static "Requete lancee" string**
 
-## Changements (fichier unique: `src/components/AURA.tsx`)
+If the realtime update fires **before** the HTTP resolves (common with fast backends), the rich result message gets **overwritten** by the static confirmation at line 1264. The user only sees "Requete lancee" and never sees the actual result.
 
-### 1. Scroll instant a l'ouverture
+## Solution
 
-Ajouter un `useEffect` dedie qui se declenche quand `isExpanded` passe a `true`:
+### File: `src/components/AURA.tsx`
 
-```text
-useEffect:
-  if isExpanded && scrollRef.current:
-    scrollContainer.scrollTo({ top: scrollHeight, behavior: 'instant' })
-  dependencies: [isExpanded]
+#### 1. Add a completion tracking ref (near line 294)
+
+Add a `jobCompletedRef` to track whether the realtime handler has already injected a result:
+
+```
+const jobCompletedRef = useRef<Set<string>>(new Set());
 ```
 
-Cela garantit qu'a chaque ouverture, la vue saute immediatement en bas sans animation.
+#### 2. Mark job as completed in the realtime handler (line ~1155)
 
-### 2. Scroll smooth uniquement pour nouveaux messages
+Before injecting the rich content message, add the jobId to the completed set:
 
-Modifier le `useEffect` existant (ligne 312) pour utiliser `behavior: 'smooth'` uniquement quand un nouveau message est ajoute (pas a l'ouverture). Ajouter un garde: ne scroller smooth que si l'utilisateur est deja pres du bas (< 200px), pour ne pas interrompre un scroll manuel vers le haut.
-
-```text
-useEffect [messages.length, isLoading]:
-  if scrollContainer:
-    isNearBottom = scrollHeight - scrollTop - clientHeight < 200
-    if isNearBottom:
-      scrollTo({ top: scrollHeight, behavior: 'smooth' })
-    setShowScrollButton(!isNearBottom)
+```
+jobCompletedRef.current.add(jobId);
 ```
 
-### 3. Largeur controlee des messages
+Same for error handling (line ~1212).
 
-Ajouter un conteneur `max-w-[760px] mx-auto` autour de la zone de messages (pas en fullscreen seulement, toujours). Reduire les bulles de `max-w-[75%]` a `max-w-[680px]`.
+#### 3. Guard the static message at line 1264-1267
 
-Lignes impactees:
-- Ligne 1374: le `div` wrapper dans ScrollArea → ajouter `max-w-[760px] mx-auto px-4` (et `max-w-5xl` en fullscreen comme actuellement)
-- Ligne 1431-1432: les bulles → remplacer `max-w-[75%]` par `max-w-[680px]`
+Replace the unconditional "Requete lancee" message with a guard:
 
-### 4. Spacing coherent entre blocs dans renderMessageContent
+```
+// Only show "request launched" if realtime hasn't already injected the result
+if (!jobCompletedRef.current.has(jobId)) {
+  setMessages((prev) => [
+    ...prev.slice(0, -1),
+    { role: 'assistant', content: `... Requete lancee pour ${instrument}. En attente du resultat...` },
+  ]);
+}
+```
 
-Dans `renderMessageContent` (ligne 600), normaliser les espacements:
-- Summary: `mb-3`
-- Metadata: `mb-3`
-- Chart: `mb-4` (avec `rounded-lg overflow-hidden`)
-- Mini-widget: `mt-3`
-- Raw JSON: `mt-3`
+This ensures:
+- If realtime fires first: rich content stays, static message is skipped
+- If HTTP resolves first: user sees "waiting" message, then realtime replaces it with rich content
+- Concurrent jobs: each tracked by unique jobId in the Set
 
-### 5. Bouton "Scroll to Latest" ameliore
+#### 4. Clean up the ref on completion (optional)
 
-Le bouton existe deja (ligne 1493). Ameliorer sa visibilite: le rendre toujours visible si `showScrollButton` est true, avec une animation d'entree. Ajouter un label textuel en plus de l'icone.
+After injecting the result, remove the jobId from the Set after a delay to prevent memory leak:
 
-## Ce qui ne change PAS
+```
+setTimeout(() => jobCompletedRef.current.delete(jobId), 5000);
+```
+
+## What does NOT change
 
 - Tool routing, FEATURE_REGISTRY, resolveFeatureId
-- API endpoints, enhanced-request
-- Realtime subscriptions, job badges
-- Mini-widget components
-- MarketChartWidget
-- localStorage persistence (toujours sauvegarde les 7 derniers messages)
-- Input bar, teaser, quick actions
-- Theme, couleurs, dark mode
+- Backend endpoints, edge functions
+- Existing toasters (they remain as secondary notification)
+- Pages trade-generator / macro-labs / reports
+- Mini-widget components (AuraMiniTradeSetup, AuraMiniMacro, AuraMiniReport)
+- MarketChartWidget rendering
+- generateNaturalSummary function
+- extractMarketAttachments function
+- Rich content structure (RichContent interface)
+- localStorage persistence
+- Credit engagement logic
+- Job badge system
 
-## Details techniques
+## What already works (no changes needed)
 
-### Nouveau useEffect pour scroll instant
+- Rich content rendering with summary + widgets + charts (lines 1116-1158)
+- Natural language summary generation (lines 53-161)
+- Mini-widget display: Trade Card, Macro Card, Report Card (lines 524-607)
+- MarketChartWidget inline in chat (lines 642-655)
+- "Open Full View" buttons on each widget (already implemented)
+- Chart attachment extraction from payloads (lines 174-251)
+- Collapsible raw JSON viewer (lines 668-694)
+- Error handling with rich error content (lines 1179-1219)
 
-```text
-// Scroll to bottom instantly when AURA opens
-useEffect(() => {
-  if (isExpanded && scrollRef.current) {
-    requestAnimationFrame(() => {
-      const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
-      }
-    });
-  }
-}, [isExpanded]);
-```
+## Summary
 
-`requestAnimationFrame` assure que le DOM est peint avant le scroll.
-
-### Modification du useEffect existant (ligne 312-327)
-
-```text
-useEffect(() => {
-  if (!scrollRef.current) return;
-  const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-  if (!viewport) return;
-  const isNearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 200;
-  if (isNearBottom) {
-    viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-  }
-  setTimeout(() => {
-    const stillNear = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 100;
-    setShowScrollButton(!stillNear);
-  }, 300);
-}, [messages.length, isLoading]);
-```
-
-Le changement de dependance de `[messages, jobBadges, isLoading]` a `[messages.length, isLoading]` evite les re-renders inutiles.
-
-### Layout des bulles
-
-```text
-Ligne 1374 (conteneur messages):
-  Avant: <div className={cn(isFullscreen && "max-w-5xl mx-auto")}>
-  Apres: <div className={cn("max-w-[760px] mx-auto", isFullscreen && "max-w-5xl")}>
-
-Ligne 1431 (bulle user):
-  Avant: max-w-[75%]
-  Apres: max-w-[680px]
-
-Ligne 1432 (bulle assistant):
-  Avant: max-w-[75%]
-  Apres: max-w-[680px]
-```
-
-### Spacing renderMessageContent
-
-```text
-Ligne 616: rich.summary → className="mb-3" (etait mb-2)
-Ligne 620: rich.meta → className="mb-3" (etait mb-2)
-Ligne 634: chartAttachments → wrapper avec className="mb-4 rounded-lg overflow-hidden"
-Ligne 645-647: mini-widgets → mt-3 au lieu de mt-2 dans chaque composant
-```
-
+This is a **3-line fix** to a race condition. The entire tool result pipeline (rich rendering, widgets, charts, "Open in Page" buttons) is already built and functional -- it was just being overwritten by a static confirmation message.
