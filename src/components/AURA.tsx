@@ -306,6 +306,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const jobCompletedRef = useRef<Set<string>>(new Set());
   const batchContextRef = useRef<{instrument?: string; priceSummary?: string; indicatorSummary?: string} | null>(null);
@@ -452,7 +453,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
             {listItems.map((item, i) => (
               <li key={i} className={cn(
                 isFullscreen 
-                  ? "text-[15px] leading-relaxed text-[#c8c8c8] before:content-['•'] before:mr-3 before:text-[#555]" 
+                  ? "text-[15px] leading-relaxed text-[#d1d5db] before:content-['•'] before:mr-3 before:text-[#4b5563]" 
                   : "text-sm"
               )}>{renderInline(item)}</li>
             ))}
@@ -476,17 +477,17 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
       if (line.startsWith('### ')) {
         flushList();
         elements.push(<h4 key={idx} className={cn(
-          isFullscreen ? "text-[15px] font-semibold mt-3 mb-1 text-white" : "text-sm font-bold mt-2 mb-1"
+          isFullscreen ? "text-[15px] font-semibold mt-3 mb-1 text-[#F3F4F6]" : "text-sm font-bold mt-2 mb-1"
         )}>{renderInline(line.slice(4))}</h4>);
       } else if (line.startsWith('## ')) {
         flushList();
         elements.push(<h3 key={idx} className={cn(
-          isFullscreen ? "text-base font-semibold mt-4 mb-1.5 text-white" : "text-base font-bold mt-3 mb-1"
+          isFullscreen ? "text-base font-semibold mt-4 mb-1.5 text-[#F3F4F6]" : "text-base font-bold mt-3 mb-1"
         )}>{renderInline(line.slice(3))}</h3>);
       } else if (line.startsWith('# ')) {
         flushList();
         elements.push(<h2 key={idx} className={cn(
-          isFullscreen ? "text-lg font-semibold mt-4 mb-1.5 text-white" : "text-lg font-bold mt-3 mb-1"
+          isFullscreen ? "text-lg font-semibold mt-4 mb-1.5 text-[#F3F4F6]" : "text-lg font-bold mt-3 mb-1"
         )}>{renderInline(line.slice(2))}</h2>);
       }
       else if (line.match(/^[-•]\s/)) {
@@ -502,7 +503,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
       else {
         flushList();
         elements.push(<p key={idx} className={cn(
-          isFullscreen ? "text-[15px] leading-relaxed text-[#c8c8c8]" : "text-sm leading-relaxed"
+          isFullscreen ? "text-[15px] leading-relaxed text-[#d1d5db]" : "text-sm leading-relaxed"
         )}>{renderInline(line)}</p>);
       }
     });
@@ -1764,7 +1765,7 @@ Now provide a complete, structured technical analysis based on this data.`;
   const conversationColumn = (
     <div className="flex-1 flex flex-col min-w-0 h-full relative">
       {/* Header */}
-      <CardHeader className="shrink-0 bg-[#0e1116] border-b border-white/[0.03] px-3 py-2">
+      <CardHeader className="shrink-0 bg-[#0F172A] border-b border-[#374151]/30 px-3 py-2">
         <div className={cn(
           "flex items-center justify-between gap-2 w-full",
           isFullscreen && "max-w-[760px] mx-auto"
@@ -1862,7 +1863,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         <div className="max-w-[760px] mx-auto">
           {messages.length === 0 && (
             <div className="space-y-4 flex flex-col items-center justify-center min-h-[40vh]">
-              <p className="text-sm text-[#888] text-center">
+              <p className="text-sm text-[#6b7280] text-center">
                 Your contextual market intelligence companion for {context}.
               </p>
               
@@ -1871,7 +1872,7 @@ Now provide a complete, structured technical analysis based on this data.`;
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowCollectivePanel(!showCollectivePanel)}
-                  className="gap-2 text-[#888] hover:text-white border-0"
+                  className="gap-2 text-[#6b7280] hover:text-[#e5e7eb] border-0"
                 >
                   <Globe className="h-4 w-4" />
                   {showCollectivePanel ? 'Hide' : 'Show'} Collective Intelligence
@@ -1888,13 +1889,13 @@ Now provide a complete, structured technical analysis based on this data.`;
               )}
               
               <div className="space-y-2 w-full max-w-2xl">
-                <p className="text-xs font-semibold text-[#666]">Quick Actions:</p>
+                <p className="text-xs font-semibold text-[#4b5563]">Quick Actions:</p>
                 {quickActions.map((action, idx) => (
                   <Button
                     key={idx}
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-left h-auto py-2 px-3 text-[#888] hover:text-white hover:bg-white/5 border-0"
+                    className="w-full justify-start text-left h-auto py-2 px-3 text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-white/[0.04] border-0"
                     onClick={() => handleQuickAction(action)}
                   >
                     {action}
@@ -1904,20 +1905,21 @@ Now provide a complete, structured technical analysis based on this data.`;
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
                 className={cn(
-                  'flex animate-in fade-in-50 duration-300',
+                  'flex animate-in fade-in-50 duration-300 mt-3 mb-0',
                   msg.role === 'user' ? 'justify-end' : 'justify-start'
                 )}
               >
                 <div
-                  className={cn(
+                 className={cn(
+                    'shadow-[0_1px_2px_rgba(0,0,0,0.05)]',
                     msg.role === 'user'
-                      ? 'max-w-[680px] rounded-2xl px-5 py-3 bg-[#1a2e23] text-white'
-                      : 'max-w-[680px] rounded-xl px-5 py-3 bg-[#161b22] text-[#c8c8c8]'
+                      ? 'max-w-[680px] rounded-2xl px-4 py-3 bg-[#1F2937] text-[#F3F4F6]'
+                      : 'max-w-[680px] rounded-2xl px-4 py-3 bg-[#111827] text-[#d1d5db]'
                   )}
                 >
                   {renderMessageContent(msg)}
@@ -1967,8 +1969,8 @@ Now provide a complete, structured technical analysis based on this data.`;
             {isLoading && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 px-2 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#888]" />
-                  <span className="text-sm text-[#888]">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#6b7280]" />
+                  <span className="text-sm text-[#6b7280]">
                     {activeJobId ? 'Launching...' : 'Analyzing...'}
                   </span>
                 </div>
@@ -1994,11 +1996,11 @@ Now provide a complete, structured technical analysis based on this data.`;
       </ScrollArea>
 
       {/* Input */}
-      <div className="shrink-0 px-4 pb-6 pt-4 bg-[#0e1116] border-t border-white/[0.03]">
+      <div className="shrink-0 px-4 pb-6 pt-4 bg-[#0F172A] border-t border-[#374151]/30">
         <form onSubmit={handleSubmit} className="flex gap-2 items-center max-w-[760px] mx-auto">
-          <div className="flex-1 flex items-center gap-2 rounded-full bg-[#161b22] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14">
-            <Search className="h-4 w-4 text-[#555] shrink-0" />
-            <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#888] border-0 shrink-0 px-2 py-0.5">
+          <div className="flex-1 flex items-center gap-2 rounded-full bg-[#111827] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14">
+            <Search className="h-4 w-4 text-[#4b5563] shrink-0" />
+            <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#6b7280] border-0 shrink-0 px-2 py-0.5">
               AURA v2
             </Badge>
             <Input
@@ -2027,18 +2029,18 @@ Now provide a complete, structured technical analysis based on this data.`;
       {/* Fullscreen backdrop */}
       {isFullscreen && (
         <div 
-          className="fixed inset-0 z-[10003] bg-black/40 backdrop-blur-sm" 
+          className="fixed inset-0 z-[10003] bg-black/50 backdrop-blur-sm" 
           onClick={() => setIsFullscreen(false)} 
         />
       )}
 
       <div className={cn(
-        "fixed shadow-2xl flex transition-all duration-300 bg-[#0e1116]",
+        "fixed shadow-2xl flex transition-all duration-300 bg-[#0F172A]",
         isFullscreen
           ? "inset-0 z-[10004] flex-row animate-in fade-in slide-in-from-bottom-4 duration-300"
-          : "right-0 top-0 h-full w-full md:w-1/3 z-40 border-l border-white/[0.06] flex-col"
+          : "right-0 top-0 h-full w-full md:w-1/3 z-40 border-l border-[#374151]/40 flex-col"
       )}>
-        {/* Permanent sidebar in fullscreen */}
+        {/* Collapsible sidebar in fullscreen */}
         {isFullscreen && (
           <AURAHistoryPanel
             threads={threads}
@@ -2047,6 +2049,8 @@ Now provide a complete, structured technical analysis based on this data.`;
             onNewChat={createNewChat}
             onDeleteThread={deleteThreadById}
             mode="sidebar"
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(prev => !prev)}
           />
         )}
 
