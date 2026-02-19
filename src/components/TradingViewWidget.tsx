@@ -162,11 +162,10 @@ const TradingViewWidget = memo(function TradingViewWidget({
       }
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError('Using TradingView fallback data');
-      setHasFallback(true);
-      loadTradingViewFallback();
     } finally {
       setLoading(false);
+      // Always render the TradingView widget regardless of Supabase data
+      loadTradingViewFallback();
     }
   };
 
