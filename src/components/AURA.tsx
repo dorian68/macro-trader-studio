@@ -95,21 +95,7 @@ function generateNaturalSummary(featureType: string, data: any, instrument: stri
     }
 
     if (featureType === 'macro_lab') {
-      const bias = data?.directional_bias || data?.content?.directional_bias || '';
-      const biasConfidence = data?.confidence || data?.content?.confidence;
-
-      let summary = `### Macro Analysis: ${instrument}\n\n`;
-      if (bias) {
-        summary += `**Directional Bias:** ${bias}`;
-        if (biasConfidence) {
-          const confVal = Number(biasConfidence);
-          summary += ` (${confVal > 1 ? confVal : Math.round(confVal * 100)}% confidence)`;
-        }
-        summary += '\n\n';
-      }
-      // Keep summary short — full content is rendered by AuraFullMacro widget
-      summary += '_See the full analysis below._\n';
-      return summary;
+      return '';
     }
 
     if (featureType === 'reports') {
