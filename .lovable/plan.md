@@ -1,52 +1,44 @@
 
 
-## Probleme identifie : AURA route toutes les requetes vers Macro Commentary
+## Unifier l'affichage mobile et tablette du Dashboard
 
-### Diagnostic
+L'objectif est de supprimer les overrides specifiques au mobile pour que les ecrans < 768px affichent exactement le meme rendu que la tablette (>= 768px), comme dans le screenshot fourni.
 
-En analysant les logs du edge function AURA, le probleme est clair :
+### Modifications dans `src/pages/TradingDashboard.tsx`
 
-- L'utilisateur demande : *"could you generate a trade idea on EUR/USD 15min timeframe?"*
-- Le LLM (Gemini 2.5 Flash) appelle : `launch_macro_lab` au lieu de `launch_trade_generator`
+1. **Ne plus passer `compact={isMobile}`** (ligne 267) : remplacer par `compact={false}` pour que le header complet (titre, search bar, chips) s'affiche sur mobile comme sur tablette.
 
-Cela se produit systematiquement parce que le LLM ne distingue pas correctement les deux outils.
+2. **Adapter le conteneur principal** (ligne 258) : remplacer `h-[calc(100dvh-3.5rem)] overflow-hidden flex flex-col gap-0.5 md:h-full md:gap-2` par un style uniforme sans distinction mobile/desktop (utiliser `gap-2` et `h-full` partout).
 
-### Causes racines
+3. **Agrandir les cartes de features mobile** (lignes 298-340) : actuellement les 3 cartes (AI Trade Setup, Macro Commentary, Reports) utilisent du texte ultra-compact (`text-[10px]`, padding `p-1.5`). Les mettre au format tablette : padding `p-3`, icones `h-5 w-5`, texte `text-xs font-semibold`, hauteur ~60px pour correspondre au screenshot.
 
-1. **Pas d'intercepteur client pour les trades** : Il existe un intercepteur regex cote client (`tryInterceptMacroLab`) qui capture les intentions "macro" avant meme d'appeler le LLM, mais il n'y a PAS d'equivalent pour les requetes de trade. Donc toutes les requetes passent par le LLM, qui se trompe.
+4. **Supprimer les sections "below the fold" mobile-only** (lignes 343-348) : `AssetInfoCard` et `MarketNewsCollapsible` avec `md:hidden` sont redondantes dans le nouveau layout unifie car le carousel desktop/tablette les integre deja.
 
-2. **Descriptions d'outils trop similaires** : Les descriptions des deux outils sont ambigues pour le LLM — "trade setup" vs "macro commentary" ne sont pas suffisamment differencies.
+### Modifications dans `src/components/CandlestickChart.tsx`
 
-3. **Le LLM (Gemini Flash) est biaise** : Il choisit systematiquement `launch_macro_lab` comme outil "par defaut" pour toute requete liee aux marches.
+1. **Afficher le titre sur mobile** (ligne 197) : remplacer `hidden md:flex` par `flex` pour que "Trading Dashboard" soit visible sur tous les ecrans.
 
-### Plan de correction
+2. **Supprimer les boutons mobile-only** (lignes 240-263) : les boutons Search toggle et Fullscreen marques `md:hidden` ne sont plus necessaires puisque la barre de recherche et les chips sont toujours visibles.
 
-**1. Ajouter un intercepteur client pour Trade Generator (`src/components/AURA.tsx`)**
+3. **Unifier la visibilite de la search bar** (lignes 298-301) : remplacer `showMobileSearch ? "block" : "hidden md:block"` par `block` (toujours visible).
 
-Creer une fonction `tryInterceptTradeGenerator` identique en structure a `tryInterceptMacroLab`, mais capturant les intentions de trade :
-- Patterns : "trade idea", "trade setup", "generate a trade", "setup for", "AI trade", "idee de trade", "trade sur", "run trade generator", etc.
-- Extraction de l'instrument via le meme regex existant
-- Extraction optionnelle du timeframe (15min, H1, H4, D1)
-- Appel direct de `handleToolLaunch` avec `launch_trade_generator` sans passer par le LLM
+4. **Unifier la visibilite des chips** (lignes 315-317) : meme changement — supprimer la logique conditionnelle `showMobileSearch` et afficher toujours.
 
-Ce fast-path sera place AVANT l'intercepteur macro dans `sendMessage` pour garantir la priorite.
+5. **Afficher le footer "Powered by"** (ligne 434) : remplacer `hidden md:block` par `block` pour l'afficher partout.
 
-**2. Renforcer les descriptions d'outils dans le edge function (`supabase/functions/aura/index.ts`)**
+### Ce qui ne change pas
 
-- `launch_trade_generator` : Ajouter dans la description "Use for: trade idea, trade setup, entry/SL/TP, trade signal. Do NOT use launch_macro_lab for trade requests."
-- `launch_macro_lab` : Clarifier "Use ONLY for macro commentary/outlook. NOT for trade setups or entry levels."
-
-**3. Renforcer le system prompt avec des regles de decision explicites**
-
-Ajouter dans la section "DETECT INTENT" une regle de decision plus forte :
-- Si le mot "trade" apparait dans la requete (trade idea, trade setup, trade signal) → TOUJOURS utiliser `launch_trade_generator`, JAMAIS `launch_macro_lab`
-- `launch_macro_lab` est reserve UNIQUEMENT aux questions de type "what's happening", "macro outlook", "market commentary"
+- Le layout desktop 2 colonnes (chart + DashboardColumnCarousel) reste identique
+- Le breakpoint `lg:` pour le carousel reste inchange
+- Le BubbleSystem, JobStatusCard, et le fullscreen dialog ne sont pas affectes
+- Le WebSocket et la logique de prix restent inchanges
+- La navbar et le Layout wrapper ne sont pas modifies
 
 ### Section technique
 
 Fichiers modifies :
-- `src/components/AURA.tsx` : Nouvelle fonction `tryInterceptTradeGenerator` (~50 lignes), ajout dans `sendMessage` avant `tryInterceptMacroLab`
-- `supabase/functions/aura/index.ts` : Descriptions d'outils et system prompt renforces (~15 lignes modifiees)
+- `src/pages/TradingDashboard.tsx` : ~15 lignes modifiees (compact prop, conteneur principal, cartes features, suppression sections mobile-only)
+- `src/components/CandlestickChart.tsx` : ~10 lignes modifiees (visibilite titre, search, chips, suppression boutons mobile-only)
 
-Aucune regression attendue — les flux existants (macro, report, plot, technical analysis) ne sont pas affectes.
+Risque de regression : faible. Les changements ne touchent que des classes CSS conditionnelles et un prop boolean. Aucune logique metier n'est modifiee.
 
