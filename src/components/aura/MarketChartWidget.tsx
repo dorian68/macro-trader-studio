@@ -146,15 +146,6 @@ const MarketChartWidgetInner: React.FC<MarketChartWidgetProps> = ({ data, instru
 
   return (
     <div className={cn('rounded-2xl bg-[#12141c] border border-white/5 overflow-hidden mt-3', className)}>
-      {/* Header */}
-      {(instrument || timeframe) && (
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5">
-          {instrument && <span className="text-sm font-semibold text-white">{instrument}</span>}
-          {timeframe && <span className="text-xs text-muted-foreground">({timeframe})</span>}
-          <span className="text-xs text-muted-foreground ml-auto capitalize">{mode}</span>
-        </div>
-      )}
-
       {/* Chart */}
       <div className="relative">
         {loading && <Skeleton className="absolute inset-0 bg-white/5" />}
