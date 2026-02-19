@@ -393,8 +393,13 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&>div]:!m-0 [&>div]:!p-0">
-          {/* Chart title overlay */}
+        <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
+          {/* TradingView injection target - no React children */}
+          <div
+            ref={chartContainerRef}
+            className="absolute inset-0 [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&>div]:!m-0 [&>div]:!p-0"
+          />
+          {/* React-managed overlays - safe from innerHTML wipe */}
           <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-card/80 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-foreground/80">
             <span>{mapToTwelveDataSymbol(currentSymbol)}</span>
             <span className="text-muted-foreground">|</span>
