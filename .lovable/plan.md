@@ -1,62 +1,90 @@
 
 
-# Fix Market News -- Charger tous les articles
+# AURA MCP: Enriched Tool Result Messages in Chat
 
-## Probleme
+## Current State
 
-Deux bugs dans `DashboardColumnCarousel.tsx` limitent les articles affichés :
+Tool results are **already posted as chat messages** with mini-widgets (Trade Card, Macro Card) and "Open Full View" buttons. The core flow works.
 
-1. **Ligne 48** : `useNewsFeed('general')` -- ne charge que la categorie "general" au lieu de tout
-2. **Ligne 68** : `setCategory(cat !== 'all' ? cat : 'general')` -- quand "All" est selectionne, envoie "general" a l'edge function au lieu de "all"
+## What's Missing
 
-En base il y a 278 articles (general: 205, crypto: 50, merger: 20, forex: 3), mais le carousel n'en recoit qu'une partie.
+1. **No "View raw JSON" collapsible** on tool result messages
+2. **No elapsed time / metadata** shown on results
+3. **Error results** show text but no raw error JSON for debugging
+4. **Human summary** text could be richer (instrument + direction + confidence in one line)
 
-## Corrections
+## Changes
 
-### Fichier : `src/components/DashboardColumnCarousel.tsx`
+### 1. Extend the `Message` interface to carry raw data
 
-**1. Ligne 48** : Changer l'initialisation du hook
+Add an optional `rawJson` field and `meta` to the rich content type so the renderer can show a collapsible JSON block without changing the message shape.
+
+```typescript
+interface Message {
+  role: 'user' | 'assistant';
+  content: string | {
+    type: string;
+    data: any;
+    summary: string;
+    rawJson?: string;      // NEW: stringified raw response
+    meta?: {               // NEW: timing + feature info
+      featureId: string;
+      instrument: string;
+      elapsedMs?: number;
+    };
+  };
+  attachments?: Array<{ type: 'market_chart'; payload: any }>;
+}
+```
+
+### 2. Populate `rawJson` and `meta` on job completion (lines 890-912)
+
+When building the `richContent` object after a successful job, add:
+- `rawJson`: `JSON.stringify(parsedPayload, null, 2)` (truncated to 100KB max)
+- `meta`: `{ featureId: featureType, instrument }`
+
+### 3. Populate `rawJson` on job error (lines 934-951)
+
+When a job fails, post a rich error message instead of plain text:
+- `type: 'tool_error'`
+- `summary`: the existing error text
+- `rawJson`: stringified error payload if available
+- `meta`: feature + instrument info
+
+### 4. Add "View raw JSON" collapsible to `renderMessageContent`
+
+Inside the rich content branch (lines 446-454), after the mini-widget, render a collapsible section:
 
 ```
-// Avant
-const { news, isLoading, setCategory } = useNewsFeed('general');
-
-// Apres
-const { news, isLoading, setCategory } = useNewsFeed('all');
+[Collapsible trigger: "View raw JSON" with chevron]
+  [CollapsibleContent: <pre> block with monospace JSON, max-height 300px, overflow scroll]
 ```
 
-**2. Ligne 68** : Passer `'all'` directement a l'edge function
+Uses the existing `@radix-ui/react-collapsible` already installed and exported from `src/components/ui/collapsible.tsx`.
 
+For large JSON (over 50KB), show "Raw JSON is large -- click to expand" with lazy rendering.
+
+### 5. Add metadata line to rich messages
+
+Below the summary text, show a subtle line:
 ```
-// Avant
-setCategory(cat !== 'all' ? cat : 'general');
-
-// Apres
-setCategory(cat);
+Trade Generator | EUR/USD | completed in 12s
 ```
+Using `text-xs text-muted-foreground` styling.
 
-**3. Ligne 50** : Le state local `newsCategory` est deja initialise a `'all'`, c'est correct.
+## Files Modified
 
-### Fichier : `supabase/functions/refresh-news-feed/index.ts`
+| File | Change |
+|------|--------|
+| `src/components/AURA.tsx` | Extend Message interface, add rawJson/meta to rich content on completion/error, add Collapsible JSON viewer + metadata line in renderMessageContent |
 
-Verifier que le mode `all` retourne bien tous les articles sans filtre de categorie. Le code actuel le fait deja -- il fait un `SELECT * ORDER BY datetime DESC LIMIT 80`. On peut augmenter la limite de 80 a 150 pour mieux remplir les pages.
+## No Regression Guarantees
 
-### Augmenter les items par page (optionnel)
-
-Le `ITEMS_MAP` actuel est `{ list: 10, compact: 6, large: 4 }`. On peut l'augmenter pour mieux remplir l'espace disponible, mais c'est contraint par la hauteur du conteneur. On garde tel quel car le vrai probleme etait le fetching, pas le nombre par page.
-
-## Resume des changements
-
-| Fichier | Changement |
-|---------|------------|
-| `DashboardColumnCarousel.tsx` ligne 48 | `useNewsFeed('general')` -> `useNewsFeed('all')` |
-| `DashboardColumnCarousel.tsx` ligne 68 | `setCategory(cat !== 'all' ? cat : 'general')` -> `setCategory(cat)` |
-| `refresh-news-feed/index.ts` | Augmenter limite de 80 a 150 pour le mode "all" |
-
-## Ce qui ne change pas
-
-- Layout, styles, pagination UI
-- Edge function logic (juste la limite)
-- Cache TTL, Realtime subscription
-- Autres composants
+- Mini-widgets (Trade Card, Macro Card, Report Card) remain unchanged
+- "Open Full View" buttons remain unchanged
+- Message layout (left/right alignment, max-width, rounded) unchanged
+- Job badge system unchanged
+- Realtime subscription logic unchanged
+- Registry, endpoints, payload builders unchanged
+- localStorage conversation persistence unchanged (rawJson is included but capped)
 
