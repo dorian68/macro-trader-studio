@@ -224,11 +224,20 @@ const TradingViewWidget = memo(function TradingViewWidget({
         style: '1',
         locale: 'en',
         enable_publishing: false,
-        hide_top_toolbar: false,
+        hide_top_toolbar: true,
+        hide_side_toolbar: true,
+        hide_legend: true,
         allow_symbol_change: false,
-        withdateranges: true,
-        studies: ['RSI@tv-basicstudies', 'ADX@tv-basicstudies'],
+        withdateranges: false,
+        studies: [],
+        toolbar_bg: 'transparent',
         container_id: CONTAINER_ID,
+        overrides: {
+          "paneProperties.vertGridProperties.color": "rgba(255,255,255,0.03)",
+          "paneProperties.horzGridProperties.color": "rgba(255,255,255,0.03)",
+          "scalesProperties.showSymbolLabels": false,
+          "mainSeriesProperties.priceLineVisible": false,
+        },
         onChartReady: () => {
           console.log('TradingView chart ready');
           // Real-time prices are now handled by the Binance WebSocket

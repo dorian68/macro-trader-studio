@@ -179,18 +179,22 @@ export default function LightweightChartWidget({
           textColor: 'hsl(var(--foreground))',
         },
         grid: {
-          vertLines: { color: 'hsl(var(--border) / 0.1)' },
-          horzLines: { color: 'hsl(var(--border) / 0.1)' },
+          vertLines: { color: 'hsl(var(--border) / 0.03)' },
+          horzLines: { color: 'hsl(var(--border) / 0.03)' },
         },
         width: chartContainerRef.current.clientWidth,
         height: 500,
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
-          borderColor: 'hsl(var(--border))',
+          borderVisible: false,
         },
         rightPriceScale: {
-          borderColor: 'hsl(var(--border))',
+          borderVisible: false,
+        },
+        crosshair: {
+          vertLine: { labelVisible: false },
+          horzLine: { labelBackgroundColor: 'hsl(var(--muted))' },
         },
       });
 
@@ -399,35 +403,7 @@ export default function LightweightChartWidget({
           lastCandleRef.current = formattedData[formattedData.length - 1];
           chartRef.current?.timeScale().fitContent();
           
-          // Add test markers with tooltips
-          if (formattedData.length > 5) {
-            const testMarkers = [
-              {
-                time: formattedData[Math.floor(formattedData.length * 0.3)].time,
-                position: 'belowBar' as const,
-                color: '#2196F3',
-                shape: 'circle' as const,
-                text: 'Test Point 1',
-              },
-              {
-                time: formattedData[Math.floor(formattedData.length * 0.5)].time,
-                position: 'aboveBar' as const,
-                color: '#f59e0b',
-                shape: 'arrowDown' as const,
-                text: 'Test Point 2',
-              },
-              {
-                time: formattedData[Math.floor(formattedData.length * 0.8)].time,
-                position: 'belowBar' as const,
-                color: '#22c55e',
-                shape: 'arrowUp' as const,
-                text: 'Test Point 3',
-              },
-            ];
-
-            candlestickSeriesRef.current.setMarkers(testMarkers);
-            console.log('✅ Added test markers to chart');
-          }
+          // Markers removed for clean display
           
           setHistoryReady(true); // ✅ Mark history as ready for WebSocket
           setLoading(false);

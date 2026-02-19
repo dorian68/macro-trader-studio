@@ -107,7 +107,7 @@ export function ChartProviderSettings() {
         <div className="p-3 bg-muted rounded-lg text-sm">
           <p className="font-medium mb-1">Current Status:</p>
           <Badge variant={provider === 'twelvedata' ? 'default' : 'secondary'}>
-            {provider === 'twelvedata' ? '✅ TwelveData Active' : '⚠️ TradingView Fallback'}
+            {provider === 'twelvedata' ? 'TwelveData Active' : 'TradingView Fallback'}
           </Badge>
         </div>
 
