@@ -308,23 +308,32 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const { createJob } = useRealtimeJobManager();
   const { tryEngageCredit } = useCreditEngagement();
 
-  // Auto-scroll to bottom when new messages arrive
+  // Scroll to bottom instantly when AURA opens
   useEffect(() => {
-    if (scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTo({
-          top: scrollContainer.scrollHeight,
-          behavior: 'smooth'
-        });
-        setTimeout(() => {
-          const isNearBottom = 
-            scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
-          setShowScrollButton(!isNearBottom);
-        }, 300);
-      }
+    if (isExpanded && scrollRef.current) {
+      requestAnimationFrame(() => {
+        const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' as ScrollBehavior });
+        }
+      });
     }
-  }, [messages, jobBadges, isLoading]);
+  }, [isExpanded]);
+
+  // Auto-scroll smooth only for new messages, only if near bottom
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+    const isNearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 200;
+    if (isNearBottom) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+    }
+    setTimeout(() => {
+      const stillNear = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 100;
+      setShowScrollButton(!stillNear);
+    }, 300);
+  }, [messages.length, isLoading]);
 
   // Scroll button visibility listener
   useEffect(() => {
@@ -613,11 +622,11 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     return (
       <div className="text-[15px] leading-relaxed">
         {/* 1. Natural language summary (markdown) */}
-        {rich.summary && <div className="mb-2">{renderMarkdown(rich.summary)}</div>}
+        {rich.summary && <div className="mb-3">{renderMarkdown(rich.summary)}</div>}
 
         {/* Metadata line */}
         {rich.meta && (
-          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+          <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
             <span>{rich.meta.featureId === 'trade_generator' ? 'Trade Generator' : rich.meta.featureId === 'macro_lab' ? 'Macro Labs' : 'Reports'}</span>
             <span>•</span>
             <span>{rich.meta.instrument}</span>
@@ -631,20 +640,24 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
         )}
 
         {/* 2. MarketChartWidget (TradingView-like) BEFORE mini-widget */}
-        {chartAttachments.map((att, i) => (
-          <MarketChartWidget
-            key={i}
-            data={att.payload.data}
-            instrument={att.payload.instrument}
-            timeframe={att.payload.timeframe}
-            fullscreen={isFullscreen}
-          />
-        ))}
+        {chartAttachments.length > 0 && (
+          <div className="mb-4 rounded-lg overflow-hidden">
+            {chartAttachments.map((att, i) => (
+              <MarketChartWidget
+                key={i}
+                data={att.payload.data}
+                instrument={att.payload.instrument}
+                timeframe={att.payload.timeframe}
+                fullscreen={isFullscreen}
+              />
+            ))}
+          </div>
+        )}
 
         {/* 3. Mini-widget (Trade Card / Macro Card / Report) */}
-        {rich.type === 'trade_setup' && <AuraMiniTradeSetup data={rich.data} />}
-        {rich.type === 'macro_commentary' && <AuraMiniMacro data={rich.data} />}
-        {rich.type === 'report' && <AuraMiniReport data={rich.data} />}
+        {rich.type === 'trade_setup' && <div className="mt-3"><AuraMiniTradeSetup data={rich.data} /></div>}
+        {rich.type === 'macro_commentary' && <div className="mt-3"><AuraMiniMacro data={rich.data} /></div>}
+        {rich.type === 'report' && <div className="mt-3"><AuraMiniReport data={rich.data} /></div>}
         {rich.type === 'tool_error' && (
           <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5 mt-2">
             <p className="text-sm text-destructive font-medium">Tool Error</p>
@@ -653,7 +666,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
 
         {/* 4. Collapsible raw JSON */}
         {rich.rawJson && (
-          <Collapsible className="mt-2">
+          <Collapsible className="mt-3">
             <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
               <Code className="h-3 w-3" />
               <span>{rich.rawJson.length > 50000 ? 'Raw JSON (large — click to expand)' : 'View raw JSON'}</span>
@@ -1371,7 +1384,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
         {/* Messages */}
         <ScrollArea className={cn("flex-1", isFullscreen ? "px-8 py-6" : "p-4")} ref={scrollRef}>
-          <div className={cn(isFullscreen && "max-w-5xl mx-auto")}>
+          <div className={cn("max-w-[760px] mx-auto", isFullscreen && "max-w-5xl")}>
             {messages.length === 0 && (
               <div className={cn("space-y-4 flex flex-col items-center justify-center", isFullscreen && "min-h-[50vh]")}>
                 <p className="text-sm text-[#888] text-center">
@@ -1428,8 +1441,8 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                   <div
                     className={cn(
                       msg.role === 'user'
-                        ? 'max-w-[75%] rounded-2xl px-5 py-3 bg-[#1a2e23] text-white'
-                        : 'max-w-[75%] rounded-xl px-5 py-3 bg-[#161b22] text-[#c8c8c8]'
+                        ? 'max-w-[680px] rounded-2xl px-5 py-3 bg-[#1a2e23] text-white'
+                        : 'max-w-[680px] rounded-xl px-5 py-3 bg-[#161b22] text-[#c8c8c8]'
                     )}
                   >
                     {renderMessageContent(msg)}
@@ -1491,15 +1504,16 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
             {/* Scroll to bottom button */}
             {showScrollButton && messages.length > 0 && (
-              <div className="sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+              <div className="sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                 <Button
                   variant="secondary"
-                  size="icon"
+                  size="sm"
                   onClick={scrollToBottom}
-                  className="pointer-events-auto shadow-lg hover:shadow-xl transition-all duration-200 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="pointer-events-auto shadow-lg hover:shadow-xl transition-all duration-200 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 px-4"
                   aria-label="Scroll to bottom"
                 >
-                  <ChevronDown className="h-5 w-5" />
+                  <ChevronDown className="h-4 w-4" />
+                  <span className="text-xs">Latest</span>
                 </Button>
               </div>
             )}
