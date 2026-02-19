@@ -1,56 +1,98 @@
 
 
-# Fix: TradingView Chart Has Zero Height (Invisible)
+# Fix: Collapsible Sections Collapse on Scroll in AURA Fullscreen
+
+## Problem
+
+When you open a collapsible section (e.g., "Strategy Notes", "Fundamental Analysis") inside an AURA response widget, it collapses back as soon as you scroll. This makes reading the content impossible.
 
 ## Root Cause
 
-The TradingView chart renders inside a container chain that uses `flex-1 min-h-0` at every level. When there is no intrinsic content (the chart is injected via raw DOM, not React children), `flex-1` with `min-h-0` collapses to **0px height**. The `absolute inset-0` chart div inherits this zero height. TradingView's `autosize: true` then reads 0x0 dimensions and renders nothing.
+The response widgets (`AuraFullTradeSetup`, `AuraFullMacro`, `AuraMiniReport`) are defined as **functions inside the AURA component**. Every time the scroll position changes, React updates the `showScrollButton` state, which re-renders the entire AURA component and **recreates** these widget functions. React sees a new function reference as a completely different component type -- it unmounts the old widget and mounts a fresh one, resetting all collapsible sections to their default (closed) state.
 
-The sizing chain:
 ```text
-CardContent (flex-1 min-h-0)
-  -> div (h-full flex flex-col min-h-0)
-    -> TradingViewWidget root (h-full flex flex-col)
-      -> chart wrapper (flex-1 min-h-0)     <-- collapses to 0!
-        -> chartContainerRef (absolute inset-0) <-- 0x0
+User scrolls
+  --> scroll event fires
+  --> setShowScrollButton() called
+  --> AURA re-renders
+  --> AuraFullTradeSetup = new function (different reference)
+  --> React unmounts old widget, mounts new one
+  --> All Collapsible states reset to closed
 ```
 
-## Fix (2 changes in 1 file)
+## Solution
 
-### File: `src/components/TradingViewWidget.tsx`
+Move the three widget components (`AuraFullTradeSetup`, `AuraFullMacro`, `AuraMiniReport`) **outside** the `AURA` component so they are stable references that never change between renders. Pass any needed callbacks (like `navigate`, `onToggle`) as props.
 
-**Change 1 (line 406):** Add a minimum height to the chart wrapper so it never collapses to zero:
+This is a standard React pattern: components must be defined at module scope (or memoized) so their identity is stable across renders.
+
+## Technical Details
+
+### File: `src/components/AURA.tsx`
+
+**Step 1 -- Extract widget components to module scope (before the `AURA` function)**
+
+Move `AuraFullTradeSetup` (currently at line ~515), `AuraFullMacro` (line ~664), and `AuraMiniReport` (line ~850) out of the `AURA` component body and define them as standalone components at the top of the file (after imports/helpers, before `export default function AURA`).
+
+Each component will receive additional props for the callbacks it currently accesses via closure:
+- `onNavigate: (path: string) => void` -- replaces `navigate()`
+- `onClose: () => void` -- replaces `onToggle()`
+- `storeResult: (featureId: string, jobId: string, data: any) => void` -- replaces `storeResultForPage()`
+
+**Step 2 -- Update the render call sites (line ~952)**
+
+Pass the new props when rendering the widgets:
 
 ```tsx
-// Before:
-<div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
-
-// After:
-<div className="relative w-full flex-1 min-h-[300px] overflow-hidden rounded-2xl">
+{rich.type === 'trade_setup' && (
+  <div className="mt-3">
+    <AuraFullTradeSetup
+      data={rich.data}
+      onNavigate={(path) => navigate(path)}
+      onClose={onToggle}
+    />
+  </div>
+)}
+{rich.type === 'macro_commentary' && (
+  <div className="mt-3">
+    <AuraFullMacro
+      data={rich.data}
+      onNavigate={(path) => navigate(path)}
+      onClose={onToggle}
+    />
+  </div>
+)}
+{rich.type === 'report' && (
+  <div className="mt-3">
+    <AuraMiniReport
+      data={rich.data}
+      onNavigate={(path) => navigate(path)}
+      onClose={onToggle}
+    />
+  </div>
+)}
 ```
 
-Replacing `min-h-0` with `min-h-[300px]` ensures the chart area always has at least 300px of height for TradingView to render into, while `flex-1` still allows it to grow larger when space is available.
+**Step 3 -- Stabilize callbacks with `useCallback`**
 
-**Change 2 (lines 399-402):** Remove the conditional loading spinner that competes for flex space and shows nothing useful (TradingView has its own loading screen configured at line 251). This prevents the layout from shifting during initialization:
+Wrap the navigation/close handlers passed to widgets in `useCallback` to prevent unnecessary re-renders of the extracted components.
 
-```tsx
-// Remove this block entirely:
-{loading && <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96">
-    <Loader2 className="h-8 w-8 animate-spin" />
-    <span className="ml-2">Loading market data...</span>
-  </div>}
-```
+### No other files modified
 
-## Why This Works
+This is a single-file refactor in `AURA.tsx`. No backend, no Supabase, no API changes. The widget appearance and behavior remain identical -- only their React identity becomes stable.
 
-- `min-h-[300px]` gives the flex item a minimum intrinsic size, preventing the 0-height collapse
-- TradingView's own `loading_screen` config (already set at line 251) handles the visual loading state
-- The `flex-1` still lets the container expand to fill available space on larger screens
-- No other files need changes
+### What this fixes
 
-## No Regressions
+- Collapsible sections stay open when scrolling
+- No more unmount/remount cycle on scroll
+- Slight performance improvement (fewer DOM operations per scroll)
 
-- LightweightChartWidget path is unaffected (it has its own sizing)
-- The fullscreen dialog chart will also benefit (same component)
-- Mobile and desktop layouts both work because `min-h-[300px]` is a floor, not a fixed size
+### What is NOT touched
+
+- Tool routing, MCP calls, streaming logic
+- Supabase queries or realtime subscriptions
+- MarketChartWidget rendering
+- AURAHistoryPanel or sidebar behavior
+- Message parsing, markdown rendering
+- Any styling or colors
 
