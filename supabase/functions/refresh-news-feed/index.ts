@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         .from('news_feed')
         .select('*')
         .order('datetime', { ascending: false })
-        .limit(80);
+        .limit(150);
 
       return new Response(JSON.stringify({ data, cached: now - lastRefresh < TTL_MS, category: 'all' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
