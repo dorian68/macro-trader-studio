@@ -49,6 +49,128 @@ interface Message {
   attachments?: Array<{ type: 'market_chart'; payload: any }>;
 }
 
+// ===== GENERATE NATURAL LANGUAGE SUMMARY =====
+function generateNaturalSummary(featureType: string, data: any, instrument: string): string {
+  try {
+    if (featureType === 'trade_generator') {
+      const setup = data?.setups?.[0] || data;
+      const direction = setup?.direction || setup?.signal || 'N/A';
+      const confidence = setup?.strategyMeta?.confidence || setup?.confidence;
+      const timeframe = setup?.timeframe || data?.timeframe || '4h';
+      const entry = setup?.entryPrice || setup?.entry_price || setup?.entry;
+      const sl = setup?.stopLoss || setup?.stop_loss || setup?.sl;
+      const tp = setup?.takeProfits?.[0] || setup?.takeProfit || setup?.take_profit || setup?.tp;
+      const rr = setup?.riskRewardRatio || setup?.risk_reward_ratio;
+      const strategy = setup?.strategyMeta?.name || setup?.strategy || '';
+      const notes = setup?.strategyMeta?.notes || setup?.notes || setup?.strategy_notes || [];
+
+      let summary = `### Trade Setup: ${instrument} — ${direction}\n\n`;
+      summary += `AURA has identified a **${direction.toLowerCase()}** opportunity on **${instrument}**`;
+      if (confidence) summary += ` with **${Math.round(Number(confidence) * 100)}% confidence**`;
+      summary += ` on the **${timeframe}** timeframe.`;
+      if (strategy) summary += ` The setup is based on a **${strategy}** strategy.`;
+      summary += '\n\n';
+
+      if (entry || sl || tp) {
+        summary += '**Levels:**\n';
+        if (entry) summary += `- Entry: ${Number(entry).toFixed(4)}\n`;
+        if (sl) {
+          const slPips = entry ? Math.abs(Number(entry) - Number(sl)) : null;
+          summary += `- Stop Loss: ${Number(sl).toFixed(4)}`;
+          if (slPips) summary += ` (${(slPips * 10000).toFixed(0)} pips)`;
+          summary += '\n';
+        }
+        if (tp) {
+          const tpPips = entry ? Math.abs(Number(tp) - Number(entry)) : null;
+          summary += `- Take Profit: ${Number(tp).toFixed(4)}`;
+          if (tpPips) summary += ` (+${(tpPips * 10000).toFixed(0)} pips)`;
+          summary += '\n';
+        }
+        if (rr) summary += `- Risk/Reward: ${Number(rr).toFixed(2)}\n`;
+        summary += '\n';
+      }
+
+      if (rr) {
+        const rrVal = Number(rr);
+        if (rrVal >= 2) summary += 'The risk/reward ratio is favorable, offering strong upside potential relative to the stop distance.\n\n';
+        else if (rrVal >= 1) summary += 'The risk/reward ratio is acceptable, though the reward is modest relative to the risk.\n\n';
+        else summary += 'The risk/reward ratio is below 1:1. Consider adjusting levels for a better setup.\n\n';
+      }
+
+      if (Array.isArray(notes) && notes.length > 0) {
+        summary += '**Strategy Notes:**\n';
+        notes.forEach((n: any) => { summary += `- ${typeof n === 'string' ? n : n?.text || JSON.stringify(n)}\n`; });
+      } else if (typeof notes === 'string' && notes) {
+        summary += `**Strategy Notes:**\n- ${notes}\n`;
+      }
+
+      return summary;
+    }
+
+    if (featureType === 'macro_lab') {
+      const execSummary = data?.executive_summary || data?.summary || data?.content?.executive_summary || '';
+      const bias = data?.directional_bias || data?.content?.directional_bias || '';
+      const biasConfidence = data?.confidence || data?.content?.confidence;
+      const drivers = data?.key_drivers || data?.content?.key_drivers || [];
+      const fundamentals = data?.fundamental_analysis || data?.content?.fundamental_analysis || '';
+
+      let summary = `### Macro Analysis: ${instrument}\n\n`;
+      if (typeof execSummary === 'string' && execSummary) {
+        summary += execSummary.slice(0, 500) + '\n\n';
+      }
+      if (bias) {
+        summary += `**Directional Bias:** ${bias}`;
+        if (biasConfidence) summary += ` (${Math.round(Number(biasConfidence) * 100)}% confidence)`;
+        summary += '\n\n';
+      }
+      if (Array.isArray(drivers) && drivers.length > 0) {
+        summary += '**Key Drivers:**\n';
+        drivers.slice(0, 6).forEach((d: any) => {
+          summary += `- ${typeof d === 'string' ? d : d?.name || d?.driver || JSON.stringify(d)}\n`;
+        });
+        summary += '\n';
+      }
+      if (typeof fundamentals === 'string' && fundamentals) {
+        summary += fundamentals.slice(0, 300) + '\n';
+      }
+      return summary;
+    }
+
+    if (featureType === 'reports') {
+      const title = data?.title || data?.report_title || 'Market Report';
+      const execSummary = data?.executive_summary || data?.summary || '';
+
+      let summary = `### ${title}\n\n`;
+      if (typeof execSummary === 'string' && execSummary) {
+        summary += execSummary.slice(0, 600) + '\n\n';
+      }
+      const sections = data?.sections || [];
+      if (Array.isArray(sections) && sections.length > 0) {
+        sections.slice(0, 3).forEach((s: any) => {
+          if (s?.title) summary += `**${s.title}**\n`;
+          if (s?.content) summary += `${typeof s.content === 'string' ? s.content.slice(0, 200) : ''}\n\n`;
+        });
+      }
+      return summary;
+    }
+
+    return `Analysis completed for **${instrument}**. See the details below.`;
+  } catch {
+    return `Analysis completed for **${instrument}**.`;
+  }
+}
+
+// ===== DEEP SCAN HELPER =====
+function deepFindKey(obj: any, key: string, maxDepth = 5): any {
+  if (!obj || typeof obj !== 'object' || maxDepth <= 0) return undefined;
+  if (key in obj) return obj[key];
+  for (const k of Object.keys(obj)) {
+    const result = deepFindKey(obj[k], key, maxDepth - 1);
+    if (result !== undefined) return result;
+  }
+  return undefined;
+}
+
 // ===== EXTRACT MARKET ATTACHMENTS =====
 function extractMarketAttachments(payload: any): { type: 'market_chart'; payload: any } | null {
   try {
@@ -58,21 +180,24 @@ function extractMarketAttachments(payload: any): { type: 'market_chart'; payload
     const root = payload?.body?.message?.message?.content?.content || payload?.content || payload;
 
     // 1. OHLC / twelve_data_time_series
-    const ohlcSource = root?.market_data || root?.twelve_data_time_series || root?.ohlc;
+    const ohlcSource = root?.market_data || root?.twelve_data_time_series || root?.ohlc || deepFindKey(payload, 'market_data', 4) || deepFindKey(payload, 'ohlc', 4);
     if (Array.isArray(ohlcSource) && ohlcSource.length > 2 && ohlcSource[0]?.open != null) {
       const ohlc = ohlcSource.map((d: any) => ({
         time: d.datetime || d.date || d.time || d.ds,
         open: Number(d.open), high: Number(d.high), low: Number(d.low), close: Number(d.close),
       })).filter((d: any) => d.time && !isNaN(d.open));
       if (ohlc.length > 2) {
-        return { type: 'market_chart', payload: { mode: 'candlestick', data: { ohlc }, instrument: root?.instrument, timeframe: root?.timeframe } };
+        // Check for trade markers (entry/sl/tp)
+        const entry = root?.entry || root?.entry_price || deepFindKey(payload, 'entry_price', 3);
+        const sl = root?.sl || root?.stop_loss || deepFindKey(payload, 'stop_loss', 3);
+        const tp = root?.tp || root?.take_profit || deepFindKey(payload, 'take_profit', 3);
+        return { type: 'market_chart', payload: { mode: 'candlestick', data: { ohlc, markers: { entry, sl, tp } }, instrument: root?.instrument, timeframe: root?.timeframe } };
       }
     }
 
     // 2. Predictions / forecast
-    const predictions = root?.predictions || root?.forecast_data?.predictions;
+    const predictions = root?.predictions || root?.forecast_data?.predictions || deepFindKey(payload, 'forecast_predictions', 4) || deepFindKey(payload, 'predictions', 4);
     if (predictions && typeof predictions === 'object') {
-      // predictions may be keyed by horizon: { "7d": [{ds, yhat}], ... }
       const horizonKey = Object.keys(predictions).find(k => Array.isArray(predictions[k]) && predictions[k].length > 0 && predictions[k][0]?.ds);
       if (horizonKey) {
         const pts = predictions[horizonKey].map((d: any) => ({ time: d.ds?.split('T')[0] || d.ds, value: Number(d.yhat) })).filter((d: any) => d.time && !isNaN(d.value));
@@ -83,12 +208,39 @@ function extractMarketAttachments(payload: any): { type: 'market_chart'; payload
     }
 
     // 3. Equity curve / backtest
-    const eqCurve = root?.equity_curve || root?.backtest_results?.equity_curve;
+    const eqCurve = root?.equity_curve || root?.backtest_results?.equity_curve || deepFindKey(payload, 'equity_curve', 4);
     if (Array.isArray(eqCurve) && eqCurve.length > 2) {
       const pts = eqCurve.map((d: any) => ({ time: d.date || d.time || d.ds, value: Number(d.value ?? d.equity ?? d.pnl) })).filter((d: any) => d.time && !isNaN(d.value));
       if (pts.length > 2) {
-        const stats = root?.backtest_results?.stats || root?.stats;
+        const stats = root?.backtest_results?.stats || root?.stats || deepFindKey(payload, 'stats', 3);
         return { type: 'market_chart', payload: { mode: 'area', data: { equity_curve: pts, stats }, instrument: root?.instrument } };
+      }
+    }
+
+    // 4. Generic time_series detection (deep)
+    const timeSeries = deepFindKey(payload, 'time_series', 4);
+    if (Array.isArray(timeSeries) && timeSeries.length > 2) {
+      const hasOHLC = timeSeries[0]?.open != null;
+      if (hasOHLC) {
+        const ohlc = timeSeries.map((d: any) => ({
+          time: d.datetime || d.date || d.time, open: Number(d.open), high: Number(d.high), low: Number(d.low), close: Number(d.close),
+        })).filter((d: any) => d.time && !isNaN(d.open));
+        if (ohlc.length > 2) return { type: 'market_chart', payload: { mode: 'candlestick', data: { ohlc }, instrument: root?.instrument } };
+      }
+      // date/close line chart
+      if (timeSeries[0]?.close != null || timeSeries[0]?.value != null) {
+        const pts = timeSeries.map((d: any) => ({ time: d.date || d.time || d.datetime, value: Number(d.close ?? d.value) })).filter((d: any) => d.time && !isNaN(d.value));
+        if (pts.length > 2) return { type: 'market_chart', payload: { mode: 'line', data: { predictions: pts }, instrument: root?.instrument } };
+      }
+    }
+
+    // 5. Backtest with trades array
+    const backtest = deepFindKey(payload, 'backtest', 4);
+    if (backtest?.trades && Array.isArray(backtest.trades) && backtest.trades.length > 0) {
+      const trades = backtest.trades;
+      if (trades[0]?.entry_price != null) {
+        const stats = backtest.stats || backtest.summary;
+        return { type: 'market_chart', payload: { mode: 'area', data: { equity_curve: [], stats, trades }, instrument: root?.instrument } };
       }
     }
 
@@ -449,74 +601,36 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const renderMessageContent = (msg: Message) => {
     const chartAttachments = msg.attachments?.filter(a => a.type === 'market_chart') || [];
 
-    const renderContent = () => {
-      if (typeof msg.content === 'string') {
-        if (msg.role === 'assistant') {
-          return <div className="text-[15px] leading-relaxed">{renderMarkdown(msg.content)}</div>;
-        }
-        return <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>;
+    if (typeof msg.content === 'string') {
+      if (msg.role === 'assistant') {
+        return <div className="text-[15px] leading-relaxed">{renderMarkdown(msg.content)}</div>;
       }
-      const rich = msg.content as RichContent;
-      return (
-        <div className="text-[15px] leading-relaxed">
-          {rich.summary && <p className="mb-1">{rich.summary}</p>}
-          {/* Metadata line */}
-          {rich.meta && (
-            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
-              <span>{rich.meta.featureId === 'trade_generator' ? 'Trade Generator' : rich.meta.featureId === 'macro_lab' ? 'Macro Labs' : 'Reports'}</span>
-              <span>•</span>
-              <span>{rich.meta.instrument}</span>
-              {rich.meta.elapsedMs != null && (
-                <>
-                  <span>•</span>
-                  <span>{(rich.meta.elapsedMs / 1000).toFixed(1)}s</span>
-                </>
-              )}
-            </p>
-          )}
-          {rich.type === 'trade_setup' && <AuraMiniTradeSetup data={rich.data} />}
-          {rich.type === 'macro_commentary' && <AuraMiniMacro data={rich.data} />}
-          {rich.type === 'report' && <AuraMiniReport data={rich.data} />}
-          {rich.type === 'tool_error' && (
-            <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5 mt-2">
-              <p className="text-sm text-destructive font-medium">Tool Error</p>
-            </div>
-          )}
-          {/* Raw JSON collapsible */}
-          {rich.rawJson && (
-            <Collapsible className="mt-2">
-              <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
-                <Code className="h-3 w-3" />
-                <span>{rich.rawJson.length > 50000 ? 'Raw JSON (large — click to expand)' : 'View raw JSON'}</span>
-                <ChevronDown className="h-3 w-3" />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="relative mt-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-1 right-1 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      navigator.clipboard.writeText(rich.rawJson!);
-                      toast({ title: 'Copied', description: 'JSON copied to clipboard' });
-                    }}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <pre className="text-xs font-mono bg-black/30 rounded-md p-3 overflow-auto max-h-[300px] whitespace-pre-wrap break-all text-muted-foreground">
-                    {rich.rawJson}
-                  </pre>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-        </div>
-      );
-    };
+      return <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>;
+    }
+
+    const rich = msg.content as RichContent;
 
     return (
-      <>
-        {renderContent()}
+      <div className="text-[15px] leading-relaxed">
+        {/* 1. Natural language summary (markdown) */}
+        {rich.summary && <div className="mb-2">{renderMarkdown(rich.summary)}</div>}
+
+        {/* Metadata line */}
+        {rich.meta && (
+          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+            <span>{rich.meta.featureId === 'trade_generator' ? 'Trade Generator' : rich.meta.featureId === 'macro_lab' ? 'Macro Labs' : 'Reports'}</span>
+            <span>•</span>
+            <span>{rich.meta.instrument}</span>
+            {rich.meta.elapsedMs != null && (
+              <>
+                <span>•</span>
+                <span>{(rich.meta.elapsedMs / 1000).toFixed(1)}s</span>
+              </>
+            )}
+          </p>
+        )}
+
+        {/* 2. MarketChartWidget (TradingView-like) BEFORE mini-widget */}
         {chartAttachments.map((att, i) => (
           <MarketChartWidget
             key={i}
@@ -526,7 +640,46 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
             fullscreen={isFullscreen}
           />
         ))}
-      </>
+
+        {/* 3. Mini-widget (Trade Card / Macro Card / Report) */}
+        {rich.type === 'trade_setup' && <AuraMiniTradeSetup data={rich.data} />}
+        {rich.type === 'macro_commentary' && <AuraMiniMacro data={rich.data} />}
+        {rich.type === 'report' && <AuraMiniReport data={rich.data} />}
+        {rich.type === 'tool_error' && (
+          <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5 mt-2">
+            <p className="text-sm text-destructive font-medium">Tool Error</p>
+          </div>
+        )}
+
+        {/* 4. Collapsible raw JSON */}
+        {rich.rawJson && (
+          <Collapsible className="mt-2">
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+              <Code className="h-3 w-3" />
+              <span>{rich.rawJson.length > 50000 ? 'Raw JSON (large — click to expand)' : 'View raw JSON'}</span>
+              <ChevronDown className="h-3 w-3" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="relative mt-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-1 right-1 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    navigator.clipboard.writeText(rich.rawJson!);
+                    toast({ title: 'Copied', description: 'JSON copied to clipboard' });
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+                <pre className="text-xs font-mono bg-black/30 rounded-md p-3 overflow-auto max-h-[300px] whitespace-pre-wrap break-all text-muted-foreground">
+                  {rich.rawJson}
+                </pre>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </div>
     );
   };
 
@@ -949,10 +1102,10 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
               
               // Build rich mini-widget message using registry parser
               let richContent: Message['content'];
-              const summaryText = `✅ ${t('toasts:aura.analysisCompleted', { instrument })} 🎉`;
 
               const parsed = feature.parseResponse(parsedPayload);
               const widgetData = parsed?.data || parsedPayload;
+              const summaryText = generateNaturalSummary(featureType, widgetData, instrument);
 
               // Store result for "Open in page" preloading
               storeResultForPage(featureType, jobId, parsedPayload);
