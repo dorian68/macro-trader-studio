@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
             );
             if (finnhubRes.ok) {
               const newsData = await finnhubRes.json();
-              const top30 = newsData.slice(0, 30);
+              const top30 = newsData.slice(0, 50);
               const newsToInsert = top30.map((item: any) => ({
                 id: item.id,
                 category: cat,
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         .from('news_feed')
         .select('*')
         .order('datetime', { ascending: false })
-        .limit(150);
+        .limit(300);
 
       return new Response(JSON.stringify({ data, cached: now - lastRefresh < TTL_MS, category: 'all' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('category', category)
         .order('datetime', { ascending: false })
-        .limit(50);
+        .limit(100);
       
       return new Response(JSON.stringify({ data, cached: true, category }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     }
 
     const newsData = await finnhubRes.json();
-    const top30 = newsData.slice(0, 30);
+    const top30 = newsData.slice(0, 50);
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     await supabase
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('category', category)
       .order('datetime', { ascending: false })
-      .limit(50);
+      .limit(100);
 
     console.log(`✅ Successfully refreshed ${data?.length || 0} news items for category: ${category}`);
 
