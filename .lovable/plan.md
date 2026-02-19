@@ -1,34 +1,35 @@
 
+## Rendre les 3 boutons toujours visibles sur mobile sans scroll
 
-## Remonter les 3 boutons (AI Trade Setup, Macro Commentary, Reports) sur mobile
+### Diagnostic
 
-### Probleme
-
-Le conteneur du graphique utilise `flex-1 min-h-0` ce qui lui permet de prendre tout l'espace disponible. Les 3 cartes en bas ont `shrink-0` mais le graphique les pousse hors de l'ecran sur les petits viewports mobiles.
+Le probleme vient de la chaine de hauteurs dans `Layout.tsx` :
+- Sur desktop (`md:`), `fillViewport` applique `h-[calc(100vh-3.5rem)]` + `overflow-hidden` → le conteneur est verrouille au viewport
+- Sur mobile, seul `min-h-[calc(100vh-3.5rem)]` est applique (pas de `h-` fixe) → le conteneur grandit au-dela du viewport
+- En consequence, `max-h-[calc(100%-5rem)]` sur le graphique ne fonctionne pas car "100%" d'une hauteur `auto` est indefini
 
 ### Solution
 
-Limiter la hauteur max du conteneur du graphique sur mobile pour laisser assez de place aux 3 boutons. Sur tablette/desktop les contraintes existantes restent inchangees.
+Appliquer le meme verrouillage viewport sur mobile dans `Layout.tsx` quand `fillViewport` est actif, pour que toute la page soit contenue dans un ecran.
 
-### Modification dans `src/pages/TradingDashboard.tsx`
+### Modifications
 
-**Ligne 262** - Ajouter une hauteur max mobile au conteneur du graphique :
+**`src/components/Layout.tsx` (2 lignes)**
 
-Remplacer :
-```
-min-w-0 min-h-0 order-1 my-0 overflow-hidden md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full
-```
-Par :
-```
-min-w-0 min-h-0 order-1 my-0 overflow-hidden max-h-[calc(100%-5rem)] md:max-h-none md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full
-```
+1. Ligne 309 : Ajouter la hauteur fixe sur tous les ecrans (pas seulement `md:`) :
+   - Avant : `"md:h-[calc(100vh-3.5rem)] md:overflow-hidden"`
+   - Apres : `"h-[calc(100dvh-3.5rem)] overflow-hidden md:h-[calc(100vh-3.5rem)]"`
 
-Le `max-h-[calc(100%-5rem)]` reserve ~80px en bas pour les 3 cartes sur mobile. Le `md:max-h-none` desactive cette contrainte sur tablette/desktop.
+2. Ligne 317 : Appliquer le flex column sur tous les ecrans :
+   - Avant : `"md:max-w-[1920px] md:h-full md:flex md:flex-col"`
+   - Apres : `"h-full flex flex-col md:max-w-[1920px]"`
+
+`100dvh` est utilise sur mobile pour gerer correctement la barre d'adresse des navigateurs mobiles. Sur `md:` et au-dela, `100vh` prend le relais.
 
 ### Ce qui ne change pas
 
-- Le layout desktop 2 colonnes reste identique
+- Le layout desktop 2 colonnes (chart + carousel) reste identique
 - Le graphique TradingView garde son fonctionnement
 - Les 3 boutons gardent leur style et comportement
+- La navbar et le BubbleSystem ne sont pas touches
 - Aucune logique metier modifiee
-
