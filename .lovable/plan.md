@@ -1,50 +1,41 @@
 
 
-# Match AURA Chat Text Colors and Font Size to Reference Screenshot
+# Make AURA Chat Bubbles Fully Rounded to Match Screenshot
 
 ## What Changes
 
-Based on the screenshot reference, two adjustments are needed:
+The screenshot shows chat bubbles with a generous, pill-like rounding (similar to iMessage or WhatsApp). Currently:
 
-1. **Text colors**: 
-   - User messages: pure white text (`text-white`) -- currently uses `text-foreground` which may vary
-   - Assistant messages: slightly muted/soft white (`text-[#d1d1d1]`) -- a warm light gray, not harsh white
+- **Fullscreen mode**: uses `rounded-2xl` (16px) -- close but could be rounder
+- **Normal mode**: uses `rounded-lg` (8px) -- noticeably too square
 
-2. **Font size**: 
-   - Both user and assistant messages increase from `text-sm` (14px) to `text-[15px]` -- matching the comfortable reading size visible in the screenshot
+Both modes will be updated to `rounded-2xl` for consistent, smooth rounded bubbles matching the screenshot.
 
 ## Technical Details
 
-### File: `src/components/AURA.tsx`
-
-**Bubble classes (lines 1172-1174)**
+### File: `src/components/AURA.tsx` (line 1171)
 
 Current:
 ```
-msg.role === 'user'
-  ? 'bg-[#2f3e36] text-foreground'
-  : 'bg-[#212121] text-foreground'
+isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-lg px-4 py-2'
 ```
 
 Updated:
 ```
-msg.role === 'user'
-  ? 'bg-[#2f3e36] text-white'
-  : 'bg-[#212121] text-[#d1d1d1]'
+isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-2xl px-4 py-3'
 ```
 
-**Font size in renderMessageContent (lines 416, 418, 422)**
+Changes in normal (non-fullscreen) mode only:
+- `rounded-lg` becomes `rounded-2xl` -- matches the rounded bubble shape in the screenshot
+- `py-2` becomes `py-3` -- slightly more vertical padding for a balanced pill shape
 
-Change all `text-sm` to `text-[15px] leading-relaxed` in:
-- Line 416: assistant markdown container
-- Line 418: user text paragraph
-- Line 422: rich content container
+Fullscreen mode stays unchanged (already `rounded-2xl`).
 
 ## No Regression
 
-- Bubble backgrounds stay `#2f3e36` (user) and `#212121` (assistant) -- unchanged
-- Layout, spacing, rounded corners all unchanged
-- Mini-widgets, chart attachments, markdown rendering untouched
-- Only text color classes and font-size classes are swapped
-- `leading-relaxed` ensures line spacing stays comfortable at the larger font size
+- Background colors (`#2f3e36`, `#212121`) unchanged
+- Text colors (`text-white`, `text-[#d1d1d1]`) unchanged
+- Font size (`text-[15px]`) unchanged
+- Layout, animations, widgets, charts all untouched
+- Only border-radius and vertical padding in normal mode are updated
 
