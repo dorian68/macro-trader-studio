@@ -524,7 +524,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const jobCompletedRef = useRef<Set<string>>(new Set());
   const batchContextRef = useRef<{instrument?: string; priceSummary?: string; indicatorSummary?: string} | null>(null);
