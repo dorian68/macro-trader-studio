@@ -73,6 +73,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
     toast
   } = useToast();
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const loadIdRef = useRef(0); // cancellation token for async race
 
   // Local symbol state to keep dropdown selection stable and update chart
   const [currentSymbol, setCurrentSymbol] = useState<string>(selectedSymbol);
@@ -171,6 +172,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
   // Load TradingView widget via tv.js (more reliable in SPAs)
   const loadTradingViewFallback = async () => {
+    const thisLoadId = ++loadIdRef.current; // cancel any previous call
     const container = chartContainerRef.current;
     if (!container) return;
 
@@ -180,10 +182,10 @@ const TradingViewWidget = memo(function TradingViewWidget({
     }
 
     // Small delay to ensure proper cleanup
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 150));
 
-    // Guard: component may have unmounted during the delay
-    if (!chartContainerRef.current) return;
+    // Guard: cancelled or unmounted
+    if (loadIdRef.current !== thisLoadId || !chartContainerRef.current) return;
 
     // Create inner container for the chart with unique ID
     const chartEl = document.createElement('div');
@@ -215,6 +217,8 @@ const TradingViewWidget = memo(function TradingViewWidget({
     });
     try {
       await ensureTvJs();
+      // Guard: cancelled during script load
+      if (loadIdRef.current !== thisLoadId) return;
       // Map timeframe to TradingView intervals
       const interval = timeframe === '1m' ? '1' : timeframe === '5m' ? '5' : timeframe === '15m' ? '15' : timeframe === '30m' ? '30' : timeframe === '1h' ? '60' : timeframe === '4h' ? '240' : timeframe === 'D' ? 'D' : timeframe === 'W' ? 'W' : timeframe === 'M' ? 'M' : '60';
       // Initialize widget
