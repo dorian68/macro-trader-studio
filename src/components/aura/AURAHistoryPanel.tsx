@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trash2, MessageSquare, Clock, X } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Plus, Trash2, MessageSquare, Clock, X, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AuraThread } from '@/services/auraConversationService';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,6 +15,8 @@ interface AURAHistoryPanelProps {
   onDeleteThread: (threadId: string) => void;
   mode: 'sidebar' | 'overlay';
   onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function AURAHistoryPanel({
@@ -24,33 +27,133 @@ export function AURAHistoryPanel({
   onDeleteThread,
   mode,
   onClose,
+  collapsed = false,
+  onToggleCollapse,
 }: AURAHistoryPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
+  // Collapsed sidebar — icon-only mode
+  if (mode === 'sidebar' && collapsed) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <div className="flex flex-col bg-[#0a0d10] h-full w-[56px] border-r border-white/[0.06] transition-all duration-250 ease-in-out">
+          {/* Expand button */}
+          <div className="flex items-center justify-center py-3 border-b border-white/[0.06]">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleCollapse}
+                  className="h-8 w-8 text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
+                  aria-label="Expand History"
+                >
+                  <PanelLeft className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6]">
+                Expand History
+              </TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* New Chat icon */}
+          <div className="flex items-center justify-center py-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onNewChat}
+                  className="h-8 w-8 text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
+                  aria-label="New Chat"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6]">
+                New Chat
+              </TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* Thread icons */}
+          <ScrollArea className="flex-1">
+            <div className="py-1 flex flex-col items-center gap-0.5">
+              {threads.map((thread) => (
+                <Tooltip key={thread.id}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onSelectThread(thread.id)}
+                      className={cn(
+                        "h-8 w-8 transition-colors",
+                        activeThreadId === thread.id
+                          ? "text-[#e5e7eb] bg-white/[0.06]"
+                          : "text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
+                      )}
+                      aria-label={thread.title || 'Chat thread'}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6] max-w-[200px]">
+                    <p className="truncate">{thread.title || 'New Chat'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
   const content = (
     <div className={cn(
-      "flex flex-col bg-[#0c0f13] h-full",
+      "flex flex-col bg-[#0a0d10] h-full transition-all duration-250 ease-in-out",
       mode === 'sidebar'
-        ? "w-[280px] border-r border-white/[0.06]"
+        ? "w-[260px] border-r border-white/[0.06]"
         : "w-[280px]"
     )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-[#9ca3af]">
           <Clock className="h-3.5 w-3.5" />
           <span>History</span>
-          <span className="text-muted-foreground/60">({threads.length})</span>
+          <span className="text-[#6b7280]">({threads.length})</span>
         </div>
-        {mode === 'overlay' && onClose && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-6 w-6 text-muted-foreground hover:text-white"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        )}
+        <div className="flex items-center gap-0.5">
+          {mode === 'sidebar' && onToggleCollapse && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleCollapse}
+                  className="h-6 w-6 text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
+                  aria-label="Collapse History"
+                >
+                  <PanelLeftClose className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6]">
+                Collapse History
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {mode === 'overlay' && onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-6 w-6 text-[#6b7280] hover:text-[#e5e7eb]"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* New Chat button */}
@@ -59,7 +162,7 @@ export function AURAHistoryPanel({
           variant="outline"
           size="sm"
           onClick={onNewChat}
-          className="w-full gap-1.5 text-xs h-9 border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] text-muted-foreground hover:text-white"
+          className="w-full gap-1.5 text-xs h-9 border-[#374151]/50 bg-white/[0.02] hover:bg-white/[0.06] text-[#9ca3af] hover:text-[#e5e7eb]"
         >
           <Plus className="h-3.5 w-3.5" />
           New Chat
@@ -70,7 +173,7 @@ export function AURAHistoryPanel({
       <ScrollArea className="flex-1">
         <div className="py-1">
           {threads.length === 0 && (
-            <p className="text-xs text-muted-foreground/60 text-center py-6">
+            <p className="text-xs text-[#6b7280] text-center py-6">
               No conversations yet
             </p>
           )}
@@ -83,15 +186,15 @@ export function AURAHistoryPanel({
               )}
               onClick={() => onSelectThread(thread.id)}
             >
-              <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+              <MessageSquare className="h-3.5 w-3.5 text-[#6b7280] shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "text-sm truncate",
-                  activeThreadId === thread.id ? "text-white" : "text-muted-foreground"
+                  activeThreadId === thread.id ? "text-[#e5e7eb]" : "text-[#9ca3af]"
                 )}>
                   {thread.title || 'New Chat'}
                 </p>
-                <p className="text-[10px] text-muted-foreground/50">
+                <p className="text-[10px] text-[#6b7280]">
                   {formatDistanceToNow(new Date(thread.last_message_at), { addSuffix: true })}
                 </p>
               </div>
@@ -121,7 +224,7 @@ export function AURAHistoryPanel({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-[#6b7280] hover:text-destructive"
                   onClick={(e) => {
                     e.stopPropagation();
                     setConfirmDelete(thread.id);
