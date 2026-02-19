@@ -234,6 +234,8 @@ const TradingViewWidget = memo(function TradingViewWidget({
         overrides: {
           "paneProperties.vertGridProperties.color": "transparent",
           "paneProperties.horzGridProperties.color": "transparent",
+          "paneProperties.backgroundType": "solid",
+          "paneProperties.background": "#1a1a2e",
           "scalesProperties.showSymbolLabels": false,
           "mainSeriesProperties.priceLineVisible": false,
         },
@@ -353,7 +355,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
       }
     };
   }, [currentSymbol, onPriceUpdate]);
-  return <div className={`w-full h-full flex flex-col overflow-hidden ${className}`}>
+  return <div className={`w-full h-full flex flex-col overflow-hidden rounded-lg ${className}`}>
         {loading && <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Loading market data...</span>
@@ -361,7 +363,13 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 overflow-hidden">
+        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 overflow-hidden rounded-lg">
+          {/* Chart title overlay */}
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-card/80 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-foreground/80">
+            <span>{mapToTwelveDataSymbol(currentSymbol)}</span>
+            <span className="text-muted-foreground">|</span>
+            <span className="text-muted-foreground">{timeframe.toUpperCase()}</span>
+          </div>
           <Button
             variant="secondary"
             size="icon"
