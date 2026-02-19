@@ -892,7 +892,40 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
 
     if (typeof msg.content === 'string') {
       if (msg.role === 'assistant') {
-        return <div className="text-[15px] leading-relaxed">{renderMarkdown(msg.content)}</div>;
+        return (
+          <div className="text-[15px] leading-relaxed">
+            {renderMarkdown(msg.content)}
+            {chartAttachments.length > 0 && chartAttachments.map((att, i) => (
+              <div key={i} className="mb-4 mt-3 rounded-lg overflow-hidden">
+                <MarketChartWidget
+                  data={att.payload.data}
+                  instrument={att.payload.instrument}
+                  timeframe={att.payload.timeframe}
+                  fullscreen={isFullscreen}
+                />
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => {
+                    navigate('/dashboard');
+                    onToggle();
+                  }}>
+                    <ArrowUpRight className="h-3 w-3" /> Open in Trading Dashboard
+                  </Button>
+                  {['5min', '15min', '1h'].map((tf) => (
+                    <Button
+                      key={tf}
+                      variant={att.payload.timeframe === tf ? 'default' : 'ghost'}
+                      size="sm"
+                      className="text-xs h-7 px-2"
+                      onClick={() => sendMessage(`plot ${att.payload.instrument} last 24h ${tf}`)}
+                    >
+                      {tf}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
       }
       return <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>;
     }
@@ -1048,17 +1081,17 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
           
           if (batchContextRef.current) {
             const { instrument, priceSummary, indicatorSummary } = batchContextRef.current;
-            const synthesisPrompt = `IMPORTANT: Les outils ont déjà été exécutés. N'APPELLE PAS d'outils à nouveau. Utilise UNIQUEMENT les données ci-dessous pour produire une analyse technique structurée.
+            const synthesisPrompt = `IMPORTANT: Tools have already been executed. DO NOT call any tools again. Use ONLY the data below to produce a structured technical analysis.
 
 **Instrument**: ${instrument}
 
-**Prix en Temps Réel**:
-${priceSummary || 'Non disponible'}
+**Real-Time Prices**:
+${priceSummary || 'Not available'}
 
-**Indicateurs Techniques**:
-${indicatorSummary || 'Non disponible'}
+**Technical Indicators**:
+${indicatorSummary || 'Not available'}
 
-Fournis maintenant une analyse technique complète et structurée basée sur ces données.`;
+Now provide a complete, structured technical analysis based on this data.`;
 
             batchContextRef.current = null;
             setTimeout(() => { sendMessage(synthesisPrompt); }, 500);
@@ -1233,6 +1266,105 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       }
     }
 
+    // Handle plot_price_chart — inline chart widget
+    if (functionName === 'plot_price_chart') {
+      console.log("📊 Plot price chart requested:", parsedArgs);
+      
+      try {
+        const chartInstrument = parsedArgs.instrument || 'XAU/USD';
+        const chartInterval = parsedArgs.interval || '15min';
+        const lookbackHours = parsedArgs.lookback_hours || 24;
+
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          content: `📊 Fetching ${chartInstrument} chart (last ${lookbackHours}h, ${chartInterval} candles)...`
+        }]);
+
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - lookbackHours * 60 * 60 * 1000);
+
+        const { data: chartData, error: chartError } = await supabase.functions.invoke(
+          'fetch-historical-prices',
+          {
+            body: {
+              instrument: chartInstrument,
+              startDate: startDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0],
+              interval: chartInterval,
+              extendDays: 0
+            }
+          }
+        );
+
+        if (chartError || !chartData?.data || chartData.data.length === 0) {
+          setMessages((prev) => [...prev.slice(0, -1), {
+            role: 'assistant',
+            content: `⚠️ Could not fetch chart data for ${chartInstrument}. ${chartError?.message || 'No data available for this period.'}`
+          }]);
+          return;
+        }
+
+        // Transform to OHLC format for MarketChartWidget
+        const ohlcData = chartData.data.map((d: any) => ({
+          time: d.datetime || d.date,
+          open: Number(d.open),
+          high: Number(d.high),
+          low: Number(d.low),
+          close: Number(d.close),
+        })).filter((d: any) => d.time && !isNaN(d.open)).sort((a: any, b: any) => a.time.localeCompare(b.time));
+
+        if (ohlcData.length === 0) {
+          setMessages((prev) => [...prev.slice(0, -1), {
+            role: 'assistant',
+            content: `⚠️ No valid OHLC data returned for ${chartInstrument}.`
+          }]);
+          return;
+        }
+
+        // Calculate summary stats
+        const latestCandle = ohlcData[ohlcData.length - 1];
+        const firstCandle = ohlcData[0];
+        const periodHigh = Math.max(...ohlcData.map((d: any) => d.high));
+        const periodLow = Math.min(...ohlcData.map((d: any) => d.low));
+        const pctChange = ((latestCandle.close - firstCandle.open) / firstCandle.open * 100).toFixed(2);
+        const changeSign = Number(pctChange) >= 0 ? '+' : '';
+
+        const lookbackLabel = lookbackHours >= 168 ? `${Math.round(lookbackHours / 24)} days` :
+                              lookbackHours >= 24 ? `${Math.round(lookbackHours / 24)} day${Math.round(lookbackHours / 24) > 1 ? 's' : ''}` :
+                              `${lookbackHours} hours`;
+
+        const summaryText = `📊 **${chartInstrument}** — Last ${lookbackLabel} (${chartInterval} candles)\n\n` +
+          `**Current:** ${latestCandle.close.toFixed(latestCandle.close > 100 ? 2 : 5)} | ` +
+          `**High:** ${periodHigh.toFixed(periodHigh > 100 ? 2 : 5)} | ` +
+          `**Low:** ${periodLow.toFixed(periodLow > 100 ? 2 : 5)} | ` +
+          `**Change:** ${changeSign}${pctChange}%`;
+
+        // Set message with chart attachment
+        setMessages((prev) => [...prev.slice(0, -1), {
+          role: 'assistant',
+          content: summaryText,
+          attachments: [{
+            type: 'market_chart' as const,
+            payload: {
+              mode: 'candlestick',
+              data: { ohlc: ohlcData },
+              instrument: chartInstrument,
+              timeframe: chartInterval
+            }
+          }]
+        }]);
+
+        return;
+      } catch (error) {
+        console.error('Plot price chart error:', error);
+        setMessages((prev) => [...prev.slice(0, -1), {
+          role: 'assistant',
+          content: `❌ Failed to fetch chart data. Please try again.`
+        }]);
+        return;
+      }
+    }
+
     // Handle get_technical_indicators separately
     if (functionName === 'get_technical_indicators') {
       console.log("📈 Fetching technical indicators from Twelve Data");
@@ -1251,7 +1383,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         if (!collectOnly) {
           setMessages((prev) => [...prev, {
             role: 'assistant',
-            content: `📈 ${t('aura.fetchingData')} ${techInstrument} (${indicators.join(', ')})...`
+            content: `📈 ${t('aura.fetchingData')} ${techInstrument} (${indicators.join(', ')}...`
           }]);
         }
 
