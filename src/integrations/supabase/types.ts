@@ -455,18 +455,21 @@ export type Database = {
       }
       chart_provider_settings: {
         Row: {
+          display_options: Json | null
           id: string
           provider: string
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
+          display_options?: Json | null
           id?: string
           provider?: string
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
+          display_options?: Json | null
           id?: string
           provider?: string
           updated_at?: string | null

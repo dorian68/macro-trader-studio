@@ -49,6 +49,7 @@ import { PlanParametersManagement } from "@/components/admin/PlanParametersManag
 import { SubscriptionPlanOverview } from "@/components/admin/SubscriptionPlanOverview";
 import { UserCreditsOverview } from "@/components/admin/UserCreditsOverview";
 import { ChartProviderSettings } from "@/components/admin/ChartProviderSettings";
+import { ChartDisplaySettings } from "@/components/admin/ChartDisplaySettings";
 import { ReactivationRequestsManagement } from "@/components/admin/ReactivationRequestsManagement";
 import ImportABCGPortfolio from "@/components/admin/ImportABCGPortfolio";
 import Layout from "@/components/Layout";
@@ -909,7 +910,7 @@ export default function Admin() {
               )}
               {isSuperUser && (
                 <TabsTrigger value="realtime-diagnostic" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-                  <span className="text-base">🔍</span>
+                  <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Realtime Diagnostic</span>
                   <span className="sm:hidden">Diagnostic</span>
                 </TabsTrigger>
@@ -1028,6 +1029,7 @@ export default function Admin() {
           {isSuperUser && (
             <TabsContent value="chart-provider">
               <ChartProviderSettings />
+              <ChartDisplaySettings />
               
               {/* Dashboard Chart Mode Toggle (Testing) */}
               <Card className="rounded-2xl shadow-sm border mt-6">
