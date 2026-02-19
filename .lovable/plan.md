@@ -1,66 +1,70 @@
 
 
-# AURA Backend Routing Fix: Use macro-lab-proxy Instead of Legacy n8n Webhook
+# Optimisation Densite Market News -- Condensed Trading Feed
 
-## Problem
+## Analyse actuelle
 
-AURA currently sends ALL feature requests (trade_generator, macro_lab, reports) to the **old n8n webhook** (`dorian68.app.n8n.cloud/webhook/4572387f-...`), which is the same endpoint used by the **legacy MacroAnalysis page**.
+Le composant `DashboardColumnCarousel.tsx` a 3 view modes : `list`, `compact`, `large`. Le mode par defaut est `compact`. Les problemes :
 
-Meanwhile, the **new pages** (Macro Lab and Trade Generator) both use the **macro-lab-proxy** Supabase Edge Function (`macro-lab-proxy` at the project's Supabase URL). This means AURA is calling a different backend than the pages it's supposed to represent.
+- **list** (5 items) : deja assez dense, bon point de depart
+- **compact** (3 items) : thumbnails 40x40, padding `p-2.5`, gap `gap-2`, headline `line-clamp-2` -- trop aere
+- **large** (2 items) : images pleine largeur h-24, beaucoup d'espace -- mode expansion
 
-Additionally, the `createJob()` and `enhancedPostRequest()` calls still pass `'macro_commentary'` as `jobType` for both trade_generator and macro_lab features -- a leftover from the old architecture.
+Le gap entre items est `gap-2` (8px), les paddings internes sont genereux, et le mode compact par defaut ne montre que 3 articles.
 
-## Fix Plan
+## Plan de densification
 
-### 1. Route AURA requests to macro-lab-proxy (src/components/AURA.tsx)
+### 1. Augmenter le nombre d'items par page
 
-**Current** (line 1008): All features go to the old n8n webhook.
+Changer `ITEMS_MAP` pour afficher plus d'articles :
 
-**Fix**: Route `trade_generator` and `macro_lab` requests through the macro-lab-proxy Edge Function (same URL used by ForecastTradeGenerator and ForecastMacroLab pages). Only `reports` keeps the n8n webhook (or its own endpoint if different).
-
-The macro-lab-proxy URL is: `https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/macro-lab-proxy`
-
-### 2. Fix createJob jobType parameter (src/components/AURA.tsx)
-
-**Current** (line 863):
 ```
-featureType === 'trade_generator' ? 'macro_commentary' : featureType === 'macro_lab' ? 'macro_commentary' : featureType
-```
-Both trade_generator and macro_lab are mapped to `'macro_commentary'` -- this is wrong.
-
-**Fix**: Pass the actual featureType directly:
-```
-featureType  // 'trade_generator' | 'macro_lab' | 'reports'
+list: 8      (was 5)
+compact: 5   (was 3)  
+large: 3     (was 2)
 ```
 
-### 3. Fix enhancedPostRequest jobType parameter (src/components/AURA.tsx)
+### 2. Reduire gap entre items
 
-**Current** (line 1012): Same `'macro_commentary'` mapping as above.
+Ligne 256 : `gap-2` (8px) remplace par `gap-1` (4px) pour tout le conteneur news.
 
-**Fix**: Pass `featureType` directly instead of the hardcoded `'macro_commentary'`.
+### 3. Densifier mode "compact" (default)
 
-### 4. Clean up collective-insights call in Edge Function (supabase/functions/aura/index.ts)
+- Thumbnail : `w-10 h-10` reste (deja petit)
+- Padding : `p-2.5` reduit a `px-2.5 py-1.5`
+- Headline : `text-sm line-clamp-2 mb-1` change en `text-xs line-clamp-1 mb-0.5` -- une seule ligne, plus petit
+- Metadata row : garder inline, reduire gap a `gap-1.5`
 
-**Current** (line 313): Passes `type: 'macro_commentary'` to collective-insights.
+### 4. Densifier mode "list"
 
-**Fix**: This is a read-only data fetch for context enrichment -- it queries the collective-insights function which may still use this type internally. This should be left as-is unless the collective-insights function was also updated. No change needed here (it's reading historical data, not launching a feature).
+- Padding : `px-3 py-2` reduit a `px-2.5 py-1.5`
+- Deja tres compact, changement mineur
 
-### 5. Clean up system prompt references (supabase/functions/aura/index.ts)
+### 5. Densifier mode "large"
 
-- Line 824: "Check macro commentary from ABCG Research" -- change to "Check macro analysis from ABCG Research"
-- Line 850: `launch_macro_lab` reference is already correct
+- Image height : `h-24` reduit a `h-16`
+- Inner padding : `p-2.5` reduit a `p-2`
+- Headline : `text-sm line-clamp-2` change en `text-xs line-clamp-2`
+- Summary : `line-clamp-2` change en `line-clamp-1`
+- Gap interne : `gap-1` reduit a `gap-0.5`
 
-## Files Modified
+### 6. Pagination plus compacte
 
-1. `src/components/AURA.tsx` -- Backend endpoint routing + jobType fixes
-2. `supabase/functions/aura/index.ts` -- Minor prompt text cleanup
+- Ligne 271 : `pt-2` reduit a `pt-1`
 
-## What Does NOT Change
+### 7. Filtre category bar
 
-- Tool names in the Edge Function (already correctly named `launch_trade_generator`, `launch_macro_lab`)
-- DB feature constraint values (`'AI Trade Setup'`, `'Macro Commentary'`, `'Report'`)
-- Request payload structure (type, mode, instrument, question fields stay the same)
-- Credit system, realtime subscriptions, UI/UX
-- The macro-lab-proxy Edge Function itself (unchanged)
-- Reports endpoint (stays on n8n webhook unless a dedicated proxy exists)
+- Ligne 225 : `mb-2` reduit a `mb-1`
 
+## Fichier modifie
+
+`src/components/DashboardColumnCarousel.tsx` uniquement
+
+## Ce qui ne change PAS
+
+- Couleurs, palette, CATEGORY_COLORS
+- Logique pagination, filtres, API
+- Quick Access tab
+- ToggleGroup view mode switcher
+- Responsive behavior
+- NewsFeedPanel (panneau lateral droit -- fichier separe)
