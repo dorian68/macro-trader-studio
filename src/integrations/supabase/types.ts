@@ -417,6 +417,74 @@ export type Database = {
         }
         Relationships: []
       }
+      aura_messages: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          role: string
+          seq: number
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          id?: string
+          role: string
+          seq?: never
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          role?: string
+          seq?: never
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aura_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "aura_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aura_threads: {
+        Row: {
+          created_at: string
+          id: string
+          is_archived: boolean
+          last_message_at: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       brokers: {
         Row: {
           code: string | null

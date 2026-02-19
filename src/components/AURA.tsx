@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy, TrendingUp, TrendingDown, Newspaper, BarChart3, BookOpen } from 'lucide-react';
+import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy, TrendingUp, TrendingDown, Newspaper, BarChart3, BookOpen, Plus, Clock } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -20,8 +20,11 @@ import { useRealtimeJobManager } from '@/hooks/useRealtimeJobManager';
 import { useCreditEngagement } from '@/hooks/useCreditEngagement';
 import { enhancedPostRequest } from '@/lib/enhanced-request';
 import { MarketChartWidget } from '@/components/aura/MarketChartWidget';
+import { AURAHistoryPanel } from '@/components/aura/AURAHistoryPanel';
 import { FEATURE_REGISTRY, resolveFeatureId, storeResultForPage } from '@/lib/auraFeatureRegistry';
 import type { FeatureId } from '@/lib/auraFeatureRegistry';
+import { useAuraThread } from '@/hooks/useAuraThread';
+import type { Message, RichContent } from '@/hooks/useAuraThread';
 import auraLogo from '@/assets/aura-logo.png';
 
 interface AURAProps {
@@ -31,23 +34,7 @@ interface AURAProps {
   contextData?: import('@/lib/auraMessages').AURAContextData;
 }
 
-interface RichContent {
-  type: string;
-  data: any;
-  summary: string;
-  rawJson?: string;
-  meta?: {
-    featureId: string;
-    instrument: string;
-    elapsedMs?: number;
-  };
-}
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string | RichContent;
-  attachments?: Array<{ type: 'market_chart'; payload: any }>;
-}
+// Message and RichContent types imported from useAuraThread
 
 // ===== GENERATE NATURAL LANGUAGE SUMMARY =====
 function generateNaturalSummary(featureType: string, data: any, instrument: string): string {
@@ -293,7 +280,21 @@ function getMessageText(msg: Message): string {
 }
 
 export default function AURA({ context, isExpanded, onToggle, contextData }: AURAProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const {
+    activeThread,
+    messages,
+    setMessages,
+    threads,
+    isLoadingThread,
+    createNewChat,
+    loadThread,
+    deleteThreadById,
+    refreshThreadList,
+    persistUserMessage,
+    persistAssistantMessage,
+    updateLastAssistantInDb,
+  } = useAuraThread();
+
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showTeaser, setShowTeaser] = useState(false);
@@ -304,6 +305,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const [showCollectivePanel, setShowCollectivePanel] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const jobCompletedRef = useRef<Set<string>>(new Set());
   const batchContextRef = useRef<{instrument?: string; priceSummary?: string; indicatorSummary?: string} | null>(null);
@@ -403,29 +405,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     }
   }, [isExpanded, teaserDismissed, context]);
 
-  // Save conversation to localStorage
-  useEffect(() => {
-    if (messages.length > 0) {
-      const serializable = messages.map(m => ({
-        role: m.role,
-        content: m.content
-      }));
-      localStorage.setItem('aura-conversation', JSON.stringify(serializable.slice(-7)));
-    }
-  }, [messages]);
-
-  // Restore conversation from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('aura-conversation');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setMessages(parsed.map((m: any) => ({ ...m })));
-      } catch (e) {
-        console.error('Failed to restore AURA conversation:', e);
-      }
-    }
-  }, []);
+  // (localStorage save/restore removed — now using Supabase via useAuraThread)
 
   // Subscribe to job updates for badges
   useEffect(() => {
@@ -1039,6 +1019,9 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     setMessages(prev => [...prev, userMsg]);
     setInput('');
 
+    // Persist user message to Supabase (fire-and-forget for speed)
+    persistUserMessage(question).catch(err => console.error('[AURA] persist user msg error:', err));
+
     // Fast-path: intercept "plot X last Yh Zmin" commands client-side
     if (tryInterceptPlotCommand(question)) return;
 
@@ -1132,7 +1115,10 @@ Now provide a complete, structured technical analysis based on this data.`;
 
       // Regular message response
       if (data.message) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+        const assistantMsg: Message = { role: 'assistant', content: data.message };
+        setMessages(prev => [...prev, assistantMsg]);
+        // Persist assistant message
+        persistAssistantMessage(assistantMsg).catch(err => console.error('[AURA] persist assistant msg error:', err));
       } else {
         throw new Error('Invalid response format');
       }
@@ -1599,10 +1585,13 @@ Now provide a complete, structured technical analysis based on this data.`;
               jobCompletedRef.current.add(jobId);
               setTimeout(() => jobCompletedRef.current.delete(jobId), 5000);
 
+              const completedMsg: Message = { role: 'assistant', content: richContent, attachments };
               setMessages((prev) => [
                 ...prev.slice(0, -1),
-                { role: 'assistant', content: richContent, attachments },
+                completedMsg,
               ]);
+              // Persist completed tool result
+              persistAssistantMessage(completedMsg).catch(err => console.error('[AURA] persist tool result error:', err));
               
               // Result renders in-chat; no toast needed
               
@@ -1804,12 +1793,34 @@ Now provide a complete, structured technical analysis based on this data.`;
                 )}>
                   AURA
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  AlphaLens Unified Research Assistant
+                <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+                  {activeThread?.title && activeThread.title !== 'New Chat' ? activeThread.title : 'AlphaLens Unified Research Assistant'}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {/* New Chat */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={createNewChat}
+                className="hover:bg-primary/10"
+                aria-label="New chat"
+                title="New Chat"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              {/* History toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => { setShowHistory(!showHistory); refreshThreadList(); }}
+                className={cn("hover:bg-primary/10", showHistory && "bg-primary/10")}
+                aria-label="History"
+                title="History"
+              >
+                <Clock className="h-4 w-4" />
+              </Button>
               {/* Fullscreen toggle */}
               <Button
                 variant="ghost"
@@ -1841,6 +1852,18 @@ Now provide a complete, structured technical analysis based on this data.`;
             </div>
           </div>
         </CardHeader>
+
+        {/* History Panel */}
+        {showHistory && (
+          <AURAHistoryPanel
+            threads={threads}
+            activeThreadId={activeThread?.id}
+            onSelectThread={(id) => { loadThread(id); setShowHistory(false); }}
+            onNewChat={() => { createNewChat(); setShowHistory(false); }}
+            onDeleteThread={deleteThreadById}
+            isFullscreen={isFullscreen}
+          />
+        )}
 
         {/* Messages */}
         <ScrollArea className={cn("flex-1", isFullscreen ? "px-8 py-6" : "p-4")} ref={scrollRef}>
