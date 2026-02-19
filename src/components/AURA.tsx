@@ -870,6 +870,33 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     );
   };
 
+  // ===== POLITICAL CONTENT SANITIZER =====
+  function sanitizePoliticalContent(text: string): { sanitized: string; wasSanitized: boolean } {
+    const rules: [RegExp, string | ((match: string) => string)][] = [
+      [/trump('s)?\s+(economic\s+)?polic(y|ies)/gi, 'US fiscal/trade policy scenarios'],
+      [/trump('s)?\s+tariff(s)?/gi, 'potential US tariff policy changes'],
+      [/if\s+trump\s+wins/gi, 'alternative US policy regime scenarios'],
+      [/trump('s)?\s+impact/gi, 'US policy regime change impact'],
+      [/trump('s)?\s+(economical?\s+)?politic(s|al)?/gi, 'US fiscal/trade policy scenarios'],
+      [/biden('s)?\s+(economic\s+)?polic(y|ies)/gi, 'current US administration policy stance'],
+      [/\b(trump|biden|macron|starmer)\b(?!'s\s+(?:entry|stop|take))/gi, (match: string) => {
+        const map: Record<string, string> = {
+          trump: 'US policy shift', biden: 'US administration policy',
+          macron: 'French policy stance', starmer: 'UK policy stance'
+        };
+        return map[match.toLowerCase()] || 'policy scenario';
+      }],
+    ];
+    let result = text;
+    let changed = false;
+    for (const [pattern, replacement] of rules) {
+      const before = result;
+      result = result.replace(pattern, replacement as any);
+      if (result !== before) changed = true;
+    }
+    return { sanitized: result, wasSanitized: changed };
+  }
+
   // Client-side plot command interceptor — bypasses LLM for reliable chart rendering
   const tryInterceptPlotCommand = (question: string): boolean => {
     const plotMatch = question.match(
@@ -881,13 +908,64 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     const lookbackHours = parseInt(plotMatch[2], 10);
     const interval = plotMatch[3] || (lookbackHours <= 6 ? '5min' : lookbackHours <= 12 ? '15min' : lookbackHours <= 48 ? '30min' : '1h');
 
-    // Synthesize a tool call and handle it directly
     const syntheticToolCall = {
       function: {
         name: 'plot_price_chart',
         arguments: JSON.stringify({ instrument, interval, lookback_hours: lookbackHours }),
       },
     };
+    handleToolLaunch(syntheticToolCall, { collectOnly: false });
+    return true;
+  };
+
+  // ===== CLIENT-SIDE MACRO-LAB INTENT INTERCEPTOR =====
+  const tryInterceptMacroLab = (question: string): boolean => {
+    // Match explicit macro-lab intent patterns (EN + FR)
+    const macroPattern = /(?:do|run|launch|generate|give\s+me|make|execute|perform|lancer?|fais?)\s+(?:a\s+|une?\s+)?(?:macro\s+(?:commentary|analysis|labs?|commentaire|analyse)|commentaire\s+macro|analyse\s+macro)\s+(?:on|for|sur|de|about)\s+(.+)/i;
+    const macroPattern2 = /(?:macro\s+(?:commentary|analysis|labs?)|commentaire\s+macro|analyse\s+macro)\s+(?:on|for|sur|de|about)\s+(.+)/i;
+
+    const match = question.match(macroPattern) || question.match(macroPattern2);
+    if (!match) return false;
+
+    const rawTail = match[1].trim();
+
+    // Extract instrument — support slash, concatenated, and common names
+    const instrumentPattern = /\b(EUR[\s\/]?USD|GBP[\s\/]?USD|USD[\s\/]?JPY|AUD[\s\/]?USD|USD[\s\/]?CHF|USD[\s\/]?CAD|NZD[\s\/]?USD|EUR[\s\/]?GBP|EUR[\s\/]?JPY|BTC[\s\/]?USD|ETH[\s\/]?USD|XAU[\s\/]?USD|XAG[\s\/]?USD|SOL[\s\/]?USD|GOLD|BITCOIN|SPX|NDX|DXY|DAX)\b/i;
+    const instrMatch = rawTail.match(instrumentPattern);
+    if (!instrMatch) return false; // No instrument → let LLM ask
+
+    // Normalize instrument (add slash if missing, map aliases)
+    let instrument = instrMatch[0].toUpperCase().replace(/\s+/g, '');
+    const aliasMap: Record<string, string> = { GOLD: 'XAU/USD', BITCOIN: 'BTC/USD' };
+    if (aliasMap[instrument]) instrument = aliasMap[instrument];
+    if (/^[A-Z]{6}$/.test(instrument)) instrument = instrument.slice(0, 3) + '/' + instrument.slice(3);
+
+    const { sanitized, wasSanitized } = sanitizePoliticalContent(rawTail);
+
+    // Build synthetic tool call
+    const syntheticToolCall = {
+      function: {
+        name: 'launch_macro_lab',
+        arguments: JSON.stringify({
+          instrument,
+          timeframe: 'H4',
+          customNotes: sanitized
+        })
+      }
+    };
+
+    // If sanitized, add a note to messages
+    if (wasSanitized) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '> *Note: framed as macro policy scenarios for objective market analysis.*'
+      }]);
+    }
+
+    console.log('[AURA] Macro-lab intent intercepted client-side', {
+      instrument, sanitizedPrompt: sanitized, wasSanitized
+    });
+
     handleToolLaunch(syntheticToolCall, { collectOnly: false });
     return true;
   };
@@ -905,6 +983,8 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
 
     // Fast-path: intercept "plot X last Yh Zmin" commands client-side
     if (tryInterceptPlotCommand(question)) return;
+    // Fast-path: intercept explicit macro-lab intent client-side
+    if (tryInterceptMacroLab(question)) return;
 
     try {
       // Include last 7 messages as conversation history (text only)
