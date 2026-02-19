@@ -274,6 +274,9 @@ const TradingViewWidget = memo(function TradingViewWidget({
         studies,
         toolbar_bg: 'transparent',
         container_id: CONTAINER_ID,
+        enabled_features: [
+          "maximize_chart_area",
+        ],
         disabled_features: [
           ...(displayOptions.showToolbar ? [] : ["header_widget"]),
           ...(displayOptions.showPriceScale ? [] : ["left_toolbar"]),
@@ -342,6 +345,11 @@ const TradingViewWidget = memo(function TradingViewWidget({
         },
         onChartReady: () => {
           console.log('TradingView chart ready');
+          try {
+            widget.activeChart().executeActionById("maximizeChart");
+          } catch (e) {
+            console.log('maximizeChart not available in this widget version');
+          }
         }
       });
     } catch (e) {
