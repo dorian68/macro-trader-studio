@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useCreditEngagement } from "@/hooks/useCreditEngagement";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { CandlestickChart } from "@/components/CandlestickChart";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { supabase } from "@/integrations/supabase/client";
@@ -1218,95 +1219,23 @@ export default function ForecastMacroLab() {
             </div>
           )}
 
-          <Card className="gradient-card">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Market Analysis - {selectedAsset.display}
-                </div>
-                <div className="flex items-center gap-3">
-                  <Select
-                    value={selectedAsset.symbol}
-                    onValueChange={(value) => {
-                      const asset = assets.find((a) => a.symbol === value);
-                      if (asset) setSelectedAsset(asset);
-                    }}
-                  >
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 bg-card z-50">
-                      <div className="p-2 font-semibold text-xs text-muted-foreground border-b">FX PAIRS</div>
-                      {assets
-                        .filter((a) => a.market === "FX")
-                        .map((asset) => (
-                          <SelectItem key={asset.symbol} value={asset.symbol}>
-                            {asset.display}
-                          </SelectItem>
-                        ))}
-                      <div className="p-2 font-semibold text-xs text-muted-foreground border-b border-t">CRYPTO</div>
-                      {assets
-                        .filter((a) => a.market === "CRYPTO")
-                        .map((asset) => (
-                          <SelectItem key={asset.symbol} value={asset.symbol}>
-                            {asset.display}
-                          </SelectItem>
-                        ))}
-                      <div className="p-2 font-semibold text-xs text-muted-foreground border-b border-t">COMMODITIES</div>
-                      {assets
-                        .filter((a) => a.market === "COMMODITY")
-                        .map((asset) => (
-                          <SelectItem key={asset.symbol} value={asset.symbol}>
-                            {asset.display}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={timeframe} onValueChange={setTimeframe}>
-                    <SelectTrigger className="w-32 bg-background/50 border-border-light">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeframes.map((tf) => (
-                        <SelectItem key={tf.value} value={tf.value}>
-                          {tf.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Tabs defaultValue="chart" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 m-4 mb-0">
-                  <TabsTrigger value="chart" className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    Price Chart
-                  </TabsTrigger>
-                  <TabsTrigger value="technical" className="flex items-center gap-2">
-                    <Activity className="h-4 w-4" />
-                    Technical Analysis
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="chart" className="p-4 pt-2 h-[500px]">
-                  <TradingViewWidget
-                    selectedSymbol={selectedAsset.tradingViewSymbol}
-                    timeframe={timeframe}
-                    onSymbolChange={(symbol) => {
-                      const asset = assets.find((a) => a.symbol === symbol);
-                      if (asset) setSelectedAsset(asset);
-                    }}
-                  />
-                </TabsContent>
-                <TabsContent value="technical" className="p-4 pt-2 h-[500px]">
-                  <TechnicalDashboard selectedAsset={selectedAsset} timeframe={timeframe} />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+          <div className="h-[600px]">
+            <CandlestickChart
+              forceMode="tradingview"
+              asset={selectedAsset.tradingViewSymbol}
+              showHeader={true}
+              dashboardTitle={`Market Analysis — ${selectedAsset.display}`}
+              dashboardSubtitle="Live chart with full pip precision"
+              allAssets={assets.slice(0, 12).map(a => ({ symbol: a.tradingViewSymbol, name: a.display, icon: a.market === "FX" ? "💱" : a.market === "CRYPTO" ? "₿" : "🏦" }))}
+              selectedAsset={selectedAsset.tradingViewSymbol}
+              onAssetSelect={(symbol) => {
+                const asset = assets.find(a => a.tradingViewSymbol === symbol);
+                if (asset) setSelectedAsset(asset);
+              }}
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
+            />
+          </div>
         </div>
       </Layout>
   );
