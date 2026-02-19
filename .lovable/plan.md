@@ -1,81 +1,66 @@
 
 
-# Correction Alignement + Couleurs + Rounded Bubbles AURA
+# AURA Backend Routing Fix: Use macro-lab-proxy Instead of Legacy n8n Webhook
 
-## Resume des problemes identifies
+## Problem
 
-1. **Fullscreen assistant messages** : `w-full` sans fond = texte flottant plein ecran, pas aligne a gauche avec limite de largeur
-2. **Couleurs differentes** entre modes : reduced = `bg-background` container, `bg-[#2f3e36]` user, `bg-[#212121]` assistant / fullscreen = `bg-[#0e1116]` container, `bg-[#1a1f1e]` user, transparent assistant
-3. **Input bar** : styling completement different entre les deux modes (pill en fullscreen, standard en reduced)
-4. **Rounded** : assistant fullscreen n'a aucun arrondi (pas de bulle)
+AURA currently sends ALL feature requests (trade_generator, macro_lab, reports) to the **old n8n webhook** (`dorian68.app.n8n.cloud/webhook/4572387f-...`), which is the same endpoint used by the **legacy MacroAnalysis page**.
 
-## Palette unifiee AURA (source unique de verite)
+Meanwhile, the **new pages** (Macro Lab and Trade Generator) both use the **macro-lab-proxy** Supabase Edge Function (`macro-lab-proxy` at the project's Supabase URL). This means AURA is calling a different backend than the pages it's supposed to represent.
 
-| Element | Valeur unique |
-|---------|---------------|
-| Container background | `bg-[#0e1116]` |
-| Assistant bubble bg | `bg-[#161b22]` |
-| Assistant text | `text-[#c8c8c8]` |
-| User bubble bg | `bg-[#1a2e23]` |
-| User text | `text-white` |
-| Input bg | `bg-[#161b22]` |
-| Border | `border-white/[0.06]` |
+Additionally, the `createJob()` and `enhancedPostRequest()` calls still pass `'macro_commentary'` as `jobType` for both trade_generator and macro_lab features -- a leftover from the old architecture.
 
-## Changements detailles
+## Fix Plan
 
-### 1. Container principal (ligne 1095-1099)
+### 1. Route AURA requests to macro-lab-proxy (src/components/AURA.tsx)
 
-Mode reduit : remplacer `bg-background border-l border-border` par `bg-[#0e1116] border-l border-white/[0.06]` pour matcher le fullscreen.
+**Current** (line 1008): All features go to the old n8n webhook.
 
-### 2. Header (ligne 1102-1105)
+**Fix**: Route `trade_generator` and `macro_lab` requests through the macro-lab-proxy Edge Function (same URL used by ForecastTradeGenerator and ForecastMacroLab pages). Only `reports` keeps the n8n webhook (or its own endpoint if different).
 
-Mode reduit : remplacer `border-b border-border` par `border-b border-white/[0.03]` et ajouter `bg-[#0e1116]` comme en fullscreen.
+The macro-lab-proxy URL is: `https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/macro-lab-proxy`
 
-### 3. Bulles messages (lignes 1226-1238) -- changement principal
+### 2. Fix createJob jobType parameter (src/components/AURA.tsx)
 
-Remplacer toute la logique conditionnelle par une palette unique :
-
+**Current** (line 863):
 ```
-// Pour les DEUX modes (fullscreen ET reduced) :
-msg.role === 'user'
-  ? 'max-w-[75%] rounded-2xl px-5 py-3 bg-[#1a2e23] text-white'
-  : 'max-w-[75%] rounded-xl px-5 py-3 bg-[#161b22] text-[#c8c8c8]'
+featureType === 'trade_generator' ? 'macro_commentary' : featureType === 'macro_lab' ? 'macro_commentary' : featureType
+```
+Both trade_generator and macro_lab are mapped to `'macro_commentary'` -- this is wrong.
+
+**Fix**: Pass the actual featureType directly:
+```
+featureType  // 'trade_generator' | 'macro_lab' | 'reports'
 ```
 
-- Assistant : `max-w-[75%]`, `rounded-xl`, `bg-[#161b22]`, aligne a gauche via `justify-start`
-- User : `max-w-[75%]`, `rounded-2xl`, `bg-[#1a2e23]`, aligne a droite via `justify-end`
-- Plus aucun `w-full` ni fond transparent pour l'assistant
-- Plus aucun `isFullscreen` ternaire dans cette zone
+### 3. Fix enhancedPostRequest jobType parameter (src/components/AURA.tsx)
 
-### 4. Input bar (lignes 1322-1366)
+**Current** (line 1012): Same `'macro_commentary'` mapping as above.
 
-Unifier le style input pour les deux modes :
-- Container : `bg-[#0e1116]` + padding genereux dans les deux modes
-- Input wrapper : `rounded-full bg-[#161b22] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14` dans les deux modes
-- Suppression du `border-t border-border` en reduced, remplace par `border-t border-white/[0.03]`
-- Bouton send : `rounded-full` dans les deux modes
-- Badge "AURA v2" et icone Search visibles dans les deux modes
+**Fix**: Pass `featureType` directly instead of the hardcoded `'macro_commentary'`.
 
-### 5. Loading indicator (lignes 1285-1300)
+### 4. Clean up collective-insights call in Edge Function (supabase/functions/aura/index.ts)
 
-Unifier : suppression du `bg-muted rounded-lg` en reduced. Utiliser le meme style leger (texte + spinner) dans les deux modes avec `text-[#888]`.
+**Current** (line 313): Passes `type: 'macro_commentary'` to collective-insights.
 
-### 6. Empty state / Quick actions (lignes 1164-1213)
+**Fix**: This is a read-only data fetch for context enrichment -- it queries the collective-insights function which may still use this type internally. This should be left as-is unless the collective-insights function was also updated. No change needed here (it's reading historical data, not launching a feature).
 
-Unifier : utiliser `variant="ghost"` et couleurs `text-[#888]` dans les deux modes. Suppression des ternaires `isFullscreen ?`.
+### 5. Clean up system prompt references (supabase/functions/aura/index.ts)
 
-## Fichier modifie
+- Line 824: "Check macro commentary from ABCG Research" -- change to "Check macro analysis from ABCG Research"
+- Line 850: `launch_macro_lab` reference is already correct
 
-`src/components/AURA.tsx` uniquement
+## Files Modified
 
-## Ce qui ne change PAS
+1. `src/components/AURA.tsx` -- Backend endpoint routing + jobType fixes
+2. `supabase/functions/aura/index.ts` -- Minor prompt text cleanup
 
-- Tool routing / intents / feature-mapper
-- API calls / webhooks / streaming
-- Widgets (MarketChartWidget, mini widgets)
-- Job badges
-- Scroll behavior
-- Teaser / collapsed button
-- localStorage conversations
-- Fullscreen backdrop et animation d'ouverture
+## What Does NOT Change
+
+- Tool names in the Edge Function (already correctly named `launch_trade_generator`, `launch_macro_lab`)
+- DB feature constraint values (`'AI Trade Setup'`, `'Macro Commentary'`, `'Report'`)
+- Request payload structure (type, mode, instrument, question fields stay the same)
+- Credit system, realtime subscriptions, UI/UX
+- The macro-lab-proxy Edge Function itself (unchanged)
+- Reports endpoint (stays on n8n webhook unless a dedicated proxy exists)
 
