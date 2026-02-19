@@ -231,19 +231,48 @@ const TradingViewWidget = memo(function TradingViewWidget({
         studies: [],
         toolbar_bg: 'transparent',
         container_id: CONTAINER_ID,
+        disabled_features: [
+          "header_widget",
+          "left_toolbar",
+          "timeline_marks",
+          "control_bar",
+          "timeframes_toolbar",
+          "volume_force_overlay",
+        ],
+        loading_screen: { backgroundColor: "#0e1116", foregroundColor: "#0e1116" },
         overrides: {
+          // Grid removal — cover all known TradingView override key variants
           "paneProperties.vertGridProperties.color": "transparent",
           "paneProperties.horzGridProperties.color": "transparent",
           "paneProperties.vertGridProperties.style": 0,
           "paneProperties.horzGridProperties.style": 0,
+          "paneProperties.gridProperties.color": "transparent",
+          "paneProperties.gridProperties.style": 0,
+          "paneProperties.gridLinesMode": "none",
+          "paneProperties.crossHairProperties.style": 2,
+          // Background
           "paneProperties.backgroundType": "solid",
-          "paneProperties.background": "#1a1a2e",
+          "paneProperties.background": "#0e1116",
+          // Scale & price line
           "scalesProperties.showSymbolLabels": false,
+          "scalesProperties.backgroundColor": "#0e1116",
+          "scalesProperties.lineColor": "transparent",
           "mainSeriesProperties.priceLineVisible": false,
+          "mainSeriesProperties.priceLineColor": "transparent",
+          // Candle colors
+          "mainSeriesProperties.candleStyle.upColor": "#22c55e",
+          "mainSeriesProperties.candleStyle.downColor": "#ef4444",
+          "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
+          "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
+          "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
+          "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
+        },
+        studies_overrides: {
+          "volume.volume.color.0": "#ef444480",
+          "volume.volume.color.1": "#22c55e80",
         },
         onChartReady: () => {
           console.log('TradingView chart ready');
-          // Real-time prices are now handled by the Binance WebSocket
         }
       });
     } catch (e) {
@@ -365,7 +394,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
+        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&>div]:!m-0 [&>div]:!p-0">
           {/* Chart title overlay */}
           <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-card/80 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-foreground/80">
             <span>{mapToTwelveDataSymbol(currentSymbol)}</span>
