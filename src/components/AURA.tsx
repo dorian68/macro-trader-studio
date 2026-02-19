@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy } from 'lucide-react';
+import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy, TrendingUp, TrendingDown, Newspaper, BarChart3, BookOpen } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -108,31 +108,20 @@ function generateNaturalSummary(featureType: string, data: any, instrument: stri
     }
 
     if (featureType === 'macro_lab') {
-      const execSummary = data?.executive_summary || data?.summary || data?.content?.executive_summary || '';
       const bias = data?.directional_bias || data?.content?.directional_bias || '';
       const biasConfidence = data?.confidence || data?.content?.confidence;
-      const drivers = data?.key_drivers || data?.content?.key_drivers || [];
-      const fundamentals = data?.fundamental_analysis || data?.content?.fundamental_analysis || '';
 
       let summary = `### Macro Analysis: ${instrument}\n\n`;
-      if (typeof execSummary === 'string' && execSummary) {
-        summary += execSummary.slice(0, 500) + '\n\n';
-      }
       if (bias) {
         summary += `**Directional Bias:** ${bias}`;
-        if (biasConfidence) summary += ` (${Math.round(Number(biasConfidence) * 100)}% confidence)`;
+        if (biasConfidence) {
+          const confVal = Number(biasConfidence);
+          summary += ` (${confVal > 1 ? confVal : Math.round(confVal * 100)}% confidence)`;
+        }
         summary += '\n\n';
       }
-      if (Array.isArray(drivers) && drivers.length > 0) {
-        summary += '**Key Drivers:**\n';
-        drivers.slice(0, 6).forEach((d: any) => {
-          summary += `- ${typeof d === 'string' ? d : d?.name || d?.driver || JSON.stringify(d)}\n`;
-        });
-        summary += '\n';
-      }
-      if (typeof fundamentals === 'string' && fundamentals) {
-        summary += fundamentals.slice(0, 300) + '\n';
-      }
+      // Keep summary short — full content is rendered by AuraFullMacro widget
+      summary += '_See the full analysis below._\n';
       return summary;
     }
 
@@ -181,13 +170,32 @@ function extractMarketAttachments(payload: any): { type: 'market_chart'; payload
 
     // 1. OHLC / twelve_data_time_series
     const ohlcSource = root?.market_data || root?.twelve_data_time_series || root?.ohlc || deepFindKey(payload, 'market_data', 4) || deepFindKey(payload, 'ohlc', 4);
+
+    // Handle {symbol, interval, values: [...]} format from macro-lab
+    if (ohlcSource && typeof ohlcSource === 'object' && !Array.isArray(ohlcSource)) {
+      const valuesArray = (ohlcSource as any).values || (ohlcSource as any).data;
+      if (Array.isArray(valuesArray) && valuesArray.length > 2 && valuesArray[0]?.open != null) {
+        const ohlc = valuesArray.map((d: any) => ({
+          time: d.datetime || d.date || d.time || d.ds,
+          open: Number(d.open), high: Number(d.high), low: Number(d.low), close: Number(d.close),
+        })).filter((d: any) => d.time && !isNaN(d.open));
+        if (ohlc.length > 2) {
+          return { type: 'market_chart', payload: {
+            mode: 'candlestick', data: { ohlc },
+            instrument: (ohlcSource as any).symbol || root?.instrument,
+            timeframe: (ohlcSource as any).interval || root?.timeframe
+          }};
+        }
+      }
+    }
+
+    // Handle direct OHLC array
     if (Array.isArray(ohlcSource) && ohlcSource.length > 2 && ohlcSource[0]?.open != null) {
       const ohlc = ohlcSource.map((d: any) => ({
         time: d.datetime || d.date || d.time || d.ds,
         open: Number(d.open), high: Number(d.high), low: Number(d.low), close: Number(d.close),
       })).filter((d: any) => d.time && !isNaN(d.open));
       if (ohlc.length > 2) {
-        // Check for trade markers (entry/sl/tp)
         const entry = root?.entry || root?.entry_price || deepFindKey(payload, 'entry_price', 3);
         const sl = root?.sl || root?.stop_loss || deepFindKey(payload, 'stop_loss', 3);
         const tp = root?.tp || root?.take_profit || deepFindKey(payload, 'take_profit', 3);
@@ -561,21 +569,181 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     );
   };
 
-  const AuraMiniMacro = ({ data }: { data: any }) => {
-    const summary = data?.executive_summary || data?.summary || data?.content?.executive_summary || '';
-    const truncated = typeof summary === 'string' ? summary.slice(0, 200) : '';
-    const drivers = data?.key_drivers || data?.content?.key_drivers || [];
+  const AuraFullMacro = ({ data }: { data: any }) => {
+    const execSummary = data?.executive_summary || data?.summary || '';
+    const bias = data?.directional_bias || '';
+    const confidence = data?.confidence;
+    const keyLevels = data?.key_levels as { support?: number[]; resistance?: number[] } | undefined;
+    const fundamentalAnalysis = data?.fundamental_analysis;
+    const fundamentals = data?.fundamentals as Array<{ indicator?: string; actual?: number | null; consensus?: number | null; previous?: number | null }> | undefined;
+    const citationsNews = data?.citations_news as Array<{ publisher?: string; title?: string }> | undefined;
+    const aiInsights = data?.ai_insights as { gpt?: string; curated?: string } | undefined;
+    const baseReport = data?.base_report as string | undefined;
+
+    const confVal = confidence ? (Number(confidence) > 1 ? Number(confidence) : Math.round(Number(confidence) * 100)) : null;
+    const isBullish = bias?.toLowerCase()?.includes('bullish') || bias?.toLowerCase()?.includes('long');
 
     return (
-      <div className="border border-border rounded-lg p-3 bg-card/50 space-y-2 mt-2">
-        <p className="text-xs leading-relaxed">{truncated}{truncated.length >= 200 ? '...' : ''}</p>
-        {Array.isArray(drivers) && drivers.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {drivers.slice(0, 4).map((d: any, i: number) => (
-              <Badge key={i} variant="secondary" className="text-xs">{typeof d === 'string' ? d : d?.name || d?.driver || 'Driver'}</Badge>
-            ))}
+      <div className="border border-border rounded-lg p-4 bg-card/50 space-y-3 mt-2">
+        {/* Directional Bias Header */}
+        {bias && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {isBullish ? <TrendingUp className="h-4 w-4 text-green-500" /> : <TrendingDown className="h-4 w-4 text-destructive" />}
+            <span className={cn("font-semibold text-sm", isBullish ? "text-green-500" : "text-destructive")}>{bias}</span>
+            {confVal != null && <Badge variant="outline" className="text-xs">{confVal}% confidence</Badge>}
           </div>
         )}
+
+        {/* Executive Summary (always visible, full text) */}
+        {typeof execSummary === 'string' && execSummary && (
+          <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{execSummary}</p>
+        )}
+
+        {/* Key Levels (always visible) */}
+        {keyLevels && (keyLevels.support?.length || keyLevels.resistance?.length) ? (
+          <div className="grid grid-cols-2 gap-2">
+            {keyLevels.support && keyLevels.support.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">Support</span>
+                <div className="flex flex-wrap gap-1">
+                  {keyLevels.support.map((v, i) => (
+                    <Badge key={i} variant="outline" className="text-xs font-mono text-green-500 border-green-500/30">{v}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {keyLevels.resistance && keyLevels.resistance.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">Resistance</span>
+                <div className="flex flex-wrap gap-1">
+                  {keyLevels.resistance.map((v, i) => (
+                    <Badge key={i} variant="outline" className="text-xs font-mono text-destructive border-destructive/30">{v}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Collapsible: Fundamental Analysis */}
+        {fundamentalAnalysis && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <BookOpen className="h-3.5 w-3.5" />
+              <span>Fundamental Analysis {Array.isArray(fundamentalAnalysis) ? `(${fundamentalAnalysis.length} points)` : ''}</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              {Array.isArray(fundamentalAnalysis) ? (
+                <ul className="space-y-1 text-xs leading-relaxed">
+                  {fundamentalAnalysis.map((point: any, i: number) => (
+                    <li key={i} className="flex gap-1.5">
+                      <span className="text-muted-foreground mt-0.5">•</span>
+                      <span className="whitespace-pre-wrap">{typeof point === 'string' ? point : JSON.stringify(point)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs leading-relaxed whitespace-pre-wrap">{String(fundamentalAnalysis)}</p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Collapsible: Economic Data */}
+        {Array.isArray(fundamentals) && fundamentals.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Economic Indicators ({fundamentals.length})</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-1 pr-2 font-medium text-muted-foreground">Indicator</th>
+                      <th className="text-right py-1 px-1 font-medium text-muted-foreground">Actual</th>
+                      <th className="text-right py-1 px-1 font-medium text-muted-foreground">Cons.</th>
+                      <th className="text-right py-1 pl-1 font-medium text-muted-foreground">Prev.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fundamentals.map((f, i) => (
+                      <tr key={i} className="border-b border-border/50">
+                        <td className="py-1 pr-2 truncate max-w-[140px]">{f.indicator || '—'}</td>
+                        <td className="text-right py-1 px-1 font-mono">{f.actual != null ? f.actual : '—'}</td>
+                        <td className="text-right py-1 px-1 font-mono text-muted-foreground">{f.consensus != null ? f.consensus : '—'}</td>
+                        <td className="text-right py-1 pl-1 font-mono text-muted-foreground">{f.previous != null ? f.previous : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Collapsible: News Citations */}
+        {Array.isArray(citationsNews) && citationsNews.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <Newspaper className="h-3.5 w-3.5" />
+              <span>News Sources ({citationsNews.length})</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1 space-y-1.5">
+              {citationsNews.map((c, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">{c.publisher || 'Source'}</Badge>
+                  <span className="text-muted-foreground leading-snug">{c.title || '—'}</span>
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Collapsible: AI Insights */}
+        {aiInsights && (aiInsights.gpt || aiInsights.curated) && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <Globe className="h-3.5 w-3.5" />
+              <span>AI Insights</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1 space-y-3">
+              {aiInsights.gpt && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">GPT Analysis</p>
+                  <p className="text-xs leading-relaxed whitespace-pre-wrap">{aiInsights.gpt}</p>
+                </div>
+              )}
+              {aiInsights.curated && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Curated Research</p>
+                  <p className="text-xs leading-relaxed whitespace-pre-wrap">{aiInsights.curated}</p>
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Collapsible: Base Report */}
+        {baseReport && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+              <BookOpen className="h-3.5 w-3.5" />
+              <span>ABCG Research Report</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              <p className="text-xs leading-relaxed whitespace-pre-wrap">{baseReport}</p>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Open Full View */}
         <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
           storeResultForPage('macro_lab', data?.jobId || '', data);
           navigate(FEATURE_REGISTRY.macro_lab.pageRoute);
@@ -657,7 +825,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
 
         {/* 3. Mini-widget (Trade Card / Macro Card / Report) */}
         {rich.type === 'trade_setup' && <div className="mt-3"><AuraMiniTradeSetup data={rich.data} /></div>}
-        {rich.type === 'macro_commentary' && <div className="mt-3"><AuraMiniMacro data={rich.data} /></div>}
+        {rich.type === 'macro_commentary' && <div className="mt-3"><AuraFullMacro data={rich.data} /></div>}
         {rich.type === 'report' && <div className="mt-3"><AuraMiniReport data={rich.data} /></div>}
         {rich.type === 'tool_error' && (
           <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5 mt-2">

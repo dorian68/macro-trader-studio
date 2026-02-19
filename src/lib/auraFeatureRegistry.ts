@@ -185,18 +185,28 @@ function parseMacroResponse(raw: unknown): { summary: string; data: any } | null
       try { content = JSON.parse(content); } catch { /* keep as string */ }
     }
 
-    // Extract inner content field if present
+    // Extract inner content field if present, but preserve sibling structured fields
     if (content && typeof content === 'object' && (content as any).content) {
-      const inner = (content as any).content;
+      const siblings = content as Record<string, unknown>;
+      const inner = siblings.content;
       if (typeof inner === 'string') {
-        // Try to parse structured fields from text
         const structured = parseMacroText(inner);
-        if (structured) {
-        return { summary: (structured.executive_summary as string)?.slice(0, 120) || 'Macro analysis completed', data: structured };
-        }
-        return { summary: inner.slice(0, 120), data: { executive_summary: inner } };
+        const result = structured || { executive_summary: inner };
+        // Merge sibling structured data that parseMacroText can't extract from text
+        if (siblings.market_data) (result as any).market_data = siblings.market_data;
+        if (siblings.fundamentals) (result as any).fundamentals = siblings.fundamentals;
+        if (siblings.citations_news) (result as any).citations_news = siblings.citations_news;
+        if (siblings.base_report) (result as any).base_report = siblings.base_report;
+        if (siblings.request) (result as any).request = siblings.request;
+        return { summary: ((result as any).executive_summary as string)?.slice(0, 120) || 'Macro analysis completed', data: result };
       }
-      content = inner;
+      // inner is object — merge siblings into it
+      const merged = { ...(inner as Record<string, unknown>) };
+      if (siblings.market_data && !merged.market_data) merged.market_data = siblings.market_data;
+      if (siblings.fundamentals && !merged.fundamentals) merged.fundamentals = siblings.fundamentals;
+      if (siblings.citations_news && !merged.citations_news) merged.citations_news = siblings.citations_news;
+      if (siblings.base_report && !merged.base_report) merged.base_report = siblings.base_report;
+      content = merged;
     }
 
     if (content && typeof content === 'object') {
@@ -225,21 +235,45 @@ function parseMacroText(text: string): Record<string, unknown> | null {
   if (!text || typeof text !== 'string') return null;
   const result: Record<string, unknown> = {};
 
-  const execMatch = text.match(/Executive Summary:\s*([^]*?)(?=\n\n|\nFundamental Analysis:|$)/i);
+  // Flexible regex: handle both "Section:" and "Section\n" formats
+  const execMatch = text.match(/Executive Summary:?\s*\n?([^]*?)(?=\n\n|\nFundamental Analysis:?|$)/i);
   if (execMatch) result.executive_summary = execMatch[1].trim();
 
-  const fundMatch = text.match(/Fundamental Analysis:\s*([^]*?)(?=\n\nDirectional Bias:|Directional Bias:|$)/i);
+  const fundMatch = text.match(/Fundamental Analysis:?\s*\n?([^]*?)(?=\n\nDirectional Bias:?|\nDirectional Bias:?|$)/i);
   if (fundMatch) {
-    result.fundamental_analysis = fundMatch[1].split(/\n-\s*/).filter(p => p.trim()).map(p => p.trim().replace(/^-\s*/, '')).filter(p => p.length > 0);
+    const rawFund = fundMatch[1].trim();
+    // Split by bullet points (- **text** or - text)
+    const points = rawFund.split(/\n[-•]\s*/).filter(p => p.trim()).map(p => p.trim().replace(/^[-•]\s*/, '')).filter(p => p.length > 0);
+    result.fundamental_analysis = points.length > 1 ? points : rawFund;
   }
 
-  const biasMatch = text.match(/Directional Bias:\s*(\w+),?\s*Confidence:\s*"?(\d+)%?"?/i);
-  if (biasMatch) {
-    result.directional_bias = biasMatch[1];
-    result.confidence = parseInt(biasMatch[2], 10);
-  } else {
-    const simpleBias = text.match(/Directional Bias:\s*(\w+)/i);
-    if (simpleBias) result.directional_bias = simpleBias[1];
+  // Bias + Confidence (multiple formats)
+  const biasMatch = text.match(/Directional Bias:?\s*\n?\s*(\w+)/i);
+  if (biasMatch) result.directional_bias = biasMatch[1];
+
+  const confMatch = text.match(/Confidence:?\s*\n?\s*"?(\d+)%?"?/i);
+  if (confMatch) result.confidence = parseInt(confMatch[1], 10);
+
+  // Key Levels extraction
+  const levelsMatch = text.match(/Key Levels[^]*?Support\s*\n([\d\s\n.]+?)Resistance\s*\n([\d\s\n.]+?)(?=\n\n|AI Insights|$)/i);
+  if (levelsMatch) {
+    const support = levelsMatch[1].trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n > 0);
+    const resistance = levelsMatch[2].trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n > 0);
+    if (support.length > 0 || resistance.length > 0) {
+      result.key_levels = { support, resistance };
+    }
+  }
+
+  // AI Insights extraction
+  const gptMatch = text.match(/Toggle GPT\s*\n([^]*?)(?=\nToggle Curated|\n\n$|$)/i);
+  if (gptMatch) {
+    if (!result.ai_insights) result.ai_insights = {} as any;
+    (result.ai_insights as any).gpt = gptMatch[1].trim();
+  }
+  const curatedMatch = text.match(/Toggle Curated\s*\n([^]*?)$/i);
+  if (curatedMatch) {
+    if (!result.ai_insights) result.ai_insights = {} as any;
+    (result.ai_insights as any).curated = curatedMatch[1].trim();
   }
 
   return Object.keys(result).length > 0 ? result : null;
