@@ -645,9 +645,11 @@ IMPORTANT GUIDELINES:
 CRITICAL: Tool Launch Protocol
 When a user wants to generate a trade setup, macro commentary, or report:
 
-STEP 1 - DETECT INTENT:
-- If user says: "generate a trade", "setup for EUR/USD", "give me a trade idea", "run AI setup", "trade generator" → Trade Generator
-- If user says: "macro analysis", "what's happening with", "market commentary", "macro labs", "macro lab" → Macro Labs
+STEP 1 - DETECT INTENT (CRITICAL ROUTING RULES):
+⚠️ RULE 1: If the user mentions "trade" (trade idea, trade setup, trade signal, generate a trade, trading signal, entry/SL/TP) → ALWAYS use launch_trade_generator. NEVER use launch_macro_lab for trade requests.
+⚠️ RULE 2: launch_macro_lab is ONLY for macro commentary, macro outlook, market overview, "what's happening with". NOT for trade setups, NOT for entry levels.
+- "generate a trade", "setup for EUR/USD", "give me a trade idea", "run AI setup", "trade generator", "trade signal" → launch_trade_generator
+- "macro analysis", "what's happening with", "market commentary", "macro outlook", "macro labs" → launch_macro_lab
 - If user says: "generate a report", "portfolio report", "weekly report" → Report
 - If user says: "plot", "chart", "graph", "show price", "draw", "visualize", "courbe", "graphe", "affiche", "tracer" combined with a time window ("last 12h", "past 24h", "last 7 days") → call plot_price_chart
   * Parse lookback: "last 12h" → 12 hours, "last 7d" → 168 hours, "past week" → 168 hours, "last 24 hours" → 24 hours
@@ -940,7 +942,7 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n�
             type: "function",
             function: {
               name: "launch_trade_generator",
-              description: "Launch a Trade Generator analysis for a specific instrument and timeframe",
+              description: "Generate a trade idea with entry, stop-loss, and take-profit levels. Use for: trade idea, trade setup, trade signal, entry/SL/TP, trading recommendation. Do NOT use launch_macro_lab for trade requests.",
               parameters: {
                 type: "object",
                 properties: {
@@ -960,7 +962,7 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n�
             type: "function",
             function: {
               name: "launch_macro_lab",
-              description: "Generate a comprehensive macro market commentary for a specific instrument via Macro Lab",
+              description: "Generate macro economic commentary and market outlook ONLY. Use for: macro analysis, market overview, what's happening, macro outlook. Do NOT use for trade setups or entry levels — use launch_trade_generator instead.",
               parameters: {
                 type: "object",
                 properties: {

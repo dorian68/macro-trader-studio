@@ -904,6 +904,73 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     return true;
   };
 
+  // ===== CLIENT-SIDE TRADE GENERATOR INTENT INTERCEPTOR =====
+  const tryInterceptTradeGenerator = (question: string): boolean => {
+    // Match explicit trade intent patterns (EN + FR + ES)
+    const tradePatterns = [
+      /(?:generate|give\s+me|run|launch|create|do|make|execute|fais?|lancer?)\s+(?:a\s+|une?\s+)?(?:trade\s+(?:idea|setup|signal|recommendation)|idée?\s+de\s+trade|setup\s+de\s+trade|signal\s+de\s+trade)/i,
+      /trade\s+(?:idea|setup|signal|generator)\s+(?:on|for|sur|de|about)\s+(.+)/i,
+      /(?:trade|trading)\s+(?:on|for|sur|de)\s+(.+)/i,
+      /(?:setup|signal)\s+(?:on|for|sur|de|about)\s+(.+)/i,
+      /(?:run|launch|execute)\s+(?:the\s+)?trade\s+generator/i,
+      /(?:entry|sl|tp|stop\s+loss|take\s+profit)\s+(?:for|on|sur)\s+(.+)/i,
+    ];
+
+    const matched = tradePatterns.some(p => p.test(question));
+    if (!matched) return false;
+
+    // Extract instrument
+    const instrumentPattern = /\b(EUR[\s\/]?USD|GBP[\s\/]?USD|USD[\s\/]?JPY|AUD[\s\/]?USD|USD[\s\/]?CHF|USD[\s\/]?CAD|NZD[\s\/]?USD|EUR[\s\/]?GBP|EUR[\s\/]?JPY|BTC[\s\/]?USD|ETH[\s\/]?USD|XAU[\s\/]?USD|XAG[\s\/]?USD|SOL[\s\/]?USD|GOLD|BITCOIN|SPX|NDX|DXY|DAX)\b/i;
+    const instrMatch = question.match(instrumentPattern);
+    if (!instrMatch) return false; // No instrument → let LLM ask
+
+    // Normalize instrument
+    let instrument = instrMatch[0].toUpperCase().replace(/\s+/g, '');
+    const aliasMap: Record<string, string> = { GOLD: 'XAU/USD', BITCOIN: 'BTC/USD' };
+    if (aliasMap[instrument]) instrument = aliasMap[instrument];
+    if (/^[A-Z]{6}$/.test(instrument)) instrument = instrument.slice(0, 3) + '/' + instrument.slice(3);
+
+    // Extract timeframe
+    const tfPattern = /\b(15\s*min|30\s*min|1\s*h|4\s*h|M1|M5|M15|M30|H1|H4|D1)\b/i;
+    const tfMatch = question.match(tfPattern);
+    const tfMap: Record<string, string> = {
+      '15min': 'M15', '30min': 'M30', '1h': 'H1', '4h': 'H4',
+      '15 min': 'M15', '30 min': 'M30', '1 h': 'H1', '4 h': 'H4',
+    };
+    let timeframe = 'H4';
+    if (tfMatch) {
+      const raw = tfMatch[0].toLowerCase().replace(/\s+/g, '');
+      timeframe = tfMap[raw] || tfMatch[0].toUpperCase();
+    }
+
+    const { sanitized, wasSanitized } = sanitizePoliticalContent(question);
+
+    const syntheticToolCall = {
+      function: {
+        name: 'launch_trade_generator',
+        arguments: JSON.stringify({
+          instrument,
+          timeframe,
+          customNotes: sanitized
+        })
+      }
+    };
+
+    if (wasSanitized) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '> *Note: framed as macro policy scenarios for objective market analysis.*'
+      }]);
+    }
+
+    console.log('[AURA] Trade generator intent intercepted client-side', {
+      instrument, timeframe, sanitizedPrompt: sanitized, wasSanitized
+    });
+
+    handleToolLaunch(syntheticToolCall, { collectOnly: false });
+    return true;
+  };
+
   // ===== CLIENT-SIDE MACRO-LAB INTENT INTERCEPTOR =====
   const tryInterceptMacroLab = (question: string): boolean => {
     // Match explicit macro-lab intent patterns (EN + FR)
@@ -969,6 +1036,8 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
 
     // Fast-path: intercept "plot X last Yh Zmin" commands client-side
     if (tryInterceptPlotCommand(question)) return;
+    // Fast-path: intercept explicit trade generator intent client-side (BEFORE macro)
+    if (tryInterceptTradeGenerator(question)) return;
     // Fast-path: intercept explicit macro-lab intent client-side
     if (tryInterceptMacroLab(question)) return;
 
