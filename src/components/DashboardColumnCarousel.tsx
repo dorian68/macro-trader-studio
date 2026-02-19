@@ -16,7 +16,7 @@ interface DashboardColumnCarouselProps {
 
 type ViewMode = 'list' | 'compact' | 'large';
 
-const ITEMS_MAP: Record<ViewMode, number> = { list: 20, compact: 14, large: 8 };
+const ITEMS_MAP: Record<ViewMode, number> = { list: 30, compact: 20, large: 12 };
 
 const CATEGORY_COLORS: Record<string, string> = {
   general: 'border-blue-500/50 text-blue-400',
