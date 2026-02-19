@@ -20,6 +20,7 @@ interface TradingViewWidgetProps {
   onPriceUpdate?: (price: string) => void;
   className?: string;
   displayOptions?: DisplayOptions;
+  darkTheme?: boolean;
 }
 
 interface CombinedData {
@@ -86,6 +87,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
   onPriceUpdate,
   className = "",
   displayOptions: propDisplayOptions = DEFAULT_DISPLAY_OPTIONS,
+  darkTheme = false,
 }: TradingViewWidgetProps) {
   const [timeframe, setTimeframe] = useState<string>(propTimeframe || "1h");
   const [data, setData] = useState<CombinedData[]>([]);
@@ -270,7 +272,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
         studies.push('ADX@tv-basicstudies');
       }
 
-      const gridColor = displayOptions.showGrid ? 'rgba(0,0,0,0.06)' : 'transparent';
+      const gridColor = displayOptions.showGrid ? (darkTheme ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)') : 'transparent';
 
       // Initialize widget
       // @ts-ignore
@@ -279,7 +281,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
         symbol: mapToTradingViewSymbol(currentSymbol),
         interval,
         timezone: 'Etc/UTC',
-        theme: 'light',
+        theme: darkTheme ? 'dark' : 'light',
         style: '1',
         locale: 'en',
         enable_publishing: false,

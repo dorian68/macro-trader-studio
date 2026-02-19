@@ -62,6 +62,7 @@ interface CandlestickChartProps {
   // Mobile UX props
   onFullscreenToggle?: () => void;
   compact?: boolean;
+  darkTheme?: boolean;
 }
 const timeframes = [{
   value: '1m',
@@ -115,6 +116,7 @@ const CandlestickChart = memo(function CandlestickChart({
   onTimeframeChange,
   onFullscreenToggle,
   compact,
+  darkTheme,
 }: CandlestickChartProps) {
   const [localTimeframe, setLocalTimeframe] = useState('1h');
   const [isConnected, setIsConnected] = useState(true);
@@ -359,6 +361,7 @@ const CandlestickChart = memo(function CandlestickChart({
                 selectedSymbol={binanceSymbol}
                 timeframe={timeframe}
                 displayOptions={displayOptions}
+                darkTheme={darkTheme}
                 onPriceUpdate={price => setCurrentPrice(price)}
                 className="border-0 shadow-none"
               />
