@@ -159,6 +159,12 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
         (payload) => {
           const newJob = payload.new as any;
           
+          // Skip AURA-originated jobs (rendered in AURA chat)
+          if (newJob.request_payload?.source === 'aura') {
+            console.log('📥 [PersistentNotifications] Skipping AURA-originated job:', newJob.id);
+            return;
+          }
+          
           console.log('📥 [PersistentNotifications] New job INSERT:', newJob);
           
           // Extract real data from request_payload
@@ -235,6 +241,11 @@ export function PersistentNotificationProvider({ children }: PersistentNotificat
         },
         (payload) => {
           const updatedJob = payload.new as any;
+          
+          // Skip AURA-originated jobs
+          if (updatedJob.request_payload?.source === 'aura') {
+            return;
+          }
           
           console.log('🔄 [PersistentNotifications] Job UPDATE:', updatedJob);
           

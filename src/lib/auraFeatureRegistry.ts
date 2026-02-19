@@ -142,9 +142,37 @@ function parseTradeResponse(raw: unknown): { summary: string; data: any } | null
     const setup = setups[0] || {};
     const direction = setup?.direction || 'N/A';
 
+    // ── Extract decision_summary (same 3-path logic) ──
+    let decisionSummary: unknown = null;
+    // Path 1: body.message.message.content.content.decision_summary
+    try {
+      const body = obj?.body as Record<string, unknown>;
+      const m1 = body?.message as Record<string, unknown>;
+      const m2 = m1?.message as Record<string, unknown>;
+      const c1 = m2?.content as Record<string, unknown>;
+      const c2 = parseContentContent(c1?.content);
+      if (c2?.decision_summary) decisionSummary = c2.decision_summary;
+    } catch { /* ignore */ }
+    // Path 2: output.trade_generation_output.decision_summary
+    if (!decisionSummary) {
+      try {
+        const output = obj?.output as Record<string, unknown>;
+        const tgo = output?.trade_generation_output as Record<string, unknown>;
+        if (tgo?.decision_summary) decisionSummary = tgo.decision_summary;
+      } catch { /* ignore */ }
+    }
+    // Path 3: direct or inside final_answer
+    if (!decisionSummary) {
+      decisionSummary = fa?.decision_summary || obj?.decision_summary;
+    }
+    // Parse JSON string
+    if (typeof decisionSummary === 'string') {
+      try { decisionSummary = JSON.parse(decisionSummary); } catch { /* ignore */ }
+    }
+
     return {
       summary: `Trade setup for ${instrument}: ${direction}`,
-      data: fa,
+      data: { ...fa, ...(decisionSummary && typeof decisionSummary === 'object' ? { decision_summary: decisionSummary } : {}) },
     };
   } catch {
     return null;
