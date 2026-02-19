@@ -50,103 +50,76 @@ export function MarketNewsCollapsible({ className }: MarketNewsCollapsibleProps)
 
   return (
     <Card className={cn("h-full flex flex-col overflow-hidden", className)}>
-      <CardHeader className="pb-3 px-4 sm:px-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-          <CardTitle className="text-lg font-semibold">{t('dashboard:news.marketNews')}</CardTitle>
-          
-          {/* Search bar */}
-          <div className="relative w-full sm:w-64">
+      <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <CardTitle className="text-sm font-semibold">{t('dashboard:news.marketNews')}</CardTitle>
+          <div className="relative w-full sm:w-48">
             <Input 
               placeholder={t('dashboard:news.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 pr-8"
+              className="h-7 text-xs pr-7 pl-2"
             />
-            <Search className="absolute right-2 top-2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute right-2 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
           </div>
         </div>
 
-        {/* Category tabs inline */}
         <Tabs value={selectedCategory} onValueChange={(value) => {
           setSelectedCategory(value);
-          // Trigger API fetch for specific category
-          if (value !== 'all') {
-            setCategory(value);
-          } else {
-            // For 'all', load general and let frontend filtering handle the rest
-            setCategory('general');
-          }
+          if (value !== 'all') setCategory(value);
+          else setCategory('general');
         }}>
-          <TabsList className="flex w-full bg-muted/30 gap-0.5 p-1">
-            <TabsTrigger value="all" className="flex-1 min-w-0 text-[11px] sm:text-sm min-h-[44px] px-1.5 sm:px-3">{t('dashboard:news.all')}</TabsTrigger>
-            <TabsTrigger value="general" className="flex-1 min-w-0 text-[11px] sm:text-sm min-h-[44px] px-1.5 sm:px-3">{t('dashboard:news.general')}</TabsTrigger>
-            <TabsTrigger value="forex" className="flex-1 min-w-0 text-[11px] sm:text-sm min-h-[44px] px-1.5 sm:px-3">{t('dashboard:news.forex')}</TabsTrigger>
-            <TabsTrigger value="crypto" className="flex-1 min-w-0 text-[11px] sm:text-sm min-h-[44px] px-1.5 sm:px-3">{t('dashboard:news.crypto')}</TabsTrigger>
-            <TabsTrigger value="merger" className="flex-1 min-w-0 text-[11px] sm:text-sm min-h-[44px] px-1.5 sm:px-3">{t('dashboard:news.merger')}</TabsTrigger>
+          <TabsList className="flex w-full bg-muted/30 gap-0.5 p-0.5 h-7">
+            <TabsTrigger value="all" className="flex-1 min-w-0 text-[10px] h-6 px-1.5">{t('dashboard:news.all')}</TabsTrigger>
+            <TabsTrigger value="general" className="flex-1 min-w-0 text-[10px] h-6 px-1.5">{t('dashboard:news.general')}</TabsTrigger>
+            <TabsTrigger value="forex" className="flex-1 min-w-0 text-[10px] h-6 px-1.5">{t('dashboard:news.forex')}</TabsTrigger>
+            <TabsTrigger value="crypto" className="flex-1 min-w-0 text-[10px] h-6 px-1.5">{t('dashboard:news.crypto')}</TabsTrigger>
+            <TabsTrigger value="merger" className="flex-1 min-w-0 text-[10px] h-6 px-1.5">{t('dashboard:news.merger')}</TabsTrigger>
           </TabsList>
         </Tabs>
       </CardHeader>
 
-      <CardContent className="flex-1 min-h-0">
+      <CardContent className="flex-1 min-h-0 px-3 sm:px-4 pb-2">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+          <div className="flex items-center justify-center py-6 text-muted-foreground text-xs">
             {t('dashboard:loading')}
           </div>
         ) : filteredNews.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+          <div className="flex items-center justify-center py-6 text-muted-foreground text-xs">
             {t('dashboard:noDataAvailable')}
           </div>
         ) : (
           <ScrollArea className="h-full flex-1 min-h-0">
-            <div className="space-y-1.5 pr-4">
+            <div className="space-y-px pr-2">
               {filteredNews.map((item) => (
                 <div 
                   key={item.id}
-                  className="border border-border/30 rounded-md px-3 py-2 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer"
+                  className="border-b border-border/20 last:border-0 px-1.5 py-1.5 hover:bg-accent/5 transition-colors cursor-pointer"
                   onClick={() => item.url && window.open(item.url, '_blank')}
                 >
-                  <div className="flex gap-2">
-                    {/* Image thumbnail (if available) */}
+                  <div className="flex gap-2 items-start">
                     {item.image && (
                       <img 
                         src={item.image} 
                         alt="" 
-                        className="w-14 h-14 object-cover rounded-md shrink-0"
+                        className="w-10 h-10 object-cover rounded shrink-0"
                       />
                     )}
-
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                      {/* Title */}
-                      <h3 className="font-semibold text-sm mb-0.5 line-clamp-2">
+                      <h3 className="font-medium text-xs leading-tight line-clamp-2 mb-0.5">
                         {item.headline}
                       </h3>
-
-                      {/* Meta: Time + Category */}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                         <span>{formatTime(item.datetime)}</span>
-                        <span>•</span>
-                        <Badge 
-                          variant="outline" 
-                          className={cn("text-xs", CATEGORY_COLORS[item.category])}
-                        >
-                          {item.category}
-                        </Badge>
+                        <span className="text-border">•</span>
+                        <span className={cn("font-medium", CATEGORY_COLORS[item.category]?.split(' ')[1])}>{item.category}</span>
+                        {item.source && (
+                          <>
+                            <span className="text-border">•</span>
+                            <span className="truncate max-w-[80px]">{item.source}</span>
+                          </>
+                        )}
                       </div>
-
-                      {/* Summary */}
-                      {item.summary && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 mb-0.5">
-                          {item.summary}
-                        </p>
-                      )}
-
-                      {/* Source */}
-                      {item.source && (
-                        <div className="text-xs text-muted-foreground">
-                          Source: <span className="font-medium">{item.source}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

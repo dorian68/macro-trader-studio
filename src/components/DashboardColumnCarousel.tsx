@@ -16,7 +16,7 @@ interface DashboardColumnCarouselProps {
 
 type ViewMode = 'list' | 'compact' | 'large';
 
-const ITEMS_MAP: Record<ViewMode, number> = { list: 10, compact: 6, large: 4 };
+const ITEMS_MAP: Record<ViewMode, number> = { list: 14, compact: 10, large: 6 };
 
 const CATEGORY_COLORS: Record<string, string> = {
   general: 'border-blue-500/50 text-blue-400',
@@ -82,13 +82,11 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
       return (
         <div
           key={item.id}
-          className="border border-border/30 rounded-md px-2 py-1 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer flex items-center gap-1.5"
+          className="border-b border-border/20 last:border-0 px-1.5 py-0.5 hover:bg-accent/5 transition-colors cursor-pointer flex items-center gap-1.5"
           onClick={openUrl}
         >
-          <h4 className="text-xs font-semibold line-clamp-1 flex-1 min-w-0">{item.headline}</h4>
-          <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 shrink-0', CATEGORY_COLORS[item.category])}>
-            {item.category}
-          </Badge>
+          <h4 className="text-[11px] font-medium line-clamp-1 flex-1 min-w-0">{item.headline}</h4>
+          <span className={cn('text-[10px] shrink-0', CATEGORY_COLORS[item.category]?.split(' ')[1])}>{item.category}</span>
           <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(item.datetime)}</span>
         </div>
       );
@@ -98,23 +96,21 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
       return (
         <div
           key={item.id}
-          className="border border-border/30 rounded-md hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer overflow-hidden flex flex-col"
+          className="border-b border-border/20 last:border-0 hover:bg-accent/5 transition-colors cursor-pointer overflow-hidden flex flex-col"
           onClick={openUrl}
         >
           {item.image ? (
-            <img src={item.image} alt="" className="w-full h-12 object-cover rounded-t-md" loading="lazy" />
+            <img src={item.image} alt="" className="w-full h-10 object-cover" loading="lazy" />
           ) : (
-            <ImagePlaceholder className="w-full h-12 rounded-t-md" />
+            <ImagePlaceholder className="w-full h-10" />
           )}
-          <div className="px-2 py-1.5 flex flex-col gap-0.5">
-            <h4 className="text-xs font-semibold line-clamp-2">{item.headline}</h4>
-            {item.summary && <p className="text-xs text-muted-foreground line-clamp-1">{item.summary}</p>}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-auto">
+          <div className="px-1.5 py-1 flex flex-col">
+            <h4 className="text-[11px] font-medium line-clamp-1">{item.headline}</h4>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <span>{formatTime(item.datetime)}</span>
-              <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', CATEGORY_COLORS[item.category])}>
-                {item.category}
-              </Badge>
-              {item.source && <span className="ml-auto truncate max-w-[80px]">{item.source}</span>}
+              <span className="text-border">•</span>
+              <span className={cn(CATEGORY_COLORS[item.category]?.split(' ')[1])}>{item.category}</span>
+              {item.source && <span className="ml-auto truncate max-w-[60px]">{item.source}</span>}
             </div>
           </div>
         </div>
@@ -123,24 +119,23 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
 
     // compact (default)
     return (
-        <div
-          key={item.id}
-          className="border border-border/30 rounded-md px-2 py-1 hover:border-primary/30 hover:bg-accent/5 transition-colors cursor-pointer overflow-hidden flex items-start gap-2"
+      <div
+        key={item.id}
+        className="border-b border-border/20 last:border-0 px-1.5 py-1 hover:bg-accent/5 transition-colors cursor-pointer overflow-hidden flex items-center gap-1.5"
         onClick={openUrl}
       >
         {item.image ? (
-          <img src={item.image} alt="" className="w-8 h-8 object-cover rounded shrink-0" loading="lazy" />
+          <img src={item.image} alt="" className="w-6 h-6 object-cover rounded shrink-0" loading="lazy" />
         ) : (
-          <ImagePlaceholder className="w-8 h-8 rounded shrink-0" />
+          <ImagePlaceholder className="w-6 h-6 rounded shrink-0" />
         )}
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <h4 className="text-xs font-medium line-clamp-1 mb-0.5">{item.headline}</h4>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex-1 min-w-0">
+          <h4 className="text-[11px] font-medium line-clamp-1">{item.headline}</h4>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <span>{formatTime(item.datetime)}</span>
-            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', CATEGORY_COLORS[item.category])}>
-              {item.category}
-            </Badge>
-            {item.source && <span className="ml-auto truncate max-w-[80px]">{item.source}</span>}
+            <span className="text-border">•</span>
+            <span className={cn(CATEGORY_COLORS[item.category]?.split(' ')[1])}>{item.category}</span>
+            {item.source && <span className="ml-auto truncate max-w-[60px]">{item.source}</span>}
           </div>
         </div>
       </div>
@@ -253,7 +248,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
           </div>
 
           {/* News items */}
-          <div className="flex-1 min-h-0 flex flex-col gap-0.5 overflow-hidden justify-start">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden justify-start">
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
                 {t('dashboard:loading')}
