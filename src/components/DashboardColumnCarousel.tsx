@@ -143,8 +143,8 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
   };
 
   return (
-    <div className={cn('flex flex-col overflow-hidden', className)}>
-      <Tabs defaultValue="quick-access" className="h-full flex flex-col overflow-hidden">
+    <div className={cn('flex flex-col', className)}>
+      <Tabs defaultValue="quick-access" className="h-full flex flex-col">
         <TabsList className="w-full bg-muted/30 shrink-0">
           <TabsTrigger value="quick-access" className="flex-1 text-xs font-semibold">
             {t('dashboard:trading.quickAccess', 'Quick Access')}
