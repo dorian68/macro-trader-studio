@@ -157,7 +157,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
         {/* Quick Access */}
         <TabsContent value="quick-access" className="flex-1 min-h-0 gap-2 mt-2 overflow-hidden animate-fade-in">
           <Card
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 hover:z-20 relative transition-smooth touch-manipulation overflow-visible flex-1 flex flex-col justify-center"
             onClick={() => navigate('/trade-generator')}
             style={{ minHeight: '44px' }}
           >
@@ -176,7 +176,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
           </Card>
 
           <Card
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 hover:z-20 relative transition-smooth touch-manipulation overflow-visible flex-1 flex flex-col justify-center"
             onClick={() => navigate('/macro-lab')}
             style={{ minHeight: '44px' }}
           >
@@ -195,7 +195,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
           </Card>
 
           <Card
-            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 transition-smooth touch-manipulation overflow-hidden flex-1 flex flex-col justify-center"
+            className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 hover:z-20 relative transition-smooth touch-manipulation overflow-visible flex-1 flex flex-col justify-center"
             onClick={() => navigate('/reports')}
             style={{ minHeight: '44px' }}
           >
