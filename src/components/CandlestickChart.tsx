@@ -439,11 +439,11 @@ const CandlestickChart = memo(function CandlestickChart({
     </div>
   </>;
 }, (prevProps, nextProps) => {
-  // Only re-render if key props change
   return prevProps.asset === nextProps.asset &&
     prevProps.timeframe === nextProps.timeframe &&
     prevProps.forceMode === nextProps.forceMode &&
-    prevProps.compact === nextProps.compact;
+    prevProps.compact === nextProps.compact &&
+    prevProps.darkTheme === nextProps.darkTheme;
 });
 
 export { CandlestickChart };
