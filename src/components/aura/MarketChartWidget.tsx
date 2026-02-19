@@ -12,11 +12,25 @@ interface ChartStats {
 }
 
 interface MarketChartData {
-  ohlc?: Array<{ time: string; open: number; high: number; low: number; close: number }>;
-  equity_curve?: Array<{ time: string; value: number }>;
-  predictions?: Array<{ time: string; value: number }>;
+  ohlc?: Array<{ time: string | number; open: number; high: number; low: number; close: number }>;
+  equity_curve?: Array<{ time: string | number; value: number }>;
+  predictions?: Array<{ time: string | number; value: number }>;
   markers?: Array<{ time: string; position: string; color: string; shape: string; text: string }>;
   stats?: ChartStats;
+}
+
+// Convert any time value to a format lightweight-charts accepts:
+// - Unix timestamp (number, seconds) for intraday
+// - "yyyy-mm-dd" string for daily
+function normalizeTime(t: string | number): Time {
+  if (typeof t === 'number') return t as Time;
+  // If it's already yyyy-mm-dd, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t as Time;
+  // Try to parse as date and convert to unix timestamp (seconds)
+  const parsed = new Date(t.replace(' ', 'T') + (t.includes('T') || t.includes('+') ? '' : 'Z'));
+  if (!isNaN(parsed.getTime())) return Math.floor(parsed.getTime() / 1000) as unknown as Time;
+  // Last resort: strip time portion
+  return t.split(' ')[0].split('T')[0] as Time;
 }
 
 interface MarketChartWidgetProps {
@@ -75,7 +89,8 @@ const MarketChartWidgetInner: React.FC<MarketChartWidgetProps> = ({ data, instru
         wickDownColor: '#ef4444',
         wickUpColor: '#22c55e',
       });
-      const sorted = [...data.ohlc].sort((a, b) => a.time.localeCompare(b.time));
+      const normalized = data.ohlc.map(d => ({ ...d, time: normalizeTime(d.time) }));
+      const sorted = normalized.sort((a, b) => Number(a.time) - Number(b.time));
       series.setData(sorted as CandlestickData<Time>[]);
       seriesRef.current = series;
     } else if (mode === 'area' && data.equity_curve) {
@@ -85,7 +100,8 @@ const MarketChartWidgetInner: React.FC<MarketChartWidgetProps> = ({ data, instru
         lineColor: '#22c55e',
         lineWidth: 2,
       });
-      const sorted = [...data.equity_curve].sort((a, b) => a.time.localeCompare(b.time));
+      const normalized = data.equity_curve.map(d => ({ ...d, time: normalizeTime(d.time) }));
+      const sorted = normalized.sort((a, b) => Number(a.time) - Number(b.time));
       series.setData(sorted as AreaData<Time>[]);
       seriesRef.current = series;
     } else if (mode === 'line' && data.predictions) {
@@ -93,7 +109,8 @@ const MarketChartWidgetInner: React.FC<MarketChartWidgetProps> = ({ data, instru
         color: '#f97316',
         lineWidth: 2,
       });
-      const sorted = [...data.predictions].sort((a, b) => a.time.localeCompare(b.time));
+      const normalized = data.predictions.map(d => ({ ...d, time: normalizeTime(d.time) }));
+      const sorted = normalized.sort((a, b) => Number(a.time) - Number(b.time));
       series.setData(sorted as LineData<Time>[]);
       seriesRef.current = series;
     }
