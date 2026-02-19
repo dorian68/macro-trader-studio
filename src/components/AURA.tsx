@@ -1009,6 +1009,28 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     );
   };
 
+  // Client-side plot command interceptor — bypasses LLM for reliable chart rendering
+  const tryInterceptPlotCommand = (question: string): boolean => {
+    const plotMatch = question.match(
+      /^plot\s+([A-Za-z\/]+(?:\/[A-Za-z]+)?)\s+(?:last|past)\s+(\d+)\s*h(?:ours?)?\s+(\d+min|1h|4h|1day)?/i
+    );
+    if (!plotMatch) return false;
+
+    const instrument = plotMatch[1].toUpperCase();
+    const lookbackHours = parseInt(plotMatch[2], 10);
+    const interval = plotMatch[3] || (lookbackHours <= 6 ? '5min' : lookbackHours <= 12 ? '15min' : lookbackHours <= 48 ? '30min' : '1h');
+
+    // Synthesize a tool call and handle it directly
+    const syntheticToolCall = {
+      function: {
+        name: 'plot_price_chart',
+        arguments: JSON.stringify({ instrument, interval, lookback_hours: lookbackHours }),
+      },
+    };
+    handleToolLaunch(syntheticToolCall, { collectOnly: false });
+    return true;
+  };
+
   const sendMessage = async (question: string) => {
     if (!question.trim()) return;
 
@@ -1016,6 +1038,9 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     const userMsg: Message = { role: 'user', content: question };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+
+    // Fast-path: intercept "plot X last Yh Zmin" commands client-side
+    if (tryInterceptPlotCommand(question)) return;
 
     try {
       // Include last 7 messages as conversation history (text only)
