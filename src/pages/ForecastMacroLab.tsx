@@ -1222,6 +1222,7 @@ export default function ForecastMacroLab() {
           <div className="h-[600px]">
             <CandlestickChart
               forceMode="tradingview"
+              darkTheme
               asset={selectedAsset.tradingViewSymbol}
               showHeader={true}
               dashboardTitle={`Market Analysis — ${selectedAsset.display}`}
