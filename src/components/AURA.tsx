@@ -1093,18 +1093,13 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
       )}
 
       <div className={cn(
-       "fixed shadow-2xl flex flex-col transition-all duration-300",
+       "fixed shadow-2xl flex flex-col transition-all duration-300 bg-[#0e1116]",
         isFullscreen
-          ? "inset-0 z-[10004] bg-[#0e1116] animate-in fade-in slide-in-from-bottom-4 duration-300"
-          : "right-0 top-0 h-full w-full md:w-1/3 z-40 bg-background border-l border-border"
+          ? "inset-0 z-[10004] animate-in fade-in slide-in-from-bottom-4 duration-300"
+          : "right-0 top-0 h-full w-full md:w-1/3 z-40 border-l border-white/[0.06]"
       )}>
         {/* Header */}
-        <CardHeader className={cn(
-          "shrink-0",
-          isFullscreen 
-            ? "bg-[#0e1116] border-b border-white/[0.03]" 
-            : "border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background"
-        )}>
+        <CardHeader className="shrink-0 bg-[#0e1116] border-b border-white/[0.03]">
           <div className={cn("flex items-start justify-between", isFullscreen && "max-w-5xl mx-auto w-full")}>
             <div className="flex items-center gap-3">
               <div className={cn(
@@ -1162,20 +1157,17 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         <ScrollArea className={cn("flex-1", isFullscreen ? "px-8 py-6" : "p-4")} ref={scrollRef}>
           <div className={cn(isFullscreen && "max-w-5xl mx-auto")}>
             {messages.length === 0 && (
-              <div className={cn("space-y-4", isFullscreen && "flex flex-col items-center justify-center min-h-[50vh]")}>
-                <p className={cn(
-                  "text-muted-foreground",
-                  isFullscreen ? "text-base text-center text-[#888]" : "text-sm"
-                )}>
+              <div className={cn("space-y-4 flex flex-col items-center justify-center", isFullscreen && "min-h-[50vh]")}>
+                <p className="text-sm text-[#888] text-center">
                   Your contextual market intelligence companion for {context}.
                 </p>
                 
                 <div className="flex justify-center">
                   <Button
-                    variant={isFullscreen ? "ghost" : "outline"}
+                    variant="ghost"
                     size="sm"
                     onClick={() => setShowCollectivePanel(!showCollectivePanel)}
-                    className={cn("gap-2", isFullscreen && "text-[#888] hover:text-white border-0")}
+                    className="gap-2 text-[#888] hover:text-white border-0"
                   >
                     <Globe className="h-4 w-4" />
                     {showCollectivePanel ? 'Hide' : 'Show'} Collective Intelligence
@@ -1192,19 +1184,13 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 )}
                 
                 <div className={cn("space-y-2", isFullscreen && "w-full max-w-2xl")}>
-                  <p className={cn(
-                    "font-semibold text-muted-foreground",
-                    isFullscreen ? "text-sm text-[#666]" : "text-xs"
-                  )}>Quick Actions:</p>
+                  <p className="text-xs font-semibold text-[#666]">Quick Actions:</p>
                   {quickActions.map((action, idx) => (
                     <Button
                       key={idx}
-                      variant={isFullscreen ? "ghost" : "outline"}
+                      variant="ghost"
                       size="sm"
-                      className={cn(
-                        "w-full justify-start text-left h-auto py-2 px-3",
-                        isFullscreen && "text-[#888] hover:text-white hover:bg-white/5 border-0"
-                      )}
+                      className="w-full justify-start text-left h-auto py-2 px-3 text-[#888] hover:text-white hover:bg-white/5 border-0"
                       onClick={() => handleQuickAction(action)}
                     >
                       {action}
@@ -1225,16 +1211,9 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 >
                   <div
                     className={cn(
-                      // Fullscreen: assistant = no bubble, user = subtle bubble
-                      isFullscreen
-                        ? msg.role === 'user'
-                          ? 'max-w-[70%] rounded-2xl px-5 py-3 bg-[#1a1f1e] text-white'
-                          : 'w-full text-[#c8c8c8]'
-                        : 'max-w-[80%] rounded-2xl px-4 py-3',
-                      // Non-fullscreen colors
-                      !isFullscreen && (msg.role === 'user'
-                        ? 'bg-[#2f3e36] text-white'
-                        : 'bg-[#212121] text-[#d1d1d1]')
+                      msg.role === 'user'
+                        ? 'max-w-[75%] rounded-2xl px-5 py-3 bg-[#1a2e23] text-white'
+                        : 'max-w-[75%] rounded-xl px-5 py-3 bg-[#161b22] text-[#c8c8c8]'
                     )}
                   >
                     {renderMessageContent(msg)}
@@ -1284,17 +1263,9 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className={cn(
-                    "flex items-center gap-2",
-                    isFullscreen 
-                      ? "px-0 py-2" 
-                      : "bg-muted rounded-lg px-4 py-2"
-                  )}>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className={cn(
-                      "text-sm",
-                      isFullscreen ? "text-[#888]" : "text-muted-foreground"
-                    )}>
+                  <div className="flex items-center gap-2 px-2 py-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#888]" />
+                    <span className="text-sm text-[#888]">
                       {activeJobId ? 'Lancement en cours...' : 'Analyzing...'}
                     </span>
                   </div>
@@ -1320,46 +1291,29 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
         </ScrollArea>
 
         {/* Input */}
-        <div className={cn(
-          "shrink-0",
-          isFullscreen 
-            ? "px-4 pb-8 pt-4 bg-[#0e1116]" 
-            : "p-4 border-t border-border bg-card"
-        )}>
+        <div className="shrink-0 px-4 pb-6 pt-4 bg-[#0e1116] border-t border-white/[0.03]">
           <form onSubmit={handleSubmit} className={cn(
             "flex gap-2 items-center",
             isFullscreen && "max-w-5xl mx-auto"
           )}>
-            <div className={cn(
-              "flex-1 flex items-center gap-2",
-              isFullscreen 
-                ? "rounded-full bg-[#161b22] border-0 shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14" 
-                : ""
-            )}>
-              {isFullscreen && <Search className="h-4 w-4 text-[#555] shrink-0" />}
-              {isFullscreen && (
-                <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#888] border-0 shrink-0 px-2 py-0.5">
-                  AURA v2
-                </Badge>
-              )}
+            <div className="flex-1 flex items-center gap-2 rounded-full bg-[#161b22] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14">
+              <Search className="h-4 w-4 text-[#555] shrink-0" />
+              <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#888] border-0 shrink-0 px-2 py-0.5">
+                AURA v2
+              </Badge>
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask AURA anything..."
                 disabled={isLoading}
-                className={cn(
-                  "flex-1",
-                  isFullscreen && "border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base placeholder:text-white/30"
-                )}
+                className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base placeholder:text-white/30"
               />
             </div>
             <Button 
               type="submit" 
               disabled={isLoading || !input.trim()} 
               size="icon"
-              className={cn(
-                isFullscreen && "rounded-full h-12 w-12 bg-gradient-to-r from-primary to-primary/80"
-              )}
+              className="rounded-full h-12 w-12 bg-gradient-to-r from-primary to-primary/80"
             >
               <Send className="h-4 w-4" />
             </Button>
