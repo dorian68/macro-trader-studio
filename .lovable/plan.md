@@ -1,25 +1,38 @@
 
 
-## Reduire l'espace entre le graphique et les 3 boutons sur mobile
+## Supprimer l'espace vide entre le graphique et les 3 boutons sur mobile
 
 ### Diagnostic
 
-Le `gap-2` (0.5rem / 8px) sur le conteneur flex principal (ligne 258) cree un espacement entre la zone du graphique et les 3 cartes. De plus, le graphique dans son conteneur `flex-1` ne remplit pas necessairement tout l'espace disponible, laissant du vide en bas.
+L'espace vide visible sur le screenshot vient d'un conflit de contraintes :
+- Le conteneur grid (ligne 260) a `flex-1` ce qui lui donne tout l'espace restant
+- Le conteneur du graphique a `max-h-[calc(100%-5rem)]` qui le limite en hauteur
+- Resultat : le grid prend tout l'espace (`flex-1`) mais le graphique ne le remplit pas entierement a cause du `max-h`, creant un vide entre le bas du graphique et les 3 boutons
 
 ### Solution
 
-Reduire le `gap` sur mobile a `gap-1` (4px) tout en gardant `gap-2` sur desktop via `md:gap-2`.
+Remplacer l'approche `max-h` par une approche plus propre :
+1. Retirer le `max-h-[calc(100%-5rem)]` du conteneur du graphique (il n'est plus necessaire)
+2. Le conteneur grid garde `flex-1 min-h-0` pour prendre l'espace restant naturellement
+3. Le graphique avec `h-full` remplira son conteneur grid sans espace perdu
 
-### Modification
+Le `flex-1 min-h-0` sur le grid + `shrink-0` sur les boutons + `overflow-hidden` sur le layout parent suffisent a garantir que les boutons restent visibles.
 
-**`src/pages/TradingDashboard.tsx` (ligne 258)**
+### Modifications
 
-- Avant : `h-full flex flex-col gap-2`
-- Apres : `h-full flex flex-col gap-1 md:gap-2`
+**`src/pages/TradingDashboard.tsx`**
+
+Ligne 262 - Retirer `max-h-[calc(100%-5rem)] md:max-h-none` du conteneur du graphique :
+
+- Avant : `min-w-0 min-h-0 order-1 my-0 overflow-hidden max-h-[calc(100%-5rem)] md:max-h-none md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full`
+- Apres : `min-w-0 min-h-0 order-1 my-0 overflow-hidden md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full h-full`
+
+Le `h-full` force le graphique a occuper exactement l'espace que le flex layout lui attribue, sans espace vide.
 
 ### Ce qui ne change pas
 
-- Le layout desktop 2 colonnes reste identique (gap-2 preservé via `md:gap-2`)
-- Le graphique, les boutons, le carousel, le BubbleSystem ne sont pas touches
+- Le layout desktop 2 colonnes reste identique
+- Les 3 boutons gardent leur `shrink-0` et restent visibles
+- Le graphique TradingView/TwelveData fonctionne normalement
 - Aucune logique metier modifiee
 
