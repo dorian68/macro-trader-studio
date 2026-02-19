@@ -255,7 +255,7 @@ export default function TradingDashboard() {
     >
 
       {/* Main viewport-locked content */}
-      <div className="h-full flex flex-col gap-2">
+      <div className="h-full flex flex-col gap-1 md:gap-2">
         {/* Row 1: Chart + Nav Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch flex-1 min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
