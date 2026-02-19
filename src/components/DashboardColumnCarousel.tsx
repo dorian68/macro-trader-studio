@@ -155,7 +155,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
         </TabsList>
 
         {/* Quick Access */}
-        <TabsContent value="quick-access" className="flex-1 min-h-0 gap-2 mt-2 overflow-hidden animate-fade-in">
+        <TabsContent value="quick-access" className="flex-1 min-h-0 gap-2 mt-2 overflow-visible animate-fade-in">
           <Card
             className="gradient-card border-primary/20 shadow-glow-primary cursor-pointer hover:scale-105 hover:z-20 relative transition-smooth touch-manipulation overflow-visible flex-1 flex flex-col justify-center"
             onClick={() => navigate('/trade-generator')}
