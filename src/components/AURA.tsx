@@ -1168,7 +1168,7 @@ Fournis maintenant une analyse technique complète et structurée basée sur ces
                 >
                   <div
                     className={cn(
-                      isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-lg px-4 py-2',
+                      isFullscreen ? 'max-w-[90%] rounded-2xl px-5 py-3' : 'max-w-[80%] rounded-2xl px-4 py-3',
                       msg.role === 'user'
                         ? 'bg-[#2f3e36] text-white'
                         : 'bg-[#212121] text-[#d1d1d1]'
