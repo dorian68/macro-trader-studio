@@ -11,7 +11,7 @@ const {
 } = React;
 interface LoadingRequest {
   id: string;
-  type: 'ai_trade_setup' | 'macro_commentary' | 'reports';
+  type: 'trade_generator' | 'macro_lab' | 'reports';
   instrument: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress: number;
@@ -26,13 +26,13 @@ interface LoadingCardProps {
   className?: string;
 }
 const REQUEST_ICONS = {
-  ai_trade_setup: Zap,
-  macro_commentary: Brain,
+  trade_generator: Zap,
+  macro_lab: Brain,
   reports: FileText
 };
 const REQUEST_LABELS = {
-  ai_trade_setup: "AI Trade Setup",
-  macro_commentary: "Macro Commentary",
+  trade_generator: "Trade Generator",
+  macro_lab: "Macro Lab",
   reports: "Reports"
 };
 const STATUS_COLORS = {
@@ -134,8 +134,8 @@ export function LoadingCard({
   };
   const getCompletionTitle = () => {
     const titles = {
-      ai_trade_setup: "Trade Setup Completed",
-      macro_commentary: "Macro Commentary Completed",
+      trade_generator: "Trade Setup Completed",
+      macro_lab: "Macro Lab Completed",
       reports: "Report Completed"
     };
     return titles[request.type];

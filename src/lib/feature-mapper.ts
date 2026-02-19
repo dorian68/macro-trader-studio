@@ -5,19 +5,23 @@
 
 // Map from jobs.feature to ai_interactions.feature_name
 export const JOBS_TO_AI_INTERACTIONS_FEATURE_MAP: Record<string, string> = {
-  'AI Trade Setup': 'ai_trade_setup',
-  'Macro Commentary': 'macro_commentary', 
+  'AI Trade Setup': 'trade_generator',
+  'Macro Commentary': 'macro_lab', 
   'Report': 'report',
   'Reports': 'report', // Handle both variants
-  'Trade Setup': 'ai_trade_setup', // Handle variant without "AI"
-  'Macro Analysis': 'macro_commentary' // Handle analysis variant
+  'Trade Setup': 'trade_generator', // Handle variant without "AI"
+  'Macro Analysis': 'macro_lab', // Handle analysis variant
+  'Trade Generator': 'trade_generator', // New canonical name
+  'Macro Lab': 'macro_lab' // New canonical name
 };
 
 // Map from ai_interactions.feature_name to jobs.feature
 export const AI_INTERACTIONS_TO_JOBS_FEATURE_MAP: Record<string, string> = {
-  'ai_trade_setup': 'AI Trade Setup',
+  'trade_generator': 'AI Trade Setup', // Canonical key
+  'macro_lab': 'Macro Commentary', // Canonical key
+  'ai_trade_setup': 'AI Trade Setup', // Legacy support
   'trade_setup': 'AI Trade Setup', // Legacy support
-  'macro_commentary': 'Macro Commentary',
+  'macro_commentary': 'Macro Commentary', // Legacy support
   'market_commentary': 'Macro Commentary', // Legacy support
   'report': 'Report',
   'reports': 'Report' // Legacy support

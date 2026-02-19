@@ -675,8 +675,8 @@ Once you have the required information, confirm with the user:
 Only after confirmation, call the appropriate tool.
 
 TOOL USAGE:
-- Use 'launch_ai_trade_setup' when user confirms they want a trade setup
-- Use 'launch_macro_commentary' when user confirms they want macro analysis
+- Use 'launch_trade_generator' when user confirms they want a trade setup
+- Use 'launch_macro_lab' when user confirms they want macro analysis
 - Use 'launch_report' when user confirms they want a report
 
 Remember: Be conversational, guide naturally, and always confirm before launching.
@@ -847,14 +847,14 @@ Which one would you like me to analyze instead? Or tell me more about XYZ123 if 
 - Last timeframe: ${sessionMemory?.lastTimeframe || 'none'}
 - Last feature used: ${sessionMemory?.lastFeature || 'none'}
 When user says "run it again", "same for gold", "now on H1", "do the same" ‚Äî use this memory to fill missing parameters.
-If user says "now run it on gold" and last feature was "macro_commentary" (Macro Labs), call launch_macro_commentary with instrument "Gold".
+If user says "now run it on gold" and last feature was "launch_macro_lab" (Macro Labs), call launch_macro_lab with instrument "Gold".
 
 üîó MULTI-COMMAND PROTOCOL:
 If user requests multiple actions (e.g., "Run macro on EURUSD then setup"):
 1. Execute the FIRST action by calling the appropriate tool
 2. In your text response, acknowledge both requests and tell the user you'll handle the second one after the first completes
 3. After the first job completes, the user can request the second action
-Note: You can only call ONE feature tool per message (launch_ai_trade_setup OR launch_macro_commentary OR launch_report).
+Note: You can only call ONE feature tool per message (launch_trade_generator OR launch_macro_lab OR launch_report).
 For technical analysis (price + indicators), you CAN call both tools simultaneously.
 ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n‚è∞ TEMPORAL CONTEXT:\n- Current UTC time: ${new Date(detectedTimeframe.endDate).toUTCString()}\n- Analysis horizon: ${detectedTimeframe.horizon}\n- Data interval: ${detectedTimeframe.interval}\n- Data points: ${detectedTimeframe.outputsize}\n- Time window: ${detectedTimeframe.startDate ? new Date(detectedTimeframe.startDate).toUTCString() : 'Auto'} to ${new Date(detectedTimeframe.endDate).toUTCString()}\n\n**CRITICAL**: Mention this timeframe context in your analysis (e.g., "As of ${new Date(detectedTimeframe.endDate).toUTCString()}, based on the last ${detectedTimeframe.horizon} data...")\n` : ''}${languageInstruction}${collectiveContext}${proactiveGuidanceContext}`;
     
@@ -926,8 +926,8 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n‚è
           {
             type: "function",
             function: {
-              name: "launch_ai_trade_setup",
-              description: "Launch an AI Trade Setup analysis for a specific instrument and timeframe",
+              name: "launch_trade_generator",
+              description: "Launch a Trade Generator analysis for a specific instrument and timeframe",
               parameters: {
                 type: "object",
                 properties: {
@@ -946,8 +946,8 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n‚è
           {
             type: "function",
             function: {
-              name: "launch_macro_commentary",
-              description: "Generate a comprehensive macro market commentary for a specific instrument",
+              name: "launch_macro_lab",
+              description: "Generate a comprehensive macro market commentary for a specific instrument via Macro Lab",
               parameters: {
                 type: "object",
                 properties: {

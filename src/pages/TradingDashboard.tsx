@@ -359,11 +359,11 @@ export default function TradingDashboard() {
             onViewResult={(job) => {
               // Navigate to appropriate result page based on job type
               switch (job.type) {
-                case 'ai_setup':
-                  navigate('/history');
+                case 'trade_generator':
+                  navigate('/trade-generator');
                   break;
-                case 'macro_commentary':
-                  navigate('/macro-analysis');
+                case 'macro_lab':
+                  navigate('/macro-lab');
                   break;
                 case 'report':
                   navigate(`/reports?jobId=${job.id}`);
