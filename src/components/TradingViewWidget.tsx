@@ -387,7 +387,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
   // Load data when symbol or timeframe changes
   useEffect(() => {
     fetchData();
-  }, [currentSymbol, timeframe, displayOptions]);
+  }, [currentSymbol, timeframe, displayOptions, darkTheme]);
 
   // WebSocket for real-time Binance prices
   useEffect(() => {
