@@ -259,7 +259,7 @@ export default function TradingDashboard() {
         {/* Row 1: Chart + Nav Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-2 items-stretch flex-1 min-h-0">
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
-          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 overflow-hidden max-h-[calc(100%-5rem)] md:max-h-none md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full">
+          <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 overflow-hidden md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full h-full">
             <CandlestickChart
               forceMode={sessionChartMode}
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
