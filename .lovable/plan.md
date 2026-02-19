@@ -1,92 +1,175 @@
 
-# AURA Tool Result Pipeline Fix — Eliminate Race Condition
+# AURA Full Result Rendering — Complete Macro & Trade Content in Chat
 
-## Root Cause
+## Problem
 
-The tool result rendering pipeline (rich content, mini-widgets, charts) is **already implemented** in lines 1100-1158 of `AURA.tsx`. The problem is a **race condition**:
+When AURA receives a macro commentary result, only a 200-character truncated summary + a few tags + "Open Full View" button are shown. The user wants the **full analysis** readable directly in AURA's chat thread — executive summary, fundamental analysis, directional bias, key levels, news citations, economic data — without needing to navigate away.
 
-1. Line 1034: Adds "Launching request..." message
-2. Line 1081-1223: Subscribes to realtime job updates (correctly builds rich content on completion)
-3. Line 1248: Sends HTTP request
-4. **Line 1264-1267: ALWAYS replaces the last message with a static "Requete lancee" string**
+Additionally, `parseMacroResponse` in the registry **loses sibling structured fields** (market_data, fundamentals, citations_news) when it extracts the text `content` field. And `parseMacroText` regex patterns require colons (e.g., `Executive Summary:`) but the actual payload uses format without colons (e.g., `Executive Summary\n...`).
 
-If the realtime update fires **before** the HTTP resolves (common with fast backends), the rich result message gets **overwritten** by the static confirmation at line 1264. The user only sees "Requete lancee" and never sees the actual result.
+## Root Causes
 
-## Solution
+1. **`AuraMiniMacro`** (AURA.tsx line 564): Truncates summary to 200 chars, shows only key_drivers tags
+2. **`parseMacroText`** (auraFeatureRegistry.ts line 224): Regex expects "Executive Summary:" with colon, but backend sends "Executive Summary\n" without colon
+3. **`parseMacroResponse`** (auraFeatureRegistry.ts line 157): When it finds the inner `content` text string, it discards sibling fields (market_data, fundamentals, citations_news)
+4. **`extractMarketAttachments`** (AURA.tsx line 183): Checks `Array.isArray(market_data)` but actual data is `{symbol, interval, values: [...]}` — misses the OHLC data
+5. **`generateNaturalSummary`** (AURA.tsx line 110): Truncates executive_summary to 500 chars and fundamentals to 300 chars
 
-### File: `src/components/AURA.tsx`
+## Changes
 
-#### 1. Add a completion tracking ref (near line 294)
+### File 1: `src/lib/auraFeatureRegistry.ts`
 
-Add a `jobCompletedRef` to track whether the realtime handler has already injected a result:
+#### A. Fix `parseMacroText` (line 224)
+Make regex patterns flexible to handle both "Section:" and "Section\n" formats:
+- `Executive Summary:?\s*` instead of `Executive Summary:\s*`
+- Same for Fundamental Analysis, Directional Bias
+- Also extract Key Levels (Support/Resistance numbers) and AI Insights (Toggle GPT / Toggle Curated) sections from text
 
+#### B. Fix `parseMacroResponse` (line 157)
+When the inner `content` is a text string, merge the structured sibling fields into the result:
 ```
-const jobCompletedRef = useRef<Set<string>>(new Set());
+// After parsing the text content, merge sibling structured data
+const siblings = content as Record<string, unknown>;
+if (siblings.market_data) structured.market_data = siblings.market_data;
+if (siblings.fundamentals) structured.fundamentals = siblings.fundamentals;
+if (siblings.citations_news) structured.citations_news = siblings.citations_news;
+if (siblings.base_report) structured.base_report = siblings.base_report;
 ```
 
-#### 2. Mark job as completed in the realtime handler (line ~1155)
+This ensures `widgetData` in AURA.tsx contains all the structured fields needed for full rendering.
 
-Before injecting the rich content message, add the jobId to the completed set:
+### File 2: `src/components/AURA.tsx`
 
+#### A. Fix `extractMarketAttachments` (line 183)
+Add handling for `market_data.values` format:
 ```
-jobCompletedRef.current.add(jobId);
-```
-
-Same for error handling (line ~1212).
-
-#### 3. Guard the static message at line 1264-1267
-
-Replace the unconditional "Requete lancee" message with a guard:
-
-```
-// Only show "request launched" if realtime hasn't already injected the result
-if (!jobCompletedRef.current.has(jobId)) {
-  setMessages((prev) => [
-    ...prev.slice(0, -1),
-    { role: 'assistant', content: `... Requete lancee pour ${instrument}. En attente du resultat...` },
-  ]);
+// After checking if ohlcSource is array directly
+if (ohlcSource && !Array.isArray(ohlcSource) && Array.isArray(ohlcSource.values)) {
+  // Handle {symbol, interval, values: [...]} format
+  const ohlc = ohlcSource.values.map(...)
+  return { type: 'market_chart', payload: { mode: 'candlestick', data: { ohlc }, instrument: ohlcSource.symbol } };
 }
 ```
 
-This ensures:
-- If realtime fires first: rich content stays, static message is skipped
-- If HTTP resolves first: user sees "waiting" message, then realtime replaces it with rich content
-- Concurrent jobs: each tracked by unique jobId in the Set
+#### B. Replace `AuraMiniMacro` with `AuraFullMacro` (line 564)
+Replace the 200-char truncated card with a comprehensive inline renderer:
 
-#### 4. Clean up the ref on completion (optional)
+- **Executive Summary**: Full text, no truncation
+- **Directional Bias + Confidence**: Badge with icon (TrendingUp/TrendingDown) and confidence percentage
+- **Key Levels**: Support/Resistance grid with color-coded tags (green/red)
+- **Fundamental Analysis**: Bullet list of all points
+- **Economic Data Table** (from `fundamentals` array): Compact table with Indicator, Actual, Consensus, Previous columns
+- **News Citations** (from `citations_news`): Compact list with publisher badges
+- **AI Insights**: Collapsible sections for GPT and Curated insights
+- **"Open Full View" button**: Kept at the bottom
 
-After injecting the result, remove the jobId from the Set after a delay to prevent memory leak:
+All sections are collapsible by default (except Executive Summary and Bias) to avoid overwhelming the chat.
 
-```
-setTimeout(() => jobCompletedRef.current.delete(jobId), 5000);
-```
+#### C. Enhance `generateNaturalSummary` for macro_lab (line 110)
+Remove the 500/300-char truncations. Show full executive summary and fundamental analysis text in the markdown summary.
+
+#### D. Enhance `AuraMiniTradeSetup` similarly (line 526)
+Add full strategy notes rendering and decision summary section when available, instead of just the compact Entry/SL/TP grid.
+
+### File 3: No other files changed
 
 ## What does NOT change
 
-- Tool routing, FEATURE_REGISTRY, resolveFeatureId
 - Backend endpoints, edge functions
-- Existing toasters (they remain as secondary notification)
+- Tool routing, FEATURE_REGISTRY endpoints/buildPayload
+- Toasters (remain as secondary notification)
 - Pages trade-generator / macro-labs / reports
-- Mini-widget components (AuraMiniTradeSetup, AuraMiniMacro, AuraMiniReport)
-- MarketChartWidget rendering
-- generateNaturalSummary function
-- extractMarketAttachments function
-- Rich content structure (RichContent interface)
+- MarketChartWidget component itself
 - localStorage persistence
 - Credit engagement logic
 - Job badge system
+- Rich content type structure (RichContent interface)
+- Realtime subscription logic
+- jobCompletedRef race condition fix
 
-## What already works (no changes needed)
+## Technical Details
 
-- Rich content rendering with summary + widgets + charts (lines 1116-1158)
-- Natural language summary generation (lines 53-161)
-- Mini-widget display: Trade Card, Macro Card, Report Card (lines 524-607)
-- MarketChartWidget inline in chat (lines 642-655)
-- "Open Full View" buttons on each widget (already implemented)
-- Chart attachment extraction from payloads (lines 174-251)
-- Collapsible raw JSON viewer (lines 668-694)
-- Error handling with rich error content (lines 1179-1219)
+### AuraFullMacro Component Structure
 
-## Summary
+```text
+<div class="border rounded-lg p-4 bg-card/50 space-y-4">
+  <!-- Directional Bias Header -->
+  <div class="flex items-center gap-2">
+    <TrendingUp/Down icon />
+    <span>Bullish</span>
+    <Badge>70% confidence</Badge>
+  </div>
 
-This is a **3-line fix** to a race condition. The entire tool result pipeline (rich rendering, widgets, charts, "Open in Page" buttons) is already built and functional -- it was just being overwritten by a static confirmation message.
+  <!-- Executive Summary (always visible) -->
+  <p class="text-sm leading-relaxed">Full executive summary text...</p>
+
+  <!-- Key Levels (always visible) -->
+  <div class="grid grid-cols-2 gap-2">
+    <div>Support: 4850, 4900</div>
+    <div>Resistance: 5045, 5100</div>
+  </div>
+
+  <!-- Collapsible: Fundamental Analysis -->
+  <Collapsible>
+    <CollapsibleTrigger>Fundamental Analysis (6 points)</CollapsibleTrigger>
+    <CollapsibleContent>bullet list...</CollapsibleContent>
+  </Collapsible>
+
+  <!-- Collapsible: Economic Data -->
+  <Collapsible>
+    <CollapsibleTrigger>Economic Indicators (10 items)</CollapsibleTrigger>
+    <CollapsibleContent>compact table...</CollapsibleContent>
+  </Collapsible>
+
+  <!-- Collapsible: News Sources -->
+  <Collapsible>
+    <CollapsibleTrigger>News Sources (9 articles)</CollapsibleTrigger>
+    <CollapsibleContent>list with publisher badges...</CollapsibleContent>
+  </Collapsible>
+
+  <!-- Collapsible: AI Insights -->
+  <Collapsible>
+    <CollapsibleTrigger>AI Insights</CollapsibleTrigger>
+    <CollapsibleContent>GPT + Curated sections...</CollapsibleContent>
+  </Collapsible>
+
+  <!-- Open Full View button -->
+  <Button>Open Full View</Button>
+</div>
+```
+
+### parseMacroText Enhanced Regex
+
+```text
+// Before: /Executive Summary:\s*([^]*?)(?=...)/i
+// After:  /Executive Summary:?\s*\n?([^]*?)(?=...)/i
+
+// Also extract key_levels:
+// Pattern: Key Levels...\nSupport\n4850\n4900\nResistance\n5045\n5100
+// Parse Support/Resistance numbers into structured object
+
+// Also extract AI Insights:
+// Pattern: Toggle GPT\n...\n\nToggle Curated\n...
+```
+
+### extractMarketAttachments Fix
+
+```text
+// After line 183, before Array.isArray check:
+if (ohlcSource && typeof ohlcSource === 'object' && !Array.isArray(ohlcSource)) {
+  const valuesArray = ohlcSource.values || ohlcSource.data;
+  if (Array.isArray(valuesArray) && valuesArray.length > 2 && valuesArray[0]?.open != null) {
+    const ohlc = valuesArray.map(d => ({
+      time: d.datetime || d.date || d.time,
+      open: Number(d.open), high: Number(d.high), low: Number(d.low), close: Number(d.close),
+    })).filter(d => d.time && !isNaN(d.open));
+    if (ohlc.length > 2) {
+      return { type: 'market_chart', payload: {
+        mode: 'candlestick', data: { ohlc },
+        instrument: ohlcSource.symbol || root?.instrument,
+        timeframe: ohlcSource.interval || root?.timeframe
+      }};
+    }
+  }
+}
+```
