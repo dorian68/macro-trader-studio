@@ -21,7 +21,6 @@ import {
   CandlestickSeries,
   UTCTimestamp
 } from 'lightweight-charts';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -179,8 +178,8 @@ export default function LightweightChartWidget({
           textColor: 'hsl(var(--foreground))',
         },
         grid: {
-          vertLines: { color: 'hsl(var(--border) / 0.03)' },
-          horzLines: { color: 'hsl(var(--border) / 0.03)' },
+          vertLines: { color: 'transparent' },
+          horzLines: { color: 'transparent' },
         },
         width: chartContainerRef.current.clientWidth,
         height: 500,
@@ -672,9 +671,8 @@ export default function LightweightChartWidget({
   }, []);
 
   return (
-    <Card className={`border-border-light shadow-medium ${className}`}>
-      <CardContent className="p-0">
-        <div className="relative">
+    <div className={`w-full h-full flex flex-col ${className}`}>
+        <div className="relative flex-1 min-h-0">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
               <div className="flex flex-col items-center gap-2">
@@ -702,8 +700,7 @@ export default function LightweightChartWidget({
           
           <div 
             ref={chartContainerRef} 
-            className="w-full relative"
-            style={{ minHeight: '500px' }}
+            className="w-full flex-1 min-h-0 relative"
           />
           
           {tooltipVisible && tooltipContent && (
@@ -719,7 +716,6 @@ export default function LightweightChartWidget({
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

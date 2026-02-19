@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, memo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -233,8 +232,8 @@ const TradingViewWidget = memo(function TradingViewWidget({
         toolbar_bg: 'transparent',
         container_id: CONTAINER_ID,
         overrides: {
-          "paneProperties.vertGridProperties.color": "rgba(255,255,255,0.03)",
-          "paneProperties.horzGridProperties.color": "rgba(255,255,255,0.03)",
+          "paneProperties.vertGridProperties.color": "transparent",
+          "paneProperties.horzGridProperties.color": "transparent",
           "scalesProperties.showSymbolLabels": false,
           "mainSeriesProperties.priceLineVisible": false,
         },
@@ -354,9 +353,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
       }
     };
   }, [currentSymbol, onPriceUpdate]);
-  return <Card className={`w-full h-full flex flex-col overflow-hidden ${className}`}>
-      
-      <CardContent className="pb-0 flex-1 min-h-0 overflow-hidden flex flex-col">
+  return <div className={`w-full h-full flex flex-col overflow-hidden ${className}`}>
         {loading && <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Loading market data...</span>
@@ -364,7 +361,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
         {hasFallback && !loading}
 
-        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 border border-border rounded-lg overflow-hidden">
+        <div ref={chartContainerRef} className="relative w-full flex-1 min-h-0 overflow-hidden">
           <Button
             variant="secondary"
             size="icon"
@@ -374,8 +371,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </CardContent>
-    </Card>;
+    </div>;
 }, (prevProps, nextProps) => {
   // Only re-render if symbol or timeframe changes
   return prevProps.selectedSymbol === nextProps.selectedSymbol && 
