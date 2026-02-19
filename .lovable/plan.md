@@ -1,102 +1,138 @@
 
-# Full Trade Generator Rendering in AURA + Suppress Duplicate Notifications
+
+# AURA: Inline Price Chart Widget ("Plot last 12h of Gold")
+
+## Overview
+
+Enable AURA to render inline candlestick/line charts directly in chat when users ask to "plot", "chart", or "graph" price data. Uses the existing `fetch-historical-prices` edge function for data and the existing `MarketChartWidget` for rendering.
 
 ## What Changes
 
-### 1. Enhanced `parseTradeResponse` — Extract `decision_summary` (auraFeatureRegistry.ts)
+### 1. New Tool Definition in AURA Edge Function (`supabase/functions/aura/index.ts`)
 
-Currently `parseTradeResponse` only extracts `final_answer` (instrument, setups, direction). The `decision_summary` (alignment, verdict, confidence_label, trade_card with entryPrice/stopLoss/takeProfits/riskRewardRatio, narrative, key_risks, next_step) is available in the same payload but ignored.
+Add a new tool `plot_price_chart` alongside the existing tools (line ~1058):
 
-**Fix:** After extracting `final_answer`, also extract `decision_summary` using the same 3-path logic used by `ForecastTradeGenerator.tsx`, and merge it into the returned `data`:
 ```
-data: { ...finalAnswer, decision_summary: extractedDS }
-```
-
-### 2. Replace `AuraMiniTradeSetup` with `AuraFullTradeSetup` (AURA.tsx)
-
-Currently shows only: instrument badge, direction badge, 3-column Entry/SL/TP grid, R:R line, and "Open Full View" button.
-
-**New `AuraFullTradeSetup`** will render all available fields in a structured layout:
-
-```text
-+-------------------------------------------+
-| [Instrument] [Direction Badge] [Timeframe] |
-| Alignment: aligned | Verdict: go | Conf: high |
-+-------------------------------------------+
-| Trade Levels (always visible)              |
-| Entry: 1.08500 | SL: 1.08200 | TP: 1.08900 | R:R: 2.33 |
-+-------------------------------------------+
-| > Strategy Notes (collapsible)             |
-|   - Note 1                                 |
-|   - Note 2                                 |
-+-------------------------------------------+
-| > Narrative (collapsible)                  |
-|   Full narrative text from decision_summary|
-+-------------------------------------------+
-| > Key Risks (collapsible)                  |
-|   1. Risk item 1                           |
-|   2. Risk item 2                           |
-+-------------------------------------------+
-| > Next Step (collapsible)                  |
-|   Actionable recommendation               |
-+-------------------------------------------+
-| [Open Full View] button                    |
-+-------------------------------------------+
-```
-
-Uses `Collapsible` from Radix, same pattern as `AuraFullMacro`.
-
-### 3. Tag AURA Jobs + Suppress PersistentToast for AURA-Originated Jobs
-
-**Problem:** When AURA creates a job, the `PersistentNotificationProvider` also picks it up via its own Realtime subscription on the `jobs` table. This causes duplicate cards/toasts at bottom-right, cluttering the AURA experience.
-
-**Fix in AURA.tsx:** Add `source: 'aura'` to the `request_payload` when creating the job:
-```typescript
-const jobId = await createJob(
-  featureType, instrument,
-  { type: featureType, source: 'aura' },  // <-- add source
-  dbFeature
-);
-```
-
-**Fix in PersistentNotificationProvider.tsx:** Skip jobs where `request_payload.source === 'aura'` in both INSERT and UPDATE handlers:
-```typescript
-if (newJob.request_payload?.source === 'aura') {
-  console.log('[PersistentNotifications] Skipping AURA-originated job');
-  return;
+{
+  name: "plot_price_chart",
+  description: "Plot/chart/graph price data for an instrument over a time window. Use when user asks to visualize, plot, chart, or graph price movements.",
+  parameters: {
+    instrument: string (required),
+    interval: "5min" | "15min" | "30min" | "1h" | "4h" | "1day",
+    lookback_hours: number (how many hours of data to show)
+  }
 }
 ```
 
-### 4. Remove Inline `toast()` Calls from AURA Job Handlers
+Update the system prompt (around line 648) to add intent detection rules:
+- If user says: "plot", "chart", "graph", "show price", "draw", "visualize", "courbe", "graphe", "affiche", "tracer" combined with a time window ("last 12h", "past 24h", etc.) -- call `plot_price_chart`
+- Instrument mapping: "gold" -> "XAU/USD", "btc" -> "BTC/USD", etc. (already handled by existing `detectInstruments`)
+- Lookback heuristic: parse "last 12h" -> 12 hours, "last 7d" -> 168 hours, etc.
+- Default interval heuristic: <=12h -> "15min", <=48h -> "30min", <=7d -> "1h", >7d -> "4h"
 
-Remove these toast calls from AURA.tsx since results now render in-chat:
-- Line 1468: `toast({ title: 'Request Launched', ... })`
-- Line 1339-1347: `toast({ title: analysisCompletedTitle, ... })`
-- Line 1476: `toast({ title: 'Error', ... })` (keep this one for errors as fallback)
+### 2. Handle `plot_price_chart` Tool Call in Client (`src/components/AURA.tsx`)
 
-### 5. Remaining French Strings Cleanup
+Add a new handler block in `handleToolLaunch` (after the `get_realtime_price` handler, ~line 1234):
 
-Fix the remaining French strings spotted in the technical indicators handler (lines 1098-1185):
-- "Prix actuel" -> "Current price"
-- "Prix recents" -> "Recent prices"
-- "Ouverture/Cloture" -> "Open/Close"
-- "Indicateurs Techniques pour" -> "Technical Indicators for"
-- Error messages in French -> English
+```
+if (functionName === 'plot_price_chart') {
+  // 1. Show loading message
+  // 2. Calculate startDate/endDate from lookback_hours
+  // 3. Call fetch-historical-prices edge function (same as get_realtime_price handler)
+  // 4. Transform response data to MarketChartWidget format:
+  //    { time: d.datetime || d.date, open: d.open, high: d.high, low: d.low, close: d.close }
+  // 5. Build summary text: "Here is [instrument] over the last [X hours] on [interval] candles."
+  //    Include: current price, period high/low, % change
+  // 6. Set message with attachments (chart) + text summary
+  //    Attachments use the same format as extractMarketAttachments
+}
+```
+
+The message will be rendered as:
+- Text summary (e.g., "Here is XAU/USD last 12 hours on 15-minute candles. Current: 2687.45, High: 2695.20, Low: 2680.10, Change: +0.12%")
+- `MarketChartWidget` candlestick chart (already styled, responsive, max-width respects chat container)
+- Two action buttons below: "Open in Trading Dashboard" and timeframe chips (5m / 15m / 1h)
+
+### 3. Action Buttons Under Chart
+
+After the chart, render a small action bar:
+- "Open in Trading Dashboard" button -- navigates to `/dashboard` with the instrument pre-selected
+- 3 timeframe chips (5m, 15m, 1h) -- clicking re-runs the plot with the new interval by sending a new message to AURA
+
+### 4. Edge Function Tool Routing Fix
+
+In the edge function (line ~1108-1129), add `plot_price_chart` to the single-tool passthrough (it's not a batch tool like technical analysis):
+
+```
+// plot_price_chart is a single tool, pass it through
+if (toolCalls[0].function.name === 'plot_price_chart') {
+  return { toolCalls: [toolCalls[0]], message: "..." };
+}
+```
+
+### 5. Fix Remaining French String
+
+Line 1117: `"Preparation de l'analyse technique..."` -> `"Preparing technical analysis..."`
+Line 1051: The `synthesisPrompt` is still in French -- translate to English.
 
 ## Files Modified
 
-1. **`src/lib/auraFeatureRegistry.ts`** — Add `decision_summary` extraction in `parseTradeResponse`
-2. **`src/components/AURA.tsx`** — Replace `AuraMiniTradeSetup` with `AuraFullTradeSetup`, remove toast calls, tag jobs with `source: 'aura'`, fix French strings
-3. **`src/components/PersistentNotificationProvider.tsx`** — Skip AURA-originated jobs in INSERT/UPDATE handlers
+1. **`supabase/functions/aura/index.ts`** -- Add `plot_price_chart` tool definition, update system prompt with plot intent detection, fix French strings
+2. **`src/components/AURA.tsx`** -- Add `plot_price_chart` handler in `handleToolLaunch`, render chart attachment + action buttons, fix French `synthesisPrompt`
 
 ## What Does NOT Change
 
-- Backend endpoints, edge functions, Supabase schema
-- DecisionSummaryCard.tsx component (stays for the standalone page)
-- AuraFullMacro rendering (already done)
-- ForecastTradeGenerator.tsx page
-- MarketChartWidget
-- Job creation logic in useRealtimeJobManager
-- Credit engagement
-- jobCompletedRef race condition fix
-- Realtime subscription logic
+- `MarketChartWidget` component (already works perfectly)
+- `fetch-historical-prices` edge function (data source, no changes)
+- Trade generator / Macro labs flows
+- Message alignment, styling, scroll behavior
+- Job system (plot_price_chart does NOT create a job -- it's a direct data fetch like `get_realtime_price`)
+- `extractMarketAttachments` function (plot handler builds attachments directly)
+- Credit system (no credit cost for plotting price data)
+
+## Technical Details
+
+### Data Flow
+
+```text
+User: "plot last 12h of gold"
+  -> AURA edge function detects plot intent
+  -> Returns toolCall: plot_price_chart({ instrument: "XAU/USD", interval: "15min", lookback_hours: 12 })
+  -> Client handleToolLaunch:
+     1. Calls fetch-historical-prices({ instrument: "XAU/USD", interval: "15min", startDate, endDate })
+     2. Transforms response.data[] to OHLC format for MarketChartWidget
+     3. Calculates summary stats (current price, high, low, % change)
+     4. Sets message with text + chart attachment
+```
+
+### Interval Heuristic (in edge function tool description)
+
+| Lookback     | Default Interval |
+|-------------|-----------------|
+| <= 6 hours  | 5min            |
+| <= 12 hours | 15min           |
+| <= 48 hours | 30min           |
+| <= 7 days   | 1h              |
+| > 7 days    | 4h              |
+
+### Chart Message Structure
+
+```typescript
+// The message set in handleToolLaunch:
+setMessages(prev => [...prev.slice(0, -1), {
+  role: 'assistant',
+  content: summaryText,  // "Here is XAU/USD last 12 hours..."
+  attachments: [{
+    type: 'market_chart',
+    payload: {
+      mode: 'candlestick',
+      data: { ohlc: transformedData },
+      instrument: 'XAU/USD',
+      timeframe: '15min'
+    }
+  }]
+}]);
+```
+
+The existing `renderMessageContent` already handles string content + `attachments` with `MarketChartWidget`. The chart will render inline, respecting the max-width constraint of the chat container (680px in normal mode, wider in fullscreen).
+
