@@ -396,14 +396,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
     };
   }, [currentSymbol, onPriceUpdate]);
   return <div className={`w-full h-full flex flex-col overflow-hidden rounded-2xl ${className}`}>
-        {loading && <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <span className="ml-2">Loading market data...</span>
-          </div>}
-
-        {hasFallback && !loading}
-
-        <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-2xl">
+        <div className="relative w-full flex-1 min-h-[300px] overflow-hidden rounded-2xl">
           {/* TradingView injection target - no React children */}
           <div
             ref={chartContainerRef}
