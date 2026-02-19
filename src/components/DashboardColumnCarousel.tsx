@@ -45,7 +45,7 @@ function ImagePlaceholder({ className }: { className?: string }) {
 export function DashboardColumnCarousel({ className }: DashboardColumnCarouselProps) {
   const { t } = useTranslation(['dashboard', 'common']);
   const navigate = useNavigate();
-  const { news, isLoading, setCategory } = useNewsFeed('general');
+  const { news, isLoading, setCategory } = useNewsFeed('all');
 
   const [newsCategory, setNewsCategory] = useState('all');
   const [viewMode, setViewMode] = useState<ViewMode>('compact');
@@ -65,7 +65,7 @@ export function DashboardColumnCarousel({ className }: DashboardColumnCarouselPr
   const handleCategoryChange = (cat: string) => {
     setNewsCategory(cat);
     setPage(0);
-    setCategory(cat !== 'all' ? cat : 'general');
+    setCategory(cat);
   };
 
   const handleViewModeChange = (val: string) => {
