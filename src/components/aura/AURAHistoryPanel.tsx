@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trash2, MessageSquare, Clock } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Clock, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AuraThread } from '@/services/auraConversationService';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,7 +12,8 @@ interface AURAHistoryPanelProps {
   onSelectThread: (threadId: string) => void;
   onNewChat: () => void;
   onDeleteThread: (threadId: string) => void;
-  isFullscreen?: boolean;
+  mode: 'sidebar' | 'overlay';
+  onClose?: () => void;
 }
 
 export function AURAHistoryPanel({
@@ -21,27 +22,44 @@ export function AURAHistoryPanel({
   onSelectThread,
   onNewChat,
   onDeleteThread,
-  isFullscreen,
+  mode,
+  onClose,
 }: AURAHistoryPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  return (
+  const content = (
     <div className={cn(
-      "flex flex-col border-b border-white/[0.06] bg-[#0c0f13]",
-      isFullscreen ? "max-h-[50vh]" : "max-h-[40vh]"
+      "flex flex-col bg-[#0c0f13] h-full",
+      mode === 'sidebar'
+        ? "w-[280px] border-r border-white/[0.06]"
+        : "w-[280px]"
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.04]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           <span>History</span>
           <span className="text-muted-foreground/60">({threads.length})</span>
         </div>
+        {mode === 'overlay' && onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-6 w-6 text-muted-foreground hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+
+      {/* New Chat button */}
+      <div className="px-3 py-2">
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={onNewChat}
-          className="h-7 gap-1 text-xs text-muted-foreground hover:text-white"
+          className="w-full gap-1.5 text-xs h-9 border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] text-muted-foreground hover:text-white"
         >
           <Plus className="h-3.5 w-3.5" />
           New Chat
@@ -118,4 +136,23 @@ export function AURAHistoryPanel({
       </ScrollArea>
     </div>
   );
+
+  if (mode === 'overlay') {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 z-10 bg-black/30"
+          onClick={onClose}
+        />
+        {/* Slide-in panel */}
+        <div className="absolute inset-y-0 left-0 z-20 animate-in slide-in-from-left duration-200">
+          {content}
+        </div>
+      </>
+    );
+  }
+
+  // Sidebar mode — just render the panel directly
+  return content;
 }

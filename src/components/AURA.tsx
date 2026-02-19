@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy, TrendingUp, TrendingDown, Newspaper, BarChart3, BookOpen, Plus, Clock } from 'lucide-react';
+import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy, TrendingUp, TrendingDown, Newspaper, BarChart3, BookOpen, Plus, Clock, PanelLeft } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -1760,6 +1760,265 @@ Now provide a complete, structured technical analysis based on this data.`;
 
   const quickActions = QUICK_ACTIONS[context] || QUICK_ACTIONS.default;
 
+  // Shared conversation column (messages + input)
+  const conversationColumn = (
+    <div className="flex-1 flex flex-col min-w-0 h-full relative">
+      {/* Header */}
+      <CardHeader className="shrink-0 bg-[#0e1116] border-b border-white/[0.03]">
+        <div className="flex items-start justify-between max-w-[760px] mx-auto w-full">
+          <div className="flex items-center gap-3">
+            {/* Menu icon for overlay sidebar (reduced mode only) */}
+            {!isFullscreen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => { setShowHistory(!showHistory); refreshThreadList(); }}
+                className="hover:bg-primary/10"
+                aria-label="History"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <div className={cn(
+              "bg-white rounded-xl flex items-center justify-center shadow-lg p-1",
+              isFullscreen ? "w-12 h-12" : "w-10 h-10"
+            )}>
+              <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <CardTitle className={cn(
+                "bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent",
+                isFullscreen ? "text-xl" : "text-lg"
+              )}>
+                AURA
+              </CardTitle>
+              <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+                {activeThread?.title && activeThread.title !== 'New Chat' ? activeThread.title : 'AlphaLens Unified Research Assistant'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {!isFullscreen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={createNewChat}
+                className="hover:bg-primary/10"
+                aria-label="New chat"
+                title="New Chat"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="hover:bg-primary/10"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => { setIsFullscreen(false); onToggle(); }}
+              className="hidden md:flex hover:bg-primary/10"
+              aria-label="Collapse to side"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => { setIsFullscreen(false); onToggle(); }}
+              className="md:hidden hover:bg-primary/10"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      {/* Overlay history for reduced mode */}
+      {!isFullscreen && showHistory && (
+        <AURAHistoryPanel
+          threads={threads}
+          activeThreadId={activeThread?.id}
+          onSelectThread={(id) => { loadThread(id); setShowHistory(false); }}
+          onNewChat={() => { createNewChat(); setShowHistory(false); }}
+          onDeleteThread={deleteThreadById}
+          mode="overlay"
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
+        <div className="max-w-[760px] mx-auto">
+          {messages.length === 0 && (
+            <div className="space-y-4 flex flex-col items-center justify-center min-h-[40vh]">
+              <p className="text-sm text-[#888] text-center">
+                Your contextual market intelligence companion for {context}.
+              </p>
+              
+              <div className="flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCollectivePanel(!showCollectivePanel)}
+                  className="gap-2 text-[#888] hover:text-white border-0"
+                >
+                  <Globe className="h-4 w-4" />
+                  {showCollectivePanel ? 'Hide' : 'Show'} Collective Intelligence
+                </Button>
+              </div>
+
+              {showCollectivePanel && (
+                <AURACollectivePanel 
+                  onInsightClick={(insight) => {
+                    setInput(insight);
+                    setShowCollectivePanel(false);
+                  }}
+                />
+              )}
+              
+              <div className="space-y-2 w-full max-w-2xl">
+                <p className="text-xs font-semibold text-[#666]">Quick Actions:</p>
+                {quickActions.map((action, idx) => (
+                  <Button
+                    key={idx}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-left h-auto py-2 px-3 text-[#888] hover:text-white hover:bg-white/5 border-0"
+                    onClick={() => handleQuickAction(action)}
+                  >
+                    {action}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={cn(
+                  'flex animate-in fade-in-50 duration-300',
+                  msg.role === 'user' ? 'justify-end' : 'justify-start'
+                )}
+              >
+                <div
+                  className={cn(
+                    msg.role === 'user'
+                      ? 'max-w-[680px] rounded-2xl px-5 py-3 bg-[#1a2e23] text-white'
+                      : 'max-w-[680px] rounded-xl px-5 py-3 bg-[#161b22] text-[#c8c8c8]'
+                  )}
+                >
+                  {renderMessageContent(msg)}
+                </div>
+              </div>
+            ))}
+
+            {jobBadges.map((badge) => (
+              <div key={badge.jobId} className="flex justify-center my-2">
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                    {
+                      "bg-yellow-100 text-yellow-800 animate-pulse": badge.status === 'pending',
+                      "bg-blue-100 text-blue-800 animate-pulse": badge.status === 'running',
+                      "bg-green-100 text-green-800 cursor-pointer hover:bg-green-200": badge.status === 'completed',
+                      "bg-red-100 text-red-800": badge.status === 'error'
+                    }
+                  )}
+                  onClick={() => {
+                    if (badge.status === 'completed') {
+                      const routes: Record<string, string> = {
+                        trade_generator: '/trade-generator',
+                        macro_lab: '/macro-lab',
+                        reports: '/reports'
+                      };
+                      navigate(routes[badge.type]);
+                      onToggle();
+                    }
+                  }}
+                >
+                  {badge.status === 'pending' && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {badge.status === 'running' && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {badge.status === 'completed' && <CheckCircle className="h-4 w-4" />}
+                  {badge.status === 'error' && <XCircle className="h-4 w-4" />}
+                  
+                  <span>
+                    {badge.status === 'pending' && `Queuing ${badge.instrument}...`}
+                    {badge.status === 'running' && `Processing ${badge.instrument}...`}
+                    {badge.status === 'completed' && `✅ ${badge.instrument} ready — click to view`}
+                    {badge.status === 'error' && `❌ ${badge.instrument} failed`}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-2 px-2 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#888]" />
+                  <span className="text-sm text-[#888]">
+                    {activeJobId ? 'Launching...' : 'Analyzing...'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {showScrollButton && messages.length > 0 && (
+            <div className="sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={scrollToBottom}
+                className="pointer-events-auto shadow-lg hover:shadow-xl transition-all duration-200 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 px-4"
+                aria-label="Scroll to bottom"
+              >
+                <ChevronDown className="h-4 w-4" />
+                <span className="text-xs">Latest</span>
+              </Button>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Input */}
+      <div className="shrink-0 px-4 pb-6 pt-4 bg-[#0e1116] border-t border-white/[0.03]">
+        <form onSubmit={handleSubmit} className="flex gap-2 items-center max-w-[760px] mx-auto">
+          <div className="flex-1 flex items-center gap-2 rounded-full bg-[#161b22] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14">
+            <Search className="h-4 w-4 text-[#555] shrink-0" />
+            <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#888] border-0 shrink-0 px-2 py-0.5">
+              AURA v2
+            </Badge>
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask AURA anything..."
+              disabled={isLoading}
+              className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base placeholder:text-white/30"
+            />
+          </div>
+          <Button 
+            type="submit" 
+            disabled={isLoading || !input.trim()} 
+            size="icon"
+            className="rounded-full h-12 w-12 bg-gradient-to-r from-primary to-primary/80"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+
   return (
     <>
       {/* Fullscreen backdrop */}
@@ -1771,267 +2030,24 @@ Now provide a complete, structured technical analysis based on this data.`;
       )}
 
       <div className={cn(
-       "fixed shadow-2xl flex flex-col transition-all duration-300 bg-[#0e1116]",
+        "fixed shadow-2xl flex transition-all duration-300 bg-[#0e1116]",
         isFullscreen
-          ? "inset-0 z-[10004] animate-in fade-in slide-in-from-bottom-4 duration-300"
-          : "right-0 top-0 h-full w-full md:w-1/3 z-40 border-l border-white/[0.06]"
+          ? "inset-0 z-[10004] flex-row animate-in fade-in slide-in-from-bottom-4 duration-300"
+          : "right-0 top-0 h-full w-full md:w-1/3 z-40 border-l border-white/[0.06] flex-col"
       )}>
-        {/* Header */}
-        <CardHeader className="shrink-0 bg-[#0e1116] border-b border-white/[0.03]">
-          <div className={cn("flex items-start justify-between", isFullscreen && "max-w-5xl mx-auto w-full")}>
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "bg-white rounded-xl flex items-center justify-center shadow-lg p-1",
-                isFullscreen ? "w-12 h-12" : "w-10 h-10"
-              )}>
-                <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
-              </div>
-              <div>
-                <CardTitle className={cn(
-                  "bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent",
-                  isFullscreen ? "text-xl" : "text-lg"
-                )}>
-                  AURA
-                </CardTitle>
-                <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                  {activeThread?.title && activeThread.title !== 'New Chat' ? activeThread.title : 'AlphaLens Unified Research Assistant'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              {/* New Chat */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={createNewChat}
-                className="hover:bg-primary/10"
-                aria-label="New chat"
-                title="New Chat"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              {/* History toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => { setShowHistory(!showHistory); refreshThreadList(); }}
-                className={cn("hover:bg-primary/10", showHistory && "bg-primary/10")}
-                aria-label="History"
-                title="History"
-              >
-                <Clock className="h-4 w-4" />
-              </Button>
-              {/* Fullscreen toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="hover:bg-primary/10"
-                aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-              >
-                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => { setIsFullscreen(false); onToggle(); }}
-                className="hidden md:flex hover:bg-primary/10"
-                aria-label="Collapse to side"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => { setIsFullscreen(false); onToggle(); }}
-                className="md:hidden hover:bg-primary/10"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-
-        {/* History Panel */}
-        {showHistory && (
+        {/* Permanent sidebar in fullscreen */}
+        {isFullscreen && (
           <AURAHistoryPanel
             threads={threads}
             activeThreadId={activeThread?.id}
-            onSelectThread={(id) => { loadThread(id); setShowHistory(false); }}
-            onNewChat={() => { createNewChat(); setShowHistory(false); }}
+            onSelectThread={(id) => { loadThread(id); }}
+            onNewChat={createNewChat}
             onDeleteThread={deleteThreadById}
-            isFullscreen={isFullscreen}
+            mode="sidebar"
           />
         )}
 
-        {/* Messages */}
-        <ScrollArea className={cn("flex-1", isFullscreen ? "px-8 py-6" : "p-4")} ref={scrollRef}>
-          <div className={cn("max-w-[760px] mx-auto", isFullscreen && "max-w-5xl")}>
-            {messages.length === 0 && (
-              <div className={cn("space-y-4 flex flex-col items-center justify-center", isFullscreen && "min-h-[50vh]")}>
-                <p className="text-sm text-[#888] text-center">
-                  Your contextual market intelligence companion for {context}.
-                </p>
-                
-                <div className="flex justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowCollectivePanel(!showCollectivePanel)}
-                    className="gap-2 text-[#888] hover:text-white border-0"
-                  >
-                    <Globe className="h-4 w-4" />
-                    {showCollectivePanel ? 'Hide' : 'Show'} Collective Intelligence
-                  </Button>
-                </div>
-
-                {showCollectivePanel && (
-                  <AURACollectivePanel 
-                    onInsightClick={(insight) => {
-                      setInput(insight);
-                      setShowCollectivePanel(false);
-                    }}
-                  />
-                )}
-                
-                <div className={cn("space-y-2", isFullscreen && "w-full max-w-2xl")}>
-                  <p className="text-xs font-semibold text-[#666]">Quick Actions:</p>
-                  {quickActions.map((action, idx) => (
-                    <Button
-                      key={idx}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start text-left h-auto py-2 px-3 text-[#888] hover:text-white hover:bg-white/5 border-0"
-                      onClick={() => handleQuickAction(action)}
-                    >
-                      {action}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className={cn("space-y-4", isFullscreen && "space-y-6")}>
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    'flex animate-in fade-in-50 duration-300',
-                    msg.role === 'user' ? 'justify-end' : 'justify-start'
-                  )}
-                >
-                  <div
-                    className={cn(
-                      msg.role === 'user'
-                        ? 'max-w-[680px] rounded-2xl px-5 py-3 bg-[#1a2e23] text-white'
-                        : 'max-w-[680px] rounded-xl px-5 py-3 bg-[#161b22] text-[#c8c8c8]'
-                    )}
-                  >
-                    {renderMessageContent(msg)}
-                  </div>
-                </div>
-              ))}
-
-              {/* Job badges in chat */}
-              {jobBadges.map((badge) => (
-                <div key={badge.jobId} className="flex justify-center my-2">
-                  <div
-                    className={cn(
-                      "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                      {
-                        "bg-yellow-100 text-yellow-800 animate-pulse": badge.status === 'pending',
-                        "bg-blue-100 text-blue-800 animate-pulse": badge.status === 'running',
-                        "bg-green-100 text-green-800 cursor-pointer hover:bg-green-200": badge.status === 'completed',
-                        "bg-red-100 text-red-800": badge.status === 'error'
-                      }
-                    )}
-                    onClick={() => {
-                      if (badge.status === 'completed') {
-                        const routes: Record<string, string> = {
-                          trade_generator: '/trade-generator',
-                          macro_lab: '/macro-lab',
-                          reports: '/reports'
-                        };
-                        navigate(routes[badge.type]);
-                        onToggle();
-                      }
-                    }}
-                  >
-                    {badge.status === 'pending' && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {badge.status === 'running' && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {badge.status === 'completed' && <CheckCircle className="h-4 w-4" />}
-                    {badge.status === 'error' && <XCircle className="h-4 w-4" />}
-                    
-                    <span>
-                      {badge.status === 'pending' && `Queuing ${badge.instrument}...`}
-                      {badge.status === 'running' && `Processing ${badge.instrument}...`}
-                      {badge.status === 'completed' && `✅ ${badge.instrument} ready — click to view`}
-                      {badge.status === 'error' && `❌ ${badge.instrument} failed`}
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="flex items-center gap-2 px-2 py-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#888]" />
-                    <span className="text-sm text-[#888]">
-                      {activeJobId ? 'Launching...' : 'Analyzing...'}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Scroll to bottom button */}
-            {showScrollButton && messages.length > 0 && (
-              <div className="sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={scrollToBottom}
-                  className="pointer-events-auto shadow-lg hover:shadow-xl transition-all duration-200 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 px-4"
-                  aria-label="Scroll to bottom"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                  <span className="text-xs">Latest</span>
-                </Button>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Input */}
-        <div className="shrink-0 px-4 pb-6 pt-4 bg-[#0e1116] border-t border-white/[0.03]">
-          <form onSubmit={handleSubmit} className={cn(
-            "flex gap-2 items-center",
-            isFullscreen && "max-w-5xl mx-auto"
-          )}>
-            <div className="flex-1 flex items-center gap-2 rounded-full bg-[#161b22] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14">
-              <Search className="h-4 w-4 text-[#555] shrink-0" />
-              <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#888] border-0 shrink-0 px-2 py-0.5">
-                AURA v2
-              </Badge>
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask AURA anything..."
-                disabled={isLoading}
-                className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base placeholder:text-white/30"
-              />
-            </div>
-            <Button 
-              type="submit" 
-              disabled={isLoading || !input.trim()} 
-              size="icon"
-              className="rounded-full h-12 w-12 bg-gradient-to-r from-primary to-primary/80"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
+        {conversationColumn}
       </div>
     </>
   );
