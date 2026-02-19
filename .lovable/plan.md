@@ -1,138 +1,113 @@
 
-
-# AURA: Inline Price Chart Widget ("Plot last 12h of Gold")
+# Streamline Dashboard Charts + Admin Display Settings
 
 ## Overview
 
-Enable AURA to render inline candlestick/line charts directly in chat when users ask to "plot", "chart", or "graph" price data. Uses the existing `fetch-historical-prices` edge function for data and the existing `MarketChartWidget` for rendering.
+Make both chart widgets (LightweightChartWidget and TradingView fallback) display in a clean, minimalist style on the dashboard -- matching the aesthetic applied to the AURA MarketChartWidget. Add a new "Chart Display Settings" section in the existing Admin > Chart Settings tab to let admins toggle visual elements on/off.
 
 ## What Changes
 
-### 1. New Tool Definition in AURA Edge Function (`supabase/functions/aura/index.ts`)
+### 1. LightweightChartWidget -- Clean Design (src/components/LightweightChartWidget.tsx)
 
-Add a new tool `plot_price_chart` alongside the existing tools (line ~1058):
+Apply the same minimalist treatment as the AURA chart:
+- **Grid lines**: reduce opacity to near-invisible (`hsl(var(--border) / 0.03)` instead of `0.1`)
+- **Right price scale**: hide border (`borderVisible: false`), keep scale visible for usability
+- **Time scale**: hide border (`borderVisible: false`)
+- **Crosshair**: reduce label visibility, use subtle styling
+- **Remove test markers**: delete the hard-coded "Test Point 1/2/3" markers (lines ~403-428) -- they are debug artifacts
+- **Candle colors**: keep current green/red scheme (already clean)
 
-```
-{
-  name: "plot_price_chart",
-  description: "Plot/chart/graph price data for an instrument over a time window. Use when user asks to visualize, plot, chart, or graph price movements.",
-  parameters: {
-    instrument: string (required),
-    interval: "5min" | "15min" | "30min" | "1h" | "4h" | "1day",
-    lookback_hours: number (how many hours of data to show)
+### 2. TradingView Fallback Widget -- Clean Design (src/components/TradingViewWidget.tsx)
+
+Update the `new window.TradingView.widget({...})` configuration (line 218):
+- `hide_top_toolbar: true` (already false, change to true)
+- `hide_side_toolbar: true` (hide drawing tools)
+- `hide_legend: true`
+- `withdateranges: false` (remove date range buttons)
+- `studies: []` (remove RSI and ADX overlays by default)
+- `toolbar_bg: 'transparent'`
+- Add `overrides` for grid lines visibility and price line visibility:
+  ```
+  overrides: {
+    "paneProperties.vertGridProperties.color": "rgba(255,255,255,0.03)",
+    "paneProperties.horzGridProperties.color": "rgba(255,255,255,0.03)",
+    "scalesProperties.showSymbolLabels": false,
+    "mainSeriesProperties.priceLineVisible": false,
   }
-}
+  ```
+
+### 3. New Admin "Chart Display Settings" Component (src/components/admin/ChartDisplaySettings.tsx)
+
+Create a new admin component with toggleable options stored in the existing `chart_provider_settings` table (add a JSONB column `display_options`). Settings include:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Show grid lines | OFF | Vertical and horizontal grid |
+| Show price scale | ON | Right-side price axis |
+| Show time scale | ON | Bottom time axis |
+| Show volume | OFF | Volume bars |
+| Show studies (RSI/ADX) | OFF | Technical overlays |
+| Show toolbar | OFF | TradingView top toolbar |
+
+The component renders as a card with toggle switches, saving to `chart_provider_settings.display_options` as JSON.
+
+### 4. Database Schema Update
+
+Add a `display_options` JSONB column to `chart_provider_settings`:
+```sql
+ALTER TABLE chart_provider_settings
+ADD COLUMN IF NOT EXISTS display_options jsonb DEFAULT '{
+  "showGrid": false,
+  "showPriceScale": true,
+  "showTimeScale": true,
+  "showVolume": false,
+  "showStudies": false,
+  "showToolbar": false
+}'::jsonb;
 ```
 
-Update the system prompt (around line 648) to add intent detection rules:
-- If user says: "plot", "chart", "graph", "show price", "draw", "visualize", "courbe", "graphe", "affiche", "tracer" combined with a time window ("last 12h", "past 24h", etc.) -- call `plot_price_chart`
-- Instrument mapping: "gold" -> "XAU/USD", "btc" -> "BTC/USD", etc. (already handled by existing `detectInstruments`)
-- Lookback heuristic: parse "last 12h" -> 12 hours, "last 7d" -> 168 hours, etc.
-- Default interval heuristic: <=12h -> "15min", <=48h -> "30min", <=7d -> "1h", >7d -> "4h"
+### 5. Wire Settings to Charts
 
-### 2. Handle `plot_price_chart` Tool Call in Client (`src/components/AURA.tsx`)
+In `CandlestickChart.tsx`, fetch `display_options` alongside the existing `provider` query (line 131). Pass relevant options down to both `LightweightChartWidget` and `TradingViewWidget` as props.
 
-Add a new handler block in `handleToolLaunch` (after the `get_realtime_price` handler, ~line 1234):
+- `LightweightChartWidget`: new prop `displayOptions` applied to chart config
+- `TradingViewWidget`: new prop `displayOptions` applied to widget init config
 
-```
-if (functionName === 'plot_price_chart') {
-  // 1. Show loading message
-  // 2. Calculate startDate/endDate from lookback_hours
-  // 3. Call fetch-historical-prices edge function (same as get_realtime_price handler)
-  // 4. Transform response data to MarketChartWidget format:
-  //    { time: d.datetime || d.date, open: d.open, high: d.high, low: d.low, close: d.close }
-  // 5. Build summary text: "Here is [instrument] over the last [X hours] on [interval] candles."
-  //    Include: current price, period high/low, % change
-  // 6. Set message with attachments (chart) + text summary
-  //    Attachments use the same format as extractMarketAttachments
-}
-```
+### 6. Integrate in Admin Page (src/pages/Admin.tsx)
 
-The message will be rendered as:
-- Text summary (e.g., "Here is XAU/USD last 12 hours on 15-minute candles. Current: 2687.45, High: 2695.20, Low: 2680.10, Change: +0.12%")
-- `MarketChartWidget` candlestick chart (already styled, responsive, max-width respects chat container)
-- Two action buttons below: "Open in Trading Dashboard" and timeframe chips (5m / 15m / 1h)
-
-### 3. Action Buttons Under Chart
-
-After the chart, render a small action bar:
-- "Open in Trading Dashboard" button -- navigates to `/dashboard` with the instrument pre-selected
-- 3 timeframe chips (5m, 15m, 1h) -- clicking re-runs the plot with the new interval by sending a new message to AURA
-
-### 4. Edge Function Tool Routing Fix
-
-In the edge function (line ~1108-1129), add `plot_price_chart` to the single-tool passthrough (it's not a batch tool like technical analysis):
+Add the new `ChartDisplaySettings` component inside the existing "chart-provider" tab content, right after `ChartProviderSettings`:
 
 ```
-// plot_price_chart is a single tool, pass it through
-if (toolCalls[0].function.name === 'plot_price_chart') {
-  return { toolCalls: [toolCalls[0]], message: "..." };
-}
+<TabsContent value="chart-provider">
+  <ChartProviderSettings />
+  <ChartDisplaySettings />    {/* NEW */}
+  {/* existing Dashboard Chart Mode Toggle card */}
+</TabsContent>
 ```
 
-### 5. Fix Remaining French String
+### 7. Clean Up Emojis in ChartProviderSettings
 
-Line 1117: `"Preparation de l'analyse technique..."` -> `"Preparing technical analysis..."`
-Line 1051: The `synthesisPrompt` is still in French -- translate to English.
+Remove emojis from the existing `ChartProviderSettings` badge text:
+- `"TwelveData Active"` instead of `"✅ TwelveData Active"`
+- `"TradingView Fallback"` instead of `"⚠️ TradingView Fallback"`
+
+Also remove the emoji from Admin.tsx line 912 (`🔍` in the Realtime Diagnostic tab trigger).
 
 ## Files Modified
 
-1. **`supabase/functions/aura/index.ts`** -- Add `plot_price_chart` tool definition, update system prompt with plot intent detection, fix French strings
-2. **`src/components/AURA.tsx`** -- Add `plot_price_chart` handler in `handleToolLaunch`, render chart attachment + action buttons, fix French `synthesisPrompt`
+1. **`src/components/LightweightChartWidget.tsx`** -- Minimalist grid/scale/crosshair, remove test markers
+2. **`src/components/TradingViewWidget.tsx`** -- Clean widget config, accept displayOptions prop
+3. **`src/components/CandlestickChart.tsx`** -- Fetch and pass display_options to both chart widgets
+4. **`src/components/admin/ChartDisplaySettings.tsx`** -- NEW: Admin toggle panel for chart display options
+5. **`src/components/admin/ChartProviderSettings.tsx`** -- Remove emojis from badge text
+6. **`src/pages/Admin.tsx`** -- Import and render ChartDisplaySettings, remove emoji from diagnostic tab
+7. **SQL migration** -- Add `display_options` JSONB column to `chart_provider_settings`
 
 ## What Does NOT Change
 
-- `MarketChartWidget` component (already works perfectly)
-- `fetch-historical-prices` edge function (data source, no changes)
-- Trade generator / Macro labs flows
-- Message alignment, styling, scroll behavior
-- Job system (plot_price_chart does NOT create a job -- it's a direct data fetch like `get_realtime_price`)
-- `extractMarketAttachments` function (plot handler builds attachments directly)
-- Credit system (no credit cost for plotting price data)
-
-## Technical Details
-
-### Data Flow
-
-```text
-User: "plot last 12h of gold"
-  -> AURA edge function detects plot intent
-  -> Returns toolCall: plot_price_chart({ instrument: "XAU/USD", interval: "15min", lookback_hours: 12 })
-  -> Client handleToolLaunch:
-     1. Calls fetch-historical-prices({ instrument: "XAU/USD", interval: "15min", startDate, endDate })
-     2. Transforms response.data[] to OHLC format for MarketChartWidget
-     3. Calculates summary stats (current price, high, low, % change)
-     4. Sets message with text + chart attachment
-```
-
-### Interval Heuristic (in edge function tool description)
-
-| Lookback     | Default Interval |
-|-------------|-----------------|
-| <= 6 hours  | 5min            |
-| <= 12 hours | 15min           |
-| <= 48 hours | 30min           |
-| <= 7 days   | 1h              |
-| > 7 days    | 4h              |
-
-### Chart Message Structure
-
-```typescript
-// The message set in handleToolLaunch:
-setMessages(prev => [...prev.slice(0, -1), {
-  role: 'assistant',
-  content: summaryText,  // "Here is XAU/USD last 12 hours..."
-  attachments: [{
-    type: 'market_chart',
-    payload: {
-      mode: 'candlestick',
-      data: { ohlc: transformedData },
-      instrument: 'XAU/USD',
-      timeframe: '15min'
-    }
-  }]
-}]);
-```
-
-The existing `renderMessageContent` already handles string content + `attachments` with `MarketChartWidget`. The chart will render inline, respecting the max-width constraint of the chat container (680px in normal mode, wider in fullscreen).
-
+- AURA MarketChartWidget (already clean)
+- Chart data fetching logic (REST/WebSocket)
+- Binance price feed
+- Asset mapping
+- Dashboard layout and one-screen philosophy
+- Credit system
