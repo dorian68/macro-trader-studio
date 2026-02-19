@@ -279,6 +279,238 @@ function getMessageText(msg: Message): string {
   return msg.content?.summary || '';
 }
 
+// ===== EXTRACTED WIDGET COMPONENTS (module scope for stable React identity) =====
+
+interface WidgetProps {
+  data: any;
+  onNavigate: (path: string) => void;
+  onClose: () => void;
+}
+
+const AuraFullTradeSetup = ({ data, onNavigate, onClose }: WidgetProps) => {
+  const setup = data?.setups?.[0] || data;
+  const instrument = data?.instrument || setup?.instrument || 'N/A';
+  const direction = setup?.direction || 'N/A';
+  const entry = setup?.entryPrice || setup?.entry_price || setup?.entry;
+  const sl = setup?.stopLoss || setup?.stop_loss || setup?.sl;
+  const tp = setup?.takeProfits?.[0] || setup?.takeProfit || setup?.take_profit || setup?.tp;
+  const rr = setup?.riskRewardRatio || setup?.risk_reward_ratio;
+  const confidence = setup?.strategyMeta?.confidence || setup?.confidence;
+  const timeframe = setup?.timeframe || data?.timeframe;
+  const notes = setup?.strategyMeta?.notes || setup?.notes || setup?.strategy_notes || [];
+  const ds = data?.decision_summary as Record<string, any> | undefined;
+  const alignment = ds?.alignment;
+  const verdict = ds?.verdict;
+  const confLabel = ds?.confidence_label;
+  const narrative = ds?.narrative;
+  const keyRisks = ds?.key_risks;
+  const nextStep = ds?.next_step;
+  const tradeCard = ds?.trade_card;
+  const displayEntry = entry || tradeCard?.entryPrice;
+  const displaySl = sl || tradeCard?.stopLoss;
+  const displayTp = tp || tradeCard?.takeProfits?.[0] || tradeCard?.takeProfit;
+  const displayRr = rr || tradeCard?.riskRewardRatio;
+  const isBullish = direction?.toLowerCase() === 'long' || direction?.toLowerCase() === 'buy';
+
+  return (
+    <div className="border border-border rounded-lg p-4 bg-card/50 space-y-3 mt-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="font-semibold text-sm">{instrument}</span>
+        <Badge variant={isBullish ? 'default' : 'destructive'} className="text-xs">{direction}</Badge>
+        {timeframe && <Badge variant="outline" className="text-xs">{timeframe}</Badge>}
+        {confidence && <Badge variant="outline" className="text-xs">{Math.round(Number(confidence) * 100)}%</Badge>}
+      </div>
+      {(alignment || verdict || confLabel) && (
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          {verdict && <Badge variant={verdict.toLowerCase() === 'go' ? 'default' : 'destructive'} className="text-xs">{verdict}</Badge>}
+          {confLabel && <span className="text-muted-foreground">Confidence: <strong>{confLabel}</strong></span>}
+          {alignment && <span className="text-muted-foreground">Alignment: <strong>{alignment}</strong></span>}
+        </div>
+      )}
+      <div className="grid grid-cols-4 gap-2 text-xs">
+        {displayEntry && <div><span className="text-muted-foreground">Entry</span><br /><span className="font-mono font-semibold">{Number(displayEntry).toFixed(4)}</span></div>}
+        {displaySl && <div><span className="text-muted-foreground">SL</span><br /><span className="font-mono text-destructive">{Number(displaySl).toFixed(4)}</span></div>}
+        {displayTp && <div><span className="text-muted-foreground">TP</span><br /><span className="font-mono text-green-500">{Number(displayTp).toFixed(4)}</span></div>}
+        {displayRr && <div><span className="text-muted-foreground">R:R</span><br /><span className="font-mono font-semibold">{Number(displayRr).toFixed(2)}</span></div>}
+      </div>
+      {((Array.isArray(notes) && notes.length > 0) || (typeof notes === 'string' && notes)) && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <BookOpen className="h-3.5 w-3.5" /><span>Strategy Notes</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1">
+            {Array.isArray(notes) ? (
+              <ul className="space-y-1 text-xs leading-relaxed">
+                {notes.map((n: any, i: number) => (
+                  <li key={i} className="flex gap-1.5"><span className="text-muted-foreground mt-0.5">•</span><span>{typeof n === 'string' ? n : n?.text || JSON.stringify(n)}</span></li>
+                ))}
+              </ul>
+            ) : (<p className="text-xs leading-relaxed">{String(notes)}</p>)}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      {narrative && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <Globe className="h-3.5 w-3.5" /><span>Narrative</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1"><p className="text-xs leading-relaxed whitespace-pre-wrap">{String(narrative)}</p></CollapsibleContent>
+        </Collapsible>
+      )}
+      {Array.isArray(keyRisks) && keyRisks.length > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <XCircle className="h-3.5 w-3.5" /><span>Key Risks ({keyRisks.length})</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1">
+            <ul className="space-y-1 text-xs leading-relaxed">
+              {keyRisks.map((r: any, i: number) => (
+                <li key={i} className="flex gap-1.5"><span className="text-muted-foreground mt-0.5">{i + 1}.</span><span>{typeof r === 'string' ? r : JSON.stringify(r)}</span></li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      {nextStep && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <ChevronRight className="h-3.5 w-3.5" /><span>Next Step</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1"><p className="text-xs leading-relaxed whitespace-pre-wrap">{String(nextStep)}</p></CollapsibleContent>
+        </Collapsible>
+      )}
+      <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
+        storeResultForPage('trade_generator', data?.jobId || '', data);
+        onNavigate(FEATURE_REGISTRY.trade_generator.pageRoute);
+        onClose();
+      }}><ArrowUpRight className="h-3 w-3" /> Open Full View</Button>
+    </div>
+  );
+};
+
+const AuraFullMacro = ({ data, onNavigate, onClose }: WidgetProps) => {
+  const execSummary = data?.executive_summary || data?.summary || '';
+  const bias = data?.directional_bias || '';
+  const confidence = data?.confidence;
+  const keyLevels = data?.key_levels as { support?: number[]; resistance?: number[] } | undefined;
+  const fundamentalAnalysis = data?.fundamental_analysis;
+  const fundamentals = data?.fundamentals as Array<{ indicator?: string; actual?: number | null; consensus?: number | null; previous?: number | null }> | undefined;
+  const citationsNews = data?.citations_news as Array<{ publisher?: string; title?: string }> | undefined;
+  const aiInsights = data?.ai_insights as { gpt?: string; curated?: string } | undefined;
+  const baseReport = data?.base_report as string | undefined;
+  const confVal = confidence ? (Number(confidence) > 1 ? Number(confidence) : Math.round(Number(confidence) * 100)) : null;
+  const isBullish = bias?.toLowerCase()?.includes('bullish') || bias?.toLowerCase()?.includes('long');
+
+  return (
+    <div className="border border-border rounded-lg p-4 bg-card/50 space-y-3 mt-2">
+      {bias && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {isBullish ? <TrendingUp className="h-4 w-4 text-green-500" /> : <TrendingDown className="h-4 w-4 text-destructive" />}
+          <span className={cn("font-semibold text-sm", isBullish ? "text-green-500" : "text-destructive")}>{bias}</span>
+          {confVal != null && <Badge variant="outline" className="text-xs">{confVal}% confidence</Badge>}
+        </div>
+      )}
+      {typeof execSummary === 'string' && execSummary && (
+        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{execSummary}</p>
+      )}
+      {keyLevels && (keyLevels.support?.length || keyLevels.resistance?.length) ? (
+        <div className="grid grid-cols-2 gap-2">
+          {keyLevels.support && keyLevels.support.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">Support</span>
+              <div className="flex flex-wrap gap-1">{keyLevels.support.map((v, i) => (<Badge key={i} variant="outline" className="text-xs font-mono text-green-500 border-green-500/30">{v}</Badge>))}</div>
+            </div>
+          )}
+          {keyLevels.resistance && keyLevels.resistance.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">Resistance</span>
+              <div className="flex flex-wrap gap-1">{keyLevels.resistance.map((v, i) => (<Badge key={i} variant="outline" className="text-xs font-mono text-destructive border-destructive/30">{v}</Badge>))}</div>
+            </div>
+          )}
+        </div>
+      ) : null}
+      {fundamentalAnalysis && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <BookOpen className="h-3.5 w-3.5" /><span>Fundamental Analysis {Array.isArray(fundamentalAnalysis) ? `(${fundamentalAnalysis.length} points)` : ''}</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1">
+            {Array.isArray(fundamentalAnalysis) ? (
+              <ul className="space-y-1 text-xs leading-relaxed">{fundamentalAnalysis.map((point: any, i: number) => (<li key={i} className="flex gap-1.5"><span className="text-muted-foreground mt-0.5">•</span><span className="whitespace-pre-wrap">{typeof point === 'string' ? point : JSON.stringify(point)}</span></li>))}</ul>
+            ) : (<p className="text-xs leading-relaxed whitespace-pre-wrap">{String(fundamentalAnalysis)}</p>)}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      {Array.isArray(fundamentals) && fundamentals.length > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <BarChart3 className="h-3.5 w-3.5" /><span>Economic Indicators ({fundamentals.length})</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-border"><th className="text-left py-1 pr-2 font-medium text-muted-foreground">Indicator</th><th className="text-right py-1 px-1 font-medium text-muted-foreground">Actual</th><th className="text-right py-1 px-1 font-medium text-muted-foreground">Cons.</th><th className="text-right py-1 pl-1 font-medium text-muted-foreground">Prev.</th></tr></thead>
+                <tbody>{fundamentals.map((f, i) => (<tr key={i} className="border-b border-border/50"><td className="py-1 pr-2 truncate max-w-[140px]">{f.indicator || '—'}</td><td className="text-right py-1 px-1 font-mono">{f.actual != null ? f.actual : '—'}</td><td className="text-right py-1 px-1 font-mono text-muted-foreground">{f.consensus != null ? f.consensus : '—'}</td><td className="text-right py-1 pl-1 font-mono text-muted-foreground">{f.previous != null ? f.previous : '—'}</td></tr>))}</tbody>
+              </table>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      {Array.isArray(citationsNews) && citationsNews.length > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <Newspaper className="h-3.5 w-3.5" /><span>News Sources ({citationsNews.length})</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1 space-y-1.5">
+            {citationsNews.map((c, i) => (<div key={i} className="flex items-start gap-2 text-xs"><Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">{c.publisher || 'Source'}</Badge><span className="text-muted-foreground leading-snug">{c.title || '—'}</span></div>))}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      {aiInsights && (aiInsights.gpt || aiInsights.curated) && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <Globe className="h-3.5 w-3.5" /><span>AI Insights</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1 space-y-3">
+            {aiInsights.gpt && (<div><p className="text-xs font-medium text-muted-foreground mb-1">GPT Analysis</p><p className="text-xs leading-relaxed whitespace-pre-wrap">{aiInsights.gpt}</p></div>)}
+            {aiInsights.curated && (<div><p className="text-xs font-medium text-muted-foreground mb-1">Curated Research</p><p className="text-xs leading-relaxed whitespace-pre-wrap">{aiInsights.curated}</p></div>)}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      {baseReport && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <BookOpen className="h-3.5 w-3.5" /><span>ABCG Research Report</span><ChevronDown className="h-3 w-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1"><p className="text-xs leading-relaxed whitespace-pre-wrap">{baseReport}</p></CollapsibleContent>
+        </Collapsible>
+      )}
+      <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
+        storeResultForPage('macro_lab', data?.jobId || '', data);
+        onNavigate(FEATURE_REGISTRY.macro_lab.pageRoute);
+        onClose();
+      }}><ArrowUpRight className="h-3 w-3" /> Open Full View</Button>
+    </div>
+  );
+};
+
+const AuraMiniReport = ({ data, onNavigate, onClose }: WidgetProps) => {
+  const title = data?.title || data?.report_title || 'Market Report';
+  const summary = data?.executive_summary || data?.summary || '';
+  const truncated = typeof summary === 'string' ? summary.slice(0, 150) : '';
+  return (
+    <div className="border border-border rounded-lg p-3 bg-card/50 space-y-2 mt-2">
+      <p className="text-sm font-semibold">{title}</p>
+      {truncated && <p className="text-xs text-muted-foreground">{truncated}{truncated.length >= 150 ? '...' : ''}</p>}
+      <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
+        storeResultForPage('reports', data?.jobId || '', data);
+        onNavigate(FEATURE_REGISTRY.reports.pageRoute);
+        onClose();
+      }}><ArrowUpRight className="h-3 w-3" /> Open Full View</Button>
+    </div>
+  );
+};
+
 export default function AURA({ context, isExpanded, onToggle, contextData }: AURAProps) {
   const {
     activeThread,
@@ -320,7 +552,9 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
   const { createJob } = useRealtimeJobManager();
   const { tryEngageCredit } = useCreditEngagement();
 
-  // Scroll to bottom instantly when AURA opens
+  // Stable callback for widget navigation (avoids re-renders)
+  const handleNavigate = useCallback((path: string) => navigate(path), [navigate]);
+
   useEffect(() => {
     if (isExpanded && scrollRef.current) {
       requestAnimationFrame(() => {
@@ -511,361 +745,7 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
     return <div className={cn(isFullscreen ? "space-y-1.5" : "space-y-0.5")}>{elements}</div>;
   }, [isFullscreen]);
 
-  // ===== MINI-WIDGET COMPONENTS =====
-  const AuraFullTradeSetup = ({ data }: { data: any }) => {
-    const setup = data?.setups?.[0] || data;
-    const instrument = data?.instrument || setup?.instrument || 'N/A';
-    const direction = setup?.direction || 'N/A';
-    const entry = setup?.entryPrice || setup?.entry_price || setup?.entry;
-    const sl = setup?.stopLoss || setup?.stop_loss || setup?.sl;
-    const tp = setup?.takeProfits?.[0] || setup?.takeProfit || setup?.take_profit || setup?.tp;
-    const rr = setup?.riskRewardRatio || setup?.risk_reward_ratio;
-    const confidence = setup?.strategyMeta?.confidence || setup?.confidence;
-    const timeframe = setup?.timeframe || data?.timeframe;
-    const notes = setup?.strategyMeta?.notes || setup?.notes || setup?.strategy_notes || [];
-
-    // decision_summary fields
-    const ds = data?.decision_summary as Record<string, any> | undefined;
-    const alignment = ds?.alignment;
-    const verdict = ds?.verdict;
-    const confLabel = ds?.confidence_label;
-    const narrative = ds?.narrative;
-    const keyRisks = ds?.key_risks;
-    const nextStep = ds?.next_step;
-    const tradeCard = ds?.trade_card;
-
-    // Fallback to trade_card levels if setup levels are missing
-    const displayEntry = entry || tradeCard?.entryPrice;
-    const displaySl = sl || tradeCard?.stopLoss;
-    const displayTp = tp || tradeCard?.takeProfits?.[0] || tradeCard?.takeProfit;
-    const displayRr = rr || tradeCard?.riskRewardRatio;
-
-    const isBullish = direction?.toLowerCase() === 'long' || direction?.toLowerCase() === 'buy';
-
-    return (
-      <div className="border border-border rounded-lg p-4 bg-card/50 space-y-3 mt-2">
-        {/* Header: Instrument + Direction + Timeframe */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-sm">{instrument}</span>
-          <Badge variant={isBullish ? 'default' : 'destructive'} className="text-xs">
-            {direction}
-          </Badge>
-          {timeframe && <Badge variant="outline" className="text-xs">{timeframe}</Badge>}
-          {confidence && <Badge variant="outline" className="text-xs">{Math.round(Number(confidence) * 100)}%</Badge>}
-        </div>
-
-        {/* Verdict / Alignment / Confidence Label */}
-        {(alignment || verdict || confLabel) && (
-          <div className="flex items-center gap-2 flex-wrap text-xs">
-            {verdict && (
-              <Badge variant={verdict.toLowerCase() === 'go' ? 'default' : 'destructive'} className="text-xs">
-                {verdict}
-              </Badge>
-            )}
-            {confLabel && <span className="text-muted-foreground">Confidence: <strong>{confLabel}</strong></span>}
-            {alignment && <span className="text-muted-foreground">Alignment: <strong>{alignment}</strong></span>}
-          </div>
-        )}
-
-        {/* Trade Levels (always visible) */}
-        <div className="grid grid-cols-4 gap-2 text-xs">
-          {displayEntry && <div><span className="text-muted-foreground">Entry</span><br /><span className="font-mono font-semibold">{Number(displayEntry).toFixed(4)}</span></div>}
-          {displaySl && <div><span className="text-muted-foreground">SL</span><br /><span className="font-mono text-destructive">{Number(displaySl).toFixed(4)}</span></div>}
-          {displayTp && <div><span className="text-muted-foreground">TP</span><br /><span className="font-mono text-green-500">{Number(displayTp).toFixed(4)}</span></div>}
-          {displayRr && <div><span className="text-muted-foreground">R:R</span><br /><span className="font-mono font-semibold">{Number(displayRr).toFixed(2)}</span></div>}
-        </div>
-
-        {/* Collapsible: Strategy Notes */}
-        {((Array.isArray(notes) && notes.length > 0) || (typeof notes === 'string' && notes)) && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <BookOpen className="h-3.5 w-3.5" />
-              <span>Strategy Notes</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1">
-              {Array.isArray(notes) ? (
-                <ul className="space-y-1 text-xs leading-relaxed">
-                  {notes.map((n: any, i: number) => (
-                    <li key={i} className="flex gap-1.5">
-                      <span className="text-muted-foreground mt-0.5">•</span>
-                      <span>{typeof n === 'string' ? n : n?.text || JSON.stringify(n)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs leading-relaxed">{String(notes)}</p>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Collapsible: Narrative */}
-        {narrative && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <Globe className="h-3.5 w-3.5" />
-              <span>Narrative</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1">
-              <p className="text-xs leading-relaxed whitespace-pre-wrap">{String(narrative)}</p>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Collapsible: Key Risks */}
-        {Array.isArray(keyRisks) && keyRisks.length > 0 && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <XCircle className="h-3.5 w-3.5" />
-              <span>Key Risks ({keyRisks.length})</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1">
-              <ul className="space-y-1 text-xs leading-relaxed">
-                {keyRisks.map((r: any, i: number) => (
-                  <li key={i} className="flex gap-1.5">
-                    <span className="text-muted-foreground mt-0.5">{i + 1}.</span>
-                    <span>{typeof r === 'string' ? r : JSON.stringify(r)}</span>
-                  </li>
-                ))}
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Collapsible: Next Step */}
-        {nextStep && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span>Next Step</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1">
-              <p className="text-xs leading-relaxed whitespace-pre-wrap">{String(nextStep)}</p>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Open Full View */}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
-          storeResultForPage('trade_generator', data?.jobId || '', data);
-          navigate(FEATURE_REGISTRY.trade_generator.pageRoute);
-          onToggle();
-        }}>
-          <ArrowUpRight className="h-3 w-3" /> Open Full View
-        </Button>
-      </div>
-    );
-  };
-
-  const AuraFullMacro = ({ data }: { data: any }) => {
-    const execSummary = data?.executive_summary || data?.summary || '';
-    const bias = data?.directional_bias || '';
-    const confidence = data?.confidence;
-    const keyLevels = data?.key_levels as { support?: number[]; resistance?: number[] } | undefined;
-    const fundamentalAnalysis = data?.fundamental_analysis;
-    const fundamentals = data?.fundamentals as Array<{ indicator?: string; actual?: number | null; consensus?: number | null; previous?: number | null }> | undefined;
-    const citationsNews = data?.citations_news as Array<{ publisher?: string; title?: string }> | undefined;
-    const aiInsights = data?.ai_insights as { gpt?: string; curated?: string } | undefined;
-    const baseReport = data?.base_report as string | undefined;
-
-    const confVal = confidence ? (Number(confidence) > 1 ? Number(confidence) : Math.round(Number(confidence) * 100)) : null;
-    const isBullish = bias?.toLowerCase()?.includes('bullish') || bias?.toLowerCase()?.includes('long');
-
-    return (
-      <div className="border border-border rounded-lg p-4 bg-card/50 space-y-3 mt-2">
-        {/* Directional Bias Header */}
-        {bias && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {isBullish ? <TrendingUp className="h-4 w-4 text-green-500" /> : <TrendingDown className="h-4 w-4 text-destructive" />}
-            <span className={cn("font-semibold text-sm", isBullish ? "text-green-500" : "text-destructive")}>{bias}</span>
-            {confVal != null && <Badge variant="outline" className="text-xs">{confVal}% confidence</Badge>}
-          </div>
-        )}
-
-        {/* Executive Summary (always visible, full text) */}
-        {typeof execSummary === 'string' && execSummary && (
-          <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{execSummary}</p>
-        )}
-
-        {/* Key Levels (always visible) */}
-        {keyLevels && (keyLevels.support?.length || keyLevels.resistance?.length) ? (
-          <div className="grid grid-cols-2 gap-2">
-            {keyLevels.support && keyLevels.support.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">Support</span>
-                <div className="flex flex-wrap gap-1">
-                  {keyLevels.support.map((v, i) => (
-                    <Badge key={i} variant="outline" className="text-xs font-mono text-green-500 border-green-500/30">{v}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            {keyLevels.resistance && keyLevels.resistance.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">Resistance</span>
-                <div className="flex flex-wrap gap-1">
-                  {keyLevels.resistance.map((v, i) => (
-                    <Badge key={i} variant="outline" className="text-xs font-mono text-destructive border-destructive/30">{v}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {/* Collapsible: Fundamental Analysis */}
-        {fundamentalAnalysis && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <BookOpen className="h-3.5 w-3.5" />
-              <span>Fundamental Analysis {Array.isArray(fundamentalAnalysis) ? `(${fundamentalAnalysis.length} points)` : ''}</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1">
-              {Array.isArray(fundamentalAnalysis) ? (
-                <ul className="space-y-1 text-xs leading-relaxed">
-                  {fundamentalAnalysis.map((point: any, i: number) => (
-                    <li key={i} className="flex gap-1.5">
-                      <span className="text-muted-foreground mt-0.5">•</span>
-                      <span className="whitespace-pre-wrap">{typeof point === 'string' ? point : JSON.stringify(point)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs leading-relaxed whitespace-pre-wrap">{String(fundamentalAnalysis)}</p>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Collapsible: Economic Data */}
-        {Array.isArray(fundamentals) && fundamentals.length > 0 && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <BarChart3 className="h-3.5 w-3.5" />
-              <span>Economic Indicators ({fundamentals.length})</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-1 pr-2 font-medium text-muted-foreground">Indicator</th>
-                      <th className="text-right py-1 px-1 font-medium text-muted-foreground">Actual</th>
-                      <th className="text-right py-1 px-1 font-medium text-muted-foreground">Cons.</th>
-                      <th className="text-right py-1 pl-1 font-medium text-muted-foreground">Prev.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fundamentals.map((f, i) => (
-                      <tr key={i} className="border-b border-border/50">
-                        <td className="py-1 pr-2 truncate max-w-[140px]">{f.indicator || '—'}</td>
-                        <td className="text-right py-1 px-1 font-mono">{f.actual != null ? f.actual : '—'}</td>
-                        <td className="text-right py-1 px-1 font-mono text-muted-foreground">{f.consensus != null ? f.consensus : '—'}</td>
-                        <td className="text-right py-1 pl-1 font-mono text-muted-foreground">{f.previous != null ? f.previous : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Collapsible: News Citations */}
-        {Array.isArray(citationsNews) && citationsNews.length > 0 && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <Newspaper className="h-3.5 w-3.5" />
-              <span>News Sources ({citationsNews.length})</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1 space-y-1.5">
-              {citationsNews.map((c, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs">
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">{c.publisher || 'Source'}</Badge>
-                  <span className="text-muted-foreground leading-snug">{c.title || '—'}</span>
-                </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Collapsible: AI Insights */}
-        {aiInsights && (aiInsights.gpt || aiInsights.curated) && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <Globe className="h-3.5 w-3.5" />
-              <span>AI Insights</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1 space-y-3">
-              {aiInsights.gpt && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">GPT Analysis</p>
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap">{aiInsights.gpt}</p>
-                </div>
-              )}
-              {aiInsights.curated && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Curated Research</p>
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap">{aiInsights.curated}</p>
-                </div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Collapsible: Base Report */}
-        {baseReport && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-              <BookOpen className="h-3.5 w-3.5" />
-              <span>ABCG Research Report</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1">
-              <p className="text-xs leading-relaxed whitespace-pre-wrap">{baseReport}</p>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Open Full View */}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
-          storeResultForPage('macro_lab', data?.jobId || '', data);
-          navigate(FEATURE_REGISTRY.macro_lab.pageRoute);
-          onToggle();
-        }}>
-          <ArrowUpRight className="h-3 w-3" /> Open Full View
-        </Button>
-      </div>
-    );
-  };
-
-  const AuraMiniReport = ({ data }: { data: any }) => {
-    const title = data?.title || data?.report_title || 'Market Report';
-    const summary = data?.executive_summary || data?.summary || '';
-    const truncated = typeof summary === 'string' ? summary.slice(0, 150) : '';
-
-    return (
-      <div className="border border-border rounded-lg p-3 bg-card/50 space-y-2 mt-2">
-        <p className="text-sm font-semibold">{title}</p>
-        {truncated && <p className="text-xs text-muted-foreground">{truncated}{truncated.length >= 150 ? '...' : ''}</p>}
-        <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
-          storeResultForPage('reports', data?.jobId || '', data);
-          navigate(FEATURE_REGISTRY.reports.pageRoute);
-          onToggle();
-        }}>
-          <ArrowUpRight className="h-3 w-3" /> Open Full View
-        </Button>
-      </div>
-    );
-  };
+  // ===== MINI-WIDGET COMPONENTS are defined at module scope (above) =====
 
   // ===== RENDER MESSAGE CONTENT =====
   const renderMessageContent = (msg: Message) => {
@@ -949,9 +829,9 @@ export default function AURA({ context, isExpanded, onToggle, contextData }: AUR
         )}
 
         {/* 3. Mini-widget (Trade Card / Macro Card / Report) */}
-        {rich.type === 'trade_setup' && <div className="mt-3"><AuraFullTradeSetup data={rich.data} /></div>}
-        {rich.type === 'macro_commentary' && <div className="mt-3"><AuraFullMacro data={rich.data} /></div>}
-        {rich.type === 'report' && <div className="mt-3"><AuraMiniReport data={rich.data} /></div>}
+        {rich.type === 'trade_setup' && <div className="mt-3"><AuraFullTradeSetup data={rich.data} onNavigate={handleNavigate} onClose={onToggle} /></div>}
+        {rich.type === 'macro_commentary' && <div className="mt-3"><AuraFullMacro data={rich.data} onNavigate={handleNavigate} onClose={onToggle} /></div>}
+        {rich.type === 'report' && <div className="mt-3"><AuraMiniReport data={rich.data} onNavigate={handleNavigate} onClose={onToggle} /></div>}
         {rich.type === 'tool_error' && (
           <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5 mt-2">
             <p className="text-sm text-destructive font-medium">Tool Error</p>
