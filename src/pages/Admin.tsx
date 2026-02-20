@@ -48,8 +48,6 @@ import { BrokersManagement } from "@/components/admin/BrokersManagement";
 import { PlanParametersManagement } from "@/components/admin/PlanParametersManagement";
 import { SubscriptionPlanOverview } from "@/components/admin/SubscriptionPlanOverview";
 import { UserCreditsOverview } from "@/components/admin/UserCreditsOverview";
-import { ChartProviderSettings } from "@/components/admin/ChartProviderSettings";
-import { ChartDisplaySettings } from "@/components/admin/ChartDisplaySettings";
 import { ReactivationRequestsManagement } from "@/components/admin/ReactivationRequestsManagement";
 import ImportABCGPortfolio from "@/components/admin/ImportABCGPortfolio";
 import Layout from "@/components/Layout";
@@ -101,10 +99,6 @@ export default function Admin() {
   const [updatingStripeMode, setUpdatingStripeMode] = useState(false);
   const [showStripeModeDialog, setShowStripeModeDialog] = useState(false);
   const [pendingStripeMode, setPendingStripeMode] = useState<'test' | 'live'>('test');
-  const [sessionDashboardMode, setSessionDashboardMode] = useState<'tradingview' | 'light'>(() => {
-    const stored = sessionStorage.getItem('dashboard_chart_mode');
-    return (stored === 'light' || stored === 'tradingview') ? stored : 'tradingview';
-  });
   const { toast } = useToast();
   const { isSuperUser, isAdmin } = useUserRole();
   const { profile } = useProfile();
@@ -902,13 +896,6 @@ export default function Admin() {
                 </TabsTrigger>
               )}
               {isSuperUser && (
-                <TabsTrigger value="chart-provider" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-                  <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Chart Settings</span>
-                  <span className="sm:hidden">Chart</span>
-                </TabsTrigger>
-              )}
-              {isSuperUser && (
                 <TabsTrigger value="realtime-diagnostic" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
                   <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Realtime Diagnostic</span>
@@ -1026,63 +1013,6 @@ export default function Admin() {
             </TabsContent>
           )}
 
-          {isSuperUser && (
-            <TabsContent value="chart-provider">
-              <ChartProviderSettings />
-              <ChartDisplaySettings />
-              
-              {/* Dashboard Chart Mode Toggle (Testing) */}
-              <Card className="rounded-2xl shadow-sm border mt-6">
-                <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Dashboard Chart Mode (Testing)
-                  </CardTitle>
-                  <CardDescription className="text-sm sm:text-base">
-                    Toggle between TradingView (production) and Dashboard Light (testing) for your session only
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg bg-muted/20">
-                    <div>
-                      <p className="font-medium text-sm sm:text-base">Current Mode</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                        {sessionDashboardMode === 'light' ? 'Dashboard Light (Testing)' : 'TradingView (Production)'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs sm:text-sm text-muted-foreground">
-                        {sessionDashboardMode === 'tradingview' ? 'TradingView' : 'Light Mode'}
-                      </span>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={sessionDashboardMode === 'light'}
-                          onChange={(e) => {
-                            const newMode = e.target.checked ? 'light' : 'tradingview';
-                            setSessionDashboardMode(newMode);
-                            sessionStorage.setItem('dashboard_chart_mode', newMode);
-                            toast({
-                              title: 'Chart Mode Updated',
-                              description: `Dashboard will now use ${e.target.checked ? 'Dashboard Light' : 'TradingView'} chart`,
-                            });
-                          }}
-                        />
-                        <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-md">
-                    <p className="text-xs text-warning-foreground">
-                      ⚠️ This setting only affects YOUR session and will reset when you log out or close the tab.
-                      Other users will always see the production TradingView chart.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
         </Tabs>
       </div>
     </Layout>

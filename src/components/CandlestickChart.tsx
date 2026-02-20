@@ -7,7 +7,7 @@ import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
 import LightweightChartWidget from './LightweightChartWidget';
-import { supabase } from '@/integrations/supabase/client';
+
 import { HybridSearchBar } from './HybridSearchBar';
 import { DisplayOptions, DEFAULT_DISPLAY_OPTIONS } from '@/types/chartDisplayOptions';
 interface TradeLevels {
@@ -122,7 +122,6 @@ const CandlestickChart = memo(function CandlestickChart({
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [useFallback, setUseFallback] = useState(false);
-  const [globalProvider, setGlobalProvider] = useState<'twelvedata' | 'tradingview'>('twelvedata');
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const binanceSymbol = getSymbolForAsset(asset);
@@ -131,27 +130,10 @@ const CandlestickChart = memo(function CandlestickChart({
   // Use controlled timeframe if provided, otherwise use local state
   const timeframe = timeframeProp || localTimeframe;
 
+  // Reset fallback when asset or timeframe changes
   useEffect(() => {
-    const fetchProvider = async () => {
-      const { data } = await supabase.from('chart_provider_settings').select('provider, display_options').single();
-      if (data) {
-        setGlobalProvider(data.provider as 'twelvedata' | 'tradingview');
-        if (data.provider === 'tradingview') setUseFallback(true);
-        if (data.display_options) {
-          setDisplayOptions({ ...DEFAULT_DISPLAY_OPTIONS, ...(data.display_options as Partial<DisplayOptions>) });
-        }
-      }
-    };
-    fetchProvider();
-  }, []);
-
-  // Reset fallback when asset or timeframe changes - give TwelveData another try
-  // But NOT when admin has set provider to tradingview (keep TradingView active for pip precision)
-  useEffect(() => {
-    if (globalProvider !== 'tradingview') {
-      setUseFallback(false);
-    }
-  }, [asset, timeframe, globalProvider]);
+    setUseFallback(false);
+  }, [asset, timeframe]);
 
   // Prix de fallback mis à jour (utilisés seulement en attendant WebSocket)
   useEffect(() => {
@@ -176,9 +158,7 @@ const CandlestickChart = memo(function CandlestickChart({
 
   const effectiveProvider = forceMode === 'tradingview'
     ? 'tradingview'
-    : forceMode === 'light'
-      ? 'twelvedata'
-      : globalProvider;
+    : 'twelvedata';
 
   // Whether to show searchbar and chips (hidden on mobile unless toggled, always on desktop; hidden in compact mode)
   const showSearchAndChips = !compact;
