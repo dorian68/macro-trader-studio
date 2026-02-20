@@ -55,12 +55,6 @@ export default function TradingDashboard() {
   const jobManager = useJobStatusManager();
   const isMobile = useIsMobile();
 
-  // Read session-based chart mode for super users (default: tradingview)
-  const [sessionChartMode, setSessionChartMode] = useState<'tradingview' | 'light'>(() => {
-    const stored = sessionStorage.getItem('dashboard_chart_mode');
-    return (stored === 'light' || stored === 'tradingview') ? stored : 'tradingview';
-  });
-
   // Refs and state for height synchronization
   const chartRef = useRef<HTMLDivElement>(null);
   const [chartHeight, setChartHeight] = useState<number | undefined>(undefined);
@@ -261,7 +255,7 @@ export default function TradingDashboard() {
           {/* Col gauche - Rangée 1 : Trading Dashboard */}
           <div ref={chartRef} className="min-w-0 min-h-0 order-1 my-0 overflow-hidden md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full h-full">
             <CandlestickChart
-              forceMode={sessionChartMode}
+              forceMode="light"
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
               showHeader={true}
               compact={false}
@@ -401,7 +395,7 @@ export default function TradingDashboard() {
           <DialogTitle className="sr-only">Fullscreen Chart</DialogTitle>
           <div className="w-full h-full">
             <CandlestickChart
-              forceMode={sessionChartMode}
+              forceMode="light"
               asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
               showHeader={true}
               compact={true}
