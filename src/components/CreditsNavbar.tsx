@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 
 export function CreditsNavbar() {
-  const { credits, loading, fetchCredits } = useCreditManager();
+  const { credits, loading, fetchCredits, effectiveQueries, effectiveIdeas, effectiveReports } = useCreditManager();
   const navigate = useNavigate();
 
   // PERF: Stabilize event listener with ref to prevent re-subscription on navigation
@@ -39,9 +39,7 @@ export function CreditsNavbar() {
     );
   }
 
-  const totalCredits = credits.credits_queries_remaining + 
-                      credits.credits_ideas_remaining + 
-                      credits.credits_reports_remaining;
+  const totalCredits = effectiveQueries + effectiveIdeas + effectiveReports;
 
   return (
     <DropdownMenu>
@@ -68,8 +66,8 @@ export function CreditsNavbar() {
                 <Brain className="h-4 w-4 text-primary" />
                 <span className="text-sm">Macro Commentary</span>
               </div>
-              <Badge variant={credits.credits_queries_remaining > 0 ? "default" : "destructive"}>
-                {credits.credits_queries_remaining}
+              <Badge variant={effectiveQueries > 0 ? "default" : "destructive"}>
+                {effectiveQueries}
               </Badge>
             </div>
             
@@ -78,8 +76,8 @@ export function CreditsNavbar() {
                 <Zap className="h-4 w-4 text-primary" />
                 <span className="text-sm">AI Trade</span>
               </div>
-              <Badge variant={credits.credits_ideas_remaining > 0 ? "default" : "destructive"}>
-                {credits.credits_ideas_remaining}
+              <Badge variant={effectiveIdeas > 0 ? "default" : "destructive"}>
+                {effectiveIdeas}
               </Badge>
             </div>
             
@@ -88,8 +86,8 @@ export function CreditsNavbar() {
                 <FileText className="h-4 w-4 text-primary" />
                 <span className="text-sm">Reports</span>
               </div>
-              <Badge variant={credits.credits_reports_remaining > 0 ? "default" : "destructive"}>
-                {credits.credits_reports_remaining}
+              <Badge variant={effectiveReports > 0 ? "default" : "destructive"}>
+                {effectiveReports}
               </Badge>
             </div>
           </div>

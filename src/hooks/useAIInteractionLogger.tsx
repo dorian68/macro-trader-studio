@@ -49,7 +49,7 @@ export function useAIInteractionLogger() {
     const creditType = getCreditTypeForFeature(featureName);
     
     // Check if user has credits before processing
-    if (!checkCredits(creditType)) {
+    if (!(await checkCredits(creditType))) {
       toast({
         title: "Credit limit reached",
         description: "Please upgrade your plan to continue using this feature",
