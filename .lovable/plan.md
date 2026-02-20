@@ -1,150 +1,85 @@
 
 
-## Credit System Audit - Root Cause Report and Fix Plan
+## Plan: Fix Admin Issues + Credit System Patches
 
-### Root Cause: 3 Critical Bugs Found
+### Issue 1: "Unknown" emails in admin user list
 
----
+**Root cause**: The edge function `fetch-users-with-emails` calls `supabaseAdmin.auth.admin.listUsers()` without pagination. Supabase's `listUsers()` returns a maximum of 50 users per page by default. With 56 profiles in the database, at least 6 users won't have their email matched, showing "Unknown".
 
-### BUG 1 (CRITICAL) - Stale Engaged Credits Never Get Cleaned Up
+**Fix**: Paginate through all auth users in the edge function using a loop with `perPage: 1000` (maximum allowed) to ensure all users are fetched.
 
-**The primary cause of "insufficient credits" false positives.**
-
-The `cleanup_stale_engaged_credits()` DB function only cleans entries where:
-- The associated job is NOT in `pending` or `running` status, OR
-- The engagement is older than 10 minutes
-
-**The problem**: All 22 stale entries in the database have jobs stuck in `pending` status forever. These jobs were created, credits were engaged, but the backend never responded (timeout, crash, network error). The job stays `pending` indefinitely, and the cleanup function considers `pending` as "active" and never purges the engagement.
-
-**Live evidence** (user `ecb4200a`):
-- Ideas: 7 credits remaining, 7 engaged = 0 available (UI shows 7)
-- Queries: 131 remaining, 13 engaged = 118 available (UI shows 131)
-- Reports: 14 remaining, 1 engaged = 13 available (UI shows 14)
-
-The oldest stale engagement dates back to January 13, 2026 -- over 5 weeks.
-
-**Fix**: Change the cleanup function to also purge engagements where the associated job has been `pending` for more than 10 minutes (it means the backend never picked it up).
-
----
-
-### BUG 2 (HIGH) - UI Credit Display Does Not Subtract Engaged Credits
-
-`CreditDisplay.tsx` and `CreditsNavbar.tsx` show `credits_queries_remaining` directly from the `user_credits` table WITHOUT subtracting `credits_engaged` count.
-
-The user sees "7 Ideas credits" but actually has 0 available because 7 are locked by stale engagements.
-
-**Fix**: Both components must show `remaining - engaged` as the effective balance.
-
----
-
-### BUG 3 (MEDIUM) - Async checkCredits Called Without Await
-
-In `useAIInteractionLogger.tsx` line 52:
 ```
-if (!checkCredits(creditType)) { ... }
+// Before (line 114):
+const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers()
+
+// After:
+const allAuthUsers = [];
+let page = 1;
+while (true) {
+  const { data } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+  allAuthUsers.push(...(data.users || []));
+  if (!data.users || data.users.length < 1000) break;
+  page++;
+}
 ```
 
-`checkCredits` is `async` (returns `Promise<boolean>`), but is called without `await`. A Promise object is always truthy, so `!Promise` is always `false`. This means the credit check in `logInteraction` never blocks -- it always passes.
-
-This is not the blocking gate (that role belongs to `tryEngageCredit`), but it means the `logInteraction` function never correctly validates credits before logging.
-
-**Fix**: Add `await` to the call.
+**File**: `supabase/functions/fetch-users-with-emails/index.ts`
 
 ---
 
-### Implementation Plan
+### Issue 2: User management rows not fully visible (can't access action buttons)
 
-#### Step 1: Fix the cleanup function (SQL migration)
+**Root cause**: The `UsersTable` wraps the table in a `ScrollArea` with fixed `h-[600px]` for vertical scroll, but the horizontal scrolling is nested inside it. On smaller screens, the table columns (Email, User ID, Broker, Status, Role, Plan & Credits, Created, Actions) exceed viewport width, and the horizontal scroll is hard to reach or interact with because `ScrollArea` primarily handles vertical scrolling.
 
-Update `cleanup_stale_engaged_credits()` to also purge engagements where:
-- Job is `pending` for more than 10 minutes (backend never picked it up)
-- Job doesn't exist at all (orphaned engagement)
+**Fix**: 
+- Remove the `ScrollArea` wrapper and keep only the `overflow-x-auto` div for horizontal scroll
+- Add `max-h-[600px] overflow-y-auto` directly on the outer container
+- This makes both horizontal and vertical scrolling work natively without Radix ScrollArea interfering
 
-```sql
-CREATE OR REPLACE FUNCTION public.cleanup_stale_engaged_credits()
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  cleaned_count INT;
-BEGIN
-  DELETE FROM public.credits_engaged ce
-  WHERE 
-    -- No associated job exists at all
-    NOT EXISTS (
-      SELECT 1 FROM public.jobs j WHERE j.id = ce.job_id
-    )
-    -- Job is in terminal state (completed/failed/error)
-    OR EXISTS (
-      SELECT 1 FROM public.jobs j 
-      WHERE j.id = ce.job_id 
-      AND j.status IN ('completed', 'failed', 'error')
-    )
-    -- Job stuck in pending for more than 10 minutes
-    OR EXISTS (
-      SELECT 1 FROM public.jobs j 
-      WHERE j.id = ce.job_id 
-      AND j.status = 'pending'
-      AND j.created_at < NOW() - INTERVAL '10 minutes'
-    )
-    -- Engagement is older than 30 minutes regardless
-    OR ce.engaged_at < NOW() - INTERVAL '30 minutes';
+**File**: `src/components/admin/UsersTable.tsx` (lines 219-348)
 
-  GET DIAGNOSTICS cleaned_count = ROW_COUNT;
+---
 
-  IF cleaned_count > 0 THEN
-    RAISE LOG '[CLEANUP] Purged % stale credits_engaged entries', cleaned_count;
-  END IF;
-END;
-$$;
+### Issue 3: Credit system fixes (from approved plan)
+
+Three changes to implement:
+
+**A) Database migration** -- Update `cleanup_stale_engaged_credits()` to purge engagements where:
+- Job is `pending` for more than 10 minutes
+- Job does not exist (orphaned)
+- Engagement older than 30 minutes regardless
+- Then run the function immediately to clean 22 stale entries
+
+**B) Fix missing `await`** in `useAIInteractionLogger.tsx` line 52:
 ```
-
-#### Step 2: Immediate one-time cleanup
-
-Run the updated function immediately to purge the 22 currently stale entries.
-
-#### Step 3: Fix UI credit display
-
-**`src/components/CreditsNavbar.tsx`** and **`src/components/CreditDisplay.tsx`**:
-
-Add a query to `credits_engaged` to show effective balance = `remaining - engaged`.
-
-Modify `useCreditManager.tsx` to expose effective credits by fetching engaged count alongside remaining credits and computing `effectiveCredits` = `remaining - engaged`.
-
-#### Step 4: Fix the async/await bug
-
-**`src/hooks/useAIInteractionLogger.tsx`** line 52:
-```typescript
-// Before (broken):
+// Before:
 if (!checkCredits(creditType)) {
-
-// After (fixed):
+// After:
 if (!(await checkCredits(creditType))) {
 ```
 
-Also make `checkAndLogInteraction` properly await this.
+**C) UI effective balance** -- Update `CreditsNavbar.tsx` and `CreditDisplay.tsx` to show `remaining - engaged` instead of raw `remaining`. Add engaged credits fetching to `useCreditManager.tsx` and expose `effectiveCredits` values.
 
-#### Step 5: Add post-engagement credit refresh
+**D) Post-engagement refresh** -- After `tryEngageCredit` succeeds, dispatch `creditsUpdated` event so navbar updates immediately.
 
-After `tryEngageCredit` succeeds on any page, dispatch `creditsUpdated` event so the navbar immediately reflects the new effective balance.
+---
 
-### What Does NOT Change
+### Files to modify
 
-- Database schema (no new tables/columns)
-- Credit engagement flow (`tryEngageCredit` RPC remains atomic)
-- Debit-on-completion trigger (`auto_manage_credits`)
-- Payment/billing integration
-- Routing, feature logic
-- Edge functions (except cleanup logic improvement)
+| File | Change |
+|------|--------|
+| `supabase/functions/fetch-users-with-emails/index.ts` | Paginate `listUsers()` |
+| `src/components/admin/UsersTable.tsx` | Replace ScrollArea with native scroll |
+| `src/hooks/useAIInteractionLogger.tsx` | Add missing `await` |
+| `src/hooks/useCreditManager.tsx` | Add engaged credits tracking, expose effective balances |
+| `src/components/CreditsNavbar.tsx` | Show effective balance |
+| `src/components/CreditDisplay.tsx` | Show effective balance |
+| Database migration | Update cleanup function + immediate execution |
 
-### Technical Summary
+### What does NOT change
 
-| Issue | Severity | Root Cause | Fix |
-|-------|----------|-----------|-----|
-| Stale engaged credits | CRITICAL | Cleanup ignores stuck `pending` jobs | Expand cleanup conditions |
-| UI shows wrong balance | HIGH | Display reads `remaining` without subtracting `engaged` | Show effective balance |
-| checkCredits not awaited | MEDIUM | Missing `await` on async call | Add `await` |
-| No refresh after engagement | LOW | `creditsUpdated` event not fired after `tryEngageCredit` | Dispatch event |
-
+- No routing changes
+- No payment/billing changes
+- No schema changes (columns/tables)
+- No edge function logic other than the listed fixes
+- No changes to AURA, TradingDashboard, or other pages
