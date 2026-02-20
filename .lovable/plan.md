@@ -1,38 +1,54 @@
 
 
-## Supprimer l'espace vide entre le graphique et les 3 boutons sur mobile
+## Forcer le mode "Dashboard Light" partout sauf dans AURA
 
-### Diagnostic
+### Contexte actuel
 
-L'espace vide visible sur le screenshot vient d'un conflit de contraintes :
-- Le conteneur grid (ligne 260) a `flex-1` ce qui lui donne tout l'espace restant
-- Le conteneur du graphique a `max-h-[calc(100%-5rem)]` qui le limite en hauteur
-- Resultat : le grid prend tout l'espace (`flex-1`) mais le graphique ne le remplit pas entierement a cause du `max-h`, creant un vide entre le bas du graphique et les 3 boutons
+- La page Admin contient 3 sections de configuration de charts :
+  1. **ChartProviderSettings** : choix global `twelvedata` vs `tradingview`
+  2. **ChartDisplaySettings** : options d'affichage (grid, volume, etc.)
+  3. **Dashboard Chart Mode (Testing)** : toggle session `tradingview` / `light`
+- Le `TradingDashboard` lit `sessionStorage('dashboard_chart_mode')` et passe ca en `forceMode` au `CandlestickChart`
+- Le `CandlestickChart` lit aussi le provider global depuis `chart_provider_settings` en base
+- La page `ForecastMacroLab` force `darkTheme` manuellement
 
-### Solution
+### Ce qui va changer
 
-Remplacer l'approche `max-h` par une approche plus propre :
-1. Retirer le `max-h-[calc(100%-5rem)]` du conteneur du graphique (il n'est plus necessaire)
-2. Le conteneur grid garde `flex-1 min-h-0` pour prendre l'espace restant naturellement
-3. Le graphique avec `h-full` remplira son conteneur grid sans espace perdu
+1. **Supprimer les 3 sections chart de la page Admin** : `ChartProviderSettings`, `ChartDisplaySettings`, et le toggle "Dashboard Chart Mode (Testing)"
 
-Le `flex-1 min-h-0` sur le grid + `shrink-0` sur les boutons + `overflow-hidden` sur le layout parent suffisent a garantir que les boutons restent visibles.
+2. **Forcer `forceMode="light"` en dur dans `TradingDashboard`** au lieu de lire `sessionStorage`
 
-### Modifications
+3. **Forcer `forceMode="light"` dans `ForecastMacroLab`** (qui utilise actuellement `forceMode="tradingview"` + `darkTheme`)
+
+4. **Ne pas toucher a AURA** : AURA utilise son propre `MarketChartWidget` base sur `lightweight-charts`, pas TradingView. Aucune modification necessaire.
+
+5. **Supprimer la lecture de `chart_provider_settings` dans `CandlestickChart`** : plus besoin de consulter la base puisque le mode est toujours `light`
+
+### Details techniques
 
 **`src/pages/TradingDashboard.tsx`**
+- Supprimer le state `sessionChartMode` et la lecture de `sessionStorage`
+- Remplacer `forceMode={sessionChartMode}` par `forceMode="light"` aux 2 endroits
 
-Ligne 262 - Retirer `max-h-[calc(100%-5rem)] md:max-h-none` du conteneur du graphique :
+**`src/pages/ForecastMacroLab.tsx`**
+- Changer `forceMode="tradingview"` en `forceMode="light"`
+- Retirer `darkTheme` (le mode light n'utilise pas de theme sombre)
 
-- Avant : `min-w-0 min-h-0 order-1 my-0 overflow-hidden max-h-[calc(100%-5rem)] md:max-h-none md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full`
-- Apres : `min-w-0 min-h-0 order-1 my-0 overflow-hidden md:min-h-[500px] md:h-full chart-landscape-boost md:!h-full h-full`
+**`src/components/CandlestickChart.tsx`**
+- Supprimer le `useEffect` qui fetch `chart_provider_settings` (lignes 134-143)
+- Supprimer les states `globalProvider` et le fallback logic associe
+- Simplifier : quand `forceMode="light"`, toujours utiliser `LightweightChartWidget`
 
-Le `h-full` force le graphique a occuper exactement l'espace que le flex layout lui attribue, sans espace vide.
+**`src/pages/Admin.tsx`**
+- Retirer l'import et le rendu de `ChartProviderSettings`
+- Retirer l'import et le rendu de `ChartDisplaySettings`
+- Retirer le bloc "Dashboard Chart Mode (Testing)" et le state `sessionDashboardMode`
+- Retirer l'onglet "chart-provider" du TabsList si c'est le seul contenu
 
 ### Ce qui ne change pas
 
-- Le layout desktop 2 colonnes reste identique
-- Les 3 boutons gardent leur `shrink-0` et restent visibles
-- Le graphique TradingView/TwelveData fonctionne normalement
-- Aucune logique metier modifiee
+- AURA conserve son theme sombre Bloomberg-style avec `MarketChartWidget`
+- Les `DisplayOptions` (grid, volume, etc.) restent fonctionnelles via les props, simplement plus configurables depuis l'admin
+- Le composant `TradingViewWidget` reste disponible dans le code (pourrait servir de fallback) mais ne sera plus utilise par defaut
+- Aucune modification de base de donnees requise
 
