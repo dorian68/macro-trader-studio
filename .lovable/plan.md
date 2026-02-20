@@ -1,85 +1,80 @@
 
 
-## Plan: Fix Admin Issues + Credit System Patches
+## Plan: Credit System Fixes + Admin Panel Repairs
 
-### Issue 1: "Unknown" emails in admin user list
-
-**Root cause**: The edge function `fetch-users-with-emails` calls `supabaseAdmin.auth.admin.listUsers()` without pagination. Supabase's `listUsers()` returns a maximum of 50 users per page by default. With 56 profiles in the database, at least 6 users won't have their email matched, showing "Unknown".
-
-**Fix**: Paginate through all auth users in the edge function using a loop with `perPage: 1000` (maximum allowed) to ensure all users are fetched.
-
-```
-// Before (line 114):
-const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers()
-
-// After:
-const allAuthUsers = [];
-let page = 1;
-while (true) {
-  const { data } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-  allAuthUsers.push(...(data.users || []));
-  if (!data.users || data.users.length < 1000) break;
-  page++;
-}
-```
-
-**File**: `supabase/functions/fetch-users-with-emails/index.ts`
+This plan addresses 5 confirmed bugs across the credit system and admin panel. No routing, payment, or schema changes.
 
 ---
 
-### Issue 2: User management rows not fully visible (can't access action buttons)
+### BUG 1 (CRITICAL): Stale Engaged Credits Never Cleaned Up
 
-**Root cause**: The `UsersTable` wraps the table in a `ScrollArea` with fixed `h-[600px]` for vertical scroll, but the horizontal scrolling is nested inside it. On smaller screens, the table columns (Email, User ID, Broker, Status, Role, Plan & Credits, Created, Actions) exceed viewport width, and the horizontal scroll is hard to reach or interact with because `ScrollArea` primarily handles vertical scrolling.
+**Evidence**: 22 entries in `credits_engaged` with jobs stuck in `pending` status, oldest from January 13 (5+ weeks). The current `cleanup_stale_engaged_credits()` function treats `pending` jobs as "active" and never purges them.
 
-**Fix**: 
-- Remove the `ScrollArea` wrapper and keep only the `overflow-x-auto` div for horizontal scroll
-- Add `max-h-[600px] overflow-y-auto` directly on the outer container
-- This makes both horizontal and vertical scrolling work natively without Radix ScrollArea interfering
-
-**File**: `src/components/admin/UsersTable.tsx` (lines 219-348)
-
----
-
-### Issue 3: Credit system fixes (from approved plan)
-
-Three changes to implement:
-
-**A) Database migration** -- Update `cleanup_stale_engaged_credits()` to purge engagements where:
+**Fix**: Database migration to replace the cleanup function with one that also purges engagements where:
 - Job is `pending` for more than 10 minutes
 - Job does not exist (orphaned)
 - Engagement older than 30 minutes regardless
-- Then run the function immediately to clean 22 stale entries
 
-**B) Fix missing `await`** in `useAIInteractionLogger.tsx` line 52:
-```
-// Before:
-if (!checkCredits(creditType)) {
-// After:
-if (!(await checkCredits(creditType))) {
-```
-
-**C) UI effective balance** -- Update `CreditsNavbar.tsx` and `CreditDisplay.tsx` to show `remaining - engaged` instead of raw `remaining`. Add engaged credits fetching to `useCreditManager.tsx` and expose `effectiveCredits` values.
-
-**D) Post-engagement refresh** -- After `tryEngageCredit` succeeds, dispatch `creditsUpdated` event so navbar updates immediately.
+Then execute the function immediately to clear the 22 stale entries.
 
 ---
 
-### Files to modify
+### BUG 2 (HIGH): UI Shows Wrong Credit Balance
+
+**Evidence**: `CreditsNavbar.tsx` and `CreditDisplay.tsx` display raw `credits_*_remaining` values without subtracting engaged credits. A user with 7 ideas credits but 7 engaged sees "7" when they actually have 0 available.
+
+**Fix**: Update `useCreditManager.tsx` to fetch engaged credit counts alongside remaining credits. Expose `effectiveQueries`, `effectiveIdeas`, `effectiveReports` values. Update both UI components to display effective balances.
+
+---
+
+### BUG 3 (MEDIUM): Missing `await` on Async Credit Check
+
+**Evidence**: In `useAIInteractionLogger.tsx` line 52:
+```
+if (!checkCredits(creditType)) {
+```
+`checkCredits` is async (returns `Promise<boolean>`). A Promise is always truthy, so `!Promise` is always `false`. The credit check never blocks.
+
+**Fix**: Change to `if (!(await checkCredits(creditType)))`.
+
+---
+
+### BUG 4 (HIGH): Admin "Unknown" Emails
+
+**Evidence**: `fetch-users-with-emails/index.ts` line 114 calls `listUsers()` without pagination. Supabase returns max 50 users per page. With 56+ profiles, 6+ users show "Unknown" email.
+
+**Fix**: Add pagination loop with `perPage: 1000` to fetch all auth users.
+
+---
+
+### BUG 5 (MEDIUM): Admin Table Rows Not Fully Visible
+
+**Evidence**: `UsersTable.tsx` wraps the table in a Radix `ScrollArea` with fixed `h-[600px]`. The nested `overflow-x-auto` div inside ScrollArea makes horizontal scrolling unreliable, hiding action buttons.
+
+**Fix**: Replace `ScrollArea` with native `max-h-[600px] overflow-y-auto` on the outer container, keeping `overflow-x-auto` for horizontal scroll.
+
+---
+
+### Technical Details
+
+**Files to modify:**
 
 | File | Change |
 |------|--------|
+| Database migration | Replace `cleanup_stale_engaged_credits()` + run immediately |
+| `src/hooks/useCreditManager.tsx` | Add engaged credits fetching, expose effective balances |
+| `src/components/CreditsNavbar.tsx` | Display effective balance (remaining - engaged) |
+| `src/components/CreditDisplay.tsx` | Display effective balance (remaining - engaged) |
+| `src/hooks/useAIInteractionLogger.tsx` | Add missing `await` on line 52 |
 | `supabase/functions/fetch-users-with-emails/index.ts` | Paginate `listUsers()` |
 | `src/components/admin/UsersTable.tsx` | Replace ScrollArea with native scroll |
-| `src/hooks/useAIInteractionLogger.tsx` | Add missing `await` |
-| `src/hooks/useCreditManager.tsx` | Add engaged credits tracking, expose effective balances |
-| `src/components/CreditsNavbar.tsx` | Show effective balance |
-| `src/components/CreditDisplay.tsx` | Show effective balance |
-| Database migration | Update cleanup function + immediate execution |
 
-### What does NOT change
-
+**What does NOT change:**
 - No routing changes
-- No payment/billing changes
-- No schema changes (columns/tables)
-- No edge function logic other than the listed fixes
+- No payment/billing integration changes
+- No new database tables or columns
+- No edge function logic changes (except admin email fix)
 - No changes to AURA, TradingDashboard, or other pages
+- `tryEngageCredit` RPC remains atomic with `FOR UPDATE` locking
+- `auto_manage_credits` trigger remains unchanged
+
