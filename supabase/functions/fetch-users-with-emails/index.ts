@@ -110,11 +110,17 @@ Deno.serve(async (req) => {
       throw profilesError
     }
 
-    // Fetch all users from auth.users
-    const { data: authUsersData, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers()
-    
-    if (authUsersError) {
-      throw authUsersError
+    // Fetch all users from auth.users with pagination
+    const allAuthUsers: any[] = [];
+    let page = 1;
+    while (true) {
+      const { data, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (authUsersError) {
+        throw authUsersError;
+      }
+      allAuthUsers.push(...(data.users || []));
+      if (!data.users || data.users.length < 1000) break;
+      page++;
     }
 
     // Fetch all user roles
@@ -128,7 +134,7 @@ Deno.serve(async (req) => {
 
     // Create maps for quick lookup
     const emailMap = new Map()
-    authUsersData.users?.forEach(authUser => {
+    allAuthUsers.forEach(authUser => {
       emailMap.set(authUser.id, authUser.email)
     })
 

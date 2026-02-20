@@ -15,28 +15,50 @@ interface UserCredits {
   last_reset_date: string;
 }
 
+interface EngagedCounts {
+  queries: number;
+  ideas: number;
+  reports: number;
+}
+
 export function useCreditManager() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [credits, setCredits] = useState<UserCredits | null>(null);
+  const [engaged, setEngaged] = useState<EngagedCounts>({ queries: 0, ideas: 0, reports: 0 });
   const [loading, setLoading] = useState(true);
 
   const fetchCredits = useCallback(async () => {
     if (!user?.id) return;
 
     try {
-      const { data, error } = await supabase
-        .from('user_credits')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Fetch credits and engaged counts in parallel
+      const [creditsResult, engagedResult] = await Promise.all([
+        supabase
+          .from('user_credits')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('credits_engaged')
+          .select('feature')
+          .eq('user_id', user.id)
+      ]);
 
-      if (error) {
-        console.error('Error fetching credits:', error);
+      if (creditsResult.error) {
+        console.error('Error fetching credits:', creditsResult.error);
         return;
       }
 
-      setCredits(data);
+      setCredits(creditsResult.data);
+
+      // Count engaged by feature
+      const engagedRows = engagedResult.data || [];
+      setEngaged({
+        queries: engagedRows.filter(r => r.feature === 'queries').length,
+        ideas: engagedRows.filter(r => r.feature === 'ideas').length,
+        reports: engagedRows.filter(r => r.feature === 'reports').length,
+      });
     } catch (err) {
       console.error('Error fetching credits:', err);
     } finally {
@@ -199,8 +221,17 @@ export function useCreditManager() {
     }
   }, [toast, fetchCredits]);
 
+  // Effective balances: remaining minus engaged
+  const effectiveQueries = Math.max(0, (credits?.credits_queries_remaining ?? 0) - engaged.queries);
+  const effectiveIdeas = Math.max(0, (credits?.credits_ideas_remaining ?? 0) - engaged.ideas);
+  const effectiveReports = Math.max(0, (credits?.credits_reports_remaining ?? 0) - engaged.reports);
+
   return {
     credits,
+    engaged,
+    effectiveQueries,
+    effectiveIdeas,
+    effectiveReports,
     loading,
     fetchCredits,
     decrementCredit,

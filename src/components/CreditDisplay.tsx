@@ -4,7 +4,7 @@ import { useCreditManager } from '@/hooks/useCreditManager';
 import { Zap, Brain, FileText } from 'lucide-react';
 
 export function CreditDisplay() {
-  const { credits, loading } = useCreditManager();
+  const { credits, loading, effectiveQueries, effectiveIdeas, effectiveReports } = useCreditManager();
 
   if (loading) {
     return (
@@ -51,8 +51,8 @@ export function CreditDisplay() {
             <Brain className="h-4 w-4 text-primary" />
             <span className="text-sm">Queries</span>
           </div>
-          <Badge variant={credits.credits_queries_remaining > 0 ? "default" : "destructive"}>
-            {credits.credits_queries_remaining}
+          <Badge variant={effectiveQueries > 0 ? "default" : "destructive"}>
+            {effectiveQueries}
           </Badge>
         </div>
         
@@ -61,8 +61,8 @@ export function CreditDisplay() {
             <Zap className="h-4 w-4 text-primary" />
             <span className="text-sm">Investment Ideas</span>
           </div>
-          <Badge variant={credits.credits_ideas_remaining > 0 ? "default" : "destructive"}>
-            {credits.credits_ideas_remaining}
+          <Badge variant={effectiveIdeas > 0 ? "default" : "destructive"}>
+            {effectiveIdeas}
           </Badge>
         </div>
         
@@ -71,8 +71,8 @@ export function CreditDisplay() {
             <FileText className="h-4 w-4 text-primary" />
             <span className="text-sm">Reports</span>
           </div>
-          <Badge variant={credits.credits_reports_remaining > 0 ? "default" : "destructive"}>
-            {credits.credits_reports_remaining}
+          <Badge variant={effectiveReports > 0 ? "default" : "destructive"}>
+            {effectiveReports}
           </Badge>
         </div>
       </CardContent>

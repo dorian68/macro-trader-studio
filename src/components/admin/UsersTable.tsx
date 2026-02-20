@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { 
   Settings, 
   Search, 
@@ -216,10 +216,9 @@ export function UsersTable({
       )}
 
       {/* Table */}
-      <div className="border border-border rounded-lg overflow-hidden">
-        <ScrollArea className="h-[600px]">
-          <div className="overflow-x-auto">
-            <Table className="min-w-full">
+      <div className="border border-border rounded-lg max-h-[600px] overflow-y-auto">
+        <div className="overflow-x-auto">
+          <Table className="min-w-full">
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="min-w-[200px]">Email</TableHead>
@@ -343,8 +342,7 @@ export function UsersTable({
                 )}
               </TableBody>
             </Table>
-          </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Pagination Controls */}
