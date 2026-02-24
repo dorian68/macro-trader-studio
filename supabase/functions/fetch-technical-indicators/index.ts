@@ -75,15 +75,32 @@ serve(async (req) => {
           .limit(outputsize);
 
         if (cachedData && cachedData.length >= outputsize * 0.8) {
-          console.log(`Using cached data for ${indicatorLower} (${cachedData.length} points)`);
-          results[indicatorLower] = {
-            values: cachedData.map(d => ({
-              datetime: d.date,
-              [indicatorLower]: parseFloat(d.value)
-            })),
-            cached: true
-          };
-          return;
+          // Check cache freshness based on interval
+          const maxAgeMs = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval)
+            ? 2 * 60 * 60 * 1000
+            : interval === '1day' ? 24 * 60 * 60 * 1000
+            : 7 * 24 * 60 * 60 * 1000;
+
+          const newestCachedAt = cachedData.reduce((latest: Date, d: any) =>
+            d.cached_at && new Date(d.cached_at) > latest ? new Date(d.cached_at) : latest,
+            new Date(0)
+          );
+
+          const isFresh = (Date.now() - newestCachedAt.getTime()) < maxAgeMs;
+
+          if (isFresh) {
+            console.log(`Using fresh cached data for ${indicatorLower} (${cachedData.length} points, age: ${Math.round((Date.now() - newestCachedAt.getTime()) / 60000)}min)`);
+            results[indicatorLower] = {
+              values: cachedData.map(d => ({
+                datetime: d.date,
+                [indicatorLower]: parseFloat(d.value)
+              })),
+              cached: true
+            };
+            return;
+          } else {
+            console.log(`Cache stale for ${indicatorLower} (age: ${Math.round((Date.now() - newestCachedAt.getTime()) / 60000)}min), refetching`);
+          }
         }
 
         let url = `https://api.twelvedata.com/${indicatorLower}?symbol=${encodeURIComponent(apiSymbol)}&interval=${interval}&time_period=${time_period}&outputsize=${outputsize}&apikey=${TWELVE_API_KEY}&format=JSON`;
