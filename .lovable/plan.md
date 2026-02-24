@@ -1,59 +1,96 @@
 
+## Plan: Fix Stale Data in AURA Price & Indicator Fetching
 
-## Plan: Secure Twelve Data Integration in AURA (No Regression)
+### Root Cause
 
-### Current State (Already Working)
+Both edge functions (`fetch-historical-prices` and `fetch-technical-indicators`) have a **cache-first strategy with no TTL (time-to-live)**. They return cached data regardless of how old it is:
 
-The AURA pipeline for real-time data is fully wired:
-- Edge function `aura/index.ts` defines `get_realtime_price` and `get_technical_indicators` as LLM tools
-- The system prompt already injects `Current UTC time` dynamically via `new Date()`
-- Client-side (`AURA.tsx`) handles tool calls by invoking `fetch-historical-prices` and `fetch-technical-indicators` edge functions
-- Both edge functions call the Twelve Data API and cache results in Supabase
+- **Prices**: If ANY cached rows exist for the date range, they're returned immediately -- even if `fetched_at` was weeks ago and the data is incomplete (e.g., only Monday's candles exist when Friday's should be available).
+- **Indicators**: If cached count >= 80% of `outputsize`, they're returned -- even if `cached_at` was months ago.
 
-### Fix 1: Use Secret Instead of Hardcoded API Key
+This is why the user sees Feb 17 data on Feb 24: the cache had partial data from a previous fetch, and the functions never re-queried the API.
 
-Both edge functions hardcode `const TWELVE_API_KEY = 'e40fcead02054731aef55d2dfe01cf47'`. The Supabase secret `TWELVE_DATA_API_KEY` already exists. Replace with `Deno.env.get('TWELVE_DATA_API_KEY')` and add a fallback for safety.
+### Fix Strategy
 
-**Files:**
-- `supabase/functions/fetch-historical-prices/index.ts` (line 10)
-- `supabase/functions/fetch-technical-indicators/index.ts` (line 10)
+Add a **cache freshness check** to both functions. If the most recent cached entry is stale (older than a threshold), bypass the cache and fetch fresh data from Twelve Data. The thresholds:
 
-### Fix 2: MACD and BBands Data Enrichment
+- **Intraday intervals** (1min, 5min, 15min, 30min, 1h, 2h, 4h): cache valid for **2 hours**
+- **Daily interval**: cache valid for **24 hours**
+- **Weekly/monthly**: cache valid for **7 days**
 
-The client-side indicator summary handler (`AURA.tsx` ~line 1434) only reads `latest[indicator]`, which for multi-value indicators (MACD, BBands) loses signal/histogram/bands data. Fix to extract all sub-fields.
+### Technical Changes
 
-**File:** `src/components/AURA.tsx` (lines ~1434-1441)
+**File 1: `supabase/functions/fetch-historical-prices/index.ts`**
 
-Before:
+After the cache query (line 55), before returning cached data, add a freshness check:
+
+```typescript
+if (!cacheError && cachedData && cachedData.length > 0) {
+  // Check cache freshness based on interval
+  const maxAgeMs = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval)
+    ? 2 * 60 * 60 * 1000   // 2 hours for intraday
+    : interval === '1day' ? 24 * 60 * 60 * 1000  // 24h for daily
+    : 7 * 24 * 60 * 60 * 1000; // 7 days for weekly
+
+  const newestFetchedAt = cachedData.reduce((latest, d) =>
+    d.fetched_at && new Date(d.fetched_at) > latest ? new Date(d.fetched_at) : latest,
+    new Date(0)
+  );
+
+  const isFresh = (Date.now() - newestFetchedAt.getTime()) < maxAgeMs;
+
+  if (isFresh) {
+    console.log(`Returning ${cachedData.length} fresh cached price points`);
+    // ... return cached data ...
+  } else {
+    console.log(`Cache expired (age: ${Math.round((Date.now() - newestFetchedAt.getTime()) / 60000)}min), fetching fresh data`);
+  }
+}
 ```
-const value = latest[indicator];
-indicatorSummary += `**${indicator.toUpperCase()}**: ${value}\n`;
-```
 
-After:
-```
-if (indicator === 'macd') {
-  indicatorSummary += `**MACD**: ${latest.macd} | Signal: ${latest.macd_signal} | Histogram: ${latest.macd_hist}\n`;
-} else if (indicator === 'bbands') {
-  indicatorSummary += `**BBands**: Upper: ${latest.upper_band} | Middle: ${latest.middle_band} | Lower: ${latest.lower_band}\n`;
-} else {
-  indicatorSummary += `**${indicator.toUpperCase()}**: ${latest[indicator]}\n`;
+**File 2: `supabase/functions/fetch-technical-indicators/index.ts`**
+
+Same pattern: after the cache query (line 77), check `cached_at` freshness before returning:
+
+```typescript
+if (cachedData && cachedData.length >= outputsize * 0.8) {
+  const maxAgeMs = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval)
+    ? 2 * 60 * 60 * 1000
+    : interval === '1day' ? 24 * 60 * 60 * 1000
+    : 7 * 24 * 60 * 60 * 1000;
+
+  const newestCachedAt = cachedData.reduce((latest, d) =>
+    d.cached_at && new Date(d.cached_at) > latest ? new Date(d.cached_at) : latest,
+    new Date(0)
+  );
+
+  const isFresh = (Date.now() - newestCachedAt.getTime()) < maxAgeMs;
+
+  if (isFresh) {
+    // return cached
+  } else {
+    console.log(`Cache stale for ${indicatorLower}, refetching`);
+    // fall through to API call
+  }
 }
 ```
 
 ### What Does NOT Change
 
-- No changes to the AURA edge function (`aura/index.ts`) — system prompt and tool definitions remain identical
-- No changes to routing, credit system, or feature registry
-- No changes to `fetch-historical-prices` or `fetch-technical-indicators` logic (only the API key source)
-- No changes to MarketChartWidget, plot_price_chart handling, or any UI components
-- Date awareness is already correct (uses `new Date()` at runtime in the system prompt)
+- No changes to AURA.tsx (client-side logic remains identical)
+- No changes to the AURA edge function (aura/index.ts)
+- No database schema changes (both tables already have timestamp columns)
+- No changes to instrument mappings
+- Cache upsert logic stays the same (fresh data replaces old entries via ON CONFLICT)
+- No routing, credit, or UI changes
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/fetch-historical-prices/index.ts` | Replace hardcoded key with `Deno.env.get('TWELVE_DATA_API_KEY')` |
-| `supabase/functions/fetch-technical-indicators/index.ts` | Replace hardcoded key with `Deno.env.get('TWELVE_DATA_API_KEY')` |
-| `src/components/AURA.tsx` | Enrich MACD/BBands display in indicator summary |
+| `supabase/functions/fetch-historical-prices/index.ts` | Add TTL check before returning cached data |
+| `supabase/functions/fetch-technical-indicators/index.ts` | Add TTL check before returning cached data |
 
+### After Deployment
+
+Both edge functions will be redeployed. The next AURA request for "show me gold 15min indicators" will bypass stale cache and fetch live data from Twelve Data, then re-cache the fresh results.
