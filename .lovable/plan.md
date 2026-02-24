@@ -1,45 +1,44 @@
 
 
-## Add Bottom Dark Gradient to Hero
+## Add Parallax / Fixed-Background Effect to Hero
 
-### Goal
-Add a dark gradient fading from bottom to top on the hero section, creating a smooth visual "overlap" effect where the dark site background merges into the hero image at the bottom edge. This makes the transition between the hero and the "Professional Trading Intelligence" section feel seamless and cinematic.
+### Approach
+
+Use the simplest and most reliable technique: change the hero background image `<div>` to use `background-attachment: fixed` on desktop, with a media-query-based fallback for mobile/tablet (where `fixed` is notoriously buggy, especially on iOS Safari).
+
+This is implemented purely in CSS -- no JS scroll listeners, no libraries, no performance concerns.
 
 ### Change
 
-**File: `src/pages/Homepage.tsx` (line 55)**
+**File: `src/pages/Homepage.tsx`** -- Line 47 only
 
-Add a new overlay layer (Overlay 4) right after the existing orange accent overlay:
+Add `md:bg-fixed` to the background image div's className:
 
 ```
-<!-- Existing overlays remain unchanged -->
-Overlay 1: from-black/90 via-black/50 to-transparent (top darkening)
-Overlay 2: bg-black/30 (overall tint)
-Overlay 3: from-accent/5 (subtle orange accent from bottom)
+BEFORE:
+  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
 
-<!-- NEW Overlay 4: Dark gradient from bottom -->
-<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+AFTER:
+  className="absolute inset-0 bg-cover bg-center bg-no-repeat md:bg-fixed"
 ```
 
-This creates a strong fade-to-black at the bottom of the hero (`from-black/80`), transitioning through a subtle mid-zone (`via-black/20`) to fully transparent at the top. The result:
+That is the entire change. Tailwind's `md:bg-fixed` applies `background-attachment: fixed` only at `min-width: 768px` (desktop/tablet landscape), so:
 
-- The bottom edge of the hero blends seamlessly into the dark `bg-background` of the next section
-- The image remains most visible in the center/upper-center area
-- Combined with the existing top gradient, the image is "framed" by darkness on both top and bottom, with peak visibility in the middle zone
+- **Desktop/laptop:** The skyscraper image stays anchored as the user scrolls, creating the parallax effect. Page content scrolls over it naturally.
+- **Mobile/small tablet:** Normal scroll behavior (no `fixed`), avoiding iOS Safari rendering bugs.
 
-### Visual result
+### Why this works cleanly
 
-```text
-TOP:    ████████████ very dark (navbar overlay)
-        ████████░░░░ fading
-MIDDLE: ░░░░░░░░░░░░ image most visible here
-        ░░░░████░░░░ fading
-BOTTOM: ████████████ dark again (merges into site background)
-```
+- The overlay divs (gradients, tints) are `absolute inset-0` children of the hero `<section>`, so they stay within the hero bounds regardless of background attachment.
+- The hero content (`z-10` div) scrolls normally with the page.
+- The `min-h-screen` section height means the fixed background is visible for the full viewport, then the next section scrolls over it seamlessly.
+- No additional CSS, no JS, no new files needed.
 
 ### What is NOT changed
-- All other overlays remain identical
-- Content positioning, text, buttons, logo -- all untouched
-- No layout or responsiveness changes
+
+- No overlay modifications
+- No content, text, logo, or CTA changes
+- No navbar or routing changes
+- No new dependencies
 - No other files modified
 
