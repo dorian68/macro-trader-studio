@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy, TrendingUp, TrendingDown, Newspaper, BarChart3, BookOpen, Plus, Clock, PanelLeft } from 'lucide-react';
+import { MessageCircle, X, ChevronRight, Send, Loader2, CheckCircle, XCircle, Globe, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpRight, Search, Code, Copy, TrendingUp, TrendingDown, Newspaper, BarChart3, BookOpen, SquarePen, Clock, PanelLeft } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -1812,7 +1812,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         <div className="flex items-center gap-0.5">
           {!isFullscreen && (
             <Button variant="ghost" size="sm" onClick={createNewChat} className="hover:bg-white/5 h-8 w-8 min-h-0 min-w-0 p-0" aria-label="New chat" title="New Chat">
-              <Plus className="h-4 w-4 text-muted-foreground" />
+              <SquarePen className="h-4 w-4 text-muted-foreground" />
             </Button>
           )}
           <Button variant="ghost" size="sm" onClick={() => setIsFullscreen(!isFullscreen)} className="hover:bg-white/5 h-8 w-8 min-h-0 min-w-0 p-0" aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
@@ -1936,7 +1936,7 @@ Now provide a complete, structured technical analysis based on this data.`;
                 aria-label="New chat"
                 title="New Chat"
               >
-                <Plus className="h-4 w-4" />
+                <SquarePen className="h-4 w-4" />
               </Button>
             )}
             <Button
