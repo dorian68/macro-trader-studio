@@ -2119,7 +2119,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         "fixed shadow-2xl flex transition-all duration-300 bg-[#0F172A]",
         isFullscreen
           ? "inset-0 z-[10004] flex-row animate-in fade-in slide-in-from-bottom-4 duration-300"
-          : "right-0 top-0 h-full w-full md:w-1/3 z-40 border-l border-[#374151]/40 flex-col"
+          : "right-0 top-0 h-full w-full md:w-1/2 lg:w-1/3 z-40 border-l border-[#374151]/40 flex-col"
       )}>
         {/* Collapsible sidebar in fullscreen */}
         {isFullscreen && (
