@@ -1,68 +1,50 @@
 
 
-## Refonte des cards de la page Features -- Style institutionnel
+## Ajustements Hero : Titre sur une ligne (desktop) + Logo agrandi (mobile)
 
-### Objectif
+### Changements
 
-Aligner le design des cards de `/features` sur celui des cards de la page d'accueil : supprimer les icones Lucide generiques dans des cercles colores et les remplacer par des mini-visuels SVG et des badges professionnels.
+**Fichier : `src/pages/Homepage.tsx`**
 
-### Changements prevus
+**1. Desktop -- Reduire la taille du titre pour qu'il tienne sur une ligne**
 
-**1. Cards principales (AI Trade Setups, Macro Commentary, Research Reports)**
+Le titre "Intelligent Financial Research Powered by AI" est actuellement en `md:text-5xl` (3rem) ce qui le force sur deux lignes. On passe a `md:text-4xl lg:text-5xl` avec un `max-w-5xl` deja en place, et on ajoute `whitespace-nowrap` sur desktop via une classe responsive pour garantir une seule ligne.
 
-Remplacement de la structure actuelle (cercle colore + icone Lucide + titre + description + liste + bouton outline) par la structure institutionnelle de la homepage :
+```
+AVANT (ligne 71):
+className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-6 sm:-mt-10 md:-mt-14"
 
-```text
-+-----------------------------------------+
-| o  SIGNALS ENGINE  (badge uppercase)    |
-|                                         |
-| +-------------------------------------+|
-| |  SVG mini-visual (candlestick etc.) ||
-| +-------------------------------------+|
-|                                         |
-|  AI Trade Setups                        |
-|  Description text (2 lines)             |
-|                                         |
-|  * Detail 1                             |
-|  * Detail 2                             |
-|  * Detail 3                             |
-|  * Detail 4                             |
-|                                         |
-|  Open module ->                         |
-+-----------------------------------------+
+APRES:
+className="text-2xl sm:text-3xl md:text-[2.5rem] lg:text-5xl font-bold text-white mb-4 leading-tight -mt-6 sm:-mt-10 md:-mt-14"
 ```
 
-- Reutilisation des 3 composants SVG existants : `SignalsEngineVisual`, `MacroDeskVisual`, `ResearchLabVisual`
-- Badge uppercase avec dot accent (identique a la homepage)
-- CTA en lien texte "Open module" au lieu d'un bouton outline pleine largeur
-- Bordures subtiles (`border-border/60`), hover leger (`hover:border-accent/40 hover:-translate-y-0.5`)
+On utilise `md:text-[2.5rem]` (entre 4xl et 5xl) pour les ecrans moyens, et on garde `lg:text-5xl` pour les grands ecrans ou ca tient naturellement sur une ligne.
 
-**2. Cards additionnelles (Multi-Asset, Real-Time, Institutional Grade)**
+**2. Mobile -- Logo beaucoup plus gros et contenu centre**
 
-Meme traitement : suppression des cercles colores avec icones generiques. Remplacement par de petits visuels SVG inline dedies (formes geometriques minimalistes) avec le meme style de badge et la meme esthetique sobre.
+Le logo est actuellement `h-36` sur mobile (144px), ce qui laisse beaucoup de vide. On l'agrandit significativement pour remplir l'espace et donner un impact visuel fort.
 
-3 nouveaux composants SVG legers seront crees :
-- `MultiAssetVisual` : 3 petites sparklines paralleles (FX, Crypto, Indices)
-- `RealtimeVisual` : signal pulse / heartbeat
-- `InstitutionalVisual` : grille de blocs structuree (comme un terminal)
+```
+AVANT (ligne 67):
+className="h-36 sm:h-52 md:h-64 w-auto object-contain"
 
-**3. Fichier modifie**
+APRES:
+className="h-56 sm:h-52 md:h-64 w-auto object-contain"
+```
 
-`src/pages/Features.tsx` :
-- Suppression des imports Lucide (`Brain, BarChart3, FileText, Globe2, Zap, Shield`)
-- Import des 3 visuels homepage existants + 3 nouveaux visuels
-- Restructuration du JSX des cards pour suivre la hierarchie badge > visual > titre > description > details > CTA lien
+Le logo mobile passe de `h-36` (144px) a `h-56` (224px) -- +55% plus grand. Sur `sm` il reste a `h-52` et sur `md+` a `h-64`.
 
-**4. Nouveaux fichiers**
+On ajuste aussi le margin-top negatif pour compenser le logo agrandi sur mobile :
 
-- `src/components/features/MultiAssetVisual.tsx`
-- `src/components/features/RealtimeVisual.tsx`
-- `src/components/features/InstitutionalVisual.tsx`
+```
+AVANT (ligne 71):
+-mt-6 sm:-mt-10 md:-mt-14
+
+APRES:
+-mt-10 sm:-mt-10 md:-mt-14
+```
 
 ### Ce qui ne change PAS
-
-- Textes, traductions i18n, routes, navigation
-- Layout general de la page (hero, sections, CTA final, footer)
-- PublicNavbar, Footer
-- Les 3 composants SVG de la homepage (reutilises tels quels)
-
+- Textes, traductions, boutons, overlays, image de fond
+- Layout general, footer, navbar
+- Comportement des CTA et navigation
