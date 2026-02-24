@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, BarChart3, Brain, FileText, TrendingUp, Target } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
+import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
+import ResearchLabVisual from "@/components/homepage/ResearchLabVisual";
 import { useTranslation } from "react-i18next";
 import PublicNavbar from "@/components/PublicNavbar";
 import { SEOHead } from "@/components/SEOHead";
@@ -80,42 +83,42 @@ export default function Homepage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 justify-items-center">
-          <Card className="p-6 hover:shadow-lg transition-shadow border-border">
-            <CardContent className="text-center p-0">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Brain className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-foreground">{t('features.aiTradeSetups.title')}</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {t('features.aiTradeSetups.description')}
-              </p>
-            </CardContent>
-          </Card>
+          {[
+            { badge: "SIGNALS ENGINE", title: "AI Trade Setups", desc: "Regime-aware setups with entry, TP/SL, and sizing across FX & crypto.", route: "/dashboard", Visual: SignalsEngineVisual },
+            { badge: "MACRO DESK", title: "Macro Commentary", desc: "Event-driven commentary with market impact mapping and actionable bias.", route: "/macro-analysis", Visual: MacroDeskVisual },
+            { badge: "RESEARCH LAB", title: "Research Reports", desc: "Institutional-style reports combining quant outputs and macro context.", route: "/reports", Visual: ResearchLabVisual },
+          ].map((card) => (
+            <Card key={card.badge} className="p-0 border-border/60 hover:border-accent/40 hover:-translate-y-0.5 transition-all duration-200 flex flex-col h-full">
+              <CardContent className="p-6 flex flex-col h-full gap-4">
+                {/* Badge */}
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
+                  <span className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground font-medium border border-border/80 rounded px-2 py-0.5">
+                    {card.badge}
+                  </span>
+                </div>
 
-          <Card className="p-6 hover:shadow-lg transition-shadow border-border">
-            <CardContent className="text-center p-0">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <BarChart3 className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-foreground">{t('features.macroCommentary.title')}</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {t('features.macroCommentary.description')}
-              </p>
-            </CardContent>
-          </Card>
+                {/* Mini visual */}
+                <div className="rounded-md bg-muted/5 border border-border/40 p-2">
+                  <card.Visual />
+                </div>
 
-          <Card className="p-6 hover:shadow-lg transition-shadow border-border">
-            <CardContent className="text-center p-0">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FileText className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-foreground">{t('features.researchReports.title')}</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {t('features.researchReports.description')}
-              </p>
-            </CardContent>
-          </Card>
+                {/* Title */}
+                <h3 className="text-lg font-semibold text-foreground">{card.title}</h3>
 
+                {/* Description */}
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{card.desc}</p>
+
+                {/* CTA */}
+                <button
+                  onClick={() => navigate(card.route)}
+                  className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer bg-transparent border-none p-0"
+                >
+                  Open module <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </CardContent>
+            </Card>
+          ))}
 
         </div>
       </div>
