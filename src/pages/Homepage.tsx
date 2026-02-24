@@ -57,7 +57,7 @@ export default function Homepage() {
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
 
       {/* Content pushed to lower half */}
-      <div className="relative z-10 flex-1 flex flex-col justify-end pb-16 sm:pb-20 md:pb-24 px-4">
+      <div className="relative z-10 flex-1 flex flex-col justify-center pb-10 sm:pb-14 md:pb-16 px-4">
         <div className="container mx-auto max-w-5xl text-center">
           <div className="flex flex-col items-center mb-0">
             <div className="flex items-center gap-4">
