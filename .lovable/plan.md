@@ -1,109 +1,145 @@
 
 
-## Plan: Fix Stale Data in AURA -- 3 Root Causes
+## Plan: AURA Welcome Screen (Grok-style)
 
-### Problem Summary
+### Overview
 
-AURA shows Feb 16 data instead of Feb 24. The edge functions ARE calling TwelveData API (TTL works), but the data is processed incorrectly at multiple levels.
+Transform the AURA empty state into a centered "welcome screen" inspired by Grok's design: branding + logo centered vertically, the input bar in the middle of the screen, and pre-filled suggestion chips below it. Once a conversation begins (or when loading an existing thread), the UI reverts to the current layout with the input bar at the bottom.
 
-### Root Cause 1: Price Data Ordering (CLIENT-SIDE)
+### What Changes
 
-TwelveData API returns candles in **descending** order (newest first). The client-side code in `AURA.tsx` assumes ascending order:
+**1. New "Welcome Screen" state (when `messages.length === 0`)**
 
-```
-// Line 1267 - gets OLDEST candle, not latest
-const latestPrice = priceData.data[priceData.data.length - 1];
+Instead of the current layout (header + empty scroll area + bottom input), when there are no messages:
 
-// Line 1270 - gets 5 OLDEST candles, not most recent
-priceData.data.slice(-5)
-```
+- **Remove the full header bar** -- replace with a minimal/compact version
+- **Center vertically**: AlphaLens logo + "AURA" branding text
+- **Below branding**: The same input bar (Search icon + AURA v2 badge + text input + send button), centered
+- **Below input**: 4 suggestion chips as pill buttons (e.g., "Trade setup on EUR/USD", "Macro outlook on Gold", "Technical analysis BTC", "Generate a report")
+- No scroll area, no bottom-pinned input -- everything is centered
 
-**Fix**: Sort `responseData` ascending in the edge function before returning, so the client's assumptions are correct everywhere (including `plot_price_chart`).
+**2. Reduced mode (side panel) -- Welcome state:**
 
-**File**: `supabase/functions/fetch-historical-prices/index.ts`
+- The header shrinks to show only the logo icon (no "AURA" text, no subtitle) -- just the round logo + action buttons (fullscreen, close)
+- Input + suggestions centered in the available space
 
-Sort `responseData` ascending by datetime before returning:
-```typescript
-const responseData = data.values.map((v: any) => ({
-  datetime: v.datetime,
-  date: v.datetime.split(' ')[0],
-  ...
-})).sort((a: any, b: any) => a.datetime.localeCompare(b.datetime));
-```
+**3. Fullscreen mode -- Welcome state:**
 
-### Root Cause 2: MACD/BBands Sub-fields Lost (EDGE FUNCTION)
+- The sidebar remains as-is (collapsed by default with just icons)
+- The main area shows the centered welcome screen (large logo + AURA text + input + suggestions)
 
-The `fetch-technical-indicators` edge function only captures `v[indicatorLower]` (e.g., `v['macd']`). But TwelveData returns MACD with 3 fields (`macd`, `macd_signal`, `macd_hist`) and BBands with 3 fields (`upper_band`, `middle_band`, `lower_band`). These are silently dropped.
+**4. Active conversation state (when `messages.length > 0`):**
 
-**Fix**: For multi-value indicators, capture ALL sub-fields in the response.
+- Everything stays exactly as it is today -- no changes to the conversation UI
 
-**File**: `supabase/functions/fetch-technical-indicators/index.ts` (line 156-161)
+### Suggestion Chips (pre-filled queries)
 
-```typescript
-// Before (only captures primary value):
-results[indicatorLower] = {
-  values: data.values.map((v: any) => ({
-    datetime: v.datetime,
-    [indicatorLower]: parseFloat(v[indicatorLower])
-  })),
-  ...
-};
-
-// After (captures all sub-fields):
-results[indicatorLower] = {
-  values: data.values.map((v: any) => {
-    const point: any = { datetime: v.datetime };
-    for (const key of Object.keys(v)) {
-      if (key !== 'datetime') {
-        point[key] = parseFloat(v[key]);
-      }
-    }
-    return point;
-  }),
-  ...
-};
+```text
+"Trade setup on EUR/USD"
+"Macro outlook on Gold" 
+"Show me technical indicators on BTC 15min"
+"Generate a market report"
 ```
 
-### Root Cause 3: Intraday Cache Key Collision (EDGE FUNCTIONS)
+Clicking a chip sends the message immediately (same as current quick actions).
 
-For 15min candles, `date: v.datetime.split(' ')[0]` strips the time. Multiple candles from the same day collapse to the same unique key `(instrument, interval, date)`. The upsert batch has internal duplicates, causing the Postgres error: "ON CONFLICT DO UPDATE command cannot affect row a second time".
+### Technical Implementation
 
-This means cache WRITES always fail for intraday data, so new data never gets cached.
+**File: `src/components/AURA.tsx`**
 
-**Fix**: For intraday intervals, skip the cache write entirely (the data is short-lived anyway -- 2h TTL). The API will be called on each request for intraday, which is the correct behavior for near-real-time data.
+The `conversationColumn` variable (line 1785) currently always renders: Header + ScrollArea (with empty state inside) + bottom Input.
 
-**Files**: Both `fetch-historical-prices/index.ts` and `fetch-technical-indicators/index.ts`
+Change to:
 
-```typescript
-// Only cache daily+ data (intraday has key collisions and short TTL anyway)
-const isIntraday = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval);
-if (!isIntraday) {
-  const { error: insertError } = await supabase
-    .from('price_history_cache')
-    .upsert(priceData, { onConflict: '...' });
-  ...
+```
+const hasMessages = messages.length > 0;
+
+if (!hasMessages) {
+  // Render WELCOME SCREEN layout
+  return (
+    <div className="flex-1 flex flex-col min-w-0 h-full bg-[#0F172A]">
+      {/* Compact header (logo-only in reduced, minimal in fullscreen) */}
+      <div className="shrink-0 flex items-center justify-end px-3 py-2 gap-0.5">
+        {/* Only action buttons: fullscreen, close -- no branding here */}
+      </div>
+
+      {/* Centered welcome content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
+        {/* Logo + AURA text */}
+        <div className="flex flex-col items-center gap-3">
+          <img src="/lovable-uploads/56d2c4af-..." className="w-16 h-16 rounded-xl shadow-lg" />
+          <h1 className="text-2xl font-semibold text-white/90">AURA</h1>
+          <p className="text-sm text-[#6b7280]">Your AI Research Assistant</p>
+        </div>
+
+        {/* Centered input bar */}
+        <form onSubmit={handleSubmit} className="w-full max-w-[600px]">
+          {/* Same input bar as current bottom bar */}
+        </form>
+
+        {/* Suggestion chips */}
+        <div className="flex flex-wrap justify-center gap-2 max-w-[600px]">
+          {suggestions.map(s => <button onClick={() => sendMessage(s.text)}>...</button>)}
+        </div>
+      </div>
+    </div>
+  );
 }
+
+// Otherwise render current conversationColumn (header + messages + bottom input)
 ```
+
+**Key architectural decisions:**
+
+- The welcome screen is rendered INSTEAD of the conversation column, not inside ScrollArea -- this avoids any scroll issues
+- The `conversationColumn` variable becomes a conditional: welcome screen OR conversation view
+- The header buttons (history, fullscreen, close) still appear in the welcome screen but in a minimal top-right bar
+- In reduced mode (side panel), the welcome header only shows the small logo icon + buttons (no text)
+- The existing `QUICK_ACTIONS` object stays but is supplemented by 4 new "welcome suggestions" that are more user-friendly
 
 ### What Does NOT Change
 
-- No changes to AURA.tsx client-side logic (the fixes are server-side)
-- No changes to the AURA edge function (`aura/index.ts`)
-- No database schema changes
-- No changes to instrument mappings or routing
-- No changes to credit system or UI components
+- Message rendering logic (all widget components stay at module scope)
+- Conversation flow once messages exist
+- AURAHistoryPanel component
+- Fullscreen sidebar behavior
+- All hooks, state management, job handling
+- The collapsed (FAB) state when AURA is not expanded
+- The teaser bubble system
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/fetch-historical-prices/index.ts` | Sort response ascending + skip intraday cache writes |
-| `supabase/functions/fetch-technical-indicators/index.ts` | Capture all indicator sub-fields + skip intraday cache writes |
+| `src/components/AURA.tsx` | Add welcome screen conditional in `conversationColumn`, add welcome suggestion constants |
 
-### After Deployment
+### Visual Layout
 
-- Price data will be correctly sorted (newest last) -- client shows Feb 24 data
-- MACD will show signal line and histogram values instead of "undefined"
-- BBands will show upper/middle/lower bands
-- No more "ON CONFLICT" errors in logs for intraday requests
+```text
+WELCOME STATE (centered):
++------------------------------------------+
+|                        [fs] [x]          |
+|                                          |
+|                                          |
+|              [Logo Icon]                 |
+|                AURA                      |
+|         AI Research Assistant            |
+|                                          |
+|    [Search icon | Ask AURA... | Send]    |
+|                                          |
+|  [Trade EUR/USD] [Macro Gold] [BTC 15m]  |
+|          [Generate Report]               |
+|                                          |
++------------------------------------------+
+
+CONVERSATION STATE (current, unchanged):
++------------------------------------------+
+| [logo] AURA - thread title  [+] [fs] [x]|
+|------------------------------------------|
+| messages...                              |
+|                                          |
+|------------------------------------------|
+| [Search | AURA v2 | input...     ] [>]   |
++------------------------------------------+
+```
 
