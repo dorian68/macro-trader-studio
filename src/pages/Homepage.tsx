@@ -64,11 +64,11 @@ export default function Homepage() {
               <img
                 src="/alphalens_logo_new.png"
                 alt="alphaLens.ai logo"
-                className="h-28 sm:h-40 md:h-48 w-auto object-contain"
+                className="h-36 sm:h-52 md:h-64 w-auto object-contain"
               />
             </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-4 sm:-mt-8 md:-mt-10">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-6 sm:-mt-10 md:-mt-14">
             {t('hero.title')}
             <span className="text-white/90"> {t('hero.subtitle')}</span>
           </h1>
