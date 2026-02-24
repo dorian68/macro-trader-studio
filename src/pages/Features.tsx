@@ -1,10 +1,16 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Brain, BarChart3, FileText, Globe2, Zap, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
 import { useTranslation } from "react-i18next";
+import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
+import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
+import ResearchLabVisual from "@/components/homepage/ResearchLabVisual";
+import MultiAssetVisual from "@/components/features/MultiAssetVisual";
+import RealtimeVisual from "@/components/features/RealtimeVisual";
+import InstitutionalVisual from "@/components/features/InstitutionalVisual";
 
 export default function Features() {
   const navigate = useNavigate();
@@ -12,7 +18,8 @@ export default function Features() {
 
   const features = [
     {
-      icon: Brain,
+      badge: "SIGNALS ENGINE",
+      Visual: SignalsEngineVisual,
       title: t('main.aiTradeSetups.title'),
       description: t('main.aiTradeSetups.description'),
       details: [
@@ -25,7 +32,8 @@ export default function Features() {
       ctaRoute: "/dashboard"
     },
     {
-      icon: BarChart3,
+      badge: "MACRO DESK",
+      Visual: MacroDeskVisual,
       title: t('main.macroCommentary.title'),
       description: t('main.macroCommentary.description'),
       details: [
@@ -38,7 +46,8 @@ export default function Features() {
       ctaRoute: "/macro-analysis"
     },
     {
-      icon: FileText,
+      badge: "RESEARCH LAB",
+      Visual: ResearchLabVisual,
       title: t('main.researchReports.title'),
       description: t('main.researchReports.description'),
       details: [
@@ -54,17 +63,20 @@ export default function Features() {
 
   const additionalFeatures = [
     {
-      icon: Globe2,
+      badge: "MULTI-ASSET",
+      Visual: MultiAssetVisual,
       title: t('additional.multiAsset.title'),
       description: t('additional.multiAsset.description')
     },
     {
-      icon: Zap,
+      badge: "REAL-TIME",
+      Visual: RealtimeVisual,
       title: t('additional.realtime.title'),
       description: t('additional.realtime.description')
     },
     {
-      icon: Shield,
+      badge: "INSTITUTIONAL",
+      Visual: InstitutionalVisual,
       title: t('additional.institutional.title'),
       description: t('additional.institutional.description')
     }
@@ -88,28 +100,46 @@ export default function Features() {
 
       <section className="py-8 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 justify-items-center">
-            {features.map((feature, index) => (
-              <Card key={index} className="p-6 hover:shadow-lg transition-shadow border-border bg-card flex flex-col h-full">
-                <CardHeader className="pb-4">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <feature.icon className="h-8 w-8 text-primary" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 justify-items-center">
+            {features.map((feature) => (
+              <Card key={feature.badge} className="p-0 border-border/60 hover:border-accent/40 hover:-translate-y-0.5 transition-all duration-200 flex flex-col h-full">
+                <CardContent className="p-6 flex flex-col h-full gap-4">
+                  {/* Badge */}
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
+                    <span className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground font-medium border border-border/80 rounded px-2 py-0.5">
+                      {feature.badge}
+                    </span>
                   </div>
-                  <CardTitle className="text-xl text-foreground">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 flex-1 flex flex-col">
-                  <p className="text-muted-foreground">{feature.description}</p>
-                  <ul className="space-y-2 flex-1">
+
+                  {/* Mini visual */}
+                  <div className="rounded-md bg-muted/5 border border-border/40 p-2">
+                    <feature.Visual />
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-lg font-semibold text-foreground">{feature.title}</h3>
+
+                  {/* Description */}
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+
+                  {/* Details */}
+                  <ul className="space-y-1.5 flex-1">
                     {feature.details.map((detail, idx) => (
                       <li key={idx} className="text-sm text-muted-foreground flex items-start">
-                        <span className="w-1 h-1 bg-primary rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                        <span className="w-1 h-1 bg-accent/60 rounded-full mt-2 mr-2 flex-shrink-0" />
                         {detail}
                       </li>
                     ))}
                   </ul>
-                  <Button variant="outline" className="w-full mt-auto" onClick={() => navigate(feature.ctaRoute)}>
-                    {feature.ctaText}
-                  </Button>
+
+                  {/* CTA */}
+                  <button
+                    onClick={() => navigate(feature.ctaRoute)}
+                    className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer bg-transparent border-none p-0"
+                  >
+                    {feature.ctaText} <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
                 </CardContent>
               </Card>
             ))}
@@ -125,13 +155,26 @@ export default function Features() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-            {additionalFeatures.map((feature, index) => (
-              <Card key={index} className="p-6 text-center hover:shadow-lg transition-shadow border-border">
-                <CardContent className="p-0">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <feature.icon className="h-6 w-6 text-primary" />
+            {additionalFeatures.map((feature) => (
+              <Card key={feature.badge} className="p-0 border-border/60 hover:border-accent/40 hover:-translate-y-0.5 transition-all duration-200">
+                <CardContent className="p-6 flex flex-col gap-4">
+                  {/* Badge */}
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
+                    <span className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground font-medium border border-border/80 rounded px-2 py-0.5">
+                      {feature.badge}
+                    </span>
                   </div>
-                  <h3 className="text-lg font-semibold mb-3 text-foreground">{feature.title}</h3>
+
+                  {/* Mini visual */}
+                  <div className="rounded-md bg-muted/5 border border-border/40 p-2">
+                    <feature.Visual />
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-lg font-semibold text-foreground">{feature.title}</h3>
+
+                  {/* Description */}
                   <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </CardContent>
               </Card>
