@@ -1,33 +1,23 @@
 
 
-## Replace Hero Background with WebP Version
+## Remove Blur Backdrop from Hero CTA Buttons
 
-### Steps
+### Change
 
-**1. Copy the uploaded WebP image to `public/images/hero-bg.webp`**
+**File: `src/pages/Homepage.tsx`** -- Line 78
 
-The image will be placed alongside the existing `hero-bg.jpg` in the public folder since it's referenced via CSS `background-image` (not a React import).
-
-**2. Update `src/pages/Homepage.tsx` (line 50)**
+The two CTA buttons ("Try Demo" and "Get Started") are wrapped in a `div` with `backdrop-blur-sm bg-black/20 rounded-xl px-6 py-4`. This creates a semi-transparent blurred panel behind the buttons. We remove those styles and keep only the flex layout.
 
 ```
 BEFORE:
-style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
+<div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center backdrop-blur-sm bg-black/20 rounded-xl px-6 py-4">
 
 AFTER:
-style={{ backgroundImage: "url('/images/hero-bg.webp')" }}
+<div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center">
 ```
-
-**3. Add preload hint in `index.html` (after the font preconnect lines, around line 15)**
-
-```html
-<link rel="preload" as="image" type="image/webp" href="/images/hero-bg.webp" />
-```
-
-This tells the browser to fetch the hero image immediately, before CSS is parsed, improving LCP.
 
 ### What does NOT change
-- All overlays, gradients, parallax, layout, content, CTA buttons
-- Logo size, text centering, spacing -- everything from previous changes preserved
-- The old `hero-bg.jpg` file stays in place (harmless, can be deleted manually later)
+- The two buttons themselves (style, text, routes, click handlers)
+- Hero layout, logo, overlays, text, spacing
+- Everything else on the page
 
