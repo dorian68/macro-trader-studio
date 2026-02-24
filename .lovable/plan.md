@@ -1,96 +1,109 @@
 
-## Plan: Fix Stale Data in AURA Price & Indicator Fetching
 
-### Root Cause
+## Plan: Fix Stale Data in AURA -- 3 Root Causes
 
-Both edge functions (`fetch-historical-prices` and `fetch-technical-indicators`) have a **cache-first strategy with no TTL (time-to-live)**. They return cached data regardless of how old it is:
+### Problem Summary
 
-- **Prices**: If ANY cached rows exist for the date range, they're returned immediately -- even if `fetched_at` was weeks ago and the data is incomplete (e.g., only Monday's candles exist when Friday's should be available).
-- **Indicators**: If cached count >= 80% of `outputsize`, they're returned -- even if `cached_at` was months ago.
+AURA shows Feb 16 data instead of Feb 24. The edge functions ARE calling TwelveData API (TTL works), but the data is processed incorrectly at multiple levels.
 
-This is why the user sees Feb 17 data on Feb 24: the cache had partial data from a previous fetch, and the functions never re-queried the API.
+### Root Cause 1: Price Data Ordering (CLIENT-SIDE)
 
-### Fix Strategy
+TwelveData API returns candles in **descending** order (newest first). The client-side code in `AURA.tsx` assumes ascending order:
 
-Add a **cache freshness check** to both functions. If the most recent cached entry is stale (older than a threshold), bypass the cache and fetch fresh data from Twelve Data. The thresholds:
+```
+// Line 1267 - gets OLDEST candle, not latest
+const latestPrice = priceData.data[priceData.data.length - 1];
 
-- **Intraday intervals** (1min, 5min, 15min, 30min, 1h, 2h, 4h): cache valid for **2 hours**
-- **Daily interval**: cache valid for **24 hours**
-- **Weekly/monthly**: cache valid for **7 days**
-
-### Technical Changes
-
-**File 1: `supabase/functions/fetch-historical-prices/index.ts`**
-
-After the cache query (line 55), before returning cached data, add a freshness check:
-
-```typescript
-if (!cacheError && cachedData && cachedData.length > 0) {
-  // Check cache freshness based on interval
-  const maxAgeMs = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval)
-    ? 2 * 60 * 60 * 1000   // 2 hours for intraday
-    : interval === '1day' ? 24 * 60 * 60 * 1000  // 24h for daily
-    : 7 * 24 * 60 * 60 * 1000; // 7 days for weekly
-
-  const newestFetchedAt = cachedData.reduce((latest, d) =>
-    d.fetched_at && new Date(d.fetched_at) > latest ? new Date(d.fetched_at) : latest,
-    new Date(0)
-  );
-
-  const isFresh = (Date.now() - newestFetchedAt.getTime()) < maxAgeMs;
-
-  if (isFresh) {
-    console.log(`Returning ${cachedData.length} fresh cached price points`);
-    // ... return cached data ...
-  } else {
-    console.log(`Cache expired (age: ${Math.round((Date.now() - newestFetchedAt.getTime()) / 60000)}min), fetching fresh data`);
-  }
-}
+// Line 1270 - gets 5 OLDEST candles, not most recent
+priceData.data.slice(-5)
 ```
 
-**File 2: `supabase/functions/fetch-technical-indicators/index.ts`**
+**Fix**: Sort `responseData` ascending in the edge function before returning, so the client's assumptions are correct everywhere (including `plot_price_chart`).
 
-Same pattern: after the cache query (line 77), check `cached_at` freshness before returning:
+**File**: `supabase/functions/fetch-historical-prices/index.ts`
+
+Sort `responseData` ascending by datetime before returning:
+```typescript
+const responseData = data.values.map((v: any) => ({
+  datetime: v.datetime,
+  date: v.datetime.split(' ')[0],
+  ...
+})).sort((a: any, b: any) => a.datetime.localeCompare(b.datetime));
+```
+
+### Root Cause 2: MACD/BBands Sub-fields Lost (EDGE FUNCTION)
+
+The `fetch-technical-indicators` edge function only captures `v[indicatorLower]` (e.g., `v['macd']`). But TwelveData returns MACD with 3 fields (`macd`, `macd_signal`, `macd_hist`) and BBands with 3 fields (`upper_band`, `middle_band`, `lower_band`). These are silently dropped.
+
+**Fix**: For multi-value indicators, capture ALL sub-fields in the response.
+
+**File**: `supabase/functions/fetch-technical-indicators/index.ts` (line 156-161)
 
 ```typescript
-if (cachedData && cachedData.length >= outputsize * 0.8) {
-  const maxAgeMs = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval)
-    ? 2 * 60 * 60 * 1000
-    : interval === '1day' ? 24 * 60 * 60 * 1000
-    : 7 * 24 * 60 * 60 * 1000;
+// Before (only captures primary value):
+results[indicatorLower] = {
+  values: data.values.map((v: any) => ({
+    datetime: v.datetime,
+    [indicatorLower]: parseFloat(v[indicatorLower])
+  })),
+  ...
+};
 
-  const newestCachedAt = cachedData.reduce((latest, d) =>
-    d.cached_at && new Date(d.cached_at) > latest ? new Date(d.cached_at) : latest,
-    new Date(0)
-  );
+// After (captures all sub-fields):
+results[indicatorLower] = {
+  values: data.values.map((v: any) => {
+    const point: any = { datetime: v.datetime };
+    for (const key of Object.keys(v)) {
+      if (key !== 'datetime') {
+        point[key] = parseFloat(v[key]);
+      }
+    }
+    return point;
+  }),
+  ...
+};
+```
 
-  const isFresh = (Date.now() - newestCachedAt.getTime()) < maxAgeMs;
+### Root Cause 3: Intraday Cache Key Collision (EDGE FUNCTIONS)
 
-  if (isFresh) {
-    // return cached
-  } else {
-    console.log(`Cache stale for ${indicatorLower}, refetching`);
-    // fall through to API call
-  }
+For 15min candles, `date: v.datetime.split(' ')[0]` strips the time. Multiple candles from the same day collapse to the same unique key `(instrument, interval, date)`. The upsert batch has internal duplicates, causing the Postgres error: "ON CONFLICT DO UPDATE command cannot affect row a second time".
+
+This means cache WRITES always fail for intraday data, so new data never gets cached.
+
+**Fix**: For intraday intervals, skip the cache write entirely (the data is short-lived anyway -- 2h TTL). The API will be called on each request for intraday, which is the correct behavior for near-real-time data.
+
+**Files**: Both `fetch-historical-prices/index.ts` and `fetch-technical-indicators/index.ts`
+
+```typescript
+// Only cache daily+ data (intraday has key collisions and short TTL anyway)
+const isIntraday = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval);
+if (!isIntraday) {
+  const { error: insertError } = await supabase
+    .from('price_history_cache')
+    .upsert(priceData, { onConflict: '...' });
+  ...
 }
 ```
 
 ### What Does NOT Change
 
-- No changes to AURA.tsx (client-side logic remains identical)
-- No changes to the AURA edge function (aura/index.ts)
-- No database schema changes (both tables already have timestamp columns)
-- No changes to instrument mappings
-- Cache upsert logic stays the same (fresh data replaces old entries via ON CONFLICT)
-- No routing, credit, or UI changes
+- No changes to AURA.tsx client-side logic (the fixes are server-side)
+- No changes to the AURA edge function (`aura/index.ts`)
+- No database schema changes
+- No changes to instrument mappings or routing
+- No changes to credit system or UI components
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/fetch-historical-prices/index.ts` | Add TTL check before returning cached data |
-| `supabase/functions/fetch-technical-indicators/index.ts` | Add TTL check before returning cached data |
+| `supabase/functions/fetch-historical-prices/index.ts` | Sort response ascending + skip intraday cache writes |
+| `supabase/functions/fetch-technical-indicators/index.ts` | Capture all indicator sub-fields + skip intraday cache writes |
 
 ### After Deployment
 
-Both edge functions will be redeployed. The next AURA request for "show me gold 15min indicators" will bypass stale cache and fetch live data from Twelve Data, then re-cache the fresh results.
+- Price data will be correctly sorted (newest last) -- client shows Feb 24 data
+- MACD will show signal line and histogram values instead of "undefined"
+- BBands will show upper/middle/lower bands
+- No more "ON CONFLICT" errors in logs for intraday requests
+
