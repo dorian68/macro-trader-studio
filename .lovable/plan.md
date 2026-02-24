@@ -1,25 +1,35 @@
 
 
-## Center Hero Text Vertically
+## Increase Hero Logo Size
 
 ### Change
 
-**File: `src/pages/Homepage.tsx`** -- Line 60
+**File: `src/pages/Homepage.tsx`** -- Line 67
 
-The hero content container currently uses `justify-end` which pushes everything to the bottom. Change it to `justify-center` to vertically center the content, and reduce the bottom padding:
+Increase the logo height so the text rendered inside the logo image visually matches the `text-5xl` (~3rem) headline size below it. Since the logo is an image containing text, it needs to be taller to make its internal text appear at that scale.
 
 ```
 BEFORE:
-<div className="relative z-10 flex-1 flex flex-col justify-end pb-16 sm:pb-20 md:pb-24 px-4">
+className="h-28 sm:h-40 md:h-48 w-auto object-contain"
 
 AFTER:
-<div className="relative z-10 flex-1 flex flex-col justify-center pb-10 sm:pb-14 md:pb-16 px-4">
+className="h-36 sm:h-52 md:h-64 w-auto object-contain"
 ```
 
-- `justify-end` becomes `justify-center`: centers the content block vertically in the hero viewport
-- Bottom padding reduced (`pb-16` to `pb-10`, etc.) so the content sits closer to true center rather than being pulled too low
+- Mobile: `h-28` (7rem) becomes `h-36` (9rem)
+- Tablet: `h-40` (10rem) becomes `h-52` (13rem)
+- Desktop: `h-48` (12rem) becomes `h-64` (16rem)
+
+Also adjust the negative top margin on the h1 to keep spacing tight between logo and headline:
+
+```
+BEFORE (line 71):
+className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-4 sm:-mt-8 md:-mt-10"
+
+AFTER:
+className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-6 sm:-mt-10 md:-mt-14"
+```
 
 ### What does NOT change
-- Logo, headline text, description, CTA buttons, routes
-- Overlays, parallax effect, transition to next section
-- Navbar, responsiveness, layout of other sections
+- Logo image file, hero layout, CTA buttons, overlays, transition, parallax
+- Navbar, responsiveness, other sections
