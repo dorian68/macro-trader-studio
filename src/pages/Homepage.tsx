@@ -45,7 +45,7 @@ export default function Homepage() {
       {/* Background image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat md:bg-fixed"
-        style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
+        style={{ backgroundImage: "url('/images/hero-bg.webp')" }}
       />
       {/* Overlay 1: Dark gradient from top for navbar readability */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent" />
