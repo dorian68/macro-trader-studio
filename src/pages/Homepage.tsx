@@ -75,7 +75,7 @@ export default function Homepage() {
           <p className="text-base sm:text-lg md:text-xl text-white/70 mb-8 max-w-3xl mx-auto leading-relaxed">
             {t('hero.description')}
           </p>
-          <div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center backdrop-blur-sm bg-black/20 rounded-xl px-6 py-4">
+          <div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300" onClick={handleFreeTrialClick}>
               {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
