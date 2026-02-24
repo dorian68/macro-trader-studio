@@ -134,30 +134,42 @@ serve(async (req) => {
           return;
         }
 
-        const indicatorData = data.values.map((v: any) => ({
-          instrument,
-          indicator: indicatorLower,
-          interval,
-          time_period,
-          date: v.datetime.split(' ')[0],
-          value: parseFloat(v[indicatorLower])
-        }));
+        // Only cache daily+ data (intraday has key collisions and short TTL anyway)
+        const isIntraday = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval);
+        if (!isIntraday) {
+          const indicatorData = data.values.map((v: any) => ({
+            instrument,
+            indicator: indicatorLower,
+            interval,
+            time_period,
+            date: v.datetime.split(' ')[0],
+            value: parseFloat(v[indicatorLower])
+          }));
 
-        const { error: insertError } = await supabase
-          .from('technical_indicators_cache')
-          .upsert(indicatorData, { onConflict: 'instrument,indicator,interval,time_period,date' });
+          const { error: insertError } = await supabase
+            .from('technical_indicators_cache')
+            .upsert(indicatorData, { onConflict: 'instrument,indicator,interval,time_period,date' });
 
-        if (insertError) {
-          console.error(`Error caching ${indicatorLower}:`, insertError);
+          if (insertError) {
+            console.error(`Error caching ${indicatorLower}:`, insertError);
+          } else {
+            console.log(`Cached ${indicatorData.length} ${indicatorLower} points`);
+          }
         } else {
-          console.log(`Cached ${indicatorData.length} ${indicatorLower} points`);
+          console.log(`Skipping cache for intraday interval ${interval}`);
         }
 
+        // Capture ALL sub-fields (important for MACD: macd, macd_signal, macd_hist; BBands: upper_band, middle_band, lower_band)
         results[indicatorLower] = {
-          values: data.values.map((v: any) => ({
-            datetime: v.datetime,
-            [indicatorLower]: parseFloat(v[indicatorLower])
-          })),
+          values: data.values.map((v: any) => {
+            const point: any = { datetime: v.datetime };
+            for (const key of Object.keys(v)) {
+              if (key !== 'datetime') {
+                point[key] = parseFloat(v[key]);
+              }
+            }
+            return point;
+          }),
           meta: data.meta,
           cached: false
         };
