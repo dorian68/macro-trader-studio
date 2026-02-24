@@ -1,35 +1,33 @@
 
 
-## Increase Hero Logo Size
+## Replace Hero Background with WebP Version
 
-### Change
+### Steps
 
-**File: `src/pages/Homepage.tsx`** -- Line 67
+**1. Copy the uploaded WebP image to `public/images/hero-bg.webp`**
 
-Increase the logo height so the text rendered inside the logo image visually matches the `text-5xl` (~3rem) headline size below it. Since the logo is an image containing text, it needs to be taller to make its internal text appear at that scale.
+The image will be placed alongside the existing `hero-bg.jpg` in the public folder since it's referenced via CSS `background-image` (not a React import).
+
+**2. Update `src/pages/Homepage.tsx` (line 50)**
 
 ```
 BEFORE:
-className="h-28 sm:h-40 md:h-48 w-auto object-contain"
+style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
 
 AFTER:
-className="h-36 sm:h-52 md:h-64 w-auto object-contain"
+style={{ backgroundImage: "url('/images/hero-bg.webp')" }}
 ```
 
-- Mobile: `h-28` (7rem) becomes `h-36` (9rem)
-- Tablet: `h-40` (10rem) becomes `h-52` (13rem)
-- Desktop: `h-48` (12rem) becomes `h-64` (16rem)
+**3. Add preload hint in `index.html` (after the font preconnect lines, around line 15)**
 
-Also adjust the negative top margin on the h1 to keep spacing tight between logo and headline:
-
+```html
+<link rel="preload" as="image" type="image/webp" href="/images/hero-bg.webp" />
 ```
-BEFORE (line 71):
-className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-4 sm:-mt-8 md:-mt-10"
 
-AFTER:
-className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-6 sm:-mt-10 md:-mt-14"
-```
+This tells the browser to fetch the hero image immediately, before CSS is parsed, improving LCP.
 
 ### What does NOT change
-- Logo image file, hero layout, CTA buttons, overlays, transition, parallax
-- Navbar, responsiveness, other sections
+- All overlays, gradients, parallax, layout, content, CTA buttons
+- Logo size, text centering, spacing -- everything from previous changes preserved
+- The old `hero-bg.jpg` file stays in place (harmless, can be deleted manually later)
+
