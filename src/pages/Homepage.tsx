@@ -54,7 +54,7 @@ export default function Homepage() {
       {/* Overlay 3: Very subtle orange accent at bottom */}
       <div className="absolute inset-0 bg-gradient-to-t from-accent/5 via-transparent to-transparent" />
       {/* Overlay 4: Dark gradient from bottom for seamless blend into site background */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
 
       {/* Content pushed to lower half */}
       <div className="relative z-10 flex-1 flex flex-col justify-end pb-16 sm:pb-20 md:pb-24 px-4">
