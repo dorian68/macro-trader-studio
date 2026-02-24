@@ -159,7 +159,7 @@ serve(async (req) => {
       volume: v.volume ? parseFloat(v.volume) : null
     }));
 
-    // Keep full datetime for response (intraday)
+    // Keep full datetime for response (intraday) - sort ascending so client gets newest last
     const responseData = data.values.map((v: any) => ({
       datetime: v.datetime,
       date: v.datetime.split(' ')[0],
@@ -168,17 +168,22 @@ serve(async (req) => {
       low: parseFloat(v.low),
       close: parseFloat(v.close),
       volume: v.volume ? parseFloat(v.volume) : null
-    }));
+    })).sort((a: any, b: any) => a.datetime.localeCompare(b.datetime));
 
-    // Insert into cache (upsert)
-    const { error: insertError } = await supabase
-      .from('price_history_cache')
-      .upsert(priceData, { onConflict: 'instrument,interval,date' });
+    // Only cache daily+ data (intraday has key collisions and short TTL anyway)
+    const isIntraday = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval);
+    if (!isIntraday) {
+      const { error: insertError } = await supabase
+        .from('price_history_cache')
+        .upsert(priceData, { onConflict: 'instrument,interval,date' });
 
-    if (insertError) {
-      console.error('Error caching data:', insertError);
+      if (insertError) {
+        console.error('Error caching data:', insertError);
+      } else {
+        console.log(`Cached ${priceData.length} new price points`);
+      }
     } else {
-      console.log(`Cached ${priceData.length} new price points`);
+      console.log(`Skipping cache for intraday interval ${interval} (${priceData.length} points)`);
     }
 
     return new Response(
