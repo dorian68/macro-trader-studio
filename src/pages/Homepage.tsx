@@ -44,7 +44,7 @@ export default function Homepage() {
     <section className="relative min-h-screen flex flex-col">
       {/* Background image */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat md:bg-fixed"
         style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
       />
       {/* Overlay 1: Dark gradient from top for navbar readability */}
