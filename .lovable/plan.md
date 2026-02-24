@@ -1,44 +1,45 @@
 
 
-## Add Parallax / Fixed-Background Effect to Hero
+## Smoother Hero-to-Section Transition
 
-### Approach
+### Problem
+The hero section ends at line 88 and the next section starts at line 91 with a hard `bg-background` boundary, creating a visible cutoff line.
 
-Use the simplest and most reliable technique: change the hero background image `<div>` to use `background-attachment: fixed` on desktop, with a media-query-based fallback for mobile/tablet (where `fixed` is notoriously buggy, especially on iOS Safari).
+### Solution
+Two small changes to eliminate the hard edge:
 
-This is implemented purely in CSS -- no JS scroll listeners, no libraries, no performance concerns.
+1. **Add a bleed element at the bottom of the hero section** -- a tall gradient div that extends *below* the hero bounds, overlapping into the next section's visual space. This sits inside the hero `<section>` but uses negative margin or absolute positioning to extend past it.
 
-### Change
+2. **Soften the top of the next section** -- add a top gradient overlay or remove hard top padding to let it blend.
 
-**File: `src/pages/Homepage.tsx`** -- Line 47 only
+### Implementation Details
 
-Add `md:bg-fixed` to the background image div's className:
+**File: `src/pages/Homepage.tsx`**
+
+**Change 1 (after line 87, before `</section>`):** Add a bleed gradient that extends below the hero:
+
+```jsx
+{/* Transition bleed: extends below hero for smooth fade */}
+<div className="absolute bottom-0 left-0 right-0 h-32 sm:h-40 md:h-48 translate-y-1/2 z-20 bg-gradient-to-b from-transparent via-background/80 to-background pointer-events-none" />
+```
+
+This div is half inside, half outside the hero (via `translate-y-1/2`), creating a tall gradient that fades from transparent into `bg-background`. The `pointer-events-none` ensures no interaction issues.
+
+**Change 2 (line 91):** Add `relative` and slight negative top margin to the next section so the bleed overlaps it naturally, plus remove some top padding:
 
 ```
-BEFORE:
-  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-
-AFTER:
-  className="absolute inset-0 bg-cover bg-center bg-no-repeat md:bg-fixed"
+BEFORE: className="py-10 px-4 bg-background"
+AFTER:  className="relative z-10 pt-6 pb-10 px-4 bg-background"
 ```
 
-That is the entire change. Tailwind's `md:bg-fixed` applies `background-attachment: fixed` only at `min-width: 768px` (desktop/tablet landscape), so:
+Reduced `pt` (from `py-10` to `pt-6`) since the gradient bleed already provides visual spacing at the top.
 
-- **Desktop/laptop:** The skyscraper image stays anchored as the user scrolls, creating the parallax effect. Page content scrolls over it naturally.
-- **Mobile/small tablet:** Normal scroll behavior (no `fixed`), avoiding iOS Safari rendering bugs.
+### Visual Result
 
-### Why this works cleanly
-
-- The overlay divs (gradients, tints) are `absolute inset-0` children of the hero `<section>`, so they stay within the hero bounds regardless of background attachment.
-- The hero content (`z-10` div) scrolls normally with the page.
-- The `min-h-screen` section height means the fixed background is visible for the full viewport, then the next section scrolls over it seamlessly.
-- No additional CSS, no JS, no new files needed.
+Instead of a hard line between hero and section, there will be a ~6-8rem tall soft gradient zone that fades from the hero's dark imagery into the solid dark background, making the boundary invisible.
 
 ### What is NOT changed
-
-- No overlay modifications
-- No content, text, logo, or CTA changes
-- No navbar or routing changes
-- No new dependencies
-- No other files modified
-
+- Hero image, overlays, content, CTA, parallax effect
+- Navbar, routing, auth
+- Content of the "Professional Trading Intelligence" section
+- Mobile responsiveness (gradient scales with `sm:h-40 md:h-48`)
