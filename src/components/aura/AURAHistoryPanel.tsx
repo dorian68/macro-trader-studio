@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, MessageSquare, Clock, X, PanelLeftClose, PanelLeft, Search, ChevronsRight } from 'lucide-react';
+import { Plus, Trash2, Clock, X, PanelLeftClose, PanelLeft, Search, ChevronsRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AuraThread } from '@/services/auraConversationService';
 import { formatDistanceToNow } from 'date-fns';
@@ -200,7 +200,7 @@ export function AURAHistoryPanel({
               )}
               onClick={() => onSelectThread(thread.id)}
             >
-              <MessageSquare className="h-3.5 w-3.5 text-[#6b7280] shrink-0" />
+              
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "text-sm truncate",
