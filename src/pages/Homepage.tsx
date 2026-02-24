@@ -41,31 +41,46 @@ export default function Homepage() {
     <PublicNavbar />
 
     {/* Hero Section */}
-    <section className="relative pt-0 pb-24 px-4 text-center bg-background">
-      <div className="container mx-auto max-w-6xl">
-        <div className="flex flex-col items-center mb-0">
-          <div className="flex items-center gap-4">
-            <img
-              src="/alphalens_logo_new.png"
-              alt="alphaLens.ai logo"
-              className="h-40 sm:h-56 md:h-72 w-auto object-contain"
-            />
+    <section className="relative min-h-screen flex flex-col">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
+      />
+      {/* Overlay 1: Dark gradient from top for navbar readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent" />
+      {/* Overlay 2: Subtle overall tint */}
+      <div className="absolute inset-0 bg-black/30" />
+      {/* Overlay 3: Very subtle orange accent at bottom */}
+      <div className="absolute inset-0 bg-gradient-to-t from-accent/5 via-transparent to-transparent" />
+
+      {/* Content pushed to lower half */}
+      <div className="relative z-10 flex-1 flex flex-col justify-end pb-16 sm:pb-20 md:pb-24 px-4">
+        <div className="container mx-auto max-w-5xl text-center">
+          <div className="flex flex-col items-center mb-0">
+            <div className="flex items-center gap-4">
+              <img
+                src="/alphalens_logo_new.png"
+                alt="alphaLens.ai logo"
+                className="h-28 sm:h-40 md:h-48 w-auto object-contain"
+              />
+            </div>
           </div>
-        </div>
-        <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-primary mb-4 leading-tight -mt-8 sm:-mt-12 md:-mt-16">
-          {t('hero.title')}
-          <span className="text-primary"> {t('hero.subtitle')}</span>
-        </h1>
-        <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-6 max-w-3xl mx-auto leading-relaxed">
-          {t('hero.description')}
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300" onClick={handleFreeTrialClick}>
-            {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-          <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-primary text-primary hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300" onClick={() => navigate("/auth")}>
-            {t('hero.getStarted')}
-          </Button>
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-4 sm:-mt-8 md:-mt-10">
+            {t('hero.title')}
+            <span className="text-white/90"> {t('hero.subtitle')}</span>
+          </h1>
+          <p className="text-base sm:text-lg md:text-xl text-white/70 mb-8 max-w-3xl mx-auto leading-relaxed">
+            {t('hero.description')}
+          </p>
+          <div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center backdrop-blur-sm bg-black/20 rounded-xl px-6 py-4">
+            <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300" onClick={handleFreeTrialClick}>
+              {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-white/30 text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300" onClick={() => navigate("/auth")}>
+              {t('hero.getStarted')}
+            </Button>
+          </div>
         </div>
       </div>
     </section>
