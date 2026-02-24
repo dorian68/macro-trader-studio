@@ -1,80 +1,59 @@
 
 
-## Plan: Credit System Fixes + Admin Panel Repairs
+## Plan: Secure Twelve Data Integration in AURA (No Regression)
 
-This plan addresses 5 confirmed bugs across the credit system and admin panel. No routing, payment, or schema changes.
+### Current State (Already Working)
 
----
+The AURA pipeline for real-time data is fully wired:
+- Edge function `aura/index.ts` defines `get_realtime_price` and `get_technical_indicators` as LLM tools
+- The system prompt already injects `Current UTC time` dynamically via `new Date()`
+- Client-side (`AURA.tsx`) handles tool calls by invoking `fetch-historical-prices` and `fetch-technical-indicators` edge functions
+- Both edge functions call the Twelve Data API and cache results in Supabase
 
-### BUG 1 (CRITICAL): Stale Engaged Credits Never Cleaned Up
+### Fix 1: Use Secret Instead of Hardcoded API Key
 
-**Evidence**: 22 entries in `credits_engaged` with jobs stuck in `pending` status, oldest from January 13 (5+ weeks). The current `cleanup_stale_engaged_credits()` function treats `pending` jobs as "active" and never purges them.
+Both edge functions hardcode `const TWELVE_API_KEY = 'e40fcead02054731aef55d2dfe01cf47'`. The Supabase secret `TWELVE_DATA_API_KEY` already exists. Replace with `Deno.env.get('TWELVE_DATA_API_KEY')` and add a fallback for safety.
 
-**Fix**: Database migration to replace the cleanup function with one that also purges engagements where:
-- Job is `pending` for more than 10 minutes
-- Job does not exist (orphaned)
-- Engagement older than 30 minutes regardless
+**Files:**
+- `supabase/functions/fetch-historical-prices/index.ts` (line 10)
+- `supabase/functions/fetch-technical-indicators/index.ts` (line 10)
 
-Then execute the function immediately to clear the 22 stale entries.
+### Fix 2: MACD and BBands Data Enrichment
 
----
+The client-side indicator summary handler (`AURA.tsx` ~line 1434) only reads `latest[indicator]`, which for multi-value indicators (MACD, BBands) loses signal/histogram/bands data. Fix to extract all sub-fields.
 
-### BUG 2 (HIGH): UI Shows Wrong Credit Balance
+**File:** `src/components/AURA.tsx` (lines ~1434-1441)
 
-**Evidence**: `CreditsNavbar.tsx` and `CreditDisplay.tsx` display raw `credits_*_remaining` values without subtracting engaged credits. A user with 7 ideas credits but 7 engaged sees "7" when they actually have 0 available.
-
-**Fix**: Update `useCreditManager.tsx` to fetch engaged credit counts alongside remaining credits. Expose `effectiveQueries`, `effectiveIdeas`, `effectiveReports` values. Update both UI components to display effective balances.
-
----
-
-### BUG 3 (MEDIUM): Missing `await` on Async Credit Check
-
-**Evidence**: In `useAIInteractionLogger.tsx` line 52:
+Before:
 ```
-if (!checkCredits(creditType)) {
+const value = latest[indicator];
+indicatorSummary += `**${indicator.toUpperCase()}**: ${value}\n`;
 ```
-`checkCredits` is async (returns `Promise<boolean>`). A Promise is always truthy, so `!Promise` is always `false`. The credit check never blocks.
 
-**Fix**: Change to `if (!(await checkCredits(creditType)))`.
+After:
+```
+if (indicator === 'macd') {
+  indicatorSummary += `**MACD**: ${latest.macd} | Signal: ${latest.macd_signal} | Histogram: ${latest.macd_hist}\n`;
+} else if (indicator === 'bbands') {
+  indicatorSummary += `**BBands**: Upper: ${latest.upper_band} | Middle: ${latest.middle_band} | Lower: ${latest.lower_band}\n`;
+} else {
+  indicatorSummary += `**${indicator.toUpperCase()}**: ${latest[indicator]}\n`;
+}
+```
 
----
+### What Does NOT Change
 
-### BUG 4 (HIGH): Admin "Unknown" Emails
+- No changes to the AURA edge function (`aura/index.ts`) — system prompt and tool definitions remain identical
+- No changes to routing, credit system, or feature registry
+- No changes to `fetch-historical-prices` or `fetch-technical-indicators` logic (only the API key source)
+- No changes to MarketChartWidget, plot_price_chart handling, or any UI components
+- Date awareness is already correct (uses `new Date()` at runtime in the system prompt)
 
-**Evidence**: `fetch-users-with-emails/index.ts` line 114 calls `listUsers()` without pagination. Supabase returns max 50 users per page. With 56+ profiles, 6+ users show "Unknown" email.
-
-**Fix**: Add pagination loop with `perPage: 1000` to fetch all auth users.
-
----
-
-### BUG 5 (MEDIUM): Admin Table Rows Not Fully Visible
-
-**Evidence**: `UsersTable.tsx` wraps the table in a Radix `ScrollArea` with fixed `h-[600px]`. The nested `overflow-x-auto` div inside ScrollArea makes horizontal scrolling unreliable, hiding action buttons.
-
-**Fix**: Replace `ScrollArea` with native `max-h-[600px] overflow-y-auto` on the outer container, keeping `overflow-x-auto` for horizontal scroll.
-
----
-
-### Technical Details
-
-**Files to modify:**
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| Database migration | Replace `cleanup_stale_engaged_credits()` + run immediately |
-| `src/hooks/useCreditManager.tsx` | Add engaged credits fetching, expose effective balances |
-| `src/components/CreditsNavbar.tsx` | Display effective balance (remaining - engaged) |
-| `src/components/CreditDisplay.tsx` | Display effective balance (remaining - engaged) |
-| `src/hooks/useAIInteractionLogger.tsx` | Add missing `await` on line 52 |
-| `supabase/functions/fetch-users-with-emails/index.ts` | Paginate `listUsers()` |
-| `src/components/admin/UsersTable.tsx` | Replace ScrollArea with native scroll |
-
-**What does NOT change:**
-- No routing changes
-- No payment/billing integration changes
-- No new database tables or columns
-- No edge function logic changes (except admin email fix)
-- No changes to AURA, TradingDashboard, or other pages
-- `tryEngageCredit` RPC remains atomic with `FOR UPDATE` locking
-- `auto_manage_credits` trigger remains unchanged
+| `supabase/functions/fetch-historical-prices/index.ts` | Replace hardcoded key with `Deno.env.get('TWELVE_DATA_API_KEY')` |
+| `supabase/functions/fetch-technical-indicators/index.ts` | Replace hardcoded key with `Deno.env.get('TWELVE_DATA_API_KEY')` |
+| `src/components/AURA.tsx` | Enrich MACD/BBands display in indicator summary |
 
