@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, MessageSquare, Clock, X, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Clock, X, PanelLeftClose, PanelLeft, Search, ChevronsRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AuraThread } from '@/services/auraConversationService';
 import { formatDistanceToNow } from 'date-fns';
@@ -36,9 +36,18 @@ export function AURAHistoryPanel({
   if (mode === 'sidebar' && collapsed) {
     return (
       <TooltipProvider delayDuration={200}>
-        <div className="flex flex-col bg-[#0a0d10] h-full w-[56px] border-r border-white/[0.06] transition-all duration-250 ease-in-out">
-          {/* Expand button */}
-          <div className="flex items-center justify-center py-3 border-b border-white/[0.06]">
+        <div className="flex flex-col justify-between bg-[#0a0d10] h-full w-[56px] border-r border-white/[0.06] transition-all duration-250 ease-in-out">
+          {/* Top: Logo */}
+          <div className="flex flex-col items-center pt-3 pb-2 border-b border-white/[0.06]">
+            <img
+              src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png"
+              alt="AlphaLens"
+              className="w-8 h-8 rounded-lg"
+            />
+          </div>
+
+          {/* Middle: Functional icons */}
+          <div className="flex flex-col items-center gap-1 py-3">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -46,19 +55,16 @@ export function AURAHistoryPanel({
                   size="icon"
                   onClick={onToggleCollapse}
                   className="h-8 w-8 text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
-                  aria-label="Expand History"
+                  aria-label="Search conversations"
                 >
-                  <PanelLeft className="h-4 w-4" />
+                  <Search className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6]">
-                Expand History
+                Search
               </TooltipContent>
             </Tooltip>
-          </div>
 
-          {/* New Chat icon */}
-          <div className="flex items-center justify-center py-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -75,36 +81,44 @@ export function AURAHistoryPanel({
                 New Chat
               </TooltipContent>
             </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleCollapse}
+                  className="h-8 w-8 text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
+                  aria-label="History"
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6]">
+                History
+              </TooltipContent>
+            </Tooltip>
           </div>
 
-          {/* Thread icons */}
-          <ScrollArea className="flex-1">
-            <div className="py-1 flex flex-col items-center gap-0.5">
-              {threads.map((thread) => (
-                <Tooltip key={thread.id}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onSelectThread(thread.id)}
-                      className={cn(
-                        "h-8 w-8 transition-colors",
-                        activeThreadId === thread.id
-                          ? "text-[#e5e7eb] bg-white/[0.06]"
-                          : "text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
-                      )}
-                      aria-label={thread.title || 'Chat thread'}
-                    >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6] max-w-[200px]">
-                    <p className="truncate">{thread.title || 'New Chat'}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </ScrollArea>
+          {/* Bottom: Expand */}
+          <div className="flex items-center justify-center pb-3 pt-2 border-t border-white/[0.06]">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleCollapse}
+                  className="h-8 w-8 text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
+                  aria-label="Expand sidebar"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6]">
+                Expand
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </TooltipProvider>
     );
