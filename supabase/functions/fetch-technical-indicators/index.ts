@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const TWELVE_API_KEY = 'e40fcead02054731aef55d2dfe01cf47';
+const TWELVE_API_KEY = Deno.env.get('TWELVE_DATA_API_KEY') || '';
 const VALID_INDICATORS = ['rsi', 'atr', 'sma', 'ema', 'macd', 'bbands'];
 
 serve(async (req) => {
