@@ -1435,8 +1435,13 @@ Now provide a complete, structured technical analysis based on this data.`;
         Object.entries(techData.indicators).forEach(([indicator, data]: [string, any]) => {
           if (data.values && data.values.length > 0) {
             const latest = data.values[0];
-            const value = latest[indicator];
-            indicatorSummary += `**${indicator.toUpperCase()}**: ${value}\n`;
+            if (indicator === 'macd') {
+              indicatorSummary += `**MACD**: ${latest.macd} | Signal: ${latest.macd_signal} | Histogram: ${latest.macd_hist}\n`;
+            } else if (indicator === 'bbands') {
+              indicatorSummary += `**BBands**: Upper: ${latest.upper_band} | Middle: ${latest.middle_band} | Lower: ${latest.lower_band}\n`;
+            } else {
+              indicatorSummary += `**${indicator.toUpperCase()}**: ${latest[indicator]}\n`;
+            }
           }
         });
 
