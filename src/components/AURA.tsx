@@ -239,6 +239,13 @@ interface AuraJobBadge {
   createdAt: Date;
 }
 
+const WELCOME_SUGGESTIONS = [
+  { label: 'Trade setup on EUR/USD', icon: TrendingUp },
+  { label: 'Macro outlook on Gold', icon: Globe },
+  { label: 'Technical indicators on BTC 15min', icon: BarChart3 },
+  { label: 'Generate a market report', icon: BookOpen },
+];
+
 const QUICK_ACTIONS: Record<string, string[]> = {
   'Backtester': [
     "Which setups had the highest win rate?",
@@ -1782,7 +1789,106 @@ Now provide a complete, structured technical analysis based on this data.`;
   const quickActions = QUICK_ACTIONS[context] || QUICK_ACTIONS.default;
 
   // Shared conversation column (messages + input)
-  const conversationColumn = (
+  const hasMessages = messages.length > 0;
+
+  // ===== WELCOME SCREEN (Grok-style centered layout when no messages) =====
+  const welcomeScreen = (
+    <div className="flex-1 flex flex-col min-w-0 h-full relative bg-[#0F172A]">
+      {/* Compact header — action buttons only */}
+      <div className="shrink-0 flex items-center justify-between px-3 py-2">
+        <div className="flex items-center gap-1">
+          {!isFullscreen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setShowHistory(!showHistory); refreshThreadList(); }}
+              className="hover:bg-white/5 h-8 w-8 min-h-0 min-w-0 p-0 shrink-0"
+              aria-label="History"
+            >
+              <PanelLeft className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5">
+          {!isFullscreen && (
+            <Button variant="ghost" size="sm" onClick={createNewChat} className="hover:bg-white/5 h-8 w-8 min-h-0 min-w-0 p-0" aria-label="New chat" title="New Chat">
+              <Plus className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setIsFullscreen(!isFullscreen)} className="hover:bg-white/5 h-8 w-8 min-h-0 min-w-0 p-0" aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            {isFullscreen ? <Minimize2 className="h-4 w-4 text-muted-foreground" /> : <Maximize2 className="h-4 w-4 text-muted-foreground" />}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setIsFullscreen(false); onToggle(); }} className="hover:bg-white/5 h-8 w-8 min-h-0 min-w-0 p-0" aria-label="Close">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Overlay history for reduced mode */}
+      {!isFullscreen && showHistory && (
+        <AURAHistoryPanel
+          threads={threads}
+          activeThreadId={activeThread?.id}
+          onSelectThread={(id) => { loadThread(id); setShowHistory(false); }}
+          onNewChat={() => { createNewChat(); setShowHistory(false); }}
+          onDeleteThread={deleteThreadById}
+          mode="overlay"
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+
+      {/* Centered welcome content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 gap-8">
+        {/* Logo + AURA branding */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="bg-white rounded-xl flex items-center justify-center shadow-lg p-1 w-16 h-16">
+            <img src="/lovable-uploads/56d2c4af-fb26-47d8-8419-779a1da01775.png" alt="alphaLens.ai" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground/90 tracking-tight">AURA</h1>
+          <p className="text-sm text-muted-foreground">Your AI Research Assistant</p>
+        </div>
+
+        {/* Centered input bar */}
+        <form onSubmit={handleSubmit} className="w-full max-w-[560px]">
+          <div className="flex gap-2 items-center">
+            <div className="flex-1 flex items-center gap-2 rounded-full bg-[#111827] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14">
+              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Badge variant="secondary" className="text-[10px] bg-white/5 text-muted-foreground border-0 shrink-0 px-2 py-0.5">
+                AURA v2
+              </Badge>
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask AURA anything..."
+                disabled={isLoading}
+                className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 h-12 text-base placeholder:text-white/30"
+              />
+            </div>
+            <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="rounded-full h-12 w-12 bg-gradient-to-r from-primary to-primary/80">
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </form>
+
+        {/* Suggestion chips */}
+        <div className="flex flex-wrap justify-center gap-2 max-w-[560px]">
+          {WELCOME_SUGGESTIONS.map((s) => (
+            <button
+              key={s.label}
+              onClick={() => sendMessage(s.label)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm text-muted-foreground bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:text-foreground transition-colors duration-200"
+            >
+              <s.icon className="h-3.5 w-3.5" />
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ===== CONVERSATION COLUMN (existing layout with messages + bottom input) =====
+  const conversationColumn = hasMessages ? (
     <div className="flex-1 flex flex-col min-w-0 h-full relative">
       {/* Header */}
       <CardHeader className="shrink-0 bg-[#0F172A] border-b border-[#374151]/30 px-3 py-2">
@@ -1791,7 +1897,6 @@ Now provide a complete, structured technical analysis based on this data.`;
           isFullscreen && "max-w-[760px] mx-auto"
         )}>
           <div className="flex items-center gap-2 min-w-0">
-            {/* Menu icon for overlay sidebar (reduced mode only) */}
             {!isFullscreen && (
               <Button
                 variant="ghost"
@@ -1881,50 +1986,6 @@ Now provide a complete, structured technical analysis based on this data.`;
       {/* Messages */}
       <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
         <div className="max-w-[760px] mx-auto">
-          {messages.length === 0 && (
-            <div className="space-y-4 flex flex-col items-center justify-center min-h-[40vh]">
-              <p className="text-sm text-[#6b7280] text-center">
-                Your contextual market intelligence companion for {context}.
-              </p>
-              
-              <div className="flex justify-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCollectivePanel(!showCollectivePanel)}
-                  className="gap-2 text-[#6b7280] hover:text-[#e5e7eb] border-0"
-                >
-                  <Globe className="h-4 w-4" />
-                  {showCollectivePanel ? 'Hide' : 'Show'} Collective Intelligence
-                </Button>
-              </div>
-
-              {showCollectivePanel && (
-                <AURACollectivePanel 
-                  onInsightClick={(insight) => {
-                    setInput(insight);
-                    setShowCollectivePanel(false);
-                  }}
-                />
-              )}
-              
-              <div className="space-y-2 w-full max-w-2xl">
-                <p className="text-xs font-semibold text-[#4b5563]">Quick Actions:</p>
-                {quickActions.map((action, idx) => (
-                  <Button
-                    key={idx}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-left h-auto py-2 px-3 text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-white/[0.04] border-0"
-                    onClick={() => handleQuickAction(action)}
-                  >
-                    {action}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="space-y-3">
             {messages.map((msg, idx) => (
               <div
@@ -1989,8 +2050,8 @@ Now provide a complete, structured technical analysis based on this data.`;
             {isLoading && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 px-2 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#6b7280]" />
-                  <span className="text-sm text-[#6b7280]">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
                     {activeJobId ? 'Launching...' : 'Analyzing...'}
                   </span>
                 </div>
@@ -2019,8 +2080,8 @@ Now provide a complete, structured technical analysis based on this data.`;
       <div className="shrink-0 px-4 pb-6 pt-4 bg-[#0F172A] border-t border-[#374151]/30">
         <form onSubmit={handleSubmit} className="flex gap-2 items-center max-w-[760px] mx-auto">
           <div className="flex-1 flex items-center gap-2 rounded-full bg-[#111827] shadow-[0_2px_12px_rgba(0,0,0,0.4)] px-4 h-14">
-            <Search className="h-4 w-4 text-[#4b5563] shrink-0" />
-            <Badge variant="secondary" className="text-[10px] bg-white/5 text-[#6b7280] border-0 shrink-0 px-2 py-0.5">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Badge variant="secondary" className="text-[10px] bg-white/5 text-muted-foreground border-0 shrink-0 px-2 py-0.5">
               AURA v2
             </Badge>
             <Input
@@ -2042,7 +2103,7 @@ Now provide a complete, structured technical analysis based on this data.`;
         </form>
       </div>
     </div>
-  );
+  ) : welcomeScreen;
 
   return (
     <>
