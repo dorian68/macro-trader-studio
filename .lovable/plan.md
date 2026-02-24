@@ -1,45 +1,45 @@
 
 
-## Smoother Hero-to-Section Transition
+## Fix Hero-to-Section Transition
 
 ### Problem
-The hero section ends at line 88 and the next section starts at line 91 with a hard `bg-background` boundary, creating a visible cutoff line.
+The current transition bleed div (line 90) uses `translate-y-1/2` and `z-20`, which causes it to extend into and overlay the next section's text content. Meanwhile, the hero image bottom edge remains visible because the internal gradient (Overlay 4, line 57) is too subtle to fully hide it.
 
 ### Solution
-Two small changes to eliminate the hard edge:
+Two changes, both in `src/pages/Homepage.tsx`:
 
-1. **Add a bleed element at the bottom of the hero section** -- a tall gradient div that extends *below* the hero bounds, overlapping into the next section's visual space. This sits inside the hero `<section>` but uses negative margin or absolute positioning to extend past it.
+**1. Remove the bleed div that overlaps the next section (line 89-90)**
 
-2. **Soften the top of the next section** -- add a top gradient overlay or remove hard top padding to let it blend.
+Delete the transition bleed div entirely. It is the cause of the gradient sitting on top of the next section text.
 
-### Implementation Details
+**2. Strengthen the bottom fade inside the hero (line 57)**
 
-**File: `src/pages/Homepage.tsx`**
-
-**Change 1 (after line 87, before `</section>`):** Add a bleed gradient that extends below the hero:
-
-```jsx
-{/* Transition bleed: extends below hero for smooth fade */}
-<div className="absolute bottom-0 left-0 right-0 h-32 sm:h-40 md:h-48 translate-y-1/2 z-20 bg-gradient-to-b from-transparent via-background/80 to-background pointer-events-none" />
-```
-
-This div is half inside, half outside the hero (via `translate-y-1/2`), creating a tall gradient that fades from transparent into `bg-background`. The `pointer-events-none` ensures no interaction issues.
-
-**Change 2 (line 91):** Add `relative` and slight negative top margin to the next section so the bleed overlaps it naturally, plus remove some top padding:
+Replace Overlay 4 with a stronger, more concentrated bottom fade that fully dissolves the hero image into solid dark *before* the section boundary:
 
 ```
-BEFORE: className="py-10 px-4 bg-background"
-AFTER:  className="relative z-10 pt-6 pb-10 px-4 bg-background"
+BEFORE (line 57):
+<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+AFTER:
+<div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
 ```
 
-Reduced `pt` (from `py-10` to `pt-6`) since the gradient bleed already provides visual spacing at the top.
+Changing `from-black/80` to `from-black` (fully opaque) and `via-black/20` to `via-black/60` ensures the bottom ~30% of the hero is effectively solid dark, hiding the image edge completely.
 
-### Visual Result
+**3. Restore normal styling on the next section (line 94)**
 
-Instead of a hard line between hero and section, there will be a ~6-8rem tall soft gradient zone that fades from the hero's dark imagery into the solid dark background, making the boundary invisible.
+```
+BEFORE: className="relative z-10 pt-6 pb-10 px-4 bg-background"
+AFTER:  className="py-10 px-4 bg-background"
+```
 
-### What is NOT changed
-- Hero image, overlays, content, CTA, parallax effect
-- Navbar, routing, auth
-- Content of the "Professional Trading Intelligence" section
-- Mobile responsiveness (gradient scales with `sm:h-40 md:h-48`)
+Remove `relative z-10` (no longer needed since there is no overlapping bleed) and restore `py-10` for balanced spacing.
+
+### Result
+- The hero image dissolves into solid dark entirely within the hero section
+- The next section starts cleanly on a dark background with no gradient haze over its text
+- No hard cutoff line visible
+- No overlay on the "Professional Trading Intelligence" heading
+- Parallax effect unchanged
+- All other hero elements (overlays, content, CTA) unchanged
+
