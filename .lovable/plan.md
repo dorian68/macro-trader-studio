@@ -1,88 +1,98 @@
 
 
-## Institutional Feature Cards Redesign
+## Hero Redesign: Cinematic Institutional Landing
 
 ### Overview
-Replace the 3 generic SaaS-style feature cards (circular icon containers + centered text) with institutional-grade, trading-desk-inspired cards featuring custom SVG mini-visuals, uppercase badge labels, and subtle CTA links.
+Transform the hero section into a full-viewport cinematic landing with the uploaded skyscraper image as background, layered dark gradient overlays (darker at top, image visible toward bottom), and content repositioned to the lower half for a premium institutional finance aesthetic.
 
-### Files to Create
+### Step 1 -- Copy the background image into the project
 
-**1. `src/components/homepage/SignalsEngineVisual.tsx`**
-- Compact SVG component (~80px tall) rendering an abstract mini candlestick/trend chart
-- Thin neutral strokes with one orange-accented line/marker
-- Subtle risk/reward band zone effect
-- No external dependencies -- pure inline SVG
+Copy the uploaded skyscraper image to `public/images/hero-bg.jpg` so it can be used as a CSS background image with proper caching and no bundling overhead.
 
-**2. `src/components/homepage/MacroDeskVisual.tsx`**
-- SVG component rendering a timeline strip with 4-5 vertical impact bars of varying heights
-- One bar highlighted in orange accent to represent a key macro event
-- Small dot markers along a baseline
+### Step 2 -- Modify `src/pages/Homepage.tsx` (hero section only, lines 43-71)
 
-**3. `src/components/homepage/ResearchLabVisual.tsx`**
-- SVG component rendering an abstract report preview
-- Horizontal lines simulating text rows, small bar chart blocks at the bottom
-- Flat and minimal, no document-icon feel
-
-### Files to Modify
-
-**4. `src/pages/Homepage.tsx`** -- Feature cards section only (lines 82-120)
-
-Replace the 3 `<Card>` blocks with the new institutional card structure:
+Replace the current hero `<section>` with a new structure:
 
 ```text
-CURRENT CARD STRUCTURE:
-  [Circular icon container]
-  [Centered title]
-  [Centered description]
+CURRENT:
+  <section class="relative pt-0 pb-24 px-4 text-center bg-background">
+    [logo centered at top]
+    [headline right below]
+    [description]
+    [buttons]
+  </section>
 
-NEW CARD STRUCTURE:
-  [Uppercase badge: "SIGNALS ENGINE"]
-  [SVG mini visual block]
-  [Left-aligned title: "AI Trade Setups"]
-  [Left-aligned description (2 lines max)]
-  [CTA link: "Open module -->"]
+NEW:
+  <section class="relative min-h-screen flex flex-col">
+    <!-- Background image layer -->
+    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat"
+         style="backgroundImage: url('/images/hero-bg.jpg')" />
+
+    <!-- Overlay 1: Strong dark gradient from top (navbar readability) -->
+    <div class="absolute inset-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent" />
+
+    <!-- Overlay 2: Subtle overall dark tint -->
+    <div class="absolute inset-0 bg-black/30" />
+
+    <!-- Overlay 3: Very subtle orange tint at lower-center -->
+    <div class="absolute inset-0 bg-gradient-to-t from-accent/5 via-transparent to-transparent" />
+
+    <!-- Content: pushed to lower half -->
+    <div class="relative z-10 flex-1 flex flex-col justify-end pb-16 sm:pb-20 md:pb-24 px-4">
+      <div class="container mx-auto max-w-5xl text-center">
+        [logo -- slightly smaller: h-28 sm:h-40 md:h-48]
+        [headline -- white text, strong contrast]
+        [description -- white/70 or muted lighter]
+        [CTA buttons -- with subtle backdrop-blur behind group]
+      </div>
+    </div>
+  </section>
 ```
 
-Card styling changes:
-- Remove `text-center` alignment -- use left-aligned text
-- Remove circular icon containers entirely
-- Add refined border styling: `border-border/60` with `hover:border-accent/40`
-- Card background stays dark (`bg-card`)
-- Badge: small uppercase text, `text-[10px] tracking-[0.15em]`, subtle border, muted color, with a tiny colored dot
-- Description: `line-clamp-2` to enforce 2-line max
-- CTA: `text-accent` link with arrow, subtle hover underline
-- Hover: `hover:-translate-y-0.5` for minimal lift
-- Cards wrapped in `flex flex-col h-full` for equal heights, CTA pushed to bottom with `mt-auto`
+### Key styling details
 
-Remove unused Lucide imports (`Brain`, `BarChart3`, `FileText`, `TrendingUp`, `Target`) since we no longer use any icons in this section.
+**Background image:**
+- `bg-cover bg-center bg-no-repeat` ensures the upward-perspective vanishing point stays prominent
+- Full `min-h-screen` height for strong first-screen impact
 
-### Hardcoded Content (not i18n)
+**Gradient overlays (3 layers):**
+1. Top-to-bottom gradient: `from-black/90 via-black/50 to-transparent` -- makes the top very dark (navbar readable), fading to reveal the image toward the bottom
+2. Subtle overall tint: `bg-black/30` -- slight dimming for text contrast everywhere
+3. Optional brand accent: `from-accent/5 via-transparent to-transparent` from bottom -- very restrained orange warmth near the content area
 
-Per the user's exact spec, the card text is hardcoded English:
+**Content positioning:**
+- `flex-1 flex flex-col justify-end` pushes all content to the lower portion
+- `pb-16 sm:pb-20 md:pb-24` gives breathing room from the bottom edge
+- Logo reduced slightly (h-28/h-40/h-48) since the hero is now full-height and the image is the star
 
-| Card | Badge | Title | Description | CTA | Route |
-|------|-------|-------|-------------|-----|-------|
-| 1 | SIGNALS ENGINE | AI Trade Setups | Regime-aware setups with entry, TP/SL, and sizing across FX & crypto. | Open module | /dashboard |
-| 2 | MACRO DESK | Macro Commentary | Event-driven commentary with market impact mapping and actionable bias. | Open module | /macro-analysis |
-| 3 | RESEARCH LAB | Research Reports | Institutional-style reports combining quant outputs and macro context. | Open module | /reports |
+**Headline:**
+- Change from `text-primary` to `text-white` for maximum contrast against the image
+- Keep existing i18n keys and text content unchanged
 
-### Design Tokens Used
-- `--accent` (orange `hsl(17 88% 58%)`) for highlights and CTA text
-- `--card` (dark `hsl(0 0% 5%)`) for card backgrounds
-- `--border` (subtle `hsl(0 0% 20%)`) for card borders
-- `--muted-foreground` for descriptions and badge text
-- `--foreground` (white) for titles
+**CTA buttons:**
+- Wrap in a container with `backdrop-blur-sm bg-black/20 rounded-xl px-6 py-4 inline-flex` for subtle glass effect ensuring readability over the image
+- Keep existing click handlers and variants
 
-### What Is NOT Touched
-- Hero section, navbar, CTA section, footer -- all untouched
-- Global styles, routing, auth logic -- all untouched
-- Section title ("Professional Trading Intelligence") and subtitle -- preserved
-- No new dependencies added
-- Responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) -- preserved
+**Responsiveness:**
+- Mobile: `min-h-screen` still works, content stacks naturally at bottom
+- Tablet/desktop: generous vertical space above content for the image to breathe
+- No structural layout changes -- just vertical repositioning within the hero
 
-### Technical Notes
-- SVG visuals are lightweight inline components (no chart libraries)
-- Each visual component is reusable and can be imported in dashboard or feature pages later
-- The `ArrowRight` Lucide import is kept (used in hero section)
-- Cards remain clickable via the CTA link using `navigate()`, not wrapping the whole card
+### What is NOT changed
+
+- PublicNavbar component -- completely untouched (stays sticky at top with its own bg)
+- Product Features section (lines 73-125) -- untouched
+- CTA section and Footer -- untouched
+- All routing, auth logic, i18n keys -- untouched
+- No new dependencies
+
+### Technical approach
+
+| Aspect | Implementation |
+|--------|---------------|
+| Image | Static file in `public/images/` referenced via inline style `backgroundImage` |
+| Overlays | 3 stacked `absolute inset-0` divs with Tailwind gradients |
+| Layout | Flexbox with `justify-end` to anchor content low |
+| Glass effect | `backdrop-blur-sm` on CTA button wrapper |
+| No JS changes | Only className and JSX structure changes in the hero section |
 
