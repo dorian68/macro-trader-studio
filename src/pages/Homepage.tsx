@@ -85,10 +85,13 @@ export default function Homepage() {
           </div>
         </div>
       </div>
+
+      {/* Transition bleed: extends below hero for smooth fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 sm:h-40 md:h-48 translate-y-1/2 z-20 bg-gradient-to-b from-transparent via-background/80 to-background pointer-events-none" />
     </section>
 
     {/* Product Features */}
-    <section className="py-10 px-4 bg-background">
+    <section className="relative z-10 pt-6 pb-10 px-4 bg-background">
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-10">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
