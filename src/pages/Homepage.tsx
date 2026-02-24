@@ -54,7 +54,7 @@ export default function Homepage() {
       {/* Overlay 3: Very subtle orange accent at bottom */}
       <div className="absolute inset-0 bg-gradient-to-t from-accent/5 via-transparent to-transparent" />
       {/* Overlay 4: Dark gradient from bottom for seamless blend into site background */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
 
       {/* Content pushed to lower half */}
       <div className="relative z-10 flex-1 flex flex-col justify-end pb-16 sm:pb-20 md:pb-24 px-4">
@@ -86,12 +86,10 @@ export default function Homepage() {
         </div>
       </div>
 
-      {/* Transition bleed: extends below hero for smooth fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 sm:h-40 md:h-48 translate-y-1/2 z-20 bg-gradient-to-b from-transparent via-background/80 to-background pointer-events-none" />
     </section>
 
     {/* Product Features */}
-    <section className="relative z-10 pt-6 pb-10 px-4 bg-background">
+    <section className="py-10 px-4 bg-background">
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-10">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
