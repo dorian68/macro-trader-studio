@@ -151,8 +151,18 @@ serve(async (req) => {
     const priceData = data.values.map((v: any) => ({
       instrument,
       interval,
-      datetime: v.datetime, // Keep full datetime for intraday
       date: v.datetime.split(' ')[0], // Extract date part for DB key
+      open: parseFloat(v.open),
+      high: parseFloat(v.high),
+      low: parseFloat(v.low),
+      close: parseFloat(v.close),
+      volume: v.volume ? parseFloat(v.volume) : null
+    }));
+
+    // Keep full datetime for response (intraday)
+    const responseData = data.values.map((v: any) => ({
+      datetime: v.datetime,
+      date: v.datetime.split(' ')[0],
       open: parseFloat(v.open),
       high: parseFloat(v.high),
       low: parseFloat(v.low),
@@ -175,15 +185,7 @@ serve(async (req) => {
       JSON.stringify({
         instrument,
         interval,
-        data: priceData.map(d => ({
-          datetime: d.datetime, // Include full datetime for intraday
-          date: d.date,
-          open: d.open,
-          high: d.high,
-          low: d.low,
-          close: d.close,
-          volume: d.volume
-        })),
+        data: responseData,
         cached: false
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
