@@ -53,23 +53,40 @@ serve(async (req) => {
       .order('date', { ascending: true });
 
     if (!cacheError && cachedData && cachedData.length > 0) {
-      console.log(`Returning ${cachedData.length} cached price points`);
-      return new Response(
-        JSON.stringify({
-          instrument,
-          interval,
-          data: cachedData.map(d => ({
-            date: d.date,
-            open: parseFloat(d.open),
-            high: parseFloat(d.high),
-            low: parseFloat(d.low),
-            close: parseFloat(d.close),
-            volume: d.volume ? parseFloat(d.volume) : null
-          })),
-          cached: true
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // Check cache freshness based on interval
+      const maxAgeMs = ['1min','5min','15min','30min','1h','2h','4h'].includes(interval)
+        ? 2 * 60 * 60 * 1000   // 2 hours for intraday
+        : interval === '1day' ? 24 * 60 * 60 * 1000  // 24h for daily
+        : 7 * 24 * 60 * 60 * 1000; // 7 days for weekly/monthly
+
+      const newestFetchedAt = cachedData.reduce((latest: Date, d: any) =>
+        d.fetched_at && new Date(d.fetched_at) > latest ? new Date(d.fetched_at) : latest,
+        new Date(0)
       );
+
+      const isFresh = (Date.now() - newestFetchedAt.getTime()) < maxAgeMs;
+
+      if (isFresh) {
+        console.log(`Returning ${cachedData.length} fresh cached price points (age: ${Math.round((Date.now() - newestFetchedAt.getTime()) / 60000)}min)`);
+        return new Response(
+          JSON.stringify({
+            instrument,
+            interval,
+            data: cachedData.map(d => ({
+              date: d.date,
+              open: parseFloat(d.open),
+              high: parseFloat(d.high),
+              low: parseFloat(d.low),
+              close: parseFloat(d.close),
+              volume: d.volume ? parseFloat(d.volume) : null
+            })),
+            cached: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        console.log(`Cache expired (age: ${Math.round((Date.now() - newestFetchedAt.getTime()) / 60000)}min), fetching fresh data`);
+      }
     }
 
     // Map instrument to TwelveData symbol
