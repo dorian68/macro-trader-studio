@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Clock, X, PanelLeftClose, PanelLeft, Search, ChevronsRight } from 'lucide-react';
+import { SquarePen, Trash2, Clock, X, PanelLeftClose, PanelLeft, Search, ChevronsRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AuraThread } from '@/services/auraConversationService';
 import { formatDistanceToNow } from 'date-fns';
@@ -74,7 +74,7 @@ export function AURAHistoryPanel({
                   className="h-8 w-8 text-[#6b7280] hover:text-[#e5e7eb] hover:bg-white/[0.04]"
                   aria-label="New Chat"
                 >
-                  <Plus className="h-4 w-4" />
+                  <SquarePen className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="bg-[#1f2937] border-[#374151] text-[#f3f4f6]">
@@ -178,7 +178,7 @@ export function AURAHistoryPanel({
           onClick={onNewChat}
           className="w-full gap-1.5 text-xs h-9 border-[#374151]/50 bg-white/[0.02] hover:bg-white/[0.06] text-[#9ca3af] hover:text-[#e5e7eb]"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <SquarePen className="h-3.5 w-3.5" />
           New Chat
         </Button>
       </div>
