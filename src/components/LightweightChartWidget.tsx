@@ -493,8 +493,8 @@ export default function LightweightChartWidget({
             if (onPriceUpdate) onPriceUpdate(price.toFixed(2));
             if (candlestickSeriesRef.current && lastCandleRef.current) {
               const updatedCandle: CandlestickData = {
-                ...lastCandleRef.current,
-                time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+                time: lastCandleRef.current.time as UTCTimestamp,
+                open: lastCandleRef.current.open,
                 close: price,
                 high: Math.max(lastCandleRef.current.high, price),
                 low: Math.min(lastCandleRef.current.low, price),
@@ -595,8 +595,8 @@ export default function LightweightChartWidget({
               } else {
                 // Update existing candle
                 const updatedCandle: CandlestickData = {
-                  ...lastCandleRef.current,
-                  time: timestamp,
+                  time: lastCandleRef.current.time as UTCTimestamp,
+                  open: lastCandleRef.current.open,
                   close: price,
                   high: Math.max(lastCandleRef.current.high, price),
                   low: Math.min(lastCandleRef.current.low, price),
