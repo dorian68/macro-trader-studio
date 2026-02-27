@@ -1,50 +1,82 @@
 
+## Audit et correction du widget chart (LightweightChartWidget)
 
-## Ajustements Hero : Titre sur une ligne (desktop) + Logo agrandi (mobile)
+### Probleme identifie
 
-### Changements
-
-**Fichier : `src/pages/Homepage.tsx`**
-
-**1. Desktop -- Reduire la taille du titre pour qu'il tienne sur une ligne**
-
-Le titre "Intelligent Financial Research Powered by AI" est actuellement en `md:text-5xl` (3rem) ce qui le force sur deux lignes. On passe a `md:text-4xl lg:text-5xl` avec un `max-w-5xl` deja en place, et on ajoute `whitespace-nowrap` sur desktop via une classe responsive pour garantir une seule ligne.
-
+L'erreur en console est :
 ```
-AVANT (ligne 71):
-className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4 leading-tight -mt-6 sm:-mt-10 md:-mt-14"
+Cannot update oldest data, last time=[object Object], new time=[object Object]
+```
+
+Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
+
+1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
+2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
+
+### Solution
+
+**Fichier : `src/components/LightweightChartWidget.tsx`**
+
+**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
+
+Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
+
+```text
+AVANT (ligne 597-603):
+const updatedCandle = {
+  ...lastCandleRef.current,
+  time: timestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
 APRES:
-className="text-2xl sm:text-3xl md:text-[2.5rem] lg:text-5xl font-bold text-white mb-4 leading-tight -mt-6 sm:-mt-10 md:-mt-14"
+// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
+const lastTime = lastCandleRef.current.time;
+const updatedCandle: CandlestickData = {
+  time: lastTime as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 ```
 
-On utilise `md:text-[2.5rem]` (entre 4xl et 5xl) pour les ecrans moyens, et on garde `lg:text-5xl` pour les grands ecrans ou ca tient naturellement sur une ligne.
+Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
 
-**2. Mobile -- Logo beaucoup plus gros et contenu centre**
+**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
 
-Le logo est actuellement `h-36` sur mobile (144px), ce qui laisse beaucoup de vide. On l'agrandit significativement pour remplir l'espace et donner un impact visuel fort.
+Le meme pattern est utilise dans le fallback Binance WebSocket :
 
-```
-AVANT (ligne 67):
-className="h-36 sm:h-52 md:h-64 w-auto object-contain"
+```text
+AVANT (ligne 495-501):
+const updatedCandle: CandlestickData = {
+  ...lastCandleRef.current,
+  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
 APRES:
-className="h-56 sm:h-52 md:h-64 w-auto object-contain"
-```
-
-Le logo mobile passe de `h-36` (144px) a `h-56` (224px) -- +55% plus grand. Sur `sm` il reste a `h-52` et sur `md+` a `h-64`.
-
-On ajuste aussi le margin-top negatif pour compenser le logo agrandi sur mobile :
-
-```
-AVANT (ligne 71):
--mt-6 sm:-mt-10 md:-mt-14
-
-APRES:
--mt-10 sm:-mt-10 md:-mt-14
+const updatedCandle: CandlestickData = {
+  time: lastCandleRef.current.time as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 ```
 
 ### Ce qui ne change PAS
-- Textes, traductions, boutons, overlays, image de fond
-- Layout general, footer, navbar
-- Comportement des CTA et navigation
+- La logique de chargement des donnees historiques
+- La connexion/reconnexion WebSocket et le backoff
+- Le cache localStorage
+- L'initialisation du chart (mount unique)
+- Le fallback TradingView
+- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
+
+### Details techniques
+
+Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
