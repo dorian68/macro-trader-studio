@@ -128,6 +128,11 @@ export default function Auth() {
             handleOAuthEvent(session);
           }, 0);
         } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
+          // Skip if handleSignIn is already managing navigation
+          if (isManualSignInRef.current) {
+            console.log('[Auth] Skipping onAuthStateChange navigation — handleSignIn is active');
+            return;
+          }
           // Email/password flow - check for pending plan from Pricing
           const pendingPlan = localStorage.getItem('alphalens_pending_plan');
           const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
