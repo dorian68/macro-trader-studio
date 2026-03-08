@@ -54,7 +54,7 @@ export default function EmailConfirmation() {
       type: 'signup',
       email: userEmail,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
+        emailRedirectTo: `${window.location.origin}/email-confirmation-success`
       }
     });
 

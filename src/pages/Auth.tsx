@@ -495,22 +495,13 @@ export default function Auth() {
         localStorage.setItem('alphalens_pending_plan', selectedPlan);
       }
 
+      // Store free trial intent for activation after email confirmation + first login
+      if (intent === 'free_trial') {
+        localStorage.setItem('alphalens_pending_free_trial', 'true');
+      }
+
       // Redirect to confirmation page instead of just showing a toast
       navigate('/email-confirmation');
-
-      // If intent is free_trial, activate it after successful signup
-      if (intent === 'free_trial') {
-        setTimeout(async () => {
-          const { error: trialError } = await activateFreeTrial();
-          if (!trialError) {
-            toast({
-              title: t('success.freeTrialActivated'),
-              description: t('success.freeTrialActivatedDescription'),
-            });
-            navigate('/payment-success?type=free_trial');
-          }
-        }, 1000);
-      }
     }
 
     setLoading(false);
