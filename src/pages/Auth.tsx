@@ -129,6 +129,7 @@ export default function Auth() {
         } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
           // Email/password flow - check for pending plan from Pricing
           const pendingPlan = localStorage.getItem('alphalens_pending_plan');
+          const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
           if (pendingPlan) {
             localStorage.removeItem('alphalens_pending_plan');
             // Defer checkout redirect to avoid async in callback
@@ -143,6 +144,21 @@ export default function Auth() {
                 }
               } catch (e) {
                 console.error('[Auth] Failed to create checkout for pending plan:', e);
+              }
+              navigate('/dashboard');
+            }, 0);
+          } else if (pendingTrial) {
+            // Deferred free trial activation after email confirmation
+            localStorage.removeItem('alphalens_pending_free_trial');
+            setTimeout(async () => {
+              try {
+                const { error: trialError } = await activateFreeTrial();
+                if (!trialError) {
+                  navigate('/payment-success?type=free_trial');
+                  return;
+                }
+              } catch (e) {
+                console.error('[Auth] Failed to activate pending free trial:', e);
               }
               navigate('/dashboard');
             }, 0);
