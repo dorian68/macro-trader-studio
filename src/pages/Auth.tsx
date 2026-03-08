@@ -664,6 +664,7 @@ export default function Auth() {
     }
 
     setLoading(false);
+    isManualSignInRef.current = false;
   };
 
   // Handle broker selection from picker dialog
