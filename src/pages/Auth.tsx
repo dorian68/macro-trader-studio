@@ -1029,7 +1029,7 @@ export default function Auth() {
                           onClick={async () => {
                             setForgotPasswordLoading(true);
                             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                              redirectTo: `${window.location.origin}/auth`,
+                              redirectTo: `${window.location.origin}/reset-password`,
                             });
                             setForgotPasswordLoading(false);
                             if (error) {
