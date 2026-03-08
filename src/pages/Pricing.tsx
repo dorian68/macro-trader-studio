@@ -1,3 +1,4 @@
+import { SEOHead } from "@/components/SEOHead";
 import React, { useEffect, useState } from 'react';
 import { Check, User, LogIn } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

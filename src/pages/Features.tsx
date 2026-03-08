@@ -1,3 +1,4 @@
+import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";

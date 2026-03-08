@@ -1,3 +1,4 @@
+import { SEOHead } from "@/components/SEOHead";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

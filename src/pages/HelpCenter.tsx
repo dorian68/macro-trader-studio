@@ -1,3 +1,4 @@
+import { SEOHead } from "@/components/SEOHead";
 import { useState } from "react";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
