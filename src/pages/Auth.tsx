@@ -129,6 +129,7 @@ export default function Auth() {
         } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
           // Email/password flow - check for pending plan from Pricing
           const pendingPlan = localStorage.getItem('alphalens_pending_plan');
+          const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
           if (pendingPlan) {
             localStorage.removeItem('alphalens_pending_plan');
             // Defer checkout redirect to avoid async in callback
@@ -143,6 +144,21 @@ export default function Auth() {
                 }
               } catch (e) {
                 console.error('[Auth] Failed to create checkout for pending plan:', e);
+              }
+              navigate('/dashboard');
+            }, 0);
+          } else if (pendingTrial) {
+            // Deferred free trial activation after email confirmation
+            localStorage.removeItem('alphalens_pending_free_trial');
+            setTimeout(async () => {
+              try {
+                const { error: trialError } = await activateFreeTrial();
+                if (!trialError) {
+                  navigate('/payment-success?type=free_trial');
+                  return;
+                }
+              } catch (e) {
+                console.error('[Auth] Failed to activate pending free trial:', e);
               }
               navigate('/dashboard');
             }, 0);
@@ -452,7 +468,7 @@ export default function Auth() {
 
     setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    const redirectUrl = `${window.location.origin}/email-confirmation-success`;
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -495,22 +511,13 @@ export default function Auth() {
         localStorage.setItem('alphalens_pending_plan', selectedPlan);
       }
 
+      // Store free trial intent for activation after email confirmation + first login
+      if (intent === 'free_trial') {
+        localStorage.setItem('alphalens_pending_free_trial', 'true');
+      }
+
       // Redirect to confirmation page instead of just showing a toast
       navigate('/email-confirmation');
-
-      // If intent is free_trial, activate it after successful signup
-      if (intent === 'free_trial') {
-        setTimeout(async () => {
-          const { error: trialError } = await activateFreeTrial();
-          if (!trialError) {
-            toast({
-              title: t('success.freeTrialActivated'),
-              description: t('success.freeTrialActivatedDescription'),
-            });
-            navigate('/payment-success?type=free_trial');
-          }
-        }, 1000);
-      }
     }
 
     setLoading(false);
@@ -629,8 +636,10 @@ export default function Auth() {
       // User exists but email not confirmed, redirect to confirmation page
       navigate('/email-confirmation');
     } else if (data.user) {
-      // If intent is free_trial, activate it after successful signin
-      if (intent === 'free_trial') {
+      // Check for pending free trial from signup flow
+      const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
+      if (pendingTrial || intent === 'free_trial') {
+        localStorage.removeItem('alphalens_pending_free_trial');
         const { error: trialError } = await activateFreeTrial();
         if (!trialError) {
           toast({
