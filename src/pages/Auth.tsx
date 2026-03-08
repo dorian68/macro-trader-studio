@@ -18,7 +18,7 @@ import { useCreditManager } from '@/hooks/useCreditManager';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { useTranslation } from 'react-i18next';
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 export default function Auth() {
   const { t } = useTranslation('auth');
