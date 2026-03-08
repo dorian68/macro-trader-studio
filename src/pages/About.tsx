@@ -11,6 +11,7 @@ export default function About() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead titleKey="seo.aboutTitle" descriptionKey="seo.aboutDescription" canonicalPath="/about" />
       <PublicNavbar />
       <div className="max-w-4xl mx-auto space-y-6 px-4 py-6">
         <div className="text-center space-y-4">
