@@ -1,82 +1,42 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## Signup Flow Audit
 
-L'erreur en console est :
-```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
+### What works correctly
 
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
+1. **Signup request** — `POST /signup` returns 200 with user `bae9d86f`. Redirect URL correctly set to `/email-confirmation-success`. ✅
+2. **DB trigger `handle_new_user`** — Creates profile with `status: 'pending'` and assigns `user` role in `user_roles`. ✅
+3. **Admin notification** — `notify-new-registration` fires successfully, notifies 2 super users. ✅
+4. **Welcome email** — `send-admin-notification` sends `welcome_signup` to the new user. ✅
+5. **Confirmation email** — Supabase sends confirmation mail to `labrynicolas@gmail.com`. ✅
+6. **Navigation** — User redirected to `/email-confirmation` page. ✅
+7. **Free trial intent** — If `intent=free_trial`, it's stored in localStorage for later activation (no longer called immediately). ✅
 
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
+### Bug found: Race condition on login after email confirmation
 
-### Solution
+**Location:** `src/pages/Auth.tsx` — `onAuthStateChange` handler (lines 129-167) vs `handleSignIn` (lines 597-659)
 
-**Fichier : `src/components/LightweightChartWidget.tsx`**
+**Problem:** When a user logs in with email/password on `/auth`, TWO code paths run:
 
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
+1. `handleSignIn` (synchronous after `signInWithPassword`) — checks `alphalens_pending_free_trial`, removes it, calls `activateFreeTrial()`, navigates to `/payment-success?type=free_trial`
+2. `onAuthStateChange` SIGNED_IN callback (via `setTimeout(..., 0)`) — finds `pendingTrial` already removed by #1, falls through to `navigate('/dashboard')` (line 163/166)
 
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
+**Result:** The deferred `onAuthStateChange` callback overrides the navigation from `handleSignIn`, sending the user to `/dashboard` instead of `/payment-success?type=free_trial`. The free trial IS activated, but the user misses the success page.
 
-```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+**Fix:** In the `onAuthStateChange` SIGNED_IN handler for email/password (lines 129-167), skip navigation entirely when the sign-in originated from `handleSignIn`. The simplest approach: set a flag like `isManualSignIn` before calling `signInWithPassword`, and check it in the listener to avoid double-handling.
 
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
+### No other issues detected
 
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
+- The `EmailConfirmationSuccess` page correctly redirects to `/auth` for login
+- The `EmailConfirmation` page resend uses the correct redirect URL (`/email-confirmation-success`)
+- The `activateFreeTrial` edge function is only called post-confirmation (JWT valid)
+- Broker selection is optional for email signup (only required for Google OAuth)
 
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
+### Summary
 
-Le meme pattern est utilise dans le fallback Binance WebSocket :
+The signup itself is clean. The only bug is a **navigation race condition** on first login after confirmation when `intent=free_trial`. For users without a free trial intent, the flow works correctly since both paths navigate to `/dashboard`.
 
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+### Proposed fix
 
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
+In `handleSignIn`, set a ref flag before calling `signInWithPassword`. In the `onAuthStateChange` handler, check that flag and skip navigation if the manual sign-in handler already took care of it. This is a ~5 line change.
 
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
-
-### Details techniques
-
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
