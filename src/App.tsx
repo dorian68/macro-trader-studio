@@ -55,6 +55,7 @@ const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
 const ComingSoon = lazy(() => import("./pages/ComingSoon"));
 const TestWebhook = lazy(() => import("./pages/TestWebhook"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 // Labs pages (lazy loaded)
 const AlphaLensLabs = lazy(() => import("./pages/AlphaLensLabs"));
@@ -106,6 +107,7 @@ const App = () => {
                             <Route path="/reports" element={<AuthGuard requireApproval><Reports /></AuthGuard>} />
                             <Route path="/portfolio" element={<Portfolio />} />
                             <Route path="/history" element={<History />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
                             <Route path="/email-confirmation" element={<EmailConfirmation />} />
                             <Route path="/email-confirmation-success" element={<EmailConfirmationSuccess />} />
                             <Route path="/payment-success" element={<PaymentSuccess />} />

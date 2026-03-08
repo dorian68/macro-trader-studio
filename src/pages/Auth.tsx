@@ -624,6 +624,7 @@ export default function Auth() {
         setPendingReactivationUser(data.user);
         setShowReactivation(true);
         setLoading(false);
+        isManualSignInRef.current = false;
         return;
       }
     }
@@ -865,8 +866,8 @@ export default function Auth() {
                     if (error) throw error;
 
                     toast({
-                      title: t('auth.reactivation.request_sent_title'),
-                      description: t('auth.reactivation.request_sent_description'),
+                      title: t('reactivation.request_sent_title'),
+                      description: t('reactivation.request_sent_description'),
                     });
 
                     setShowReactivation(false);
@@ -878,13 +879,13 @@ export default function Auth() {
 
                     if (error.message?.includes('already have a pending')) {
                       toast({
-                        title: t('auth.reactivation.pending_request_title'),
-                        description: t('auth.reactivation.pending_request_description'),
+                        title: t('reactivation.pending_request_title'),
+                        description: t('reactivation.pending_request_description'),
                       });
                     } else {
                       toast({
-                        title: t('auth.reactivation.request_error_title'),
-                        description: t('auth.reactivation.request_error_description'),
+                        title: t('reactivation.request_error_title'),
+                        description: t('reactivation.request_error_description'),
                         variant: "destructive",
                       });
                     }
@@ -898,7 +899,7 @@ export default function Auth() {
                 className="w-full"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t('auth.reactivation.request_button')}
+                {t('reactivation.request_button')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1028,7 +1029,7 @@ export default function Auth() {
                           onClick={async () => {
                             setForgotPasswordLoading(true);
                             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                              redirectTo: `${window.location.origin}/auth`,
+                              redirectTo: `${window.location.origin}/reset-password`,
                             });
                             setForgotPasswordLoading(false);
                             if (error) {

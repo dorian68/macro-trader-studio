@@ -1,80 +1,82 @@
 
+## Audit et correction du widget chart (LightweightChartWidget)
 
-## Auth Flow Audit — Critical Bugs Found
+### Probleme identifie
 
-### Bug 1: No `/reset-password` page (CRITICAL — feature completely broken)
+L'erreur en console est :
+```
+Cannot update oldest data, last time=[object Object], new time=[object Object]
+```
 
-**Location:** `src/pages/Auth.tsx` line 1031
+Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
 
-Password reset redirects to `/auth` after the user clicks the email link. There is no `/reset-password` route in `App.tsx`, and no code anywhere to detect `type=recovery` in the URL hash or show a "set new password" form. When a user clicks the reset link in their email:
-1. They land on `/auth` with `#type=recovery` in the URL
-2. Supabase auto-logs them in
-3. They see the normal login form — **password is never changed**
+1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
+2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
 
-**Fix:** Create a dedicated `src/pages/ResetPassword.tsx` page that:
-- Detects `type=recovery` in the URL hash
-- Shows a form with new password + confirm password fields
-- Calls `supabase.auth.updateUser({ password })` on submit
-- Redirects to `/auth` on success
+### Solution
 
-Add the route to `App.tsx` and update the `redirectTo` in `Auth.tsx` line 1031.
+**Fichier : `src/components/LightweightChartWidget.tsx`**
 
----
+**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
 
-### Bug 2: Wrong translation keys in reactivation dialog (broken UI text)
+Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
 
-**Location:** `src/pages/Auth.tsx` lines 868, 869, 881, 882, 886, 887, 901
+```text
+AVANT (ligne 597-603):
+const updatedCandle = {
+  ...lastCandleRef.current,
+  time: timestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
-The file uses `useTranslation('auth')` which means the `t()` function already operates in the `auth` namespace. But the reactivation toasts use `t('auth.reactivation.request_sent_title')` — this resolves to the key `auth.auth.reactivation.request_sent_title` which doesn't exist.
+APRES:
+// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
+const lastTime = lastCandleRef.current.time;
+const updatedCandle: CandlestickData = {
+  time: lastTime as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
 
-All these should be `t('reactivation.request_sent_title')`, `t('reactivation.request_sent_description')`, etc.
+Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
 
-**Also:** The Farsi `auth.json` is missing `request_button`, `request_sent_title`, `request_sent_description`, `request_error_title`, `request_error_description`, `pending_request_title`, `pending_request_description` keys.
+**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
 
----
+Le meme pattern est utilise dans le fallback Binance WebSocket :
 
-### Bug 3: `isManualSignInRef` not reset on early returns (navigation permanently broken)
+```text
+AVANT (ligne 495-501):
+const updatedCandle: CandlestickData = {
+  ...lastCandleRef.current,
+  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
-**Location:** `src/pages/Auth.tsx` lines 621-628
+APRES:
+const updatedCandle: CandlestickData = {
+  time: lastCandleRef.current.time as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
 
-If a soft-deleted user logs in, `handleSignIn` returns early at line 627 without resetting `isManualSignInRef.current = false` (which happens at line 667). This means the `onAuthStateChange` handler will skip ALL subsequent navigation forever for this component instance, including after the reactivation dialog is dismissed and the user tries to log in again.
+### Ce qui ne change PAS
+- La logique de chargement des donnees historiques
+- La connexion/reconnexion WebSocket et le backoff
+- Le cache localStorage
+- L'initialisation du chart (mount unique)
+- Le fallback TradingView
+- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
 
-**Fix:** Reset the ref in ALL early return paths in `handleSignIn`, or use a `finally`-style pattern.
+### Details techniques
 
----
-
-### Bug 4: Missing Farsi reactivation translation keys
-
-`src/locales/fa/auth.json` `reactivation` section only has `title`, `description`, `confirm`, `cancel`, `success`, `error`. It's missing the keys used in the dialog: `request_button`, `request_sent_title`, `request_sent_description`, `request_error_title`, `request_error_description`, `pending_request_title`, `pending_request_description`.
-
----
-
-### Implementation Plan
-
-1. **Create `src/pages/ResetPassword.tsx`**
-   - Detect recovery token from URL hash
-   - Show new password + confirm password form
-   - Call `supabase.auth.updateUser({ password })` on submit
-   - Redirect to `/auth` with success toast
-
-2. **Add route in `src/App.tsx`**
-   - Add `<Route path="/reset-password" element={<ResetPassword />} />`
-
-3. **Fix redirect URL in `src/pages/Auth.tsx`**
-   - Line 1031: change `redirectTo` from `/auth` to `/reset-password`
-
-4. **Fix translation keys in `src/pages/Auth.tsx`**
-   - Lines 868-901: Remove `auth.` prefix from all `t('auth.reactivation.*')` calls
-
-5. **Fix `isManualSignInRef` reset in `src/pages/Auth.tsx`**
-   - Reset ref to `false` in the soft-delete early return (line 627) and error path (line 641)
-
-6. **Update `src/locales/fa/auth.json`**
-   - Add missing reactivation keys to match en/es structure
-
-### Files to modify
-- `src/pages/ResetPassword.tsx` — new file
-- `src/App.tsx` — add route
-- `src/pages/Auth.tsx` — fix redirectTo, translation keys, ref reset
-- `src/locales/fa/auth.json` — add missing keys
-
+Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
