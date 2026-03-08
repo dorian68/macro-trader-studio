@@ -55,6 +55,7 @@ const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
 const ComingSoon = lazy(() => import("./pages/ComingSoon"));
 const TestWebhook = lazy(() => import("./pages/TestWebhook"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 // Labs pages (lazy loaded)
 const AlphaLensLabs = lazy(() => import("./pages/AlphaLensLabs"));
