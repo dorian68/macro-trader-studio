@@ -604,6 +604,7 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
 
+    isManualSignInRef.current = true;
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
