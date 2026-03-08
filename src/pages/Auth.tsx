@@ -48,6 +48,7 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const { activateFreeTrial } = useCreditManager();
   const intent = searchParams.get('intent');
+  const isManualSignInRef = useRef(false);
   const selectedPlan = searchParams.get('plan');
   const { fetchActiveBrokers } = useBrokerActions();
 
