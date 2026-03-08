@@ -1,3 +1,4 @@
+import { SEOHead } from "@/components/SEOHead";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +9,8 @@ export default function Terms() {
   
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead titleKey="seo.termsTitle" descriptionKey="seo.termsDescription" canonicalPath="/terms" />
       <PublicNavbar />
-
       {/* Hero Section */}
       <section className="py-20 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
         <div className="container mx-auto max-w-4xl">

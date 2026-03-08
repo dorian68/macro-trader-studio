@@ -1,3 +1,4 @@
+import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ export default function Features() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead titleKey="seo.featuresTitle" descriptionKey="seo.featuresDescription" canonicalPath="/features" />
       <PublicNavbar />
 
       <section className="pt-10 pb-8 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">

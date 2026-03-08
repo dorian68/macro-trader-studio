@@ -1,3 +1,4 @@
+import { SEOHead } from "@/components/SEOHead";
 import { useState } from "react";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +59,7 @@ export default function HelpCenter() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead titleKey="seo.helpCenterTitle" descriptionKey="seo.helpCenterDescription" canonicalPath="/help-center" />
       <PublicNavbar />
 
       {/* Hero Section */}

@@ -1,85 +1,82 @@
 
+## Audit et correction du widget chart (LightweightChartWidget)
 
-## SEO Audit — Findings & Improvement Plan
+### Probleme identifie
 
-### Current State
-
-| Area | Status | Issue |
-|------|--------|-------|
-| `<title>` + `<meta description>` | ⚠️ Partial | Only Homepage uses `SEOHead`. All other pages (Features, About, Pricing, Contact, Documentation, etc.) have NO per-page title/description |
-| Canonical URLs | ❌ Missing | No `<link rel="canonical">` anywhere — risk of duplicate content penalties |
-| Sitemap | ❌ Missing | No `sitemap.xml` — crawlers can't discover all pages efficiently |
-| robots.txt | ⚠️ Incomplete | No `Sitemap:` directive pointing to sitemap.xml |
-| Structured Data (JSON-LD) | ❌ Missing | No schema.org markup — no rich snippets in search results |
-| hreflang tags | ⚠️ Broken | SEOHead points to `/en`, `/es`, `/fa` but those routes don't exist in the router |
-| OG/Twitter meta | ⚠️ Static | Hardcoded in index.html, never updated per-page — social shares always show homepage info |
-| Image alt texts | ⚠️ Inconsistent | Some images have alt, some don't |
-| Semantic HTML | ⚠️ Weak | Homepage uses `<section>` but most pages use only `<div>` wrappers |
-| Core Web Vitals | ✅ Good | Lazy loading, preconnect, webp, font-display swap already in place |
-| `<h1>` structure | ⚠️ Missing on most pages | Only Homepage has clear `<h1>`. Other pages may have inconsistent heading hierarchy |
-
-### Implementation Plan
-
-#### 1. Upgrade `SEOHead` component
-- Add `canonicalPath` prop → renders `<link rel="canonical" href="...">`
-- Add `ogImage` prop with fallback to default og-image
-- Add `ogType` prop (default: `website`)
-- Fix hreflang to use actual site URL (no `/en` prefix since routes aren't language-prefixed)
-- Add `twitter:card` and `twitter:image` per page
-- Remove hardcoded OG tags from `index.html` (let Helmet handle them dynamically)
-
-#### 2. Add `SEOHead` to ALL public pages
-Each page gets unique title + description:
-- **Features** → "AI Trading Features | alphaLens AI"
-- **Pricing** → "Pricing Plans | alphaLens AI"
-- **About** → "About Us | alphaLens AI"
-- **Contact** → "Contact | alphaLens AI"
-- **Documentation** → "Documentation | alphaLens AI"
-- **Help Center** → "Help Center | alphaLens AI"
-- **Privacy / Terms** → respective titles
-
-Add SEO translation keys to `en/common.json`, `es/common.json`, `fa/common.json`.
-
-#### 3. Create `public/sitemap.xml`
-Static sitemap listing all public routes:
+L'erreur en console est :
 ```
-/, /features, /pricing, /about, /contact, /documentation, 
-/help-center, /api, /privacy, /terms, /auth, /product
+Cannot update oldest data, last time=[object Object], new time=[object Object]
 ```
-With `<lastmod>`, `<changefreq>`, and `<priority>` attributes.
 
-#### 4. Update `robots.txt`
-Add `Sitemap: https://macro-trader-studio.lovable.app/sitemap.xml` directive.
+Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
 
-#### 5. Add JSON-LD structured data
-- **Homepage**: `Organization` + `WebSite` with `SearchAction`
-- **Pricing**: `Product` schema with offers
-- **About**: `Organization` schema
-- **Contact**: `ContactPage` schema
+1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
+2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
 
-Implemented as a `<script type="application/ld+json">` inside the `SEOHead` component or a new `StructuredData` component.
+### Solution
 
-#### 6. Minor HTML semantics
-- Wrap page content in `<main>` tag on pages that don't have it
-- Ensure every page has exactly one `<h1>`
+**Fichier : `src/components/LightweightChartWidget.tsx`**
 
-### Files to modify
-- `src/components/SEOHead.tsx` — enhanced with canonical, OG, structured data
-- `index.html` — remove duplicate OG tags (Helmet manages them)
-- `public/robots.txt` — add Sitemap directive
-- `public/sitemap.xml` — new file
-- `src/locales/en/common.json` — add per-page SEO keys
-- `src/locales/es/common.json` — add per-page SEO keys
-- `src/locales/fa/common.json` — add per-page SEO keys
-- `src/pages/Features.tsx` — add SEOHead
-- `src/pages/About.tsx` — add SEOHead
-- `src/pages/Pricing.tsx` — add SEOHead
-- `src/pages/Contact.tsx` — add SEOHead
-- `src/pages/Documentation.tsx` — add SEOHead
-- `src/pages/HelpCenter.tsx` — add SEOHead
-- `src/pages/Privacy.tsx` — add SEOHead
-- `src/pages/Terms.tsx` — add SEOHead
-- `src/pages/API.tsx` — add SEOHead
+**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
 
-No regressions: all changes are additive (meta tags + sitemap). No routing, logic, or UI changes.
+Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
 
+```text
+AVANT (ligne 597-603):
+const updatedCandle = {
+  ...lastCandleRef.current,
+  time: timestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+
+APRES:
+// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
+const lastTime = lastCandleRef.current.time;
+const updatedCandle: CandlestickData = {
+  time: lastTime as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
+
+Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
+
+**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
+
+Le meme pattern est utilise dans le fallback Binance WebSocket :
+
+```text
+AVANT (ligne 495-501):
+const updatedCandle: CandlestickData = {
+  ...lastCandleRef.current,
+  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+
+APRES:
+const updatedCandle: CandlestickData = {
+  time: lastCandleRef.current.time as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
+
+### Ce qui ne change PAS
+- La logique de chargement des donnees historiques
+- La connexion/reconnexion WebSocket et le backoff
+- Le cache localStorage
+- L'initialisation du chart (mount unique)
+- Le fallback TradingView
+- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
+
+### Details techniques
+
+Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
