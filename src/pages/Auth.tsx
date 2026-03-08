@@ -879,13 +879,13 @@ export default function Auth() {
 
                     if (error.message?.includes('already have a pending')) {
                       toast({
-                        title: t('auth.reactivation.pending_request_title'),
-                        description: t('auth.reactivation.pending_request_description'),
+                        title: t('reactivation.pending_request_title'),
+                        description: t('reactivation.pending_request_description'),
                       });
                     } else {
                       toast({
-                        title: t('auth.reactivation.request_error_title'),
-                        description: t('auth.reactivation.request_error_description'),
+                        title: t('reactivation.request_error_title'),
+                        description: t('reactivation.request_error_description'),
                         variant: "destructive",
                       });
                     }
