@@ -59,6 +59,7 @@ export default function HelpCenter() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead titleKey="seo.helpCenterTitle" descriptionKey="seo.helpCenterDescription" canonicalPath="/help-center" />
       <PublicNavbar />
 
       {/* Hero Section */}
