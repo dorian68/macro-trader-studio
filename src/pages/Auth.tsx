@@ -620,8 +620,10 @@ export default function Auth() {
       // User exists but email not confirmed, redirect to confirmation page
       navigate('/email-confirmation');
     } else if (data.user) {
-      // If intent is free_trial, activate it after successful signin
-      if (intent === 'free_trial') {
+      // Check for pending free trial from signup flow
+      const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
+      if (pendingTrial || intent === 'free_trial') {
+        localStorage.removeItem('alphalens_pending_free_trial');
         const { error: trialError } = await activateFreeTrial();
         if (!trialError) {
           toast({
