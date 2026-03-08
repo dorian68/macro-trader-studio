@@ -866,8 +866,8 @@ export default function Auth() {
                     if (error) throw error;
 
                     toast({
-                      title: t('auth.reactivation.request_sent_title'),
-                      description: t('auth.reactivation.request_sent_description'),
+                      title: t('reactivation.request_sent_title'),
+                      description: t('reactivation.request_sent_description'),
                     });
 
                     setShowReactivation(false);
