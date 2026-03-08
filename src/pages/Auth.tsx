@@ -624,6 +624,7 @@ export default function Auth() {
         setPendingReactivationUser(data.user);
         setShowReactivation(true);
         setLoading(false);
+        isManualSignInRef.current = false;
         return;
       }
     }
