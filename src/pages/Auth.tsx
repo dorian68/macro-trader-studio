@@ -18,7 +18,7 @@ import { useCreditManager } from '@/hooks/useCreditManager';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { useTranslation } from 'react-i18next';
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 export default function Auth() {
   const { t } = useTranslation('auth');
@@ -48,6 +48,7 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const { activateFreeTrial } = useCreditManager();
   const intent = searchParams.get('intent');
+  const isManualSignInRef = useRef(false);
   const selectedPlan = searchParams.get('plan');
   const { fetchActiveBrokers } = useBrokerActions();
 
@@ -127,6 +128,11 @@ export default function Auth() {
             handleOAuthEvent(session);
           }, 0);
         } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
+          // Skip if handleSignIn is already managing navigation
+          if (isManualSignInRef.current) {
+            console.log('[Auth] Skipping onAuthStateChange navigation — handleSignIn is active');
+            return;
+          }
           // Email/password flow - check for pending plan from Pricing
           const pendingPlan = localStorage.getItem('alphalens_pending_plan');
           const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
@@ -598,6 +604,7 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
 
+    isManualSignInRef.current = true;
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -657,6 +664,7 @@ export default function Auth() {
     }
 
     setLoading(false);
+    isManualSignInRef.current = false;
   };
 
   // Handle broker selection from picker dialog
