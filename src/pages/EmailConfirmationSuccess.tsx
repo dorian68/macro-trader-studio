@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,21 +8,20 @@ import { supabase } from '@/integrations/supabase/client';
 export default function EmailConfirmationSuccess() {
   const navigate = useNavigate();
   const [checkingPlan, setCheckingPlan] = useState(false);
+  const checkoutAttempted = useRef(false);
 
   useEffect(() => {
     document.title = "Email Confirmed - Alphalens";
 
-    // Check for pending plan and redirect to checkout immediately if signed in
-    const checkPendingPlan = async () => {
+    const tryCheckout = async (session: { access_token: string }) => {
+      if (checkoutAttempted.current) return;
+      
       const pendingPlan = localStorage.getItem('alphalens_pending_plan');
       if (!pendingPlan) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
+      checkoutAttempted.current = true;
       console.log('[EmailConfirmation] Processing pending plan:', pendingPlan);
       setCheckingPlan(true);
-      localStorage.removeItem('alphalens_pending_plan');
 
       try {
         const { data, error } = await supabase.functions.invoke('create-checkout', {
@@ -32,23 +31,41 @@ export default function EmailConfirmationSuccess() {
             cancel_url: 'https://alphalensai.com/payment-canceled'
           }
         });
+
         if (!error && data?.url) {
+          // Only remove pending plan after confirmed redirect URL
+          localStorage.removeItem('alphalens_pending_plan');
           window.location.href = data.url;
           return;
         }
+        console.error('[EmailConfirmation] Checkout failed:', error || data);
       } catch (e) {
         console.error('[EmailConfirmation] Failed to create checkout:', e);
       }
+
+      // Reset so user can retry via "Go to Login"
+      checkoutAttempted.current = false;
       setCheckingPlan(false);
     };
 
-    // Small delay to let Supabase process the confirmation token
-    const timer = setTimeout(checkPendingPlan, 1000);
-    return () => clearTimeout(timer);
+    // Listen for auth state to be ready (handles token in URL hash)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[EmailConfirmation] Auth event:', event, !!session);
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+        tryCheckout(session);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleGoToLogin = () => {
-    navigate('/auth');
+    const pendingPlan = localStorage.getItem('alphalens_pending_plan');
+    // Pass plan in URL so Auth.tsx can pick it up even if localStorage is lost
+    const planParam = pendingPlan ? `?plan=${pendingPlan}` : '';
+    navigate(`/auth${planParam}`);
   };
 
   return (
