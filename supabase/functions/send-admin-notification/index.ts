@@ -413,7 +413,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
     case 'reactivation_rejected':
       const { rejectionReason } = metadata || {};
       return {
-        subject: '❌ Update on Your Account Reactivation Request',
+        subject: 'Update on Your Account Reactivation Request',
         html: `
           <!DOCTYPE html>
           <html>
