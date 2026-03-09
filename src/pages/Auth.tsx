@@ -652,6 +652,30 @@ export default function Auth() {
       // User exists but email not confirmed, redirect to confirmation page
       navigate('/email-confirmation');
     } else if (data.user) {
+      // Store pending plan if coming from Pricing page (login flow)
+      if (selectedPlan) {
+        localStorage.setItem('alphalens_pending_plan', selectedPlan);
+      }
+
+      // Check for pending plan checkout
+      const pendingPlan = localStorage.getItem('alphalens_pending_plan');
+      if (pendingPlan) {
+        localStorage.removeItem('alphalens_pending_plan');
+        try {
+          const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+            body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
+          });
+          if (!checkoutError && checkoutData?.url) {
+            window.location.href = checkoutData.url;
+            setLoading(false);
+            isManualSignInRef.current = false;
+            return;
+          }
+        } catch (e) {
+          console.error('[Auth] Failed to create checkout for pending plan:', e);
+        }
+      }
+
       // Check for pending free trial from signup flow
       const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
       if (pendingTrial || intent === 'free_trial') {
