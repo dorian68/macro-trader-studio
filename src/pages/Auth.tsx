@@ -914,6 +914,80 @@ export default function Auth() {
         </Dialog>
 
 
+        {signupSuccess ? (
+          <Card className="w-full max-w-md bg-card border-white/10 shadow-glow-primary">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4 py-4">
+                <img
+                  src="/header_logo.png"
+                  alt="Alphalens AI"
+                  className="h-14 w-auto object-contain"
+                />
+              </div>
+              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-xl">{t('emailConfirmation.title') || 'Check your email'}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <div className="flex items-center justify-center gap-2 text-green-400">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="text-sm font-medium">{t('emailConfirmation.accountCreated') || 'Account created successfully!'}</span>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {t('emailConfirmation.sentTo') || 'We sent a confirmation email to'}{' '}
+                <strong className="text-foreground">{signupEmail}</strong>.
+                {' '}{t('emailConfirmation.clickLink') || 'Please click the link in that email to activate your account.'}
+              </p>
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                <p className="text-sm text-primary">
+                  💡 {t('emailConfirmation.checkSpam') || 'Also check your spam folder if you can\'t find the email.'}
+                </p>
+              </div>
+              <div className="space-y-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    const { error } = await supabase.auth.resend({
+                      type: 'signup',
+                      email: signupEmail,
+                      options: {
+                        emailRedirectTo: `${window.location.origin}/email-confirmation-success`
+                      }
+                    });
+                    if (error) {
+                      toast({ title: t('errors.authenticationError'), description: error.message, variant: 'destructive' });
+                    } else {
+                      toast({ title: t('emailConfirmation.resentTitle') || 'Email sent', description: t('emailConfirmation.resentDescription') || 'A new confirmation email has been sent.' });
+                    }
+                    setLoading(false);
+                  }}
+                >
+                  {loading && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+                  {t('emailConfirmation.resend') || 'Resend confirmation email'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                  onClick={() => {
+                    setSignupSuccess(false);
+                    setSignupEmail('');
+                    setTabValue('signin');
+                  }}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t('backToLogin')}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                {t('emailConfirmation.pendingApproval') || 'Once your email is confirmed, your account will be submitted for approval by our team.'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
         <Card className="w-full max-w-md bg-card border-white/10 shadow-glow-primary">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4 py-4">
