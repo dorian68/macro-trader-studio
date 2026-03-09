@@ -548,7 +548,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                         </tr>
                         <tr>
                           <td><strong>Status</strong></td>
-                          <td><span style="color: #f59e0b; font-weight: 600;">⏳ Pending Approval</span></td>
+                          <td><span style="color: #f59e0b; font-weight: 600;">Pending Approval</span></td>
                         </tr>
                       </tbody>
                     </table>
