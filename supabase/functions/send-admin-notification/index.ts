@@ -175,7 +175,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
-                  <p><a href="https://alphalens.ai/privacy">Privacy Policy</a> | <a href="https://alphalens.ai/terms">Terms of Service</a></p>
+                  <p><a href="https://alphalensai.com/privacy">Privacy Policy</a> | <a href="https://alphalensai.com/terms">Terms of Service</a></p>
                 </div>
               </div>
             </body>
