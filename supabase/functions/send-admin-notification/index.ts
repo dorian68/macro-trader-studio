@@ -15,7 +15,7 @@ interface AdminNotificationRequest {
   metadata?: any;
 }
 
-const LOGO_URL = 'https://alphalensai.com/lovable-uploads/Full_logo_no_BG_2.png';
+const LOGO_URL = 'https://macro-trader-studio.lovable.app/lovable-uploads/Full_logo_no_BG_2.png';
 
 function getEmailContent(type: string, userName: string, metadata?: any): { subject: string; html: string } {
   const baseStyles = `
