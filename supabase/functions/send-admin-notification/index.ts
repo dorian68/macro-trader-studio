@@ -486,7 +486,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
                   <p>In the meantime, feel free to explore our website to learn more about the platform.</p>
                   
-                  <a href="https://macro-trader-studio.lovable.app" class="cta-button">
+                  <a href="https://alphalensai.com" class="cta-button">
                     Visit Alphalens →
                   </a>
 
