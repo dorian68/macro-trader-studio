@@ -9,8 +9,8 @@ const corsHeaders = {
 };
 
 interface AdminNotificationRequest {
-  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected' | 'new_registration' | 'welcome_signup';
-  userEmail: string;
+  to: string;
+  notificationType: string;
   userName: string;
   metadata?: any;
 }
@@ -165,7 +165,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                     <li>Custom reports and analytics</li>
                   </ul>
                   
-                  <a href="https://macro-trader-studio.lovable.app/auth" class="cta-button">
+                  <a href="https://alphalensai.com/auth" class="cta-button">
                     Sign In Now →
                   </a>
                   
@@ -486,7 +486,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
                   <p>In the meantime, feel free to explore our website to learn more about the platform.</p>
                   
-                  <a href="https://macro-trader-studio.lovable.app" class="cta-button">
+                  <a href="https://alphalensai.com" class="cta-button">
                     Visit Alphalens →
                   </a>
 
@@ -589,7 +589,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { subject, html } = getEmailContent(notificationType, userName || to, metadata);
 
     const emailResponse = await resend.emails.send({
-      from: "Alphalens Platform <onboarding@resend.dev>",
+      from: "Alphalens Platform <noreply@optiquant-ia.com>",
       to: [to],
       subject,
       html,
