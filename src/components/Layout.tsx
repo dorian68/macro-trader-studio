@@ -170,7 +170,16 @@ export default function Layout({
                       {t('nav.contact')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu>
+              </DropdownMenu>
+              </div>
+              {/* User identity indicator */}
+              <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/30 max-w-[200px]">
+                <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-medium shrink-0">
+                  {(user.email?.[0] || 'A').toUpperCase()}
+                </div>
+                <span className="text-xs text-muted-foreground truncate">
+                  {user.email || 'Account'}
+                </span>
               </div>
               <Button variant="ghost" size="sm" onClick={signOut} className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2">
                 <LogOut className="h-4 w-4" />
