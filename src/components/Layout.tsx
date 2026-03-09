@@ -297,6 +297,16 @@ export default function Layout({
                 </Button>}
               </>}
             </div>
+            {user && (
+              <div className="flex items-center gap-2 pt-2 border-t border-border/30 px-1">
+                <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-medium shrink-0">
+                  {(user.email?.[0] || 'A').toUpperCase()}
+                </div>
+                <span className="text-xs text-muted-foreground truncate">
+                  {user.email || 'Account'}
+                </span>
+              </div>
+            )}
             <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/30 truncate">
               {selectedAsset} • {timeframe}
             </div>
