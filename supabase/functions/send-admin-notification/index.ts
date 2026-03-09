@@ -589,7 +589,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { subject, html } = getEmailContent(notificationType, userName || to, metadata);
 
     const emailResponse = await resend.emails.send({
-      from: "Alphalens Platform <onboarding@resend.dev>",
+      from: "Alphalens Platform <noreply@optiquant-ia.com>",
       to: [to],
       subject,
       html,
