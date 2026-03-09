@@ -156,7 +156,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p>Great news! Your Alphalens account has been <strong>approved</strong> by our admin team.</p>
                   
                   <div class="highlight-box success">
-                    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #10b981;">✅ Account Status: Approved</p>
+                    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #10b981;">Account Status: Approved</p>
                   </div>
                   
                   <p>You now have full access to all platform features:</p>
