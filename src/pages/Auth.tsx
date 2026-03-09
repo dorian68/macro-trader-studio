@@ -143,8 +143,8 @@ export default function Auth() {
             // Defer checkout redirect to avoid async in callback
             setTimeout(async () => {
               try {
-                const { data, error } = await supabase.functions.invoke('create-checkout', {
-                  body: { planType: pendingPlan }
+              const { data, error } = await supabase.functions.invoke('create-checkout', {
+                  body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
                 });
                 if (!error && data?.url) {
                   window.location.href = data.url;
