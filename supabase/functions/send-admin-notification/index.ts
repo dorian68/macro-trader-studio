@@ -15,7 +15,7 @@ interface AdminNotificationRequest {
   metadata?: any;
 }
 
-const LOGO_URL = 'https://jqrlegdulnnrpiixiecf.supabase.co/storage/v1/object/public/email-assets/alphalens_logo_new.png';
+const LOGO_URL = 'https://macro-trader-studio.lovable.app/email-logo-opaque.png';
 
 function getEmailContent(type: string, userName: string, metadata?: any): { subject: string; html: string } {
   const baseStyles = `
