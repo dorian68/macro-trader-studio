@@ -1,82 +1,52 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## Add Authenticated User Email Indicator to Navbar
 
-L'erreur en console est :
-```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
+### What changes
 
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
+**File: `src/components/Layout.tsx`**
 
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
+Add a compact user identity block between the existing auth controls and the sign-out button (lines 146-178). The block will:
 
-### Solution
+- Show a circular avatar fallback with the first letter of the email
+- Display the email text (truncated with `max-w` + `truncate` on desktop, hidden on mobile to preserve space)
+- Fall back to "Account" if email is unavailable
+- Only render when `user` is truthy (no change to logged-out state)
 
-**Fichier : `src/components/LightweightChartWidget.tsx`**
+The implementation reuses `useAuth()` already imported at line 6, accessing `user.email`. No new dependencies, no new components — just a small inline addition inside the existing authenticated `<div>` block.
 
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
-
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
+### Layout placement
 
 ```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+[Logo] [Credits] ----spacer---- [Labs?] [History] [Admin?] [About Us ▾] [👤 user@email] [SignOut] [≡] [● Live]
 ```
 
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
+On mobile (`< sm`): email text hidden, only the avatar circle shows. On desktop: email shown truncated to max 160px.
 
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
+### Implementation detail
 
-Le meme pattern est utilise dans le fallback Binance WebSocket :
+Insert after the "About Us" dropdown (line 174) and before the sign-out button (line 175):
 
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+```tsx
+{/* User identity indicator */}
+<div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/30 max-w-[200px]">
+  <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-medium shrink-0">
+    {(user.email?.[0] || 'A').toUpperCase()}
+  </div>
+  <span className="text-xs text-muted-foreground truncate">
+    {user.email || 'Account'}
+  </span>
+</div>
 ```
 
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
+On mobile menu (line 291), add the email below the asset/timeframe line so mobile users also see who's logged in.
 
-### Details techniques
+### Files to modify
+- `src/components/Layout.tsx` — add user identity block (2 insertions, ~10 lines total)
 
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
+### No regressions
+- No routing changes
+- No auth logic changes
+- No removal of existing elements
+- No layout shifts (element is `hidden sm:flex`, fits within existing flex container)
+
