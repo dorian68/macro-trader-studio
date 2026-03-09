@@ -476,7 +476,7 @@ export default function Auth() {
 
     setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/email-confirmation-success`;
+    const redirectUrl = `https://alphalensai.com/email-confirmation-success`;
 
     const { error } = await supabase.auth.signUp({
       email,
