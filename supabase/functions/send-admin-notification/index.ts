@@ -369,7 +369,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
     case 'reactivation_approved':
       return {
-        subject: '✅ Your Alphalens Account Has Been Reactivated!',
+        subject: 'Your Alphalens Account Has Been Reactivated!',
         html: `
           <!DOCTYPE html>
           <html>
