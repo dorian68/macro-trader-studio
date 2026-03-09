@@ -165,7 +165,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                     <li>Custom reports and analytics</li>
                   </ul>
                   
-                  <a href="https://macro-trader-studio.lovable.app/auth" class="cta-button">
+                  <a href="https://alphalensai.com/auth" class="cta-button">
                     Sign In Now →
                   </a>
                   
