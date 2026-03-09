@@ -175,7 +175,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
-                  <p><a href="https://alphalens.ai/privacy">Privacy Policy</a> | <a href="https://alphalens.ai/terms">Terms of Service</a></p>
+                  <p><a href="https://alphalensai.com/privacy">Privacy Policy</a> | <a href="https://alphalensai.com/terms">Terms of Service</a></p>
                 </div>
               </div>
             </body>
@@ -219,13 +219,13 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   
                   <p>If you believe this is an error or would like to discuss your application, please contact our support team for assistance.</p>
                   
-                  <a href="mailto:support@alphalens.ai" class="cta-button">
+                   <a href="mailto:support@alphalensai.com" class="cta-button">
                     Contact Support →
                   </a>
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
-                  <p><a href="https://alphalens.ai/privacy">Privacy Policy</a> | <a href="https://alphalens.ai/terms">Terms of Service</a></p>
+                  <p><a href="https://alphalensai.com/privacy">Privacy Policy</a> | <a href="https://alphalensai.com/terms">Terms of Service</a></p>
                 </div>
               </div>
             </body>
@@ -305,7 +305,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   
                   <p>You can start using your updated credits right away by accessing your dashboard.</p>
                   
-                  <a href="https://alphalens.ai/dashboard" class="cta-button">
+                  <a href="https://alphalensai.com/dashboard" class="cta-button">
                     Go to Dashboard →
                   </a>
                   
@@ -313,7 +313,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
-                  <p><a href="https://alphalens.ai/privacy">Privacy Policy</a> | <a href="https://alphalens.ai/terms">Terms of Service</a></p>
+                  <p><a href="https://alphalensai.com/privacy">Privacy Policy</a> | <a href="https://alphalensai.com/terms">Terms of Service</a></p>
                 </div>
               </div>
             </body>
@@ -439,7 +439,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
                   <div class="highlight-box info">
                     <strong>Need Help?</strong>
-                    <p style="margin: 10px 0;">If you have questions about this decision or need assistance, please contact our support team at <a href="mailto:support@alphalens.ai" style="color: #f97316;">support@alphalens.ai</a></p>
+                    <p style="margin: 10px 0;">If you have questions about this decision or need assistance, please contact our support team at <a href="mailto:support@alphalensai.com" style="color: #f97316;">support@alphalensai.com</a></p>
                   </div>
 
                   <p>We appreciate your understanding.</p>
@@ -495,11 +495,11 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                     Visit Alphalens →
                   </a>
 
-                  <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">If you have any questions, don't hesitate to contact us at <a href="mailto:support@alphalens.ai" style="color: #f97316;">support@alphalens.ai</a></p>
+                  <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">If you have any questions, don't hesitate to contact us at <a href="mailto:support@alphalensai.com" style="color: #f97316;">support@alphalensai.com</a></p>
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
-                  <p><a href="https://alphalens.ai/privacy">Privacy Policy</a> | <a href="https://alphalens.ai/terms">Terms of Service</a></p>
+                  <p><a href="https://alphalensai.com/privacy">Privacy Policy</a> | <a href="https://alphalensai.com/terms">Terms of Service</a></p>
                 </div>
               </div>
             </body>
