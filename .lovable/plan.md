@@ -1,107 +1,82 @@
 
+## Audit et correction du widget chart (LightweightChartWidget)
 
-## Full Payment Flow Audit
+### Probleme identifie
 
-### Issues Found (7 critical, 2 moderate)
-
----
-
-### CRITICAL 1 — `create-checkout` uses `price_data` instead of `price` ID
-
-The checkout function creates **ad-hoc Stripe prices** via `price_data` on every checkout. This means:
-- Each subscription gets a unique, ephemeral price ID
-- `check-subscription` has **hardcoded price IDs** (`PRICE_TO_PLAN`) that will never match
-- The webhook fallback (lookup by `stripe_price_id` in `plan_parameters`) also fails since the price is ad-hoc
-
-**Fix**: Use the `stripe_price_id` from `plan_parameters` table directly with the `price` field instead of `price_data`. This is Stripe best practice (trackable, consistent).
-
+L'erreur en console est :
 ```
-// BEFORE (broken)
-line_items: [{ price_data: { currency: 'usd', ... } }]
-
-// AFTER
-line_items: [{ price: planParams.stripe_price_id, quantity: 1 }]
+Cannot update oldest data, last time=[object Object], new time=[object Object]
 ```
 
----
+Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
 
-### CRITICAL 2 — AuthGuard blocks paying users
+1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
+2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
 
-`AuthGuard` requires `profile.status === 'approved'`. New users get `status: 'pending'` via the `handle_new_user` trigger. **Even after successful Stripe payment, users are blocked from the dashboard** because the webhook never updates `profiles.status`.
+### Solution
 
-**Fix**: In the webhook's `checkout.session.completed` handler, after updating `user_plan`, also set `profiles.status = 'approved'`. Paying customers should be auto-approved.
+**Fichier : `src/components/LightweightChartWidget.tsx`**
 
----
+**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
 
-### CRITICAL 3 — `check-subscription` and `customer-portal` missing from config.toml
+Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
 
-These functions are not listed with `verify_jwt = false`. The gateway rejects calls before the function code runs.
+```text
+AVANT (ligne 597-603):
+const updatedCandle = {
+  ...lastCandleRef.current,
+  time: timestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
-**Fix**: Add both to `supabase/config.toml`.
+APRES:
+// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
+const lastTime = lastCandleRef.current.time;
+const updatedCandle: CandlestickData = {
+  time: lastTime as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
 
----
+Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
 
-### CRITICAL 4 — CORS headers incomplete on 4 edge functions
+**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
 
-`create-checkout`, `check-subscription`, `customer-portal`, and `stripe-webhook` use minimal CORS headers missing `x-supabase-client-platform`, `x-supabase-client-platform-version`, `x-supabase-client-runtime`, `x-supabase-client-runtime-version`. The Supabase JS client sends these headers, causing preflight failures.
+Le meme pattern est utilise dans le fallback Binance WebSocket :
 
-**Fix**: Update `corsHeaders` in all 4 functions to include the full set.
+```text
+AVANT (ligne 495-501):
+const updatedCandle: CandlestickData = {
+  ...lastCandleRef.current,
+  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
----
+APRES:
+const updatedCandle: CandlestickData = {
+  time: lastCandleRef.current.time as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
 
-### CRITICAL 5 — `check-subscription` uses hardcoded price-to-plan mapping
+### Ce qui ne change PAS
+- La logique de chargement des donnees historiques
+- La connexion/reconnexion WebSocket et le backoff
+- Le cache localStorage
+- L'initialisation du chart (mount unique)
+- Le fallback TradingView
+- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
 
-Lines 17-21 hardcode 3 price IDs. These will be wrong in live mode (different keys) and won't match `price_data`-generated prices.
+### Details techniques
 
-**Fix**: Query `plan_parameters` table dynamically (same pattern as the webhook).
-
----
-
-### CRITICAL 6 — Checkout opens in new tab for authenticated users
-
-`Pricing.tsx` line 149 uses `window.open(data.url, '_blank')`. This:
-- Breaks the payment flow (user loses context)
-- May be blocked by popup blockers
-- Is not how any SaaS checkout works
-
-**Fix**: Use `window.location.href = data.url` (same as all other checkout calls in the codebase).
-
----
-
-### CRITICAL 7 — Webhook doesn't update `profiles.status` on subscription cancellation
-
-`customer.subscription.deleted` downgrades credits to `free_trial` but doesn't update `profiles.user_plan` to reflect the downgrade.
-
-**Fix**: Add `profiles.user_plan = 'free_trial'` update in the `subscription.deleted` handler.
-
----
-
-### MODERATE 1 — Webhook uses `listUsers()` without pagination
-
-`supabase.auth.admin.listUsers()` returns max 1000 users. With growth, user lookup by email will silently fail. This affects all 4 webhook event handlers.
-
-**Fix**: Use `listUsers({ filter: email })` or a paginated approach. However this is a future scalability issue, not blocking today.
-
----
-
-### MODERATE 2 — `customer-portal` return URL uses preview domain fallback
-
-Line 69 falls back to the Lovable preview URL. Should default to `https://alphalensai.com/dashboard`.
-
-**Fix**: Hardcode production domain as fallback.
-
----
-
-### Files to modify
-
-| File | Changes |
-|------|---------|
-| `supabase/functions/create-checkout/index.ts` | Use `price` instead of `price_data`; fix CORS headers |
-| `supabase/functions/check-subscription/index.ts` | Remove hardcoded mapping, query DB; fix CORS headers |
-| `supabase/functions/stripe-webhook/index.ts` | Auto-approve profile on checkout.session.completed; update user_plan on subscription.deleted |
-| `supabase/functions/customer-portal/index.ts` | Fix CORS headers; fix fallback URL |
-| `supabase/config.toml` | Add `check-subscription` and `customer-portal` |
-| `src/pages/Pricing.tsx` | Change `window.open` to `window.location.href` |
-
-No database schema changes required. No new tables or migrations needed.
-
+Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.

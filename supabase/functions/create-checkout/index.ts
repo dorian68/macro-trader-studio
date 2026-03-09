@@ -5,7 +5,7 @@ import { getStripeConfig } from "../_shared/stripe-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface CheckoutRequest {
@@ -27,7 +27,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Get Stripe configuration based on environment
     const config = getStripeConfig();
     logStep("Stripe config loaded", { mode: config.mode });
     
@@ -35,7 +34,6 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -49,7 +47,7 @@ serve(async (req) => {
       throw new Error(`Plan type is required`);
     }
 
-    // Get plan parameters from Supabase
+    // Get plan parameters including stripe_price_id from Supabase
     const { data: planParams, error: planError } = await supabaseClient
       .from('plan_parameters')
       .select('monthly_price_usd, stripe_price_id')
@@ -61,6 +59,11 @@ serve(async (req) => {
       throw new Error(`Plan ${plan} not found`);
     }
 
+    if (!planParams.stripe_price_id) {
+      logStep("No stripe_price_id configured for plan", { plan });
+      throw new Error(`Plan ${plan} does not have a Stripe price ID configured. Please set stripe_price_id in plan_parameters.`);
+    }
+
     logStep("Plan parameters retrieved", { 
       plan, 
       price: planParams.monthly_price_usd,
@@ -68,7 +71,7 @@ serve(async (req) => {
     });
 
     // Get origin for success/cancel URLs
-    const origin = req.headers.get("origin") || "https://22f2a47e-97ad-4d12-9369-04abd2bd2d8c.lovableproject.com";
+    const origin = req.headers.get("origin") || "https://alphalensai.com";
     
     // Try to get authenticated user (optional for guest checkout)
     let userEmail = null;
@@ -100,21 +103,11 @@ serve(async (req) => {
       logStep("Authentication failed, proceeding with guest checkout", { error: authError?.message || authError });
     }
 
-    // Create checkout session with dynamic price_data
+    // Create checkout session using the stored Stripe price ID
     const sessionData: any = {
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: `AlphaLens ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
-              description: `AlphaLens AI Subscription - ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
-            },
-            unit_amount: Math.round(planParams.monthly_price_usd * 100), // Convert to cents
-            recurring: {
-              interval: 'month',
-            },
-          },
+          price: planParams.stripe_price_id,
           quantity: 1,
         },
       ],
@@ -127,10 +120,8 @@ serve(async (req) => {
         plan_type: plan,
         origin: origin,
         user_authenticated: userEmail ? 'true' : 'false',
-        user_id: customerId || 'guest',
         timestamp: new Date().toISOString(),
         checkout_type: userEmail ? 'authenticated' : 'guest',
-        price_usd: planParams.monthly_price_usd.toString()
       }
     };
 

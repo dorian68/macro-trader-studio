@@ -5,19 +5,12 @@ import { getStripeConfig } from "../_shared/stripe-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
-};
-
-// Map Stripe price IDs to plan types
-const PRICE_TO_PLAN = {
-  "price_1SC398Bbyt0kGZ1fmyLGVmWa": "basic",
-  "price_1SC39lBbyt0kGZ1fUhOBloBb": "standard", 
-  "price_1SC39zBbyt0kGZ1fvhRYyA0x": "premium"
 };
 
 serve(async (req) => {
@@ -28,7 +21,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Get Stripe configuration based on environment
     const config = getStripeConfig();
     logStep("Stripe config loaded", { mode: config.mode });
     
@@ -36,7 +28,6 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -72,6 +63,22 @@ serve(async (req) => {
 
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
+
+    // Load price-to-plan mapping dynamically from plan_parameters
+    const { data: planParamsData } = await supabaseClient
+      .from('plan_parameters')
+      .select('plan_type, stripe_price_id')
+      .not('stripe_price_id', 'is', null);
+
+    const priceToPlan: Record<string, string> = {};
+    if (planParamsData) {
+      for (const p of planParamsData) {
+        if (p.stripe_price_id) {
+          priceToPlan[p.stripe_price_id] = p.plan_type;
+        }
+      }
+    }
+    logStep("Price-to-plan mapping loaded", { count: Object.keys(priceToPlan).length });
 
     // Check if Stripe customer exists
     const customers = await stripe.customers.list({ 
@@ -115,7 +122,7 @@ serve(async (req) => {
 
     const subscription = subscriptions.data[0];
     const priceId = subscription.items.data[0]?.price?.id;
-    const planType = PRICE_TO_PLAN[priceId as keyof typeof PRICE_TO_PLAN] || 'unknown';
+    const planType = priceToPlan[priceId as string] || 'unknown';
     
     let subscriptionEnd: string | null = null;
     if (subscription.current_period_end) {
