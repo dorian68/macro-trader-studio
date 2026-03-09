@@ -134,7 +134,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
   switch (type) {
     case 'status_approved':
       return {
-        subject: '🎉 Your Alphalens Account has been Approved!',
+        subject: 'Your Alphalens Account has been Approved!',
         html: `
           <!DOCTYPE html>
           <html>
