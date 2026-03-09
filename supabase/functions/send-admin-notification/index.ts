@@ -15,7 +15,7 @@ interface AdminNotificationRequest {
   metadata?: any;
 }
 
-const LOGO_URL = 'https://macro-trader-studio.lovable.app/email-logo-opaque.png';
+const LOGO_URL = 'https://jqrlegdulnnrpiixiecf.supabase.co/storage/v1/object/public/email-assets/alphalens_logo_new.png';
 
 function getEmailContent(type: string, userName: string, metadata?: any): { subject: string; html: string } {
   const baseStyles = `
@@ -134,7 +134,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
   switch (type) {
     case 'status_approved':
       return {
-        subject: '🎉 Your Alphalens Account has been Approved!',
+        subject: 'Your Alphalens Account has been Approved!',
         html: `
           <!DOCTYPE html>
           <html>
@@ -151,12 +151,12 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Research Platform for Intelligent Trading</p>
                 </div>
                 <div class="content">
-                  <h2>Welcome to Alphalens! 🚀</h2>
+                  <h2>Welcome to Alphalens!</h2>
                   <p>Hello ${userName},</p>
                   <p>Great news! Your Alphalens account has been <strong>approved</strong> by our admin team.</p>
                   
                   <div class="highlight-box success">
-                    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #10b981;">✅ Account Status: Approved</p>
+                    <p style="margin: 0; font-size: 18px; font-weight: 600; color: #10b981;">Account Status: Approved</p>
                   </div>
                   
                   <p>You now have full access to all platform features:</p>
@@ -248,7 +248,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
       };
       
       return {
-        subject: '💳 Your Alphalens Credits Have Been Updated',
+        subject: 'Your Alphalens Credits Have Been Updated',
         html: `
           <!DOCTYPE html>
           <html>
@@ -265,7 +265,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Research Platform for Intelligent Trading</p>
                 </div>
                 <div class="content">
-                  <h2>Your Credits Have Been Updated 💳</h2>
+                  <h2>Your Credits Have Been Updated</h2>
                   <p>Hello ${userName},</p>
                   <p>An administrator has updated your credit allocation${metadata?.planType ? ` for your <strong>${metadata.planType}</strong> plan` : ''}.</p>
                   
@@ -324,7 +324,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
     case 'reactivation_request':
       const { userEmail, brokerName, deletedAt } = metadata || {};
       return {
-        subject: '🔔 New Account Reactivation Request - Alphalens',
+        subject: 'New Account Reactivation Request - Alphalens',
         html: `
           <!DOCTYPE html>
           <html>
@@ -336,7 +336,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Alphalens Admin Panel</p>
                 </div>
                 <div class="content">
-                  <h2>🔔 New Reactivation Request</h2>
+                  <h2>New Reactivation Request</h2>
                   <p>A user has requested to reactivate their soft-deleted account.</p>
                   
                   <div class="highlight-box info">
@@ -369,7 +369,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
     case 'reactivation_approved':
       return {
-        subject: '✅ Your Alphalens Account Has Been Reactivated!',
+        subject: 'Your Alphalens Account Has Been Reactivated!',
         html: `
           <!DOCTYPE html>
           <html>
@@ -381,7 +381,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Welcome Back to Alphalens!</p>
                 </div>
                 <div class="content">
-                  <h2>✅ Great News, ${userName}!</h2>
+                  <h2>Great News, ${userName}!</h2>
                   <p>Your reactivation request has been approved. Your Alphalens account is now active again.</p>
                   
                   <div class="highlight-box success">
@@ -413,7 +413,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
     case 'reactivation_rejected':
       const { rejectionReason } = metadata || {};
       return {
-        subject: '❌ Update on Your Account Reactivation Request',
+        subject: 'Update on Your Account Reactivation Request',
         html: `
           <!DOCTYPE html>
           <html>
@@ -455,7 +455,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
     case 'welcome_signup':
       return {
-        subject: '🎉 Welcome to Alphalens – Your Registration is Being Reviewed',
+        subject: 'Welcome to Alphalens – Your Registration is Being Reviewed',
         html: `
           <!DOCTYPE html>
           <html>
@@ -472,21 +472,21 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Research Platform for Intelligent Trading</p>
                 </div>
                 <div class="content">
-                  <h2>Welcome to Alphalens! 👋</h2>
+                  <h2>Welcome to Alphalens!</h2>
                   <p>Hello ${userName},</p>
                   <p>Thank you for registering on <strong>Alphalens</strong>, the AI-powered research platform designed for intelligent trading.</p>
                   
                   <div class="highlight-box info">
-                    <p style="margin: 0; font-size: 16px; font-weight: 600; color: #002244;">⏳ Your account is being reviewed</p>
+                    <p style="margin: 0; font-size: 16px; font-weight: 600; color: #002244;">Your account is being reviewed</p>
                     <p style="margin: 10px 0 0 0; color: #4b5563;">Our team reviews every registration to ensure the best experience. You will receive a confirmation email once your account is approved — typically within 24 hours.</p>
                   </div>
 
                   <p style="margin-top: 25px;"><strong>What Alphalens offers:</strong></p>
                   <ul style="color: #4b5563; line-height: 2;">
-                    <li>🤖 <strong>AI-Powered Trade Setups</strong> — Get data-driven entry, stop-loss, and take-profit levels</li>
-                    <li>📊 <strong>Portfolio Management</strong> — Track and optimize your portfolio with AI recommendations</li>
-                    <li>📈 <strong>Real-Time Market Insights</strong> — Stay ahead with macro analysis and live news</li>
-                    <li>📄 <strong>Custom Reports</strong> — Generate professional reports tailored to your assets</li>
+                    <li><strong>AI-Powered Trade Setups</strong> — Get data-driven entry, stop-loss, and take-profit levels</li>
+                    <li><strong>Portfolio Management</strong> — Track and optimize your portfolio with AI recommendations</li>
+                    <li><strong>Real-Time Market Insights</strong> — Stay ahead with macro analysis and live news</li>
+                    <li><strong>Custom Reports</strong> — Generate professional reports tailored to your assets</li>
                   </ul>
 
                   <p>In the meantime, feel free to explore our website to learn more about the platform.</p>
@@ -510,7 +510,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
     case 'new_registration':
       const { userEmail: regEmail, brokerName: regBroker, registeredAt } = metadata || {};
       return {
-        subject: '🆕 New Registration Pending Approval - Alphalens',
+        subject: 'New Registration Pending Approval - Alphalens',
         html: `
           <!DOCTYPE html>
           <html>
@@ -527,7 +527,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Admin Notification</p>
                 </div>
                 <div class="content">
-                  <h2>🆕 New User Registration</h2>
+                  <h2>New User Registration</h2>
                   <p>A new user has registered on the Alphalens platform and is awaiting approval.</p>
                   
                   <div class="highlight-box info">
@@ -548,7 +548,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                         </tr>
                         <tr>
                           <td><strong>Status</strong></td>
-                          <td><span style="color: #f59e0b; font-weight: 600;">⏳ Pending Approval</span></td>
+                          <td><span style="color: #f59e0b; font-weight: 600;">Pending Approval</span></td>
                         </tr>
                       </tbody>
                     </table>
@@ -589,7 +589,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Missing required fields: to, notificationType');
     }
 
-    console.log(`📧 [Admin Notification] Sending ${notificationType} to:`, to);
+    console.log(`[Admin Notification] Sending ${notificationType} to:`, to);
 
     const { subject, html } = getEmailContent(notificationType, userName || to, metadata);
 
@@ -600,7 +600,7 @@ const handler = async (req: Request): Promise<Response> => {
       html,
     });
 
-    console.log("✅ [Admin Notification] Email sent successfully:", emailResponse.id);
+    console.log("[Admin Notification] Email sent successfully:", emailResponse.id);
 
     return new Response(JSON.stringify({ 
       success: true,
@@ -614,7 +614,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error: any) {
-    console.error("❌ [Admin Notification] Error sending email:", error);
+    console.error("[Admin Notification] Error sending email:", error);
     return new Response(
       JSON.stringify({ 
         success: false,
