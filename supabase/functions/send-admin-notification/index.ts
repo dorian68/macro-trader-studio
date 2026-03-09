@@ -527,7 +527,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Admin Notification</p>
                 </div>
                 <div class="content">
-                  <h2>🆕 New User Registration</h2>
+                  <h2>New User Registration</h2>
                   <p>A new user has registered on the Alphalens platform and is awaiting approval.</p>
                   
                   <div class="highlight-box info">
