@@ -476,7 +476,7 @@ export default function Auth() {
 
     setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/email-confirmation-success`;
+    const redirectUrl = `https://alphalensai.com/email-confirmation-success`;
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -952,7 +952,7 @@ export default function Auth() {
                       type: 'signup',
                       email: signupEmail,
                       options: {
-                        emailRedirectTo: `${window.location.origin}/email-confirmation-success`
+                        emailRedirectTo: `https://alphalensai.com/email-confirmation-success`
                       }
                     });
                     if (error) {
@@ -1108,7 +1108,7 @@ export default function Auth() {
                           onClick={async () => {
                             setForgotPasswordLoading(true);
                             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                              redirectTo: `${window.location.origin}/reset-password`,
+                              redirectTo: `https://alphalensai.com/reset-password`,
                             });
                             setForgotPasswordLoading(false);
                             if (error) {

@@ -52,7 +52,7 @@ const GuestSignupForm = ({ suggestedEmail, onSuccess }: GuestSignupFormProps) =>
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
+          emailRedirectTo: `https://alphalensai.com/dashboard`
         }
       });
 

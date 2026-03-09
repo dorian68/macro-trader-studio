@@ -60,7 +60,7 @@ export default function EmailConfirmation() {
       type: 'signup',
       email: userEmail,
       options: {
-        emailRedirectTo: `${window.location.origin}/email-confirmation-success`
+        emailRedirectTo: `https://alphalensai.com/email-confirmation-success`
       }
     });
 
