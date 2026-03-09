@@ -952,7 +952,7 @@ export default function Auth() {
                       type: 'signup',
                       email: signupEmail,
                       options: {
-                        emailRedirectTo: `${window.location.origin}/email-confirmation-success`
+                        emailRedirectTo: `https://alphalensai.com/email-confirmation-success`
                       }
                     });
                     if (error) {
