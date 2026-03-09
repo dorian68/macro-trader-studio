@@ -600,7 +600,7 @@ const handler = async (req: Request): Promise<Response> => {
       html,
     });
 
-    console.log("✅ [Admin Notification] Email sent successfully:", emailResponse.id);
+    console.log("[Admin Notification] Email sent successfully:", emailResponse.id);
 
     return new Response(JSON.stringify({ 
       success: true,
