@@ -219,13 +219,13 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   
                   <p>If you believe this is an error or would like to discuss your application, please contact our support team for assistance.</p>
                   
-                  <a href="mailto:support@alphalens.ai" class="cta-button">
+                   <a href="mailto:support@alphalensai.com" class="cta-button">
                     Contact Support →
                   </a>
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
-                  <p><a href="https://alphalens.ai/privacy">Privacy Policy</a> | <a href="https://alphalens.ai/terms">Terms of Service</a></p>
+                  <p><a href="https://alphalensai.com/privacy">Privacy Policy</a> | <a href="https://alphalensai.com/terms">Terms of Service</a></p>
                 </div>
               </div>
             </body>
