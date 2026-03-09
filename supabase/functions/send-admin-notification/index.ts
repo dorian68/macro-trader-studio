@@ -324,7 +324,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
     case 'reactivation_request':
       const { userEmail, brokerName, deletedAt } = metadata || {};
       return {
-        subject: '🔔 New Account Reactivation Request - Alphalens',
+        subject: 'New Account Reactivation Request - Alphalens',
         html: `
           <!DOCTYPE html>
           <html>
