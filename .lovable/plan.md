@@ -1,82 +1,63 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## Audit: Approval Email Notification Process
 
-L'erreur en console est :
-```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
-
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
-
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
-
-### Solution
-
-**Fichier : `src/components/LightweightChartWidget.tsx`**
-
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
-
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
+### Flow Analysis
 
 ```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+Admin clicks "Approve" in UsersTable
+  → useAdminActions.updateUserStatus(userId, 'approved', userEmail)
+    → 1. UPDATE profiles SET status='approved'  ✅ works
+    → 2. supabase.functions.invoke('send-admin-notification', {
+           body: { to, notificationType, userName, metadata }
+         })
+      → Edge function receives request
+        → Resend sends email from "onboarding@resend.dev"
 ```
 
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
+### Verdict: The email is NOT being delivered to real users
 
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
+**Bug 1 (CRITICAL): Resend test domain — emails only reach the account owner**
 
-Le meme pattern est utilise dans le fallback Binance WebSocket :
-
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+The edge function sends from:
+```
+from: "Alphalens Platform <onboarding@resend.dev>"
 ```
 
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
+`onboarding@resend.dev` is Resend's **sandbox domain**. It can ONLY deliver emails to the email address associated with your Resend account. All other recipients are silently dropped — no error, no bounce, just nothing.
 
-### Details techniques
+This means:
+- If your Resend account email is `admin@yourdomain.com`, only that address receives emails
+- Every other user who gets approved will **never** receive the notification
+- The logs show `"Email sent successfully: undefined"` — the `undefined` ID confirms Resend is not actually sending
 
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
+**Bug 2 (MINOR): Interface/destructuring mismatch (no runtime impact)**
+
+The TypeScript interface says `type` and `userEmail`, but the handler destructures `to` and `notificationType`. This works at runtime because TS interfaces don't enforce, but it's misleading code.
+
+**Bug 3 (MINOR): Hardcoded URLs inconsistent across templates**
+
+Some templates link to `https://macro-trader-studio.lovable.app/auth`, others to `https://alphalensai.com/admin`. If you've moved to a custom domain, some links are broken.
+
+---
+
+### Fix Required
+
+**To make emails actually work**, you need to either:
+
+**Option A — Add a verified custom domain in Resend** (recommended for production)
+- Add your domain (e.g., `notify.alphalens.ai`) in the Resend dashboard
+- Update the `from` field to use your verified domain
+- Then all recipients will receive emails
+
+**Option B — Use Lovable's managed email system**
+- This project already has `RESEND_API_KEY` configured. The fix is simply updating the `from` address once you verify a domain in Resend.
+
+### What works today
+- Profile status update in DB → works perfectly
+- Toast notification in admin UI → works
+- Email delivery → **broken for all users except the Resend account owner**
+
+### No code changes needed
+This is a **Resend configuration issue**, not a code bug. The code is correct — it just needs a verified sender domain. Once you add one in Resend and update the `from` field in the edge function, everything will work.
+
