@@ -1,47 +1,82 @@
 
+## Audit et correction du widget chart (LightweightChartWidget)
 
-## Audit: Signup Experience — Why "Nothing Seems to Happen"
+### Probleme identifie
 
-### Root Cause
-
-After clicking "Sign Up", the code at line 526 does `navigate('/email-confirmation')`. However, when Supabase has email confirmation enabled, `signUp()` returns a user object but **does NOT create a session**.
-
-The `EmailConfirmation` page (line 19-30) immediately calls `supabase.auth.getUser()`. Since there's no active session, `user` is null, and it redirects straight back to `/auth` (line 30). The user sees:
-
-```text
-Click "Sign Up" → loading spinner → /email-confirmation → instantly → /auth
+L'erreur en console est :
+```
+Cannot update oldest data, last time=[object Object], new time=[object Object]
 ```
 
-The entire round-trip happens in ~200ms. The user sees a flash and ends up back on the login page with no feedback. The toast notification from `success.registrationSuccessful` is never shown either — the code only fires the welcome email + admin notification, but never shows a toast on the Auth page itself.
+Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
 
-### Issues Found
+1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
+2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
 
-1. **EmailConfirmation page requires a session that doesn't exist** — redirects back to `/auth` immediately
-2. **No success toast shown after signup** — the `else` block (line 496) sends emails and navigates but never calls `toast()`
-3. **No success state on the Auth page** — if we can't go to EmailConfirmation, the user needs visual feedback right where they are
+### Solution
 
-### Fix Plan
+**Fichier : `src/components/LightweightChartWidget.tsx`**
 
-**Approach: Show a success state inline on the Auth page + fix EmailConfirmation to work without a session**
+**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
 
-#### 1. Add signup success state to Auth.tsx
-- Add a `signupSuccess` state + `signupEmail` state
-- After successful signup, set these states instead of navigating away
-- Render a success card (replacing the form) showing: logo, email icon, "Check your email" message, resend button, "Back to login" button
-- This guarantees the user sees immediate feedback without needing a session
+Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
 
-#### 2. Fix EmailConfirmation.tsx to work without session
-- Accept email via URL search params (`?email=...`) as fallback
-- If no session AND no email param, then redirect to `/auth`
-- This way, if the user lands here from the confirmation email link, it still works
+```text
+AVANT (ligne 597-603):
+const updatedCandle = {
+  ...lastCandleRef.current,
+  time: timestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
-#### 3. Add missing success toast in handleSignUp
-- Add a toast notification before showing the success state, so the user gets both visual feedback and a toast
+APRES:
+// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
+const lastTime = lastCandleRef.current.time;
+const updatedCandle: CandlestickData = {
+  time: lastTime as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
 
-### Files to modify
-- `src/pages/Auth.tsx` — add `signupSuccess`/`signupEmail` state, render success card when active, add toast after signup
-- `src/pages/EmailConfirmation.tsx` — accept email from URL params as fallback when no session
+Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
 
-### Result
-After clicking "Sign Up", the user will see a clear success screen with their email, a "check your inbox" message, and a resend option — all without leaving the auth page.
+**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
 
+Le meme pattern est utilise dans le fallback Binance WebSocket :
+
+```text
+AVANT (ligne 495-501):
+const updatedCandle: CandlestickData = {
+  ...lastCandleRef.current,
+  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+
+APRES:
+const updatedCandle: CandlestickData = {
+  time: lastCandleRef.current.time as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
+
+### Ce qui ne change PAS
+- La logique de chargement des donnees historiques
+- La connexion/reconnexion WebSocket et le backoff
+- Le cache localStorage
+- L'initialisation du chart (mount unique)
+- Le fallback TradingView
+- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
+
+### Details techniques
+
+Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
