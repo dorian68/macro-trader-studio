@@ -108,7 +108,7 @@ export default function EmailConfirmation() {
           </p>
           <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-3">
             <p className="text-sm text-blue-300">
-              💡 Also check your spam folder if you can't find the email.
+              Also check your spam folder if you can't find the email.
             </p>
           </div>
 

@@ -938,7 +938,7 @@ export default function Auth() {
               </p>
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
                 <p className="text-sm text-primary">
-                  💡 {t('emailConfirmation.checkSpam') || 'Also check your spam folder if you can\'t find the email.'}
+                  {t('emailConfirmation.checkSpam') || 'Also check your spam folder if you can\'t find the email.'}
                 </p>
               </div>
               <div className="space-y-2 pt-2">
