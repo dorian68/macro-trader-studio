@@ -8,7 +8,6 @@ export default function EmailConfirmationSuccess() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set document title
     document.title = "Email Confirmed - Alphalens";
   }, []);
 
@@ -20,12 +19,12 @@ export default function EmailConfirmationSuccess() {
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white p-4">
       <Card className="w-full max-w-md text-center bg-[#0a0a0a] border-white/10">
         <CardHeader className="space-y-4">
-          {/* Alphalens Logo */}
-          <div className="flex justify-center mb-1">
+          {/* Alphalens Logo - same as Auth page */}
+          <div className="flex justify-center mb-4 py-4">
             <img
-              src="/logo_v2.png"
-              alt="Alphalens"
-              className="h-24 w-auto"
+              src="/header_logo.png"
+              alt="Alphalens AI"
+              className="h-14 w-auto object-contain"
             />
           </div>
 
@@ -36,7 +35,7 @@ export default function EmailConfirmationSuccess() {
 
           {/* Success Message */}
           <h1 className="text-2xl font-bold text-white">
-            Your email has been successfully confirmed ✅
+            Your email has been successfully confirmed
           </h1>
         </CardHeader>
 
@@ -48,7 +47,7 @@ export default function EmailConfirmationSuccess() {
           {/* Additional Info */}
           <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
             <p className="text-sm text-blue-300">
-              🎉 Your account has been successfully activated and is ready to use. Our team will review your registration for full access.
+              Your account has been successfully activated and is ready to use. Our team will review your registration for full access.
             </p>
           </div>
 
