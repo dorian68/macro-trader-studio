@@ -495,7 +495,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                     Visit Alphalens →
                   </a>
 
-                  <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">If you have any questions, don't hesitate to contact us at <a href="mailto:support@alphalens.ai" style="color: #f97316;">support@alphalens.ai</a></p>
+                  <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">If you have any questions, don't hesitate to contact us at <a href="mailto:support@alphalensai.com" style="color: #f97316;">support@alphalensai.com</a></p>
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
