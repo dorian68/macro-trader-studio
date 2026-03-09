@@ -455,7 +455,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
     case 'welcome_signup':
       return {
-        subject: '🎉 Welcome to Alphalens – Your Registration is Being Reviewed',
+        subject: 'Welcome to Alphalens – Your Registration is Being Reviewed',
         html: `
           <!DOCTYPE html>
           <html>
