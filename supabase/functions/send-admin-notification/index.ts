@@ -381,7 +381,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Welcome Back to Alphalens!</p>
                 </div>
                 <div class="content">
-                  <h2>✅ Great News, ${userName}!</h2>
+                  <h2>Great News, ${userName}!</h2>
                   <p>Your reactivation request has been approved. Your Alphalens account is now active again.</p>
                   
                   <div class="highlight-box success">
