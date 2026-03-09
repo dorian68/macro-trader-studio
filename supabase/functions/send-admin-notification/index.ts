@@ -248,7 +248,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
       };
       
       return {
-        subject: '💳 Your Alphalens Credits Have Been Updated',
+        subject: 'Your Alphalens Credits Have Been Updated',
         html: `
           <!DOCTYPE html>
           <html>
