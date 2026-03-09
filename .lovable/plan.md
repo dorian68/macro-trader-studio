@@ -1,82 +1,47 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## Audit: Email Template Images + Logo Branding
 
-L'erreur en console est :
+### Critical Finding: All logo images are BROKEN (404)
+
+Every email template references this URL:
 ```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
-
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
-
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
-
-### Solution
-
-**Fichier : `src/components/LightweightChartWidget.tsx`**
-
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
-
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
-
-```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+https://jqrlegdulnnrpiixiecf.supabase.co/storage/v1/object/public/lovable-uploads/Full_logo_no_BG_2.png
 ```
 
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
+This URL returns **`{"statusCode":"404","error":"Bucket not found"}`**. The bucket `lovable-uploads` does not exist in Supabase Storage (only `abcg-insights` and `AlphaLens_PDF` exist). This means every email sent shows a **broken image icon** where the logo should be.
 
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
+### Template-by-template audit
 
-Le meme pattern est utilise dans le fallback Binance WebSocket :
+| Template | Logo present? | Logo visible? |
+|----------|--------------|---------------|
+| `status_approved` | Yes (img tag) | NO - 404 broken image |
+| `status_rejected` | Yes (img tag) | NO - 404 broken image |
+| `credits_updated` | Yes (img tag) | NO - 404 broken image |
+| `welcome_signup` | Yes (img tag) | NO - 404 broken image |
+| `new_registration` | Yes (img tag) | NO - 404 broken image |
+| `reactivation_request` | NO - no img tag at all | N/A |
+| `reactivation_approved` | NO - no img tag at all | N/A |
+| `reactivation_rejected` | NO - no img tag at all | N/A |
 
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+### Additional issue: Logo is white-on-transparent
 
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
+The file `Full_logo_no_BG_2.png` is a white logo on transparent background. The email header has a dark gradient (`#002244` to `#1e40af`), so it would be visible **if** the URL worked. However, for maximum email client compatibility, a logo with a solid background or the white-BG version (`Full_logi_white_BG_FINAL.png`) would be safer.
 
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
+### Fix Plan
 
-### Details techniques
+**Step 1: Create a public Supabase storage bucket `email-assets`** and upload the logo there. This gives a stable, publicly accessible URL independent of the app deployment.
 
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
+**Step 2: Upload the logo** `Full_logi_white_BG_FINAL.png` (white background version, works in all email clients regardless of header color) to the new bucket.
+
+**Step 3: Update all 8 email templates** in `send-admin-notification/index.ts`:
+- Replace the broken Supabase storage URL with the new public bucket URL
+- Add the logo `<img>` tag to the 3 templates that are missing it (`reactivation_request`, `reactivation_approved`, `reactivation_rejected`)
+- Ensure consistent header styling across all templates
+
+### Files to modify
+- `supabase/functions/send-admin-notification/index.ts` — update all logo URLs + add missing logos
+
+### Result
+All 8 notification emails will display the Alphalens logo correctly, giving a professional, branded appearance.
+
