@@ -187,6 +187,23 @@ export default function Auth() {
       const hasOAuthParams = window.location.search.includes('code') || window.location.hash.includes('access_token');
 
       if (session?.user && window.location.pathname === '/auth' && intent !== 'free_trial' && !isOAuthActive && !hasOAuthParams) {
+        // Check for pending plan checkout before redirecting to dashboard
+        const pendingPlan = localStorage.getItem('alphalens_pending_plan');
+        if (pendingPlan) {
+          localStorage.removeItem('alphalens_pending_plan');
+          console.log('[Auth] Already signed in, processing pending plan:', pendingPlan);
+          try {
+            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+              body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
+            });
+            if (!checkoutError && checkoutData?.url) {
+              window.location.href = checkoutData.url;
+              return;
+            }
+          } catch (e) {
+            console.error('[Auth] Failed to create checkout for pending plan:', e);
+          }
+        }
         navigate('/dashboard');
       }
     });
