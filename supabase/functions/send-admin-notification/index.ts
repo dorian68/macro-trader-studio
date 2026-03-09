@@ -332,6 +332,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
             <body>
               <div class="email-container">
                 <div class="header">
+                  <img src="${LOGO_URL}" alt="Alphalens AI" class="logo" />
                   <p class="header-text">Alphalens Admin Panel</p>
                 </div>
                 <div class="content">
