@@ -131,8 +131,8 @@ const Pricing = () => {
       } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: planType,
-          success_url: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${window.location.origin}/payment-canceled`
+          success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}',
+          cancel_url: 'https://alphalensai.com/payment-canceled'
         }
       });
       if (error) {
