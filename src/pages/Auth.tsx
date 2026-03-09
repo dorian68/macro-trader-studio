@@ -179,7 +179,7 @@ export default function Auth() {
 
     // Check for existing session - redirect if already logged in
     // BUT NOT if we're in an active OAuth flow
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       const oauthFlow = localStorage.getItem('oauth_flow');
       const oauthStartedAt = localStorage.getItem('oauth_started_at');
