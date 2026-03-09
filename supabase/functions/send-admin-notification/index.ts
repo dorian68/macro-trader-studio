@@ -439,7 +439,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
                   <div class="highlight-box info">
                     <strong>Need Help?</strong>
-                    <p style="margin: 10px 0;">If you have questions about this decision or need assistance, please contact our support team at <a href="mailto:support@alphalens.ai" style="color: #f97316;">support@alphalens.ai</a></p>
+                    <p style="margin: 10px 0;">If you have questions about this decision or need assistance, please contact our support team at <a href="mailto:support@alphalensai.com" style="color: #f97316;">support@alphalensai.com</a></p>
                   </div>
 
                   <p>We appreciate your understanding.</p>
