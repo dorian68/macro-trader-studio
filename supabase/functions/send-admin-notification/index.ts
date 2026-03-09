@@ -614,7 +614,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error: any) {
-    console.error("❌ [Admin Notification] Error sending email:", error);
+    console.error("[Admin Notification] Error sending email:", error);
     return new Response(
       JSON.stringify({ 
         success: false,
