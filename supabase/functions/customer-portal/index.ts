@@ -5,7 +5,7 @@ import { getStripeConfig } from "../_shared/stripe-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -21,7 +21,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Get Stripe configuration based on environment
     const config = getStripeConfig();
     logStep("Stripe config loaded", { mode: config.mode });
     
@@ -29,7 +28,6 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -66,7 +64,7 @@ serve(async (req) => {
     logStep("Found Stripe customer", { customerId });
 
     // Get origin for return URL
-    const origin = req.headers.get("origin") || "https://22f2a47e-97ad-4d12-9369-04abd2bd2d8c.lovableproject.com";
+    const origin = req.headers.get("origin") || "https://alphalensai.com";
     
     // Create customer portal session
     const portalSession = await stripe.billingPortal.sessions.create({
