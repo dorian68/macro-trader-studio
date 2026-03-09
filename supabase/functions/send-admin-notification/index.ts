@@ -151,7 +151,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Research Platform for Intelligent Trading</p>
                 </div>
                 <div class="content">
-                  <h2>Welcome to Alphalens! 🚀</h2>
+                  <h2>Welcome to Alphalens!</h2>
                   <p>Hello ${userName},</p>
                   <p>Great news! Your Alphalens account has been <strong>approved</strong> by our admin team.</p>
                   
