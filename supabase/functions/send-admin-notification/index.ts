@@ -305,7 +305,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   
                   <p>You can start using your updated credits right away by accessing your dashboard.</p>
                   
-                  <a href="https://alphalens.ai/dashboard" class="cta-button">
+                  <a href="https://alphalensai.com/dashboard" class="cta-button">
                     Go to Dashboard →
                   </a>
                   
