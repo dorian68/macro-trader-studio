@@ -9,8 +9,8 @@ const corsHeaders = {
 };
 
 interface AdminNotificationRequest {
-  type: 'status_approved' | 'status_rejected' | 'credits_updated' | 'reactivation_request' | 'reactivation_approved' | 'reactivation_rejected' | 'new_registration' | 'welcome_signup';
-  userEmail: string;
+  to: string;
+  notificationType: string;
   userName: string;
   metadata?: any;
 }
