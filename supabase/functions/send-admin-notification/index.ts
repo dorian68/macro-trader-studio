@@ -336,7 +336,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Alphalens Admin Panel</p>
                 </div>
                 <div class="content">
-                  <h2>🔔 New Reactivation Request</h2>
+                  <h2>New Reactivation Request</h2>
                   <p>A user has requested to reactivate their soft-deleted account.</p>
                   
                   <div class="highlight-box info">
