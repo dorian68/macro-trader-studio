@@ -524,8 +524,14 @@ export default function Auth() {
         localStorage.setItem('alphalens_pending_free_trial', 'true');
       }
 
-      // Redirect to confirmation page instead of just showing a toast
-      navigate('/email-confirmation');
+      // Show inline success state instead of navigating away
+      // (Supabase doesn't create a session for unconfirmed users, so EmailConfirmation page would redirect back)
+      toast({
+        title: t('success.registrationSuccessful'),
+        description: t('success.registrationSuccessfulDescription'),
+      });
+      setSignupEmail(email);
+      setSignupSuccess(true);
     }
 
     setLoading(false);
