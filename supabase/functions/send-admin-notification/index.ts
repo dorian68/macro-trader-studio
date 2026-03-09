@@ -198,7 +198,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
             <body>
               <div class="email-container">
                 <div class="header">
-                  <img src="https://jqrlegdulnnrpiixiecf.supabase.co/storage/v1/object/public/lovable-uploads/Full_logo_no_BG_2.png" alt="Alphalens AI" class="logo" />
+                  <img src="${LOGO_URL}" alt="Alphalens AI" class="logo" />
                   <p class="header-text">Research Platform for Intelligent Trading</p>
                 </div>
                 <div class="content">
