@@ -1108,7 +1108,7 @@ export default function Auth() {
                           onClick={async () => {
                             setForgotPasswordLoading(true);
                             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                              redirectTo: `${window.location.origin}/reset-password`,
+                              redirectTo: `https://alphalensai.com/reset-password`,
                             });
                             setForgotPasswordLoading(false);
                             if (error) {
