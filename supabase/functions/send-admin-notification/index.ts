@@ -483,10 +483,10 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
 
                   <p style="margin-top: 25px;"><strong>What Alphalens offers:</strong></p>
                   <ul style="color: #4b5563; line-height: 2;">
-                    <li>🤖 <strong>AI-Powered Trade Setups</strong> — Get data-driven entry, stop-loss, and take-profit levels</li>
-                    <li>📊 <strong>Portfolio Management</strong> — Track and optimize your portfolio with AI recommendations</li>
-                    <li>📈 <strong>Real-Time Market Insights</strong> — Stay ahead with macro analysis and live news</li>
-                    <li>📄 <strong>Custom Reports</strong> — Generate professional reports tailored to your assets</li>
+                    <li><strong>AI-Powered Trade Setups</strong> — Get data-driven entry, stop-loss, and take-profit levels</li>
+                    <li><strong>Portfolio Management</strong> — Track and optimize your portfolio with AI recommendations</li>
+                    <li><strong>Real-Time Market Insights</strong> — Stay ahead with macro analysis and live news</li>
+                    <li><strong>Custom Reports</strong> — Generate professional reports tailored to your assets</li>
                   </ul>
 
                   <p>In the meantime, feel free to explore our website to learn more about the platform.</p>
