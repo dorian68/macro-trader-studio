@@ -11,10 +11,11 @@ export default function EmailConfirmation() {
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get current user email
+    // Get current user email (or fallback to URL param)
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -25,8 +26,13 @@ export default function EmailConfirmation() {
           navigate('/dashboard');
         }
       } else {
-        // No user session, redirect to auth
-        navigate('/auth');
+        // No session — check for email in URL params as fallback
+        const emailParam = searchParams.get('email');
+        if (emailParam) {
+          setUserEmail(emailParam);
+        } else {
+          navigate('/auth');
+        }
       }
     };
 
