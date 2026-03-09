@@ -924,9 +924,6 @@ export default function Auth() {
                   className="h-14 w-auto object-contain"
                 />
               </div>
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="h-8 w-8 text-primary" />
-              </div>
               <CardTitle className="text-xl">{t('emailConfirmation.title') || 'Check your email'}</CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
@@ -941,7 +938,7 @@ export default function Auth() {
               </p>
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
                 <p className="text-sm text-primary">
-                  💡 {t('emailConfirmation.checkSpam') || 'Also check your spam folder if you can\'t find the email.'}
+                  {t('emailConfirmation.checkSpam') || 'Also check your spam folder if you can\'t find the email.'}
                 </p>
               </div>
               <div className="space-y-2 pt-2">
