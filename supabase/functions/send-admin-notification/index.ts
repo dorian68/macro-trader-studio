@@ -589,7 +589,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Missing required fields: to, notificationType');
     }
 
-    console.log(`📧 [Admin Notification] Sending ${notificationType} to:`, to);
+    console.log(`[Admin Notification] Sending ${notificationType} to:`, to);
 
     const { subject, html } = getEmailContent(notificationType, userName || to, metadata);
 
