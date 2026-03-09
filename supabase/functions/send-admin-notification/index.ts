@@ -477,7 +477,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p>Thank you for registering on <strong>Alphalens</strong>, the AI-powered research platform designed for intelligent trading.</p>
                   
                   <div class="highlight-box info">
-                    <p style="margin: 0; font-size: 16px; font-weight: 600; color: #002244;">⏳ Your account is being reviewed</p>
+                    <p style="margin: 0; font-size: 16px; font-weight: 600; color: #002244;">Your account is being reviewed</p>
                     <p style="margin: 10px 0 0 0; color: #4b5563;">Our team reviews every registration to ensure the best experience. You will receive a confirmation email once your account is approved — typically within 24 hours.</p>
                   </div>
 
