@@ -510,7 +510,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
     case 'new_registration':
       const { userEmail: regEmail, brokerName: regBroker, registeredAt } = metadata || {};
       return {
-        subject: '🆕 New Registration Pending Approval - Alphalens',
+        subject: 'New Registration Pending Approval - Alphalens',
         html: `
           <!DOCTYPE html>
           <html>
