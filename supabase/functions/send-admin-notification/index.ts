@@ -265,7 +265,7 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
                   <p class="header-text">Research Platform for Intelligent Trading</p>
                 </div>
                 <div class="content">
-                  <h2>Your Credits Have Been Updated 💳</h2>
+                  <h2>Your Credits Have Been Updated</h2>
                   <p>Hello ${userName},</p>
                   <p>An administrator has updated your credit allocation${metadata?.planType ? ` for your <strong>${metadata.planType}</strong> plan` : ''}.</p>
                   
