@@ -493,7 +493,7 @@ export default function Auth() {
 
     setLoading(true);
 
-    const redirectUrl = `https://alphalensai.com/email-confirmation-success`;
+    const redirectUrl = `https://alphalensai.com/confirm-success`;
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -993,7 +993,7 @@ export default function Auth() {
                       type: 'signup',
                       email: signupEmail,
                       options: {
-                        emailRedirectTo: `https://alphalensai.com/email-confirmation-success`
+                        emailRedirectTo: `https://alphalensai.com/confirm-success`
                       }
                     });
                     if (error) {

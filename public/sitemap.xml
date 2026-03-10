@@ -26,12 +26,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/documentation</loc>
+    <loc>https://macro-trader-studio.lovable.app/docs</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/help-center</loc>
+    <loc>https://macro-trader-studio.lovable.app/help</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

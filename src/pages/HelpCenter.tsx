@@ -19,30 +19,30 @@ export default function HelpCenter() {
       category: "Getting Started",
       icon: Book,
       articles: [
-        { title: "Creating Your First Account", link: "/documentation" },
+        { title: "Creating Your First Account", link: "/docs" },
         { title: "Understanding Credits and Plans", link: "/pricing" },
-        { title: "Selecting Your Broker", link: "/documentation" },
-        { title: "Navigating the Dashboard", link: "/documentation" },
+        { title: "Selecting Your Broker", link: "/docs" },
+        { title: "Navigating the Dashboard", link: "/docs" },
       ],
     },
     {
       category: "AI Features",
       icon: MessageCircle,
       articles: [
-        { title: "How to Generate Trade Setups", link: "/documentation" },
-        { title: "Using Macro Commentary", link: "/documentation" },
-        { title: "Creating Custom Reports", link: "/documentation" },
-        { title: "Best Practices for AI Queries", link: "/documentation" },
+        { title: "How to Generate Trade Setups", link: "/docs" },
+        { title: "Using Macro Commentary", link: "/docs" },
+        { title: "Creating Custom Reports", link: "/docs" },
+        { title: "Best Practices for AI Queries", link: "/docs" },
       ],
     },
     {
       category: "Portfolio Management",
       icon: Book,
       articles: [
-        { title: "Adding Positions to Your Portfolio", link: "/documentation" },
-        { title: "Understanding P&L Calculations", link: "/documentation" },
-        { title: "AI Recommendations Explained", link: "/documentation" },
-        { title: "Exporting Portfolio Data", link: "/documentation" },
+        { title: "Adding Positions to Your Portfolio", link: "/docs" },
+        { title: "Understanding P&L Calculations", link: "/docs" },
+        { title: "AI Recommendations Explained", link: "/docs" },
+        { title: "Exporting Portfolio Data", link: "/docs" },
       ],
     },
     {
@@ -59,7 +59,7 @@ export default function HelpCenter() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead titleKey="seo.helpCenterTitle" descriptionKey="seo.helpCenterDescription" canonicalPath="/help-center" />
+      <SEOHead titleKey="seo.helpCenterTitle" descriptionKey="seo.helpCenterDescription" canonicalPath="/help" />
       <PublicNavbar />
 
       {/* Hero Section */}
@@ -143,7 +143,7 @@ export default function HelpCenter() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate("/documentation")}
+                  onClick={() => navigate("/docs")}
                   className="gap-2"
                 >
                   <Book className="w-4 h-4" />

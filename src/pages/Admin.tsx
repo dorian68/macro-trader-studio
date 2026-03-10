@@ -420,7 +420,7 @@ export default function Admin() {
             {isSuperUser && (
               <Button 
                 variant="outline"
-                onClick={() => navigate('/forecast-playground')}
+                onClick={() => navigate('/playground')}
                 className="h-10 sm:h-11"
               >
                 <FlaskConical className="h-4 w-4 mr-2" />

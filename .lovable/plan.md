@@ -1,52 +1,82 @@
 
+## Audit et correction du widget chart (LightweightChartWidget)
 
-## URL SEO Audit & Improvements
+### Probleme identifie
 
-### Current URLs — Issues Found
+L'erreur en console est :
+```
+Cannot update oldest data, last time=[object Object], new time=[object Object]
+```
 
-| Current URL | Issue | New URL |
-|---|---|---|
-| `/documentation` | Too long for a primary nav page | `/docs` |
-| `/help-center` | Could be shorter | `/help` |
-| `/alphalens-labs` | Brand-specific, long | `/labs` |
-| `/portfolio-analytics` | Long, can be shortened | `/analytics` |
-| `/email-confirmation-success` | Long utility URL | `/confirm-success` |
-| `/forecast-playground` | Long | `/playground` |
-| `/forecast-playground/tool` | Nested under old name | `/playground/tool` |
-| `/forecast-playground/macro-commentary` | Legacy, long | Keep as redirect only |
-| `/forecast-playground/trade-generator` | Legacy, long | Keep as redirect only |
+Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
 
-All other URLs (`/pricing`, `/features`, `/about`, `/contact`, `/auth`, `/dashboard`, `/reports`, `/portfolio`, `/history`, `/credits`, `/admin`, `/privacy`, `/terms`, `/api`, `/trade-generator`, `/macro-lab`, `/macro-analysis`, `/ai-setup`, `/asset/:symbol`, `/reset-password`, `/payment-success`, `/payment-canceled`) are already short, descriptive, and use hyphens correctly.
+1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
+2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
 
-### Implementation
+### Solution
 
-#### 1. Update routes in `App.tsx`
-- Change primary paths to new short URLs
-- Keep old paths as redirects using `<Navigate to="/docs" replace />` for backward compatibility and to preserve any existing Google index
+**Fichier : `src/components/LightweightChartWidget.tsx`**
 
-#### 2. Update all internal references
-Files with links to update:
-- **`/documentation` → `/docs`**: Footer.tsx, HelpCenter.tsx, API.tsx, Documentation.tsx (canonicalPath)
-- **`/help-center` → `/help`**: Footer.tsx, HelpCenter.tsx (canonicalPath)
-- **`/alphalens-labs` → `/labs`**: App.tsx only
-- **`/portfolio-analytics` → `/analytics`**: App.tsx only
-- **`/forecast-playground` → `/playground`**: App.tsx routes
+**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
 
-#### 3. Update sitemap
-Replace `/documentation` with `/docs` and add `/help` URL.
+Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
 
-#### 4. Update canonical paths in SEOHead
-Each renamed page gets its canonical updated to the new short URL.
+```text
+AVANT (ligne 597-603):
+const updatedCandle = {
+  ...lastCandleRef.current,
+  time: timestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
 
-### Files Modified
-- `src/App.tsx` — route paths + redirect routes
-- `src/components/Footer.tsx` — nav links
-- `src/pages/HelpCenter.tsx` — canonicalPath + internal links
-- `src/pages/Documentation.tsx` — canonicalPath
-- `src/pages/API.tsx` — link to docs
-- `public/sitemap.xml` — updated URLs
+APRES:
+// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
+const lastTime = lastCandleRef.current.time;
+const updatedCandle: CandlestickData = {
+  time: lastTime as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
 
-### No Breaking Changes
-- Old URLs redirect to new ones via `<Navigate replace />`
-- All functionality preserved
+Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
 
+**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
+
+Le meme pattern est utilise dans le fallback Binance WebSocket :
+
+```text
+AVANT (ligne 495-501):
+const updatedCandle: CandlestickData = {
+  ...lastCandleRef.current,
+  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+
+APRES:
+const updatedCandle: CandlestickData = {
+  time: lastCandleRef.current.time as UTCTimestamp,
+  open: lastCandleRef.current.open,
+  close: price,
+  high: Math.max(lastCandleRef.current.high, price),
+  low: Math.min(lastCandleRef.current.low, price),
+};
+```
+
+### Ce qui ne change PAS
+- La logique de chargement des donnees historiques
+- La connexion/reconnexion WebSocket et le backoff
+- Le cache localStorage
+- L'initialisation du chart (mount unique)
+- Le fallback TradingView
+- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
+
+### Details techniques
+
+Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.

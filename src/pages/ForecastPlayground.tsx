@@ -48,7 +48,7 @@ export default function ForecastPlaygroundHub() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <Button onClick={() => navigate("/forecast-playground/tool")} className="w-full">
+                <Button onClick={() => navigate("/playground/tool")} className="w-full">
                   Open tool
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -73,7 +73,7 @@ export default function ForecastPlaygroundHub() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <Button onClick={() => navigate("/forecast-playground/macro-commentary")} className="w-full">
+                <Button onClick={() => navigate("/macro-lab")} className="w-full">
                   Open tool
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -98,7 +98,7 @@ export default function ForecastPlaygroundHub() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <Button onClick={() => navigate("/forecast-playground/trade-generator")} className="w-full">
+                <Button onClick={() => navigate("/trade-generator")} className="w-full">
                   Open tool
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
