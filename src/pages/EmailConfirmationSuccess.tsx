@@ -128,5 +128,6 @@ export default function EmailConfirmationSuccess() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

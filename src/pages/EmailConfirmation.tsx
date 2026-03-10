@@ -137,5 +137,6 @@ export default function EmailConfirmation() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
