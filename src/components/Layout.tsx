@@ -118,7 +118,7 @@ export default function Layout({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/alphalens-labs')}
+                onClick={() => navigate('/labs')}
                 className="h-8 px-3"
               >
                 <Calculator className="h-4 w-4 mr-2" />
