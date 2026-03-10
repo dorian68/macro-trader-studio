@@ -1,82 +1,41 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## Dynamic Sitemap Generation
 
-L'erreur en console est :
-```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
+### Problem
+The current `public/sitemap.xml` is a static file that must be manually updated when pages are added. It's also missing several public pages.
 
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
+### Approach
+Since this is a Vite SPA (no server-side rendering), we cannot generate the sitemap at request time. Instead, we'll create a **build-time sitemap generator** — a script that runs during `vite build` to produce `sitemap.xml` from a single source-of-truth route registry. When new pages are added, the developer only adds an entry to the registry and the sitemap updates automatically on next build.
 
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
+### Implementation
 
-### Solution
+#### 1. Create route registry (`src/seo/sitemapRoutes.ts`)
+A single array defining all public, indexable routes with their metadata (path, priority, changefreq). This is the single source of truth — adding a new page means adding one line here.
 
-**Fichier : `src/components/LightweightChartWidget.tsx`**
-
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
-
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
-
-```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+```ts
+export const sitemapRoutes = [
+  { path: '/', changefreq: 'weekly', priority: 1.0 },
+  { path: '/features', changefreq: 'monthly', priority: 0.9 },
+  { path: '/pricing', changefreq: 'monthly', priority: 0.9 },
+  // ... all public pages
+];
 ```
 
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
+#### 2. Create build-time generator script (`scripts/generate-sitemap.ts`)
+A Node script that reads `sitemapRoutes`, generates valid XML, and writes to `dist/sitemap.xml`. Includes `<lastmod>` with the build date (Google standard).
 
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
+#### 3. Integrate into Vite build via plugin
+Add a small Vite plugin in `vite.config.ts` that runs the generator after build (`closeBundle` hook), so `sitemap.xml` is always up-to-date in production builds. Also keep the static `public/sitemap.xml` for dev mode.
 
-Le meme pattern est utilise dans le fallback Binance WebSocket :
+#### 4. Update `public/sitemap.xml`
+Update the static file to include all currently missing public pages (product, auth, privacy, terms are there — but missing `/coming-soon`). This serves as the dev-mode fallback.
 
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+### Files
+- **New**: `src/seo/sitemapRoutes.ts` — route registry
+- **New**: `scripts/generate-sitemap.ts` — build script  
+- **Modified**: `vite.config.ts` — add sitemap generation plugin
+- **Modified**: `public/sitemap.xml` — sync with full route list
 
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
+### No design changes, no breaking changes.
 
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
-
-### Details techniques
-
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
