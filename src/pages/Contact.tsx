@@ -1,4 +1,5 @@
 import { SEOHead } from "@/components/SEOHead";
+import { breadcrumbList } from "@/seo/structuredData";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ export default function Contact() {
     }));
   };
   return <div className="min-h-screen bg-background">
-    <SEOHead titleKey="seo.contactTitle" descriptionKey="seo.contactDescription" canonicalPath="/contact" />
+    <SEOHead titleKey="seo.contactTitle" descriptionKey="seo.contactDescription" canonicalPath="/contact" jsonLd={breadcrumbList('Contact', '/contact')} />
     <PublicNavbar />
 
     {/* Hero Section */}

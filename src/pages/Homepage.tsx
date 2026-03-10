@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCreditManager } from "@/hooks/useCreditManager";
 import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/Footer";
+import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
 
 export default function Homepage() {
   const navigate = useNavigate();
@@ -41,23 +42,7 @@ export default function Homepage() {
       titleKey="seo.homeTitle"
       descriptionKey="seo.homeDescription"
       canonicalPath="/"
-      jsonLd={[
-        {
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          "name": "alphaLens AI",
-          "url": "https://macro-trader-studio.lovable.app",
-          "logo": "https://macro-trader-studio.lovable.app/alphalens_logo_new.png",
-          "description": "AI-powered financial research and trading intelligence platform.",
-          "sameAs": []
-        },
-        {
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          "name": "alphaLens AI",
-          "url": "https://macro-trader-studio.lovable.app"
-        }
-      ]}
+      jsonLd={[organizationSchema, webSiteSchema, siteNavigationSchema]}
     />
     <PublicNavbar />
 
