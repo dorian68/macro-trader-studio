@@ -142,17 +142,20 @@ function AlphaLensLabsContent() {
 
 export default function AlphaLensLabs() {
   return (
-    <SuperUserGuard 
-      fallback={
-        <Layout>
-          <LabsComingSoon 
-            title="AlphaLens Labs" 
-            description="This experimental workspace is currently in private beta and reserved for selected users."
-          />
-        </Layout>
-      }
-    >
-      <AlphaLensLabsContent />
-    </SuperUserGuard>
+    <>
+      <SEOHead titleKey="seo.labsTitle" descriptionKey="seo.labsDescription" noIndex />
+      <SuperUserGuard 
+        fallback={
+          <Layout>
+            <LabsComingSoon 
+              title="AlphaLens Labs" 
+              description="This experimental workspace is currently in private beta and reserved for selected users."
+            />
+          </Layout>
+        }
+      >
+        <AlphaLensLabsContent />
+      </SuperUserGuard>
+    </>
   );
 }

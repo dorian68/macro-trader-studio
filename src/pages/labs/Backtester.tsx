@@ -185,6 +185,7 @@ function BacktesterContent() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.backtesterTitle" descriptionKey="seo.backtesterDescription" noIndex />
       <div className={`flex h-full relative transition-all ${isAURAExpanded ? 'md:mr-[33.333%]' : ''}`}>
         <div className="flex-1 w-full max-w-7xl mx-auto py-8 px-6 md:px-8 space-y-6">
           {/* Header */}

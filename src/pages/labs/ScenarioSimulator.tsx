@@ -127,17 +127,20 @@ function ScenarioSimulatorContent() {
 
 export default function ScenarioSimulator() {
   return (
-    <SuperUserGuard
-      fallback={
-        <Layout>
-          <LabsComingSoon 
-            title="Alpha Scenario Simulator"
-            description="Simulate macroeconomic scenarios such as rate hikes, recessions, or oil shocks, and visualize their impact on your portfolio."
-          />
-        </Layout>
-      }
-    >
-      <ScenarioSimulatorContent />
-    </SuperUserGuard>
+    <>
+      <SEOHead titleKey="seo.scenarioSimulatorTitle" descriptionKey="seo.scenarioSimulatorDescription" noIndex />
+      <SuperUserGuard
+        fallback={
+          <Layout>
+            <LabsComingSoon 
+              title="Alpha Scenario Simulator"
+              description="Simulate macroeconomic scenarios such as rate hikes, recessions, or oil shocks, and visualize their impact on your portfolio."
+            />
+          </Layout>
+        }
+      >
+        <ScenarioSimulatorContent />
+      </SuperUserGuard>
+    </>
   );
 }
