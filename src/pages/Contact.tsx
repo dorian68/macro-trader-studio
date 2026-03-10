@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import PublicNavbar from "@/components/PublicNavbar";
 import { useTranslation } from 'react-i18next';
 import { Footer } from '@/components/Footer';
+import { RelatedPages } from '@/components/RelatedPages';
 export default function Contact() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
