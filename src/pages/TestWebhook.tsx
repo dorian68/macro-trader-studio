@@ -8,6 +8,7 @@ import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreditManager } from '@/hooks/useCreditManager';
 import Layout from '@/components/Layout';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function TestWebhook() {
   const { user } = useAuth();
