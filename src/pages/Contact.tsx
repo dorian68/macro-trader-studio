@@ -73,7 +73,7 @@ export default function Contact() {
     }));
   };
   return <div className="min-h-screen bg-background">
-    <SEOHead titleKey="seo.contactTitle" descriptionKey="seo.contactDescription" canonicalPath="/contact" />
+    <SEOHead titleKey="seo.contactTitle" descriptionKey="seo.contactDescription" canonicalPath="/contact" jsonLd={breadcrumbList('Contact', '/contact')} />
     <PublicNavbar />
 
     {/* Hero Section */}

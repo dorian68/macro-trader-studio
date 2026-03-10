@@ -166,7 +166,7 @@ const Pricing = () => {
     return checkoutLoading === planName.toLowerCase();
   };
   return <>
-    <SEOHead titleKey="seo.pricingTitle" descriptionKey="seo.pricingDescription" canonicalPath="/pricing" />
+    <SEOHead titleKey="seo.pricingTitle" descriptionKey="seo.pricingDescription" canonicalPath="/pricing" jsonLd={breadcrumbList('Pricing', '/pricing')} />
     <PublicNavbar />
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">

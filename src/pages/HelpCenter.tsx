@@ -60,7 +60,7 @@ export default function HelpCenter() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead titleKey="seo.helpCenterTitle" descriptionKey="seo.helpCenterDescription" canonicalPath="/help" />
+      <SEOHead titleKey="seo.helpCenterTitle" descriptionKey="seo.helpCenterDescription" canonicalPath="/help" jsonLd={breadcrumbList('Help Center', '/help')} />
       <PublicNavbar />
 
       {/* Hero Section */}
