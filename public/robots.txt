@@ -1,16 +1,30 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
+# robots.txt — AlphaLens AI
+# https://macro-trader-studio.lovable.app
 
 User-agent: *
 Allow: /
+
+# Private / auth-gated areas
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /ai-setup
+Disallow: /macro-analysis
+Disallow: /reports
+Disallow: /portfolio
+Disallow: /history
+Disallow: /credits
+Disallow: /playground
+Disallow: /trade-generator
+Disallow: /macro-lab
+Disallow: /labs
+Disallow: /analytics
+
+# Utility / transactional pages
+Disallow: /payment-success
+Disallow: /payment-canceled
+Disallow: /email-confirmation
+Disallow: /confirm-success
+Disallow: /reset-password
+Disallow: /test-webhook
 
 Sitemap: https://macro-trader-studio.lovable.app/sitemap.xml
