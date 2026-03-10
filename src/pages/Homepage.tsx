@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCreditManager } from "@/hooks/useCreditManager";
 import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/Footer";
+import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
 
 export default function Homepage() {
   const navigate = useNavigate();
