@@ -109,7 +109,8 @@ const App = () => {
                             <Route path="/history" element={<History />} />
                             <Route path="/reset-password" element={<ResetPassword />} />
                             <Route path="/email-confirmation" element={<EmailConfirmation />} />
-                            <Route path="/email-confirmation-success" element={<EmailConfirmationSuccess />} />
+                            <Route path="/confirm-success" element={<EmailConfirmationSuccess />} />
+                            <Route path="/email-confirmation-success" element={<Navigate to="/confirm-success" replace />} />
                             <Route path="/payment-success" element={<PaymentSuccess />} />
                             <Route path="/payment-canceled" element={<PaymentCanceled />} />
                             <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
