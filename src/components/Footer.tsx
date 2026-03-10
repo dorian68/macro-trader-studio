@@ -85,7 +85,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <button
-                  onClick={() => navigate("/documentation")}
+                  onClick={() => navigate("/docs")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.documentation')}
