@@ -195,6 +195,11 @@ export default function Terms() {
         </div>
       </section>
 
+      <RelatedPages links={[
+        { label: "Privacy Policy", path: "/privacy" },
+        { label: "Contact", path: "/contact" },
+        { label: "Help Center", path: "/help" },
+      ]} />
       <Footer />
     </div>
   );

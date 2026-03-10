@@ -202,6 +202,12 @@ export default function Features() {
         </div>
       </section>
 
+      <RelatedPages links={[
+        { label: "Pricing", path: "/pricing" },
+        { label: "Documentation", path: "/docs" },
+        { label: "About", path: "/about" },
+        { label: "Contact", path: "/contact" },
+      ]} />
       <Footer />
     </div>
   );

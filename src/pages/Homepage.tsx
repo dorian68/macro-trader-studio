@@ -169,7 +169,12 @@ export default function Homepage() {
       </div>
     </section>
 
-    {/* Footer */}
+    <RelatedPages links={[
+      { label: "Features", path: "/features" },
+      { label: "Pricing", path: "/pricing" },
+      { label: "Documentation", path: "/docs" },
+      { label: "About", path: "/about" },
+    ]} />
     <Footer />
   </div>;
 }

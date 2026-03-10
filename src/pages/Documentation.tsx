@@ -259,6 +259,12 @@ export default function Documentation() {
         </div>
       </section>
 
+      <RelatedPages links={[
+        { label: "Features", path: "/features" },
+        { label: "Pricing", path: "/pricing" },
+        { label: "Help Center", path: "/help" },
+        { label: "Contact", path: "/contact" },
+      ]} />
       <Footer />
     </div>
   );

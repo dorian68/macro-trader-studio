@@ -218,6 +218,11 @@ export default function Contact() {
       </div>
     </section>
 
+    <RelatedPages links={[
+      { label: "Features", path: "/features" },
+      { label: "Pricing", path: "/pricing" },
+      { label: "Documentation", path: "/docs" },
+    ]} />
     <Footer />
   </div>;
 }

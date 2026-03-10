@@ -209,6 +209,11 @@ export default function Privacy() {
         </div>
       </section>
 
+      <RelatedPages links={[
+        { label: "Terms of Service", path: "/terms" },
+        { label: "Contact", path: "/contact" },
+        { label: "Help Center", path: "/help" },
+      ]} />
       <Footer />
     </div>
   );

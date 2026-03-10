@@ -72,6 +72,11 @@ export default function About() {
           </CardContent>
         </Card>
       </div>
+      <RelatedPages links={[
+        { label: "Features", path: "/features" },
+        { label: "Pricing", path: "/pricing" },
+        { label: "Contact", path: "/contact" },
+      ]} />
       <Footer />
     </div>
   );

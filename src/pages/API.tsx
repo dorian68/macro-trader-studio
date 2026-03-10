@@ -254,12 +254,13 @@ const tradeSetup = await alphalens.ai.generateSetup({
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-background border-t border-border py-8 px-4">
-        <div className="container mx-auto max-w-4xl text-center text-muted-foreground text-sm">
-          <p>© 2025 alphaLens.ai. All rights reserved.</p>
-        </div>
-      </footer>
+      <RelatedPages links={[
+        { label: "Features", path: "/features" },
+        { label: "Pricing", path: "/pricing" },
+        { label: "Documentation", path: "/docs" },
+        { label: "Contact", path: "/contact" },
+      ]} />
+      <Footer />
     </div>
   );
 }

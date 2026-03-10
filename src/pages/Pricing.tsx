@@ -330,6 +330,11 @@ const Pricing = () => {
       </div>
     </div>
 
+    <RelatedPages links={[
+      { label: "Features", path: "/features" },
+      { label: "Documentation", path: "/docs" },
+      { label: "Contact", path: "/contact" },
+    ]} />
     <Footer />
   </>;
 };
