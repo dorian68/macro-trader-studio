@@ -1,82 +1,29 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## Add Schema.org Structured Data (JSON-LD)
 
-L'erreur en console est :
-```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
+### Current State
+The Homepage already has basic `Organization` and `WebSite` schemas, but they're minimal — no `SearchAction`, no `SiteNavigationElement`, and no structured data on any other pages.
 
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
+### Plan
 
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
+#### 1. Create a shared schema definitions file (`src/seo/structuredData.ts`)
+Centralizes all reusable JSON-LD objects so they're consistent and maintainable:
 
-### Solution
+- **Organization** — name, url, logo, description, contactPoint
+- **WebSite** — name, url, with `SearchAction` (potentialAction) pointing to the site (even without server-side search, this signals Google)
+- **SiteNavigationElement** — array of nav items (Features, Pricing, Docs, About, Contact, Help, API) with name + url pairs
 
-**Fichier : `src/components/LightweightChartWidget.tsx`**
+#### 2. Update Homepage (`src/pages/Homepage.tsx`)
+Replace the inline `jsonLd` array with the centralized schemas: `Organization` + `WebSite` + `SiteNavigationElement`.
 
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
+#### 3. Add BreadcrumbList to key public pages
+Add `BreadcrumbList` JSON-LD to Features, Pricing, About, Contact, Docs, Help, API pages via their existing `SEOHead` `jsonLd` prop. Each gets a 2-level breadcrumb: `Home > Page Name`.
 
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
+### Files
+- **New**: `src/seo/structuredData.ts`
+- **Modified**: `src/pages/Homepage.tsx` — use centralized schemas
+- **Modified**: 7 public pages — add BreadcrumbList JSON-LD (Features, Pricing, About, Contact, Documentation, HelpCenter, API)
 
-```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+### No visual changes.
 
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
-
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
-
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
-
-Le meme pattern est utilise dans le fallback Binance WebSocket :
-
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
-
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
-
-### Details techniques
-
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
