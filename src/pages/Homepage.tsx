@@ -173,6 +173,7 @@ export default function Homepage() {
       { label: "Features", path: "/features" },
       { label: "Pricing", path: "/pricing" },
       { label: "Documentation", path: "/docs" },
+      { label: "Help Center", path: "/help" },
       { label: "About", path: "/about" },
     ]} />
     <Footer />

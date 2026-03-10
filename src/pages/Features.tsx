@@ -195,6 +195,9 @@ export default function Features() {
             <Button size="lg" variant="secondary" className="text-lg px-8 py-3" onClick={() => navigate("/auth")}>
               {t('cta.startTrial')}
             </Button>
+            <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" onClick={() => navigate("/pricing")}>
+              {t('cta.seePlans', 'See our plans')}
+            </Button>
             <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" onClick={() => navigate("/contact")}>
               {t('cta.requestDemo')}
             </Button>

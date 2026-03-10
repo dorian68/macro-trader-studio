@@ -4,12 +4,15 @@ import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Book, Code, Zap, BarChart3, TrendingUp, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 export default function Documentation() {
   const { t } = useTranslation('documentation');
+  const navigate = useNavigate();
   
   return (
     <div className="min-h-screen bg-background">
@@ -257,6 +260,14 @@ export default function Documentation() {
             </TabsContent>
           </Tabs>
         </div>
+      </section>
+
+      {/* Contact CTA */}
+      <section className="py-8 px-4 text-center">
+        <p className="text-muted-foreground mb-3">{t('contactCta', 'Need help? We\'re here for you.')}</p>
+        <Button variant="outline" onClick={() => navigate('/contact')} className="text-sm">
+          {t('contactCtaButton', 'Contact us')}
+        </Button>
       </section>
 
       <RelatedPages links={[
