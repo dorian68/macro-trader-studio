@@ -1,82 +1,42 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## Improve Internal Linking Across the Website
 
-L'erreur en console est :
-```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
+### Current Gaps
 
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
+| Page | Links TO other pages (in content) | Missing links to |
+|------|----------------------------------|-----------------|
+| Homepage | /dashboard, /macro-analysis, /reports, /contact, /auth | /features, /pricing, /about, /docs, /api |
+| Features | /dashboard, /macro-analysis, /reports, /auth, /contact | /pricing, /about, /docs |
+| Pricing | /contact, /auth | /features, /docs |
+| About | None (only navbar/footer) | /features, /pricing, /contact |
+| Documentation | None | /features, /pricing, /help, /contact |
+| API | /contact, /docs | /features, /pricing |
+| HelpCenter | /docs, /pricing, /terms, /contact | /features |
+| Contact | None | /features, /pricing, /docs |
+| Privacy | None | /contact, /terms |
+| Terms | None | /contact, /privacy |
 
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
+Navbar and Footer provide baseline linking, but Google values **contextual in-content links** much more for understanding page hierarchy.
 
-### Solution
+### Approach
 
-**Fichier : `src/components/LightweightChartWidget.tsx`**
+Two changes, no visual layout modifications:
 
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
+#### 1. Create a reusable `RelatedPages` component
+A small, unobtrusive section rendered just before the Footer on each page. Displays 3-4 contextual links as simple text buttons, styled consistently with existing muted text. Pattern: "Explore more: Features | Pricing | Documentation | Contact". This eliminates orphan pages and creates a cross-linking mesh.
 
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
+#### 2. Add inline contextual links to key pages
+- **Homepage**: Add "Explore all features" link to /features in the product section, and "See pricing" link in CTA section
+- **Features**: Add /pricing link in CTA section ("See our plans")
+- **Pricing**: Add /features link ("Compare features")
+- **About**: Add /contact link in mission section
+- **Documentation**: Add /help link in FAQ tab
+- **API**: Already has /docs link; add /pricing link
 
-```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+### Files
+- **New**: `src/components/RelatedPages.tsx` — reusable contextual links component
+- **Modified**: Homepage, Features, Pricing, About, Documentation, API, HelpCenter, Contact, Privacy, Terms — add `<RelatedPages>` and select inline links
 
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
+### No visual layout changes. Links blend into existing design using current styling patterns.
 
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
-
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
-
-Le meme pattern est utilise dans le fallback Binance WebSocket :
-
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
-
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
-
-### Details techniques
-
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
