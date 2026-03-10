@@ -67,7 +67,7 @@ const ResetPassword = () => {
       <SEOHead
         titleKey="seo.resetPasswordTitle"
         descriptionKey="seo.resetPasswordDescription"
-        canonicalPath="/reset-password"
+        noIndex
       />
       <main className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md bg-card border-white/10">
