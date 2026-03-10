@@ -259,6 +259,14 @@ export default function Documentation() {
         </div>
       </section>
 
+      {/* Contact CTA */}
+      <section className="py-8 px-4 text-center">
+        <p className="text-muted-foreground mb-3">{t('contactCta', 'Need help? We\'re here for you.')}</p>
+        <Button variant="outline" onClick={() => navigate('/contact')} className="text-sm">
+          {t('contactCtaButton', 'Contact us')}
+        </Button>
+      </section>
+
       <RelatedPages links={[
         { label: "Features", path: "/features" },
         { label: "Pricing", path: "/pricing" },
