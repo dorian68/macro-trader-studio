@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function Documentation() {
   const { t } = useTranslation('documentation');
+  const navigate = useNavigate();
   
   return (
     <div className="min-h-screen bg-background">
