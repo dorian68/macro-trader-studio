@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
+import { RelatedPages } from "@/components/RelatedPages";
 import { useTranslation } from "react-i18next";
 import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
 import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
