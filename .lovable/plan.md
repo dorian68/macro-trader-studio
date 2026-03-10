@@ -1,82 +1,37 @@
 
-## Audit et correction du widget chart (LightweightChartWidget)
 
-### Probleme identifie
+## SEO Internal Linking Improvements
 
-L'erreur en console est :
-```
-Cannot update oldest data, last time=[object Object], new time=[object Object]
-```
+### What's already in place
+- `SiteNavigationElement` JSON-LD already on Homepage
+- `RelatedPages` component already on all public pages
+- Features page already has a CTA section with `/auth` and `/contact`
+- Translation keys for `nav.documentation` already exist in all locales
 
-Elle vient de `LightweightChartWidget.tsx` (lignes 595-606). A chaque tick WebSocket, le code remplace le `time` de la derniere bougie par `Math.floor(Date.now() / 1000)`. Cela pose deux problemes :
+### Changes needed
 
-1. **Temps anterieur** : le nouveau timestamp peut etre anterieur au dernier point historique (ex: la derniere bougie 4h couvre 23:00-03:00 mais le tick arrive a 21:46), ce qui fait que `lightweight-charts` refuse la mise a jour.
-2. **Temps en objet** : apres le spread `...lastCandleRef.current`, le champ `time` peut devenir un objet interne de lightweight-charts au lieu d'un nombre, causant `[object Object]`.
+#### 1. Add "Documentation" to PublicNavbar (`src/components/PublicNavbar.tsx`)
+Add `{ name: t('nav.documentation'), path: "/docs" }` to `navigationItems` array after Pricing.
 
-### Solution
+#### 2. Add Help Center to Homepage RelatedPages (`src/pages/Homepage.tsx`)
+Add `{ label: "Help Center", path: "/help" }` to the existing RelatedPages links array.
 
-**Fichier : `src/components/LightweightChartWidget.tsx`**
+#### 3. Add cross-page CTAs
 
-**Correction 1 -- Garder le time de la derniere bougie lors des updates WebSocket (lignes 595-606)**
+- **Features** (`src/pages/Features.tsx`): Add a "See our plans" button linking to `/pricing` in the existing CTA section (alongside the current Start Trial and Request Demo buttons).
 
-Au lieu de remplacer `time` par `Date.now()`, on conserve le `time` de la derniere bougie historique. On ne cree une nouvelle bougie que lorsqu'on passe dans une nouvelle periode temporelle.
+- **Pricing** (`src/pages/Pricing.tsx`): Add a text link "Compare all features" → `/features` near the top of the pricing section.
 
-```text
-AVANT (ligne 597-603):
-const updatedCandle = {
-  ...lastCandleRef.current,
-  time: timestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
+- **Documentation** (`src/pages/Documentation.tsx`): Add a small CTA section before RelatedPages with "Need help? Contact us" → `/contact`.
 
-APRES:
-// Conserver le time de la derniere bougie pour eviter "Cannot update oldest data"
-const lastTime = lastCandleRef.current.time;
-const updatedCandle: CandlestickData = {
-  time: lastTime as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
+#### 4. Update static sitemap (`public/sitemap.xml`)
+Add the missing `/help` URL entry. The route source-of-truth (`sitemapRoutes.ts`) already includes it, but the static fallback `public/sitemap.xml` does not.
 
-Cela corrige les deux bugs : on ne spread plus l'objet (evitant les champs internes de lightweight-charts) et on garde le meme `time`.
+### Files modified
+- `src/components/PublicNavbar.tsx` — add Documentation nav item
+- `src/pages/Homepage.tsx` — add Help Center to RelatedPages
+- `src/pages/Features.tsx` — add Pricing button in CTA
+- `src/pages/Pricing.tsx` — add Features link near top
+- `src/pages/Documentation.tsx` — add Contact CTA
+- `public/sitemap.xml` — add `/help` URL
 
-**Correction 2 -- Meme fix pour le handler Binance (lignes 494-503)**
-
-Le meme pattern est utilise dans le fallback Binance WebSocket :
-
-```text
-AVANT (ligne 495-501):
-const updatedCandle: CandlestickData = {
-  ...lastCandleRef.current,
-  time: Math.floor(Date.now() / 1000) as UTCTimestamp,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-
-APRES:
-const updatedCandle: CandlestickData = {
-  time: lastCandleRef.current.time as UTCTimestamp,
-  open: lastCandleRef.current.open,
-  close: price,
-  high: Math.max(lastCandleRef.current.high, price),
-  low: Math.min(lastCandleRef.current.low, price),
-};
-```
-
-### Ce qui ne change PAS
-- La logique de chargement des donnees historiques
-- La connexion/reconnexion WebSocket et le backoff
-- Le cache localStorage
-- L'initialisation du chart (mount unique)
-- Le fallback TradingView
-- Les autres composants (MacroAnalysis, TradingViewWidget, etc.)
-
-### Details techniques
-
-Le pattern "update oldest data" est une protection de `lightweight-charts` v5 : on ne peut pas appeler `series.update()` avec un `time` strictement inferieur au dernier point existant. En gardant le `time` de la derniere bougie, chaque `update()` met a jour la bougie courante en place, ce qui est le comportement attendu pour le prix live.
