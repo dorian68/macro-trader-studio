@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Code, Zap, Shield, TrendingUp, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { RelatedPages } from "@/components/RelatedPages";
+import { Footer } from "@/components/Footer";
 
 export default function API() {
   const navigate = useNavigate();
