@@ -1,4 +1,5 @@
 import { SEOHead } from "@/components/SEOHead";
+import { breadcrumbList } from "@/seo/structuredData";
 import { useState } from "react";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
