@@ -21,6 +21,7 @@ export function SEOHead({
   canonicalPath,
   ogImage = DEFAULT_OG_IMAGE,
   ogType = 'website',
+  noIndex = false,
   jsonLd,
 }: SEOHeadProps) {
   const { t } = useTranslation('common');
