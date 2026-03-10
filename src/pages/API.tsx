@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Code, Zap, Shield, TrendingUp, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { RelatedPages } from "@/components/RelatedPages";
+import { Footer } from "@/components/Footer";
 
 export default function API() {
   const navigate = useNavigate();
@@ -253,12 +255,13 @@ const tradeSetup = await alphalens.ai.generateSetup({
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-background border-t border-border py-8 px-4">
-        <div className="container mx-auto max-w-4xl text-center text-muted-foreground text-sm">
-          <p>© 2025 alphaLens.ai. All rights reserved.</p>
-        </div>
-      </footer>
+      <RelatedPages links={[
+        { label: "Features", path: "/features" },
+        { label: "Pricing", path: "/pricing" },
+        { label: "Documentation", path: "/docs" },
+        { label: "Contact", path: "/contact" },
+      ]} />
+      <Footer />
     </div>
   );
 }

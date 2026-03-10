@@ -9,6 +9,7 @@ import { Search, MessageCircle, Mail, Book } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Footer } from '@/components/Footer';
+import { RelatedPages } from '@/components/RelatedPages';
 
 export default function HelpCenter() {
   const navigate = useNavigate();
@@ -165,6 +166,11 @@ export default function HelpCenter() {
         </div>
       </section>
 
+      <RelatedPages links={[
+        { label: "Features", path: "/features" },
+        { label: "Documentation", path: "/docs" },
+        { label: "Contact", path: "/contact" },
+      ]} />
       <Footer />
     </div>
   );

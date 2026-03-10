@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import PublicNavbar from "@/components/PublicNavbar";
 import { useTranslation } from 'react-i18next';
 import { Footer } from '@/components/Footer';
+import { RelatedPages } from '@/components/RelatedPages';
 export default function Contact() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -217,6 +218,11 @@ export default function Contact() {
       </div>
     </section>
 
+    <RelatedPages links={[
+      { label: "Features", path: "/features" },
+      { label: "Pricing", path: "/pricing" },
+      { label: "Documentation", path: "/docs" },
+    ]} />
     <Footer />
   </div>;
 }

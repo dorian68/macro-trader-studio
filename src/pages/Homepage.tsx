@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCreditManager } from "@/hooks/useCreditManager";
 import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/Footer";
+import { RelatedPages } from "@/components/RelatedPages";
 import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
 
 export default function Homepage() {
@@ -168,7 +169,12 @@ export default function Homepage() {
       </div>
     </section>
 
-    {/* Footer */}
+    <RelatedPages links={[
+      { label: "Features", path: "/features" },
+      { label: "Pricing", path: "/pricing" },
+      { label: "Documentation", path: "/docs" },
+      { label: "About", path: "/about" },
+    ]} />
     <Footer />
   </div>;
 }

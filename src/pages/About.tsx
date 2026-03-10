@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
+import { RelatedPages } from "@/components/RelatedPages";
 import { useTranslation } from "react-i18next";
 
 export default function About() {
@@ -71,6 +72,11 @@ export default function About() {
           </CardContent>
         </Card>
       </div>
+      <RelatedPages links={[
+        { label: "Features", path: "/features" },
+        { label: "Pricing", path: "/pricing" },
+        { label: "Contact", path: "/contact" },
+      ]} />
       <Footer />
     </div>
   );

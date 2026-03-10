@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { Footer } from '@/components/Footer';
+import { RelatedPages } from '@/components/RelatedPages';
 interface PlanData {
   name: string;
   price: string;
@@ -329,6 +330,11 @@ const Pricing = () => {
       </div>
     </div>
 
+    <RelatedPages links={[
+      { label: "Features", path: "/features" },
+      { label: "Documentation", path: "/docs" },
+      { label: "Contact", path: "/contact" },
+    ]} />
     <Footer />
   </>;
 };

@@ -1,6 +1,7 @@
 import { SEOHead } from "@/components/SEOHead";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
+import { RelatedPages } from "@/components/RelatedPages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 
@@ -194,6 +195,11 @@ export default function Terms() {
         </div>
       </section>
 
+      <RelatedPages links={[
+        { label: "Privacy Policy", path: "/privacy" },
+        { label: "Contact", path: "/contact" },
+        { label: "Help Center", path: "/help" },
+      ]} />
       <Footer />
     </div>
   );
