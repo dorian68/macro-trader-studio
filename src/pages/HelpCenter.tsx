@@ -39,10 +39,10 @@ export default function HelpCenter() {
       category: "Portfolio Management",
       icon: Book,
       articles: [
-        { title: "Adding Positions to Your Portfolio", link: "/documentation" },
-        { title: "Understanding P&L Calculations", link: "/documentation" },
-        { title: "AI Recommendations Explained", link: "/documentation" },
-        { title: "Exporting Portfolio Data", link: "/documentation" },
+        { title: "Adding Positions to Your Portfolio", link: "/docs" },
+        { title: "Understanding P&L Calculations", link: "/docs" },
+        { title: "AI Recommendations Explained", link: "/docs" },
+        { title: "Exporting Portfolio Data", link: "/docs" },
       ],
     },
     {
