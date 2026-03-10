@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { SEOHead } from '@/components/SEOHead';
 import { v4 as uuidv4 } from "uuid";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
@@ -1908,17 +1909,20 @@ function ForecastPlaygroundContent() {
 
 export default function ForecastPlayground() {
   return (
-    <SuperUserGuard
-      fallback={
-        <Layout>
-          <LabsComingSoon
-            title="Forecast Playground"
-            description="Internal forecasting tool for testing and debugging the AI pipeline."
-          />
-        </Layout>
-      }
-    >
-      <ForecastPlaygroundContent />
-    </SuperUserGuard>
+    <>
+      <SEOHead titleKey="seo.playgroundTitle" descriptionKey="seo.playgroundDescription" noIndex />
+      <SuperUserGuard
+        fallback={
+          <Layout>
+            <LabsComingSoon
+              title="Forecast Playground"
+              description="Internal forecasting tool for testing and debugging the AI pipeline."
+            />
+          </Layout>
+        }
+      >
+        <ForecastPlaygroundContent />
+      </SuperUserGuard>
+    </>
   );
 }

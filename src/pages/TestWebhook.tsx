@@ -8,6 +8,7 @@ import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreditManager } from '@/hooks/useCreditManager';
 import Layout from '@/components/Layout';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function TestWebhook() {
   const { user } = useAuth();
@@ -36,6 +37,7 @@ export default function TestWebhook() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.defaultTitle" descriptionKey="seo.defaultDescription" noIndex />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-bold mb-8">Webhook & Credits Test Page</h1>
 
