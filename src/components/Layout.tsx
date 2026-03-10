@@ -281,7 +281,7 @@ export default function Layout({
                 </Button>
                 {isSuperUser && (
                   <Button variant="outline" size="sm" onClick={() => {
-                    navigate('/alphalens-labs');
+                    navigate('/labs');
                     setIsMobileMenuOpen(false);
                   }} className="justify-start text-sm min-h-[44px]">
                     <Calculator className="h-4 w-4 mr-2" />

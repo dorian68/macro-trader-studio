@@ -26,9 +26,9 @@ export default function NavigationBreadcrumb({ className }: NavigationBreadcrumb
       '/portfolio': { title: 'Portfolio', parent: '/dashboard', parentTitle: 'Dashboard' },
       '/admin': { title: 'Admin Panel', parent: '/dashboard', parentTitle: 'Dashboard' },
       '/ai-setup': { title: 'AI Setup', parent: '/dashboard', parentTitle: 'Dashboard' },
-    '/alphalens-labs': { title: 'AlphaLens Labs', parent: '/dashboard', parentTitle: 'Dashboard' },
-    '/portfolio-analytics': { title: 'Portfolio Analytics Suite', parent: '/alphalens-labs', parentTitle: 'AlphaLens Labs' },
-    '/coming-soon': { title: 'Coming Soon', parent: '/alphalens-labs', parentTitle: 'AlphaLens Labs' },
+    '/labs': { title: 'AlphaLens Labs', parent: '/dashboard', parentTitle: 'Dashboard' },
+    '/analytics': { title: 'Portfolio Analytics Suite', parent: '/labs', parentTitle: 'AlphaLens Labs' },
+    '/coming-soon': { title: 'Coming Soon', parent: '/labs', parentTitle: 'AlphaLens Labs' },
       '/about': { title: 'About', parent: '/dashboard', parentTitle: 'Dashboard' },
       '/asset-detail': { title: 'Asset Details', parent: '/dashboard', parentTitle: 'Dashboard' },
     };

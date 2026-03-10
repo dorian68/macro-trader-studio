@@ -49,7 +49,7 @@ export default function ComingSoon() {
 
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-4">
               <Button 
-                onClick={() => navigate('/alphalens-labs')}
+                onClick={() => navigate('/labs')}
                 className="w-full sm:flex-1 gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />

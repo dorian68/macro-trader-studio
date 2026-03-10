@@ -143,7 +143,7 @@ export default function HelpCenter() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate("/documentation")}
+                  onClick={() => navigate("/docs")}
                   className="gap-2"
                 >
                   <Book className="w-4 h-4" />

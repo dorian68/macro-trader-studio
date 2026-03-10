@@ -993,7 +993,7 @@ export default function Auth() {
                       type: 'signup',
                       email: signupEmail,
                       options: {
-                        emailRedirectTo: `https://alphalensai.com/email-confirmation-success`
+                        emailRedirectTo: `https://alphalensai.com/confirm-success`
                       }
                     });
                     if (error) {

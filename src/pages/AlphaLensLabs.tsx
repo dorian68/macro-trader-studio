@@ -24,7 +24,7 @@ function AlphaLensLabsContent() {
       icon: TrendingUp,
       status: 'active' as const,
       badge: '🧠 AI-Powered',
-      action: () => navigate('/portfolio-analytics')
+      action: () => navigate('/analytics')
     },
     {
       id: 'alpha-scenario-simulator',

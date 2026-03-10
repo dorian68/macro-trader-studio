@@ -120,21 +120,26 @@ const App = () => {
                             <Route path="/pricing" element={<Pricing />} />
                             <Route path="/privacy" element={<Privacy />} />
                             <Route path="/terms" element={<Terms />} />
-                            <Route path="/documentation" element={<Documentation />} />
-                            <Route path="/help-center" element={<HelpCenter />} />
+                            <Route path="/docs" element={<Documentation />} />
+                            <Route path="/help" element={<HelpCenter />} />
                             <Route path="/api" element={<API />} />
-                            <Route path="/alphalens-labs" element={<AuthGuard requireApproval><AlphaLensLabs /></AuthGuard>} />
-                            <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
+                            <Route path="/labs" element={<AuthGuard requireApproval><AlphaLensLabs /></AuthGuard>} />
+                            <Route path="/analytics" element={<PortfolioAnalytics />} />
                             <Route path="/labs/scenario-simulator" element={<ScenarioSimulator />} />
                             <Route path="/labs/backtester" element={<Backtester />} />
-                            <Route path="/forecast-playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
-                            <Route path="/forecast-playground/tool" element={<AuthGuard requireApproval><ForecastPlaygroundTool /></AuthGuard>} />
-                            {/* New public routes for Trade Generator and Macro Lab */}
+                            <Route path="/playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
+                            <Route path="/playground/tool" element={<AuthGuard requireApproval><ForecastPlaygroundTool /></AuthGuard>} />
                             <Route path="/trade-generator" element={<AuthGuard requireApproval><ForecastTradeGenerator /></AuthGuard>} />
                             <Route path="/macro-lab" element={<AuthGuard requireApproval><ForecastMacroLab /></AuthGuard>} />
-                            {/* Legacy routes for backward compatibility */}
-                            <Route path="/forecast-playground/macro-commentary" element={<AuthGuard requireApproval><ForecastMacroLab /></AuthGuard>} />
-                            <Route path="/forecast-playground/trade-generator" element={<AuthGuard requireApproval><ForecastTradeGenerator /></AuthGuard>} />
+                            {/* Legacy redirects for backward compatibility & SEO */}
+                            <Route path="/documentation" element={<Navigate to="/docs" replace />} />
+                            <Route path="/help-center" element={<Navigate to="/help" replace />} />
+                            <Route path="/alphalens-labs" element={<Navigate to="/labs" replace />} />
+                            <Route path="/portfolio-analytics" element={<Navigate to="/analytics" replace />} />
+                            <Route path="/forecast-playground" element={<Navigate to="/playground" replace />} />
+                            <Route path="/forecast-playground/tool" element={<Navigate to="/playground/tool" replace />} />
+                            <Route path="/forecast-playground/macro-commentary" element={<Navigate to="/macro-lab" replace />} />
+                            <Route path="/forecast-playground/trade-generator" element={<Navigate to="/trade-generator" replace />} />
                             <Route path="/coming-soon" element={<ComingSoon />} />
                             <Route path="/product" element={<ProductPresentation />} />
                             <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />

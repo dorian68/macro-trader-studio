@@ -33,7 +33,7 @@ export function LabsComingSoon({ title, description }: LabsComingSoonProps) {
             </p>
           </div>
           <Button 
-            onClick={() => navigate('/alphalens-labs')}
+            onClick={() => navigate('/labs')}
             className="w-full gap-2"
           >
             <ArrowLeft className="h-4 w-4" />

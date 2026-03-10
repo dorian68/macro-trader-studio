@@ -234,7 +234,7 @@ const tradeSetup = await alphalens.ai.generateSetup({
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => navigate("/documentation")}
+                  onClick={() => navigate("/docs")}
                   className="gap-2"
                 >
                   <Code className="w-5 h-5" />

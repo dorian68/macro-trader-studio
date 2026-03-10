@@ -93,7 +93,7 @@ export function Footer() {
               </li>
               <li>
                 <button
-                  onClick={() => navigate("/help-center")}
+                  onClick={() => navigate("/help")}
                   className="hover:text-foreground transition-colors"
                 >
                   {t('nav.helpCenter')}
