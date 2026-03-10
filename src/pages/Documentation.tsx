@@ -4,9 +4,11 @@ import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Book, Code, Zap, BarChart3, TrendingUp, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 export default function Documentation() {
   const { t } = useTranslation('documentation');
