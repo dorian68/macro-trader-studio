@@ -866,6 +866,7 @@ export default function Reports() {
 
   return (
     <Layout activeModule="reports" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.reportsTitle" descriptionKey="seo.reportsDescription" noIndex />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

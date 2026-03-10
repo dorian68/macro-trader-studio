@@ -211,6 +211,7 @@ export default function Credits() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.creditsTitle" descriptionKey="seo.creditsDescription" noIndex />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

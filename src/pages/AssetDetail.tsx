@@ -206,6 +206,7 @@ export default function AssetDetail() {
 
   return (
     <Layout activeModule="trading" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.dashboardTitle" descriptionKey="seo.dashboardDescription" noIndex />
       <div className="space-y-6">
         {/* Header with navigation */}
         <div className="flex items-center gap-4">

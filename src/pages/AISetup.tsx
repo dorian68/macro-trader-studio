@@ -614,6 +614,7 @@ export default function AISetup() {
     });
   };
   return <Layout activeModule="ai-setup" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.aiSetupTitle" descriptionKey="seo.aiSetupDescription" noIndex />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

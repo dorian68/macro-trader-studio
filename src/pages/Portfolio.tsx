@@ -50,6 +50,7 @@ export default function Portfolio() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.portfolioTitle" descriptionKey="seo.portfolioDescription" noIndex />
       <div className="container mx-auto py-8 px-4">
         <PortfolioHeader 
           portfolio={selectedPortfolio}

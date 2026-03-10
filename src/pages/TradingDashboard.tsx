@@ -242,6 +242,7 @@ export default function TradingDashboard() {
   return (
     <Layout
       fillViewport
+      seoHead={<SEOHead titleKey="seo.dashboardTitle" descriptionKey="seo.dashboardDescription" noIndex />}
       activeModule="trading"
       onModuleChange={() => { }}
       completedJobsCount={jobManager.completedJobsCount}

@@ -112,6 +112,7 @@ const PaymentSuccess = () => {
 
   return (
     <>
+      <SEOHead titleKey="seo.paymentSuccessTitle" descriptionKey="seo.paymentSuccessDescription" noIndex />
       <PublicNavbar />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-16">

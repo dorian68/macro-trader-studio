@@ -20,6 +20,7 @@ export default function History() {
 
   return (
     <Layout activeModule="history" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.historyTitle" descriptionKey="seo.historyDescription" noIndex />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

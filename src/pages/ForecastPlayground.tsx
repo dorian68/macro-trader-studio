@@ -18,6 +18,7 @@ export default function ForecastPlaygroundHub() {
   return (
     <SuperUserGuard fallback={<LabsComingSoon title="Forecast Playground" description="This feature is currently in private beta." />}>
       <Layout>
+        <SEOHead titleKey="seo.playgroundTitle" descriptionKey="seo.playgroundDescription" noIndex />
         <main className="space-y-6">
           <header className="space-y-2">
             <div className="flex items-center gap-3">

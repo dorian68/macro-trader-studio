@@ -871,6 +871,7 @@ export default function ForecastMacroLab() {
 
   return (
     <Layout activeModule="macro-analysis" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.forecastMacroLabTitle" descriptionKey="seo.forecastMacroLabDescription" noIndex />
       <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center gap-4">
           <Button

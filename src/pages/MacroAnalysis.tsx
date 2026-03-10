@@ -876,6 +876,7 @@ export default function MacroAnalysis() {
   const quickQueries = ["EUR/USD macro analysis for this week", "NFP data impact on USD", "Bitcoin macro conditions outlook", "Global risk sentiment analysis", "Impact of inflation on major currencies", "Analysis of ECB vs Fed monetary policies", "Gold price drivers and outlook", "Crypto trends vs traditional markets", "Opportunities in commodities", "Central bank policy divergence effects", "Dollar strength analysis", "European economic outlook"];
   const [showAnalysisResult, setShowAnalysisResult] = useState(false);
   return <Layout activeModule="macro-analysis" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.macroAnalysisTitle" descriptionKey="seo.macroAnalysisDescription" noIndex />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

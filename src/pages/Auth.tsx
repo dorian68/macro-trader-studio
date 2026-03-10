@@ -821,6 +821,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead titleKey="seo.authTitle" descriptionKey="seo.authDescription" canonicalPath="/auth" />
       <PublicNavbar />
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
         {processingOAuth && (

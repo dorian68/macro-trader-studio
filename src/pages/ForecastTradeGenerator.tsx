@@ -1985,6 +1985,7 @@ function ForecastTradeGeneratorContent() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.forecastTradeGeneratorTitle" descriptionKey="seo.forecastTradeGeneratorDescription" noIndex />
       <main className="space-y-6">
         {/* Header */}
         <header className="space-y-2">
