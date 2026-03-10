@@ -19,10 +19,10 @@ export default function HelpCenter() {
       category: "Getting Started",
       icon: Book,
       articles: [
-        { title: "Creating Your First Account", link: "/documentation" },
+        { title: "Creating Your First Account", link: "/docs" },
         { title: "Understanding Credits and Plans", link: "/pricing" },
-        { title: "Selecting Your Broker", link: "/documentation" },
-        { title: "Navigating the Dashboard", link: "/documentation" },
+        { title: "Selecting Your Broker", link: "/docs" },
+        { title: "Navigating the Dashboard", link: "/docs" },
       ],
     },
     {
