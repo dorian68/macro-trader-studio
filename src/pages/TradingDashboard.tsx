@@ -242,13 +242,13 @@ export default function TradingDashboard() {
   return (
     <Layout
       fillViewport
-      seoHead={<SEOHead titleKey="seo.dashboardTitle" descriptionKey="seo.dashboardDescription" noIndex />}
       activeModule="trading"
       onModuleChange={() => { }}
       completedJobsCount={jobManager.completedJobsCount}
       onResetJobsCount={jobManager.resetCompletedCount}
       activeJobsCount={jobManager.activeJobs.filter(job => job.status === 'pending' || job.status === 'running').length}
     >
+      <SEOHead titleKey="seo.dashboardTitle" descriptionKey="seo.dashboardDescription" noIndex />
 
       {/* Main viewport-locked content */}
       <div className="h-full flex flex-col gap-1 md:gap-2">
