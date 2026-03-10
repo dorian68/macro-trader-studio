@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft, CreditCard, HelpCircle } from 'lucide-react';
 import PublicNavbar from '@/components/PublicNavbar';
+import { SEOHead } from '@/components/SEOHead';
 
 const PaymentCanceled = () => {
   const navigate = useNavigate();
 
   return (
     <>
+      <SEOHead titleKey="seo.paymentCanceledTitle" descriptionKey="seo.paymentCanceledDescription" noIndex />
       <PublicNavbar />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-16">

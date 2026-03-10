@@ -7,6 +7,7 @@ import PortfolioHeader from '@/components/portfolio/PortfolioHeader';
 import PositionsList from '@/components/portfolio/PositionsList';
 import RecommendationsList from '@/components/portfolio/RecommendationsList';
 import { useTranslation } from 'react-i18next';
+import { SEOHead } from '@/components/SEOHead';
 
 interface Portfolio {
   id: string;
@@ -49,6 +50,7 @@ export default function Portfolio() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.portfolioTitle" descriptionKey="seo.portfolioDescription" noIndex />
       <div className="container mx-auto py-8 px-4">
         <PortfolioHeader 
           portfolio={selectedPortfolio}

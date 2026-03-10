@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Beaker, ArrowLeft, Loader2, Sparkles } from 'lucide-react';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function ComingSoon() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function ComingSoon() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.comingSoonTitle" descriptionKey="seo.comingSoonDescription" canonicalPath="/coming-soon" />
       <div className="container-wrapper min-h-screen flex items-center justify-center py-8 px-4">
         <Card className="max-w-2xl w-full">
           <CardHeader className="text-center space-y-4">

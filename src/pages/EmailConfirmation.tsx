@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Mail, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import alphalensLogo from '@/assets/alphalens-logo.png';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function EmailConfirmation() {
   const [loading, setLoading] = useState(false);
@@ -86,6 +87,8 @@ export default function EmailConfirmation() {
   };
 
   return (
+    <>
+    <SEOHead titleKey="seo.emailConfirmationTitle" descriptionKey="seo.emailConfirmationDescription" noIndex />
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white p-4">
       <Card className="w-full max-w-md bg-[#0a0a0a] border-white/10">
         <CardHeader className="text-center">
@@ -134,5 +137,6 @@ export default function EmailConfirmation() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

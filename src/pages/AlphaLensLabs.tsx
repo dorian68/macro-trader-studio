@@ -10,6 +10,7 @@ import { mockTrades, MockTrade } from '@/data/mockPortfolio';
 import { cn } from '@/lib/utils';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
+import { SEOHead } from '@/components/SEOHead';
 
 function AlphaLensLabsContent() {
   const navigate = useNavigate();
@@ -141,17 +142,20 @@ function AlphaLensLabsContent() {
 
 export default function AlphaLensLabs() {
   return (
-    <SuperUserGuard 
-      fallback={
-        <Layout>
-          <LabsComingSoon 
-            title="AlphaLens Labs" 
-            description="This experimental workspace is currently in private beta and reserved for selected users."
-          />
-        </Layout>
-      }
-    >
-      <AlphaLensLabsContent />
-    </SuperUserGuard>
+    <>
+      <SEOHead titleKey="seo.labsTitle" descriptionKey="seo.labsDescription" noIndex />
+      <SuperUserGuard 
+        fallback={
+          <Layout>
+            <LabsComingSoon 
+              title="AlphaLens Labs" 
+              description="This experimental workspace is currently in private beta and reserved for selected users."
+            />
+          </Layout>
+        }
+      >
+        <AlphaLensLabsContent />
+      </SuperUserGuard>
+    </>
   );
 }

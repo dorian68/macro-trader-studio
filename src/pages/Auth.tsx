@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, AlertCircle, ArrowLeft, Mail, RefreshCw, CheckCircle2 } from 'lucide-react';
 // import newLogo from '@/assets/new-logo.png'; // Removed unused import
 import PublicNavbar from '@/components/PublicNavbar';
+import { SEOHead } from '@/components/SEOHead';
 import { useBrokerActions } from '@/hooks/useBrokerActions';
 import { useCreditManager } from '@/hooks/useCreditManager';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
@@ -820,6 +821,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead titleKey="seo.authTitle" descriptionKey="seo.authDescription" canonicalPath="/auth" />
       <PublicNavbar />
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
         {processingOAuth && (

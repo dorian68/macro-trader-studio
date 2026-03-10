@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from 'react-i18next';
+import { SEOHead } from '@/components/SEOHead';
 import TradeResultPanel from "@/components/TradeResultPanel";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { useGlobalLoading } from "@/components/GlobalLoadingProvider";
@@ -613,6 +614,7 @@ export default function AISetup() {
     });
   };
   return <Layout activeModule="ai-setup" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.aiSetupTitle" descriptionKey="seo.aiSetupDescription" noIndex />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

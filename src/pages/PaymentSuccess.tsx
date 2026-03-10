@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreditManager } from '@/hooks/useCreditManager';
 import { useToast } from '@/hooks/use-toast';
+import { SEOHead } from '@/components/SEOHead';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
@@ -111,6 +112,7 @@ const PaymentSuccess = () => {
 
   return (
     <>
+      <SEOHead titleKey="seo.paymentSuccessTitle" descriptionKey="seo.paymentSuccessDescription" noIndex />
       <PublicNavbar />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-16">

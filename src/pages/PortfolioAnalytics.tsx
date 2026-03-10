@@ -9,6 +9,7 @@ import { TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AURA from '@/components/AURA';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function PortfolioAnalytics() {
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
@@ -87,6 +88,7 @@ export default function PortfolioAnalytics() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.portfolioAnalyticsTitle" descriptionKey="seo.portfolioAnalyticsDescription" noIndex />
       <div className={`flex flex-col lg:flex-row h-full relative transition-all duration-300 ${isAURAExpanded ? 'lg:mr-[33.333%]' : ''}`}>
         <div className="flex-1 container-wrapper space-y-4 sm:space-y-6 py-4 sm:py-6 px-3 sm:px-4">
         <Card>

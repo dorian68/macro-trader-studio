@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Layout from "@/components/Layout";
 import { CandlestickChart } from "@/components/CandlestickChart";
+import { SEOHead } from '@/components/SEOHead';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -205,6 +206,7 @@ export default function AssetDetail() {
 
   return (
     <Layout activeModule="trading" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.dashboardTitle" descriptionKey="seo.dashboardDescription" noIndex />
       <div className="space-y-6">
         {/* Header with navigation */}
         <div className="flex items-center gap-4">

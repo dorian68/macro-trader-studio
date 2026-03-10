@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
 import { useUserRole } from "@/hooks/useUserRole";
+import { SEOHead } from '@/components/SEOHead';
 import { RiskSurfaceChart, SurfaceApiResponse } from "@/components/labs/RiskSurfaceChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1984,6 +1985,7 @@ function ForecastTradeGeneratorContent() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.forecastTradeGeneratorTitle" descriptionKey="seo.forecastTradeGeneratorDescription" noIndex />
       <main className="space-y-6">
         {/* Header */}
         <header className="space-y-2">

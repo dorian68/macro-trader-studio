@@ -1,4 +1,5 @@
 import * as React from "react";
+import { SEOHead } from '@/components/SEOHead';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -870,6 +871,7 @@ export default function ForecastMacroLab() {
 
   return (
     <Layout activeModule="macro-analysis" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.forecastMacroLabTitle" descriptionKey="seo.forecastMacroLabDescription" noIndex />
       <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center gap-4">
           <Button

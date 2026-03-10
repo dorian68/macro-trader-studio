@@ -11,6 +11,7 @@ interface SEOHeadProps {
   canonicalPath?: string;
   ogImage?: string;
   ogType?: string;
+  noIndex?: boolean;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
@@ -20,6 +21,7 @@ export function SEOHead({
   canonicalPath,
   ogImage = DEFAULT_OG_IMAGE,
   ogType = 'website',
+  noIndex = false,
   jsonLd,
 }: SEOHeadProps) {
   const { t } = useTranslation('common');
@@ -40,6 +42,7 @@ export function SEOHead({
       <html lang={language} dir={language === 'fa' ? 'rtl' : 'ltr'} />
       <title>{title}</title>
       <meta name="description" content={description} />
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
       {/* Canonical */}
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}

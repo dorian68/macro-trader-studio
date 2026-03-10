@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { AIInteractionHistory } from "@/components/AIInteractionHistory";
 import { useResultNotifications } from "@/hooks/useResultNotifications";
 import { useTranslation } from "react-i18next";
+import { SEOHead } from '@/components/SEOHead';
 
 export default function History() {
   const { t } = useTranslation(['dashboard', 'common']);
@@ -19,6 +20,7 @@ export default function History() {
 
   return (
     <Layout activeModule="history" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.historyTitle" descriptionKey="seo.historyDescription" noIndex />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

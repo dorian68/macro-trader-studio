@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FlaskConical, ArrowRight, Brain, Zap } from "lucide-react";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
+import { SEOHead } from '@/components/SEOHead';
 
 export default function ForecastPlaygroundHub() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function ForecastPlaygroundHub() {
   return (
     <SuperUserGuard fallback={<LabsComingSoon title="Forecast Playground" description="This feature is currently in private beta." />}>
       <Layout>
+        <SEOHead titleKey="seo.playgroundTitle" descriptionKey="seo.playgroundDescription" noIndex />
         <main className="space-y-6">
           <header className="space-y-2">
             <div className="flex items-center gap-3">

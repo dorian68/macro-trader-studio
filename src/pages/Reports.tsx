@@ -12,6 +12,7 @@ import Layout from "@/components/Layout";
 import { AssetSearchBar } from "@/components/AssetSearchBar";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { SEOHead } from '@/components/SEOHead';
 import { useToast } from "@/hooks/use-toast";
 import { safePostRequest } from "@/lib/safe-request";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
@@ -865,6 +866,7 @@ export default function Reports() {
 
   return (
     <Layout activeModule="reports" onModuleChange={() => {}}>
+      <SEOHead titleKey="seo.reportsTitle" descriptionKey="seo.reportsDescription" noIndex />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
+import { SEOHead } from '@/components/SEOHead';
 import { useAURAContext } from '@/contexts/AURAContextProvider';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -184,6 +185,7 @@ function BacktesterContent() {
 
   return (
     <Layout>
+      <SEOHead titleKey="seo.backtesterTitle" descriptionKey="seo.backtesterDescription" noIndex />
       <div className={`flex h-full relative transition-all ${isAURAExpanded ? 'md:mr-[33.333%]' : ''}`}>
         <div className="flex-1 w-full max-w-7xl mx-auto py-8 px-6 md:px-8 space-y-6">
           {/* Header */}

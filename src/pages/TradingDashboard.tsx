@@ -13,6 +13,7 @@ import Layout from "@/components/Layout";
 import { HybridSearchBar } from "@/components/HybridSearchBar";
 import { AssetSummaryBanner } from "@/components/AssetSummaryBanner";
 import { DashboardColumnCarousel } from "@/components/DashboardColumnCarousel";
+import { SEOHead } from '@/components/SEOHead';
 import { getSymbolForAsset, getNormalizedSymbol } from "@/lib/assetMapping";
 import AssetInfoCard from "@/components/AssetInfoCard";
 import { JobStatusCard } from "@/components/JobStatusCard";
@@ -247,6 +248,7 @@ export default function TradingDashboard() {
       onResetJobsCount={jobManager.resetCompletedCount}
       activeJobsCount={jobManager.activeJobs.filter(job => job.status === 'pending' || job.status === 'running').length}
     >
+      <SEOHead titleKey="seo.dashboardTitle" descriptionKey="seo.dashboardDescription" noIndex />
 
       {/* Main viewport-locked content */}
       <div className="h-full flex flex-col gap-1 md:gap-2">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Layout from '@/components/Layout';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
+import { SEOHead } from '@/components/SEOHead';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
 import AURA from '@/components/AURA';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -126,17 +127,20 @@ function ScenarioSimulatorContent() {
 
 export default function ScenarioSimulator() {
   return (
-    <SuperUserGuard
-      fallback={
-        <Layout>
-          <LabsComingSoon 
-            title="Alpha Scenario Simulator"
-            description="Simulate macroeconomic scenarios such as rate hikes, recessions, or oil shocks, and visualize their impact on your portfolio."
-          />
-        </Layout>
-      }
-    >
-      <ScenarioSimulatorContent />
-    </SuperUserGuard>
+    <>
+      <SEOHead titleKey="seo.scenarioSimulatorTitle" descriptionKey="seo.scenarioSimulatorDescription" noIndex />
+      <SuperUserGuard
+        fallback={
+          <Layout>
+            <LabsComingSoon 
+              title="Alpha Scenario Simulator"
+              description="Simulate macroeconomic scenarios such as rate hikes, recessions, or oil shocks, and visualize their impact on your portfolio."
+            />
+          </Layout>
+        }
+      >
+        <ScenarioSimulatorContent />
+      </SuperUserGuard>
+    </>
   );
 }

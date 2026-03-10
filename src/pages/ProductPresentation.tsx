@@ -8,6 +8,7 @@ import { DemoWelcome } from "@/components/DemoWelcome";
 import { MacroCommentary } from "@/components/MacroCommentary";
 import { Reports } from "@/components/Reports";
 import { TrendingUp, ArrowRight, Sparkles, Brain, BarChart3, Shield } from "lucide-react";
+import { SEOHead } from '@/components/SEOHead';
 
 const ProductPresentation = () => {
   const [activeModule, setActiveModule] = useState("welcome");
@@ -27,6 +28,7 @@ const ProductPresentation = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/20">
+      <SEOHead titleKey="seo.productTitle" descriptionKey="seo.productDescription" canonicalPath="/product" />
       {/* Header - Mobile Optimized */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-xl sticky top-0 z-50 safe-top">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">

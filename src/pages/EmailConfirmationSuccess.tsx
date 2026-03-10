@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function EmailConfirmationSuccess() {
   const navigate = useNavigate();
@@ -69,6 +70,8 @@ export default function EmailConfirmationSuccess() {
   };
 
   return (
+    <>
+    <SEOHead titleKey="seo.emailConfirmationSuccessTitle" descriptionKey="seo.emailConfirmationSuccessDescription" noIndex />
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white p-4">
       <Card className="w-full max-w-md text-center bg-[#0a0a0a] border-white/10">
         <CardHeader className="space-y-4">
@@ -125,5 +128,6 @@ export default function EmailConfirmationSuccess() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
