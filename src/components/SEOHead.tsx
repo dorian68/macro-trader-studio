@@ -42,6 +42,7 @@ export function SEOHead({
       <html lang={language} dir={language === 'fa' ? 'rtl' : 'ltr'} />
       <title>{title}</title>
       <meta name="description" content={description} />
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
       {/* Canonical */}
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
