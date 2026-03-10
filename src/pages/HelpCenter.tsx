@@ -29,10 +29,10 @@ export default function HelpCenter() {
       category: "AI Features",
       icon: MessageCircle,
       articles: [
-        { title: "How to Generate Trade Setups", link: "/documentation" },
-        { title: "Using Macro Commentary", link: "/documentation" },
-        { title: "Creating Custom Reports", link: "/documentation" },
-        { title: "Best Practices for AI Queries", link: "/documentation" },
+        { title: "How to Generate Trade Setups", link: "/docs" },
+        { title: "Using Macro Commentary", link: "/docs" },
+        { title: "Creating Custom Reports", link: "/docs" },
+        { title: "Best Practices for AI Queries", link: "/docs" },
       ],
     },
     {
