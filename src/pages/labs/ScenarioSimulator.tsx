@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Layout from '@/components/Layout';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
+import { SEOHead } from '@/components/SEOHead';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
 import AURA from '@/components/AURA';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

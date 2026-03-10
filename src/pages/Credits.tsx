@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useTranslation } from 'react-i18next';
+import { SEOHead } from '@/components/SEOHead';
 
 interface JobUsageStats {
   queries: number;

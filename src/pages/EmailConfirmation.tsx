@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Mail, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import alphalensLogo from '@/assets/alphalens-logo.png';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function EmailConfirmation() {
   const [loading, setLoading] = useState(false);

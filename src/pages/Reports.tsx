@@ -12,6 +12,7 @@ import Layout from "@/components/Layout";
 import { AssetSearchBar } from "@/components/AssetSearchBar";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { SEOHead } from '@/components/SEOHead';
 import { useToast } from "@/hooks/use-toast";
 import { safePostRequest } from "@/lib/safe-request";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";

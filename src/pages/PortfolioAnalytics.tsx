@@ -9,6 +9,7 @@ import { TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AURA from '@/components/AURA';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function PortfolioAnalytics() {
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Beaker, ArrowLeft, Loader2, Sparkles } from 'lucide-react';
+import { SEOHead } from '@/components/SEOHead';
 
 export default function ComingSoon() {
   const navigate = useNavigate();

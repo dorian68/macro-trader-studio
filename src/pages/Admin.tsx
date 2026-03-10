@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { SEOHead } from '@/components/SEOHead';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays, parseISO } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

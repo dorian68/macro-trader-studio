@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { AIInteractionHistory } from "@/components/AIInteractionHistory";
 import { useResultNotifications } from "@/hooks/useResultNotifications";
 import { useTranslation } from "react-i18next";
+import { SEOHead } from '@/components/SEOHead';
 
 export default function History() {
   const { t } = useTranslation(['dashboard', 'common']);

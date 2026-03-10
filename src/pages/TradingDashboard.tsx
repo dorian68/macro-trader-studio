@@ -13,6 +13,7 @@ import Layout from "@/components/Layout";
 import { HybridSearchBar } from "@/components/HybridSearchBar";
 import { AssetSummaryBanner } from "@/components/AssetSummaryBanner";
 import { DashboardColumnCarousel } from "@/components/DashboardColumnCarousel";
+import { SEOHead } from '@/components/SEOHead';
 import { getSymbolForAsset, getNormalizedSymbol } from "@/lib/assetMapping";
 import AssetInfoCard from "@/components/AssetInfoCard";
 import { JobStatusCard } from "@/components/JobStatusCard";

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FlaskConical, ArrowRight, Brain, Zap } from "lucide-react";
 import { useForceLanguage } from "@/hooks/useForceLanguage";
+import { SEOHead } from '@/components/SEOHead';
 
 export default function ForecastPlaygroundHub() {
   const navigate = useNavigate();

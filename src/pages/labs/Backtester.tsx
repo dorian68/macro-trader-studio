@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
+import { SEOHead } from '@/components/SEOHead';
 import { useAURAContext } from '@/contexts/AURAContextProvider';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

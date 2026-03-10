@@ -8,6 +8,7 @@ import { DemoWelcome } from "@/components/DemoWelcome";
 import { MacroCommentary } from "@/components/MacroCommentary";
 import { Reports } from "@/components/Reports";
 import { TrendingUp, ArrowRight, Sparkles, Brain, BarChart3, Shield } from "lucide-react";
+import { SEOHead } from '@/components/SEOHead';
 
 const ProductPresentation = () => {
   const [activeModule, setActiveModule] = useState("welcome");

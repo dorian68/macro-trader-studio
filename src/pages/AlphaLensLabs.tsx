@@ -10,6 +10,7 @@ import { mockTrades, MockTrade } from '@/data/mockPortfolio';
 import { cn } from '@/lib/utils';
 import { SuperUserGuard } from '@/components/SuperUserGuard';
 import { LabsComingSoon } from '@/components/labs/LabsComingSoon';
+import { SEOHead } from '@/components/SEOHead';
 
 function AlphaLensLabsContent() {
   const navigate = useNavigate();

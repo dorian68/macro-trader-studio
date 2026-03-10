@@ -13,6 +13,7 @@ import { ArrowLeft, Brain, Globe, TrendingUp, Calendar, Copy, ExternalLink, Load
 import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { SEOHead } from '@/components/SEOHead';
 import { useToast } from "@/hooks/use-toast";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";

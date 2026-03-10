@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft, CreditCard, HelpCircle } from 'lucide-react';
 import PublicNavbar from '@/components/PublicNavbar';
+import { SEOHead } from '@/components/SEOHead';
 
 const PaymentCanceled = () => {
   const navigate = useNavigate();
