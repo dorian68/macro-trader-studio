@@ -100,7 +100,7 @@ export default function Layout({
       <div className="h-full px-4 sm:px-6 max-w-screen-lg mx-auto">
         <div className="flex items-center h-full">
           {/* Logo - Mobile optimized */}
-          <button onClick={() => navigate('/dashboard')} onMouseEnter={() => prefetchRoute('/dashboard')} className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group">
+          <button onClick={() => navigate('/dashboard')} onMouseEnter={() => prefetchRoute('/dashboard')} className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group shrink-0">
             <img src="/header_logo.png" alt="alphaLens.ai" className="h-10 sm:h-14 w-auto object-contain" />
           </button>
 
