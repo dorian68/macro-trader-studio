@@ -91,6 +91,7 @@ const App = () => {
                 <TooltipProvider>
                   <BrowserRouter>
                     <ScrollToTop />
+                    <GoogleAnalytics />
                     <CursorGlow />
                     <GlobalLoadingProvider>
                       <PersistentNotificationProvider>
