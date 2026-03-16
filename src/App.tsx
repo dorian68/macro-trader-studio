@@ -15,6 +15,7 @@ import { PersistentToast } from "@/components/PersistentToast";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CursorGlow } from "@/components/CursorGlow";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import AdminGuard from "./components/AdminGuard";
 import AuthGuard from "./components/AuthGuard";
 
@@ -90,6 +91,7 @@ const App = () => {
                 <TooltipProvider>
                   <BrowserRouter>
                     <ScrollToTop />
+                    <GoogleAnalytics />
                     <CursorGlow />
                     <GlobalLoadingProvider>
                       <PersistentNotificationProvider>
