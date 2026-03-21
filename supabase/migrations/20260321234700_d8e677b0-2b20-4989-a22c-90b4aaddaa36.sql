@@ -1,0 +1,3 @@
+UPDATE blog_posts SET cover_image = '/images/blog/cover-finance-concept.jpg' WHERE slug IN ('tail-risk-hedging-ai', 'liquidity-risk-portfolio-ai');
+UPDATE blog_posts SET cover_image = '/images/blog/cover-gold-stacks.jpg' WHERE slug IN ('gold-price-forecasting-ai', 'macro-regime-shifts-ai');
+UPDATE blog_posts SET cover_image = '/images/blog/cover-finance-calculator.jpg' WHERE slug IN ('economic-calendar-ai-trading', 'feature-engineering-trading-ai');
