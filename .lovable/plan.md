@@ -1,26 +1,28 @@
 
 
-## Ajouter 1 nouvelle image (bureau finance) pour diversifier les covers
+## Ajouter 3 nouvelles images pour reduire la repetition
 
 ### Etat actuel
 
-31 images pour 86 articles. 25 groupes a 3 articles, 5 groupes a 2, 1 groupe a 1. Max = 3 partout.
+32 images pour 86 articles. 24 groupes a 3 articles, 5 a 2, 2 a 1.
 
-### Mapping
+### Mapping des 3 nouvelles images
 
-| Image | Fichier cible | Articles reassignes |
-|-------|--------------|---------------------|
-| Bureau finance (ecran + telephone) | `cover-finance-desk.jpg` | 2 du groupe coins: `commodity-futures-curve-ai`, `agricultural-commodities-ai` |
+| Image | Fichier cible | Articles reassignes (1 par groupe de 3) |
+|-------|--------------|------|
+| Finance concept (Money/Profit/Management) | `cover-finance-concept.jpg` | 1 du groupe hundred-bills + 1 du groupe hundred-closeup: `tail-risk-hedging-ai`, `liquidity-risk-portfolio-ai` |
+| Gold coins stacks | `cover-gold-stacks.jpg` | 1 du groupe risk-dial + 1 du groupe coins-trading: `gold-price-forecasting-ai`, `macro-regime-shifts-ai` |
+| Finance calculator | `cover-finance-calculator.jpg` | 1 du groupe euro-coins + 1 du groupe financial-stats: `economic-calendar-ai-trading`, `feature-engineering-trading-ai` |
 
 ### Resultat
 
-- `cover-coins.jpg`: 3 → 1 article (`commodities-research-ai-assistance`)
-- `cover-finance-desk.jpg`: 2 articles
-- Total: **32 images uniques**
+- 6 groupes passent de 3 a 2
+- 3 nouvelles images a 2 articles chacune
+- Total: **35 images uniques**, max 3 par image
 
 ### Execution
 
-1. Copier l'image dans `public/images/blog/cover-finance-desk.jpg`
-2. UPDATE 2 articles via insert tool
+1. Copier 3 images dans `public/images/blog/`
+2. 1 migration SQL UPDATE 6 articles
 3. Aucun changement de code
 
