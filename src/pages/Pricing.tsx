@@ -1,4 +1,5 @@
 import { SEOHead } from "@/components/SEOHead";
+import { Link } from 'react-router-dom';
 import { breadcrumbList, webPageSchema } from "@/seo/structuredData";
 import React, { useEffect, useState } from 'react';
 import { Check, User, LogIn } from 'lucide-react';
