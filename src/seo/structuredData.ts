@@ -1,4 +1,4 @@
-const SITE_URL = 'https://macro-trader-studio.lovable.app';
+const SITE_URL = 'https://alphalensai.com';
 const SITE_NAME = 'AlphaLens';
 const LOGO_URL = `${SITE_URL}/alphalens_logo_new.png`;
 
@@ -97,5 +97,22 @@ export function articleSchema(post: ArticleSchemaInput): Record<string, unknown>
       '@id': `${SITE_URL}/blog/${post.slug}`,
     },
     ...(post.coverImage ? { image: post.coverImage } : {}),
+  };
+}
+
+export function faqSchema(
+  items: { question: string; answer: string }[],
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
   };
 }

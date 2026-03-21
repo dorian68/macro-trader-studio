@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, User, ArrowLeft, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { breadcrumbList, articleSchema } from "@/seo/structuredData";
+import { Helmet } from "react-helmet-async";
 
 interface BlogPostData {
   id: string;
@@ -32,26 +33,19 @@ interface BlogPostData {
 /** Simple markdown-to-HTML for blog content */
 function renderMarkdown(md: string): string {
   return md
-    // Headers
     .replace(/^### (.*$)/gm, '<h3 class="text-xl font-semibold text-foreground mt-8 mb-3">$1</h3>')
     .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-bold text-foreground mt-10 mb-4">$1</h2>')
     .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold text-foreground mt-10 mb-4">$1</h1>')
-    // Bold & italic
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    // Links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary underline hover:text-primary/80">$1</a>')
-    // Unordered lists
     .replace(/^\s*[-*] (.*$)/gm, '<li class="ml-4 list-disc text-muted-foreground">$1</li>')
-    // Paragraphs (lines that aren't already tags)
     .replace(/^(?!<[hul]|<li)(.*\S.*)$/gm, '<p class="text-muted-foreground leading-relaxed mb-4">$1</p>')
-    // Wrap consecutive li items
     .replace(/(<li[^>]*>.*<\/li>\n?)+/g, '<ul class="space-y-2 mb-6">$&</ul>');
 }
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const [post, setPost] = useState<BlogPostData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -96,9 +90,9 @@ export default function BlogPost() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-4">Article not found</h1>
-            <Button onClick={() => navigate("/blog")} variant="outline">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Blog
-            </Button>
+            <Link to="/blog" className="inline-flex items-center gap-2 text-primary hover:underline">
+              <ArrowLeft className="h-4 w-4" /> Back to Blog
+            </Link>
           </div>
         </div>
         <Footer />
@@ -106,37 +100,40 @@ export default function BlogPost() {
     );
   }
 
-  const SITE_URL = "https://macro-trader-studio.lovable.app";
+  const pageTitle = post.meta_title || `${post.title} | AlphaLens`;
+  const pageDescription = post.meta_description || post.excerpt || "";
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <SEOHead
-        titleKey={post.meta_title ? undefined : "seo.blogTitle"}
-        descriptionKey={post.meta_description ? undefined : "seo.blogDescription"}
-        canonicalPath={`/blog/${post.slug}`}
-        ogImage={post.cover_image || undefined}
-        ogType="article"
-        jsonLd={[
-          breadcrumbList(post.title, `/blog/${post.slug}`),
-          articleSchema({
+      {/* Use raw Helmet for dynamic post titles instead of translation keys */}
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <link rel="canonical" href={`https://alphalensai.com/blog/${post.slug}`} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content={`https://alphalensai.com/blog/${post.slug}`} />
+        {post.cover_image && <meta property="og:image" content={post.cover_image} />}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        {post.cover_image && <meta name="twitter:image" content={post.cover_image} />}
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbList(post.title, `/blog/${post.slug}`))}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(articleSchema({
             title: post.title,
-            description: post.meta_description || post.excerpt || "",
+            description: pageDescription,
             slug: post.slug,
             author: post.author,
             publishedAt: post.published_at || post.updated_at,
             modifiedAt: post.updated_at,
             coverImage: post.cover_image,
-          }),
-        ]}
-      />
-      {/* Override meta if post has custom meta */}
-      {post.meta_title && (
-        <SEOHead
-          titleKey=""
-          descriptionKey=""
-          canonicalPath={`/blog/${post.slug}`}
-        />
-      )}
+          }))}
+        </script>
+      </Helmet>
 
       <PublicNavbar />
 
@@ -144,12 +141,12 @@ export default function BlogPost() {
         <article className="py-12 px-4">
           <div className="container mx-auto max-w-3xl">
             {/* Back link */}
-            <button
-              onClick={() => navigate("/blog")}
+            <Link
+              to="/blog"
               className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Blog
-            </button>
+            </Link>
 
             {/* Header */}
             <header className="mb-8">
@@ -207,9 +204,11 @@ export default function BlogPost() {
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                 Get AI-powered trade setups, macro commentary, and portfolio analytics — start your free trial today.
               </p>
-              <Button onClick={() => navigate("/auth")} size="lg">
-                Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <Link to="/auth">
+                <Button size="lg">
+                  Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         </article>

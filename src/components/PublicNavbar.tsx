@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Menu, X } from "lucide-react";
@@ -26,19 +26,13 @@ export default function PublicNavbar() {
     { name: t('nav.contact'), path: "/contact" },
   ];
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    setMobileMenuOpen(false);
-  };
-
   return (
     <header className="border-b border-white/5 bg-background sticky top-0 z-50 shadow-sm">
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-2 sm:py-4 flex items-center justify-between">
         {/* Logo - Mobile optimized */}
         <div className="flex items-center gap-2">
-          {/* Logo */}
-          <button
-            onClick={() => navigate('/')}
+          <Link
+            to="/"
             className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 group min-w-0"
           >
             <img
@@ -46,7 +40,7 @@ export default function PublicNavbar() {
               alt="alphaLens.ai"
               className="h-10 sm:h-14 w-auto object-contain"
             />
-          </button>
+          </Link>
 
           {/* Mobile hamburger menu */}
           <div className="md:hidden ml-2">
@@ -60,7 +54,10 @@ export default function PublicNavbar() {
                 {navigationItems.map((item) => (
                   <DropdownMenuItem
                     key={item.name}
-                    onClick={() => handleNavigation(item.path)}
+                    onClick={() => {
+                      navigate(item.path);
+                      setMobileMenuOpen(false);
+                    }}
                     className="cursor-pointer"
                   >
                     {item.name}
@@ -74,18 +71,17 @@ export default function PublicNavbar() {
         {/* Navigation - Desktop */}
         <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
           {/* Desktop navigation items */}
-          <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {navigationItems.map((item) => (
-              <Button
+              <Link
                 key={item.name}
-                variant="ghost"
-                onClick={() => navigate(item.path)}
-                className="text-sm px-2 lg:px-4 min-h-[44px]"
+                to={item.path}
+                className="text-sm px-2 lg:px-4 min-h-[44px] inline-flex items-center justify-center rounded-md font-medium text-foreground/80 hover:text-foreground hover:bg-accent/10 transition-colors"
               >
                 {item.name}
-              </Button>
+              </Link>
             ))}
-          </div>
+          </nav>
 
           {/* Language Switcher */}
           <LanguageSwitcher />
@@ -93,17 +89,17 @@ export default function PublicNavbar() {
           {/* Auth buttons */}
           {!user ? (
             <>
-              <Button variant="ghost" onClick={() => navigate("/auth")} className="text-sm px-2 sm:px-4 min-h-[44px]">
+              <Link to="/auth" className="text-sm px-2 sm:px-4 min-h-[44px] inline-flex items-center justify-center rounded-md font-medium text-foreground/80 hover:text-foreground hover:bg-accent/10 transition-colors">
                 {t('nav.login')}
-              </Button>
+              </Link>
               <Button onClick={() => navigate("/auth")} className="text-sm px-2 sm:px-4 min-h-[44px]">
                 {t('nav.signup')}
               </Button>
             </>
           ) : (
-            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-sm px-2 sm:px-4 min-h-[44px]">
+            <Link to="/dashboard" className="text-sm px-2 sm:px-4 min-h-[44px] inline-flex items-center justify-center rounded-md font-medium text-foreground/80 hover:text-foreground hover:bg-accent/10 transition-colors">
               {t('nav.dashboard')}
-            </Button>
+            </Link>
           )}
         </div>
       </div>

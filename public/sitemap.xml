@@ -1,72 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://macro-trader-studio.lovable.app</loc>
+    <loc>https://alphalensai.com</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/blog</loc>
+    <loc>https://alphalensai.com/blog</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/features</loc>
+    <loc>https://alphalensai.com/features</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/pricing</loc>
+    <loc>https://alphalensai.com/pricing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/product</loc>
+    <loc>https://alphalensai.com/product</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/docs</loc>
+    <loc>https://alphalensai.com/docs</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/api</loc>
+    <loc>https://alphalensai.com/api</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/about</loc>
+    <loc>https://alphalensai.com/about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/contact</loc>
+    <loc>https://alphalensai.com/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/help</loc>
+    <loc>https://alphalensai.com/help</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/auth</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://macro-trader-studio.lovable.app/coming-soon</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://macro-trader-studio.lovable.app/privacy</loc>
+    <loc>https://alphalensai.com/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://macro-trader-studio.lovable.app/terms</loc>
+    <loc>https://alphalensai.com/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

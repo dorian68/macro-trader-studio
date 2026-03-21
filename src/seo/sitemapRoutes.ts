@@ -9,7 +9,7 @@ export interface SitemapRoute {
   priority: number;
 }
 
-export const SITE_URL = 'https://macro-trader-studio.lovable.app';
+export const SITE_URL = 'https://alphalensai.com';
 
 export const sitemapRoutes: SitemapRoute[] = [
   // Core
@@ -25,10 +25,6 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/about', changefreq: 'monthly', priority: 0.7 },
   { path: '/contact', changefreq: 'monthly', priority: 0.7 },
   { path: '/help', changefreq: 'monthly', priority: 0.6 },
-
-  // Auth & utility
-  { path: '/auth', changefreq: 'monthly', priority: 0.5 },
-  { path: '/coming-soon', changefreq: 'monthly', priority: 0.3 },
 
   // Legal
   { path: '/privacy', changefreq: 'yearly', priority: 0.3 },

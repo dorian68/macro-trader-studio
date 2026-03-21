@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
 import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
 import ResearchLabVisual from "@/components/homepage/ResearchLabVisual";
@@ -135,12 +135,12 @@ export default function Homepage() {
                 <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{card.desc}</p>
 
                 {/* CTA */}
-                <button
-                  onClick={() => navigate(card.route)}
-                  className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer bg-transparent border-none p-0"
+                <Link
+                  to={card.route}
+                  className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer"
                 >
                   Open module <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                </Link>
               </CardContent>
             </Card>
           ))}
@@ -172,7 +172,7 @@ export default function Homepage() {
     <RelatedPages links={[
       { label: "Features", path: "/features" },
       { label: "Pricing", path: "/pricing" },
-      { label: "Documentation", path: "/docs" },
+      { label: "Blog", path: "/blog" },
       { label: "Help Center", path: "/help" },
       { label: "About", path: "/about" },
     ]} />

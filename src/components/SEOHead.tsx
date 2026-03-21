@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const SITE_URL = 'https://macro-trader-studio.lovable.app';
+const SITE_URL = 'https://alphalensai.com';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 interface SEOHeadProps {
