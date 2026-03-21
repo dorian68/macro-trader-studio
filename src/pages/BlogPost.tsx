@@ -120,7 +120,15 @@ export default function BlogPost() {
         <meta name="twitter:description" content={pageDescription} />
         {post.cover_image && <meta name="twitter:image" content={post.cover_image} />}
         <script type="application/ld+json">
-          {JSON.stringify(breadcrumbList(post.title, `/blog/${post.slug}`))}
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://alphalensai.com/" },
+              { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://alphalensai.com/blog" },
+              { "@type": "ListItem", "position": 3, "name": post.title, "item": `https://alphalensai.com/blog/${post.slug}` }
+            ]
+          })}
         </script>
         <script type="application/ld+json">
           {JSON.stringify(articleSchema({
