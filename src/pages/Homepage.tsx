@@ -1,43 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
 import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
 import ResearchLabVisual from "@/components/homepage/ResearchLabVisual";
 import { useTranslation } from "react-i18next";
 import PublicNavbar from "@/components/PublicNavbar";
 import { SEOHead } from "@/components/SEOHead";
-import { useAuth } from "@/hooks/useAuth";
-import { useCreditManager } from "@/hooks/useCreditManager";
-import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
 import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
 
 export default function Homepage() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { activateFreeTrial } = useCreditManager();
-  const { toast } = useToast();
   const { t } = useTranslation(['common', 'toasts']);
-
-  const handleFreeTrialClick = async () => {
-    if (!user) {
-      // Not logged in - redirect to auth with intent
-      navigate('/auth?intent=free_trial');
-    } else {
-      // Already logged in - activate free trial directly
-      const { error } = await activateFreeTrial();
-      if (!error) {
-        toast({
-          title: t('toasts:freeTrial.started'),
-          description: t('toasts:freeTrial.startedDescription'),
-        });
-        navigate('/payment-success?type=free_trial');
-      }
-    }
-  };
   return <div className="min-h-screen bg-background">
     <SEOHead
       titleKey="seo.homeTitle"
@@ -83,9 +59,11 @@ export default function Homepage() {
             {t('hero.description')}
           </p>
           <div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300" onClick={handleFreeTrialClick}>
-              {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+            <Link to="/auth?intent=free_trial">
+              <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
+                {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
             <Link to="/auth">
               <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-white/30 text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
                 {t('hero.getStarted')}
@@ -161,12 +139,16 @@ export default function Homepage() {
           {t('cta.subtitle')}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" variant="secondary" className="text-lg px-8 py-3" onClick={() => navigate("/contact")}>
-            {t('cta.requestDemo')}
-          </Button>
-          <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" onClick={handleFreeTrialClick}>
-            {t('cta.startFreeTrial')}
-          </Button>
+          <Link to="/contact">
+            <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
+              {t('cta.requestDemo')}
+            </Button>
+          </Link>
+          <Link to="/auth?intent=free_trial">
+            <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+              {t('cta.startFreeTrial')}
+            </Button>
+          </Link>
         </div>
       </div>
     </section>
