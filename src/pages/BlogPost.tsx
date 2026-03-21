@@ -153,11 +153,11 @@ export default function BlogPost() {
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={`https://alphalensai.com/blog/${post.slug}`} />
-        {post.cover_image && <meta property="og:image" content={post.cover_image} />}
+        {ogImage && <meta property="og:image" content={ogImage} />}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
-        {post.cover_image && <meta name="twitter:image" content={post.cover_image} />}
+        {ogImage && <meta name="twitter:image" content={ogImage} />}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
