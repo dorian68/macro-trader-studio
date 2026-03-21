@@ -1,0 +1,1 @@
+UPDATE blog_posts SET cover_image = '/images/blog/cover-analyst-desk.jpg' WHERE slug IN ('ai-explainability-trading-research', 'manual-vs-ai-market-research');
