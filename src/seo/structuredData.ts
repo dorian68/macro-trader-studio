@@ -10,6 +10,10 @@ export const organizationSchema: Record<string, unknown> = {
   logo: LOGO_URL,
   description:
     'AI-powered financial research and trading intelligence platform delivering institutional-grade trade setups, macro commentary, and research reports.',
+  sameAs: [
+    'https://www.linkedin.com/company/alphalens-ai',
+    'https://x.com/alphalens_ai',
+  ],
   contactPoint: {
     '@type': 'ContactPoint',
     email: 'research@albaricg.com',
