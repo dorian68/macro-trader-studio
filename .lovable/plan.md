@@ -1,44 +1,30 @@
 
 
-## Harmoniser les 58 articles vers les 4 categories SEO
+## Ajouter les 8 images uploadees comme cover images sur les articles du blog
 
-### Mapping des 58 articles
+### Principe
 
-**Quant & Backtesting (13 articles)** — signals, backtesting, trading algorithms
-- `quant-research-workflow-data-to-signal`, `how-ai-generates-trading-signals`, `momentum-vs-mean-reversion-ai`, `multi-timeframe-signal-analysis`, `ai-entry-exit-timing`, `risk-reward-optimization-ai`, `ai-backtest-trading-strategy`, `ai-signal-validation-trading`, `ai-signal-noise-filtering`, `regime-detection-trading-ai`, `ai-stop-loss-placement`, `ai-trade-sizing-algorithms`, `real-time-signal-generation`
+Les 86 articles n'ont actuellement aucune `cover_image` en DB -- le fallback utilise 4 images par categorie. On va :
+1. Copier les 8 images dans `public/images/blog/`
+2. Assigner chaque image a ~10-11 articles via UPDATE SQL, en repartissant par theme
+3. Les 4 images categorie existantes restent en fallback pour tout article sans cover_image specifique
 
-**Portfolio & Risk (2 articles)** — portfolio, risk management
-- `ai-risk-management-trading`, `ai-portfolio-monitoring`
+### Mapping images → themes
 
-**Institutional & Governance (5 articles)** — research desks, governance, comparisons
-- `ai-explainability-trading-research`, `manual-vs-ai-market-research`, `ai-research-desk-finance`, `institutional-ai-market-intelligence`, `ai-trading-tools-comparison`
+| Image | Fichier cible | Articles assignes |
+|-------|--------------|-------------------|
+| Coins (stocksnap) | `cover-coins.jpg` | ~11 articles Commodities (commodities, gold, oil, gas, metals, agriculture, energy, supercycle, precious-metals, commodity-futures, commodity-correlation) |
+| $50 bill (kevinmullett) | `cover-dollar-bill.jpg` | ~12 articles FX (fx-carry, fx-pair, fx-volatility, fx-hedging, fx-order-flow, fx-technical, fx-news, fx-research, emerging-fx, asian-fx, usd-strength, fx-carry-optimization) |
+| Futuristic city (thedigitalartist) | `cover-futuristic.jpg` | ~11 articles Quant (backtesting, walk-forward, monte-carlo, factor-models, model-validation, feature-engineering, ensemble, alternative-data, reinforcement, strategy-lifecycle, how-ai-generates) |
+| Dollar bills pile (istockphoto) | `cover-dollars-pile.jpg` | ~6 articles Crypto (crypto-intelligence, bitcoin, defi, microstructure, ethereum, crypto-sentiment) |
+| Dollar arrow up (geralt) | `cover-market-rise.jpg` | ~12 articles Portfolio (allocation, drawdown, correlation, tail-risk, dynamic-rebalancing, multi-asset, esg, volatility-targeting, liquidity-risk, stress-testing, risk-management, portfolio-monitoring) |
+| Polish zloty (byszek) | `cover-currencies.jpg` | ~12 articles Macro (macro-guide, market-data, central-bank, inflation, yield-curve, geopolitical, economic-calendar, gdp, labor-market, central-bank-nlp, macro-regime, cross-asset) |
+| Laptop dark (20260321_2319) | `cover-laptop.jpg` | ~5 articles Institutional (governance, mifid, research-automation, trading-desk, future-2026) |
+| Skyscrapers (20260321_2315) | `cover-skyscrapers.jpg` | ~5 articles Institutional (explainability, manual-vs-ai, research-desk, institutional-intelligence, tools-comparison) + remaining quant (signal-noise, signal-validation, stop-loss, trade-sizing, real-time, momentum, multi-timeframe, entry-exit, risk-reward, regime-detection, quant-workflow, backtest-strategy) |
 
-**Commodities & Macro (38 articles)** — macro, FX, crypto, commodities
-- All macro/commentary: `ai-macro-market-analysis-guide`, `market-data-to-decision-ready-commentary`, `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai`, `geopolitical-risk-ai-assessment`, `economic-calendar-ai-trading`, `gdp-nowcasting-ai-models`, `labor-market-ai-analysis`, `central-bank-communication-nlp`, `macro-regime-shifts-ai`, `cross-asset-macro-correlations`
-- All FX: `ai-fx-research-workflows`, `fx-carry-trade-ai-analysis`, `ai-fx-pair-selection`, `fx-carry-trade-optimization`, `fx-volatility-forecasting-ai`, `emerging-market-fx-ai`, `fx-order-flow-analysis-ai`, `usd-strength-ai-model`, `fx-technical-patterns-ai`, `fx-news-sentiment-trading`, `asian-fx-markets-ai`, `fx-hedging-strategies-ai`
-- All crypto: `ai-crypto-market-intelligence`, `bitcoin-on-chain-analysis-ai`, `defi-yield-analysis-ai`, `crypto-market-microstructure`, `ethereum-ecosystem-ai-analysis`, `crypto-sentiment-on-chain-signals`
-- All commodities: `commodities-research-ai-assistance`, `gold-price-forecasting-ai`, `crude-oil-supply-demand-ai`, `natural-gas-trading-ai`, `agricultural-commodities-ai`, `industrial-metals-ai-analysis`, `energy-transition-commodities-ai`, `commodity-supercycle-ai-analysis`
+### Execution
 
-### Pour chaque article: mise a jour
-
-1. **`category`** — remapped to one of the 4 standard categories
-2. **`meta_title`** — format "Titre | AlphaLens AI" (50-60 chars), optimized for CTR
-3. **`meta_description`** — rewritten (130-155 chars), keyword-rich
-4. **`excerpt`** — rewritten, action-oriented
-5. **`tags`** — refreshed with relevant keywords (5-6 tags per article)
-6. **`content`** — append "## Related Reading" block with 3 internal links + CTA (only for the ~40 articles missing it)
-
-### Execution technique
-
-- **4 SQL migrations** (one per category group) to keep each manageable
-- Each migration updates `category`, `meta_title`, `meta_description`, `excerpt`, `tags`
-- For articles missing Related Reading (~40): UPDATE `content` to append the block
-- Internal links follow cluster logic: 2 links within same category + 1 cross-category link
-
-### Impact
-
-- All 86 articles under 4 consistent categories
-- `/blog/category/` routes will show balanced content distribution
-- Every article has Related Reading for internal link mesh
-- Consistent SEO metadata format across entire blog
+1. **Copier 8 images** dans `public/images/blog/`
+2. **1 migration SQL** avec ~86 UPDATE statements assignant `cover_image` par slug
+3. **Aucun changement de code** -- le composant Blog.tsx affiche deja `post.cover_image` en priorite
 
