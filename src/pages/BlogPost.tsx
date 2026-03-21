@@ -240,9 +240,9 @@ export default function BlogPost() {
             </header>
 
             {/* Cover */}
-            {post.cover_image && (
+            {coverImage && (
               <img
-                src={post.cover_image}
+                src={coverImage}
                 alt={post.title}
                 loading="lazy"
                 className="w-full rounded-lg mb-10 shadow-md"
