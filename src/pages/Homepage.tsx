@@ -135,12 +135,12 @@ export default function Homepage() {
                 <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{card.desc}</p>
 
                 {/* CTA */}
-                <button
-                  onClick={() => navigate(card.route)}
-                  className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer bg-transparent border-none p-0"
+                <Link
+                  to={card.route}
+                  className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer"
                 >
                   Open module <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                </Link>
               </CardContent>
             </Card>
           ))}
