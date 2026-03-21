@@ -123,4 +123,10 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/blog/multi-asset-portfolio-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/esg-portfolio-integration-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/volatility-targeting-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/liquidity-risk-portfolio-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/stress-testing-portfolios-ai', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 10-11 — Institutional
+  { path: '/blog/mifid-compliance-ai-research', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/research-automation-buy-side', changefreq: 'weekly', priority: 0.7 },
 ];
