@@ -1,46 +1,54 @@
 
 
-## Generate 65 Remaining Articles + Fix 5 Placeholders
+## Continue Batch Article Generation & DB Insertion
 
 ### Current State
-- **21 articles in DB** (16 with real content, 5 with "Placeholder" content)
-- **Sitemap routes** already has 30 future slugs (waves 3: signals, macro, FX, crypto) not yet in DB
-- Need: 5 placeholder fixes + 30 articles matching existing sitemap slugs + 35 new articles = 70 total operations
+- **21 articles in DB** (13 with full content 7K+, 8 with short content 1.8K-3.9K)
+- **Sitemap routes already defined** for ~65 additional slugs (waves 3-4) not yet in DB
+- Need to generate content and INSERT ~65 articles in batches of 5
 
-### Execution Strategy
+### Slugs still missing from DB (grouped by batch)
 
-**Phase 1: Fix 5 placeholder articles** (batch 1)
-UPDATE content for: `how-ai-generates-trading-signals`, `momentum-vs-mean-reversion-ai`, `multi-timeframe-signal-analysis`, `ai-entry-exit-timing`, `risk-reward-optimization-ai`
+**Batch 1** (AI Signals): `ai-signal-noise-filtering`, `regime-detection-trading-ai`, `ai-stop-loss-placement`, `ai-trade-sizing-algorithms`, `real-time-signal-generation`
 
-**Phase 2: Generate 30 articles matching existing sitemap slugs** (batches 2-7, 5 per batch)
-These slugs are already in `sitemapRoutes.ts` — just need DB rows with real content:
-- Batch 2: `ai-signal-noise-filtering`, `regime-detection-trading-ai`, `ai-stop-loss-placement`, `ai-trade-sizing-algorithms`, `real-time-signal-generation`
-- Batch 3: `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai`, `geopolitical-risk-ai-assessment`, `economic-calendar-ai-trading`
-- Batch 4: `gdp-nowcasting-ai-models`, `labor-market-ai-analysis`, `central-bank-communication-nlp`, `macro-regime-shifts-ai`, `cross-asset-macro-correlations`
-- Batch 5: `ai-fx-pair-selection`, `fx-carry-trade-optimization`, `fx-volatility-forecasting-ai`, `emerging-market-fx-ai`, `fx-order-flow-analysis-ai`
-- Batch 6: `usd-strength-ai-model`, `fx-technical-patterns-ai`, `fx-news-sentiment-trading`, `asian-fx-markets-ai`, `fx-hedging-strategies-ai`
-- Batch 7: `bitcoin-on-chain-analysis-ai`, `defi-yield-analysis-ai`, `crypto-market-microstructure`, `ethereum-ecosystem-ai-analysis`, `crypto-sentiment-on-chain-signals`
+**Batch 2** (Macro 1): `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai`, `geopolitical-risk-ai-assessment`, `economic-calendar-ai-trading`
 
-**Phase 3: Generate 35 NEW articles** (batches 8-14, 5 per batch)
-New clusters to fill remaining quota:
-- Batch 8-9: Commodities (10 articles) — gold, oil, natural gas, agriculture, metals, energy transition
-- Batch 10-11: Quant & Backtesting (10 articles) — model validation, overfitting, walk-forward, Monte Carlo, factor models
-- Batch 12-13: Portfolio & Risk (10 articles) — allocation, drawdown, correlation, hedging, rebalancing
-- Batch 14: Institutional & Fintech (5 articles) — compliance, MiFID, research automation, desk workflows
+**Batch 3** (Macro 2): `gdp-nowcasting-ai-models`, `labor-market-ai-analysis`, `central-bank-communication-nlp`, `macro-regime-shifts-ai`, `cross-asset-macro-correlations`
 
-### Content Generation Method
-Use AI gateway script (`/tmp/lovable_ai.py`) with a finance-expert system prompt to generate ~1,200-1,500 word Markdown articles. Each includes:
-- H1 title, H2/H3 structure, internal links, CTA
-- Staggered `published_at` dates (April 24, 2025 → March 15, 2026, ~3 days apart)
-- Mixed authors: "AlphaLens Research", "AlphaLens Quant Desk", "AlphaLens Macro Team"
+**Batch 4** (FX 1): `ai-fx-pair-selection`, `fx-carry-trade-optimization`, `fx-volatility-forecasting-ai`, `emerging-market-fx-ai`, `fx-order-flow-analysis-ai`
 
-### Database Operations
-- Phase 1: UPDATE 5 rows (fix placeholders)
-- Phase 2-3: INSERT 65 new rows via SQL in batches of 5
+**Batch 5** (FX 2): `usd-strength-ai-model`, `fx-technical-patterns-ai`, `fx-news-sentiment-trading`, `asian-fx-markets-ai`, `fx-hedging-strategies-ai`
 
-### Code Changes
-- `src/seo/sitemapRoutes.ts` — add 35 new slugs (for Phase 3 articles)
-- `public/sitemap.xml` — regenerate with all ~86 article URLs
+**Batch 6** (Crypto): `bitcoin-on-chain-analysis-ai`, `defi-yield-analysis-ai`, `crypto-market-microstructure`, `ethereum-ecosystem-ai-analysis`, `crypto-sentiment-on-chain-signals`
 
-### Total: 14 batches × 5 articles = 70 operations (5 updates + 65 inserts)
+**Batch 7** (Commodities 1): `gold-price-forecasting-ai`, `crude-oil-supply-demand-ai`, `natural-gas-trading-ai`, `agricultural-commodities-ai`, `industrial-metals-ai-analysis`
+
+**Batch 8** (Commodities 2): `energy-transition-commodities-ai`, `commodity-supercycle-ai-analysis`, `precious-metals-portfolio-ai`, `commodity-futures-curve-ai`, `commodity-correlation-macro-ai`
+
+**Batch 9** (Quant 1): `backtesting-pitfalls-overfitting-ai`, `walk-forward-optimization-ai`, `monte-carlo-simulation-trading-ai`, `factor-models-ai-trading`, `model-validation-ai-trading`
+
+**Batch 10** (Quant 2): `feature-engineering-trading-ai`, `ensemble-methods-trading-ai`, `alternative-data-trading-ai`, `reinforcement-learning-trading`, `quantitative-strategy-lifecycle-ai`
+
+**Batch 11** (Portfolio 1): `ai-portfolio-allocation-optimization`, `drawdown-management-ai`, `correlation-regime-changes-ai`, `tail-risk-hedging-ai`, `dynamic-rebalancing-ai`
+
+**Batch 12** (Portfolio 2): `multi-asset-portfolio-ai`, `esg-portfolio-integration-ai`, `volatility-targeting-ai`, `liquidity-risk-portfolio-ai`, `stress-testing-portfolios-ai`
+
+**Batch 13** (Institutional): `mifid-compliance-ai-research`, `research-automation-buy-side`, `ai-trading-desk-integration`, `ai-model-governance-finance`, `future-of-ai-trading-2026`
+
+### Execution per batch
+1. Generate 5 articles (~1,500 words each) via AI gateway with finance-expert system prompt
+2. INSERT into `blog_posts` with staggered `published_at` dates (April 24, 2025 → March 15, 2026, ~3 days apart)
+3. Mixed authors and categories matching each cluster
+
+### Date staggering
+- Batch 1 starts at 2025-04-24, each article +3 days
+- Total span: April 2025 → March 2026 (natural editorial cadence)
+
+### After all insertions
+- Regenerate `public/sitemap.xml` with all URLs
+- Total target: ~86 published articles
+
+### Files modified
+- Database: INSERT 65 rows into `blog_posts` (13 batches × 5)
+- `public/sitemap.xml` — regenerate after all insertions
 
