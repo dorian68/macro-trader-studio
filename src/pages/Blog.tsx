@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
@@ -26,7 +26,6 @@ interface BlogPost {
 }
 
 export default function Blog() {
-  const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -93,47 +92,49 @@ export default function Blog() {
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {posts.map((post) => (
-                  <Card
+                  <Link
                     key={post.id}
-                    className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
-                    onClick={() => navigate(`/blog/${post.slug}`)}
+                    to={`/blog/${post.slug}`}
+                    className="block group"
                   >
-                    {post.cover_image && (
-                      <img
-                        src={post.cover_image}
-                        alt={post.title}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    )}
-                    <CardContent className="p-5 space-y-3">
-                      {post.category && (
-                        <Badge variant="secondary" className="text-xs">
-                          {post.category}
-                        </Badge>
+                    <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow h-full">
+                      {post.cover_image && (
+                        <img
+                          src={post.cover_image}
+                          alt={post.title}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
                       )}
-                      <h2 className="text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-                        {post.title}
-                      </h2>
-                      {post.excerpt && (
-                        <p className="text-sm text-muted-foreground line-clamp-3">
-                          {post.excerpt}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {post.author}
-                        </span>
-                        {post.published_at && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(post.published_at), "MMM d, yyyy")}
-                          </span>
+                      <CardContent className="p-5 space-y-3">
+                        {post.category && (
+                          <Badge variant="secondary" className="text-xs">
+                            {post.category}
+                          </Badge>
                         )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                        <h2 className="text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                          {post.title}
+                        </h2>
+                        {post.excerpt && (
+                          <p className="text-sm text-muted-foreground line-clamp-3">
+                            {post.excerpt}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {post.author}
+                          </span>
+                          {post.published_at && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(post.published_at), "MMM d, yyyy")}
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             )}
@@ -149,9 +150,11 @@ export default function Blog() {
             <p className="text-muted-foreground mb-6">
               Get institutional-grade trade setups, macro commentary, and portfolio analytics powered by AI.
             </p>
-            <Button onClick={() => navigate("/auth")} size="lg">
-              Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <Link to="/auth">
+              <Button size="lg">
+                Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </section>
 
@@ -159,7 +162,6 @@ export default function Blog() {
           links={[
             { label: "Features", path: "/features" },
             { label: "Pricing", path: "/pricing" },
-            { label: "Documentation", path: "/docs" },
             { label: "About", path: "/about" },
           ]}
         />

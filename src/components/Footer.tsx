@@ -1,8 +1,7 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 export function Footer() {
-  const navigate = useNavigate();
   const { t } = useTranslation('common');
 
   return (
@@ -26,28 +25,24 @@ export function Footer() {
             <h4 className="font-semibold mb-4 text-foreground">{t('footer.product')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <button
-                  onClick={() => navigate("/features")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/features" className="hover:text-foreground transition-colors">
                   {t('nav.features')}
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => navigate("/pricing")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/pricing" className="hover:text-foreground transition-colors">
                   {t('nav.pricing')}
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => navigate("/api")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/blog" className="hover:text-foreground transition-colors">
+                  Blog
+                </Link>
+              </li>
+              <li>
+                <Link to="/api" className="hover:text-foreground transition-colors">
                   API
-                </button>
+                </Link>
               </li>
             </ul>
           </div>
@@ -55,28 +50,19 @@ export function Footer() {
             <h4 className="font-semibold mb-4 text-foreground">{t('footer.company')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <button
-                  onClick={() => navigate("/about")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/about" className="hover:text-foreground transition-colors">
                   {t('nav.about')}
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => navigate("/contact")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/contact" className="hover:text-foreground transition-colors">
                   {t('nav.contact')}
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => navigate("/privacy")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/privacy" className="hover:text-foreground transition-colors">
                   {t('footer.privacy')}
-                </button>
+                </Link>
               </li>
             </ul>
           </div>
@@ -84,28 +70,19 @@ export function Footer() {
             <h4 className="font-semibold mb-4 text-foreground">{t('footer.support')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <button
-                  onClick={() => navigate("/docs")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/docs" className="hover:text-foreground transition-colors">
                   {t('nav.documentation')}
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => navigate("/help")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/help" className="hover:text-foreground transition-colors">
                   {t('nav.helpCenter')}
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => navigate("/terms")}
-                  className="hover:text-foreground transition-colors"
-                >
+                <Link to="/terms" className="hover:text-foreground transition-colors">
                   {t('footer.terms')}
-                </button>
+                </Link>
               </li>
             </ul>
           </div>
