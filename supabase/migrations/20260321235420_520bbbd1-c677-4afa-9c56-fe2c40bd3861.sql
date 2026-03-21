@@ -1,0 +1,1 @@
+UPDATE blog_posts SET cover_image = '/images/blog/cover-coins-growth.jpg' WHERE slug IN ('quantitative-strategy-lifecycle-ai', 'defi-yield-analysis-ai');
