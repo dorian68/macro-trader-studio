@@ -202,11 +202,10 @@ export function BlogManagement() {
               <Select value={form.category || ""} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="market-commentary">Market Commentary</SelectItem>
-                  <SelectItem value="tutorial">Tutorial</SelectItem>
-                  <SelectItem value="case-study">Case Study</SelectItem>
-                  <SelectItem value="product-guide">Product Guide</SelectItem>
-                  <SelectItem value="research">Research</SelectItem>
+                  <SelectItem value="Quant & Backtesting">Quant & Backtesting</SelectItem>
+                  <SelectItem value="Portfolio & Risk">Portfolio & Risk</SelectItem>
+                  <SelectItem value="Institutional & Governance">Institutional & Governance</SelectItem>
+                  <SelectItem value="Commodities & Macro">Commodities & Macro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
