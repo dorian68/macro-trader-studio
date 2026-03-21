@@ -14,10 +14,11 @@ interface SitemapRoute {
   priority: number;
 }
 
-const SITE_URL = 'https://macro-trader-studio.lovable.app';
+const SITE_URL = 'https://alphalensai.com';
 
 const routes: SitemapRoute[] = [
   { path: '/', changefreq: 'weekly', priority: 1.0 },
+  { path: '/blog', changefreq: 'daily', priority: 0.9 },
   { path: '/features', changefreq: 'monthly', priority: 0.9 },
   { path: '/pricing', changefreq: 'monthly', priority: 0.9 },
   { path: '/product', changefreq: 'monthly', priority: 0.8 },
@@ -26,10 +27,17 @@ const routes: SitemapRoute[] = [
   { path: '/about', changefreq: 'monthly', priority: 0.7 },
   { path: '/contact', changefreq: 'monthly', priority: 0.7 },
   { path: '/help', changefreq: 'monthly', priority: 0.6 },
-  { path: '/auth', changefreq: 'monthly', priority: 0.5 },
-  { path: '/coming-soon', changefreq: 'monthly', priority: 0.3 },
   { path: '/privacy', changefreq: 'yearly', priority: 0.3 },
   { path: '/terms', changefreq: 'yearly', priority: 0.3 },
+  // Blog articles
+  { path: '/blog/ai-macro-market-analysis-guide', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/market-data-to-decision-ready-commentary', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/quant-research-workflow-data-to-signal', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-fx-research-workflows', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-crypto-market-intelligence', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/commodities-research-ai-assistance', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-explainability-trading-research', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/manual-vs-ai-market-research', changefreq: 'weekly', priority: 0.7 },
 ];
 
 export function generateSitemapXml(): string {

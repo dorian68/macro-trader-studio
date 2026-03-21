@@ -29,4 +29,14 @@ export const sitemapRoutes: SitemapRoute[] = [
   // Legal
   { path: '/privacy', changefreq: 'yearly', priority: 0.3 },
   { path: '/terms', changefreq: 'yearly', priority: 0.3 },
+
+  // Blog articles
+  { path: '/blog/ai-macro-market-analysis-guide', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/market-data-to-decision-ready-commentary', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/quant-research-workflow-data-to-signal', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-fx-research-workflows', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-crypto-market-intelligence', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/commodities-research-ai-assistance', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-explainability-trading-research', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/manual-vs-ai-market-research', changefreq: 'weekly', priority: 0.7 },
 ];
