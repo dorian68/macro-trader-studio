@@ -52,6 +52,7 @@ import { SubscriptionPlanOverview } from "@/components/admin/SubscriptionPlanOve
 import { UserCreditsOverview } from "@/components/admin/UserCreditsOverview";
 import { ReactivationRequestsManagement } from "@/components/admin/ReactivationRequestsManagement";
 import ImportABCGPortfolio from "@/components/admin/ImportABCGPortfolio";
+import { BlogManagement } from "@/components/admin/BlogManagement";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';

@@ -120,6 +120,8 @@ const App = () => {
                             <Route path="/admin" element={<AuthGuard requireApproval><AdminGuard><Admin /></AdminGuard></AuthGuard>} />
                             <Route path="/credits" element={<AuthGuard requireApproval><Credits /></AuthGuard>} />
                             <Route path="/about" element={<About />} />
+                            <Route path="/blog" element={<Blog />} />
+                            <Route path="/blog/:slug" element={<BlogPost />} />
                             <Route path="/features" element={<Features />} />
                             <Route path="/contact" element={<Contact />} />
                             <Route path="/pricing" element={<Pricing />} />
