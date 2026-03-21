@@ -269,9 +269,6 @@ export default function Blog() {
                   )}
                 </div>
 
-                {/* SEO: rel prev/next hints */}
-                {prevPage && <link rel="prev" href={`https://alphalensai.com${prevPage}`} />}
-                {nextPage && <link rel="next" href={`https://alphalensai.com${nextPage}`} />}
               </>
             )}
           </div>
