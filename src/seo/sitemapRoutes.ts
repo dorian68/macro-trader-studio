@@ -9,7 +9,7 @@ export interface SitemapRoute {
   priority: number;
 }
 
-export const SITE_URL = 'https://macro-trader-studio.lovable.app';
+export const SITE_URL = 'https://alphalensai.com';
 
 export const sitemapRoutes: SitemapRoute[] = [
   // Core
