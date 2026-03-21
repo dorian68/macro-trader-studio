@@ -113,4 +113,14 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/blog/alternative-data-trading-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/reinforcement-learning-trading', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/quantitative-strategy-lifecycle-ai', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 6-9 — Portfolio & Risk
+  { path: '/blog/ai-portfolio-allocation-optimization', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/drawdown-management-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/correlation-regime-changes-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/tail-risk-hedging-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/dynamic-rebalancing-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/multi-asset-portfolio-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/esg-portfolio-integration-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/volatility-targeting-ai', changefreq: 'weekly', priority: 0.7 },
 ];
