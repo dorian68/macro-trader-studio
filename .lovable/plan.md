@@ -1,30 +1,46 @@
 
 
-## Ajouter les 8 images uploadees comme cover images sur les articles du blog
+## Ajouter 6 nouvelles images pour diversifier les covers du blog
 
-### Principe
+### Etat actuel
 
-Les 86 articles n'ont actuellement aucune `cover_image` en DB -- le fallback utilise 4 images par categorie. On va :
-1. Copier les 8 images dans `public/images/blog/`
-2. Assigner chaque image a ~10-11 articles via UPDATE SQL, en repartissant par theme
-3. Les 4 images categorie existantes restent en fallback pour tout article sans cover_image specifique
+8 images couvrent 86 articles. Les groupes les plus gros (skyscrapers: 17, currencies/dollar-bill/market-rise: 12 chacun) ont trop de repetition visuelle.
 
-### Mapping images → themes
+### Mapping des 6 nouvelles images
 
-| Image | Fichier cible | Articles assignes |
-|-------|--------------|-------------------|
-| Coins (stocksnap) | `cover-coins.jpg` | ~11 articles Commodities (commodities, gold, oil, gas, metals, agriculture, energy, supercycle, precious-metals, commodity-futures, commodity-correlation) |
-| $50 bill (kevinmullett) | `cover-dollar-bill.jpg` | ~12 articles FX (fx-carry, fx-pair, fx-volatility, fx-hedging, fx-order-flow, fx-technical, fx-news, fx-research, emerging-fx, asian-fx, usd-strength, fx-carry-optimization) |
-| Futuristic city (thedigitalartist) | `cover-futuristic.jpg` | ~11 articles Quant (backtesting, walk-forward, monte-carlo, factor-models, model-validation, feature-engineering, ensemble, alternative-data, reinforcement, strategy-lifecycle, how-ai-generates) |
-| Dollar bills pile (istockphoto) | `cover-dollars-pile.jpg` | ~6 articles Crypto (crypto-intelligence, bitcoin, defi, microstructure, ethereum, crypto-sentiment) |
-| Dollar arrow up (geralt) | `cover-market-rise.jpg` | ~12 articles Portfolio (allocation, drawdown, correlation, tail-risk, dynamic-rebalancing, multi-asset, esg, volatility-targeting, liquidity-risk, stress-testing, risk-management, portfolio-monitoring) |
-| Polish zloty (byszek) | `cover-currencies.jpg` | ~12 articles Macro (macro-guide, market-data, central-bank, inflation, yield-curve, geopolitical, economic-calendar, gdp, labor-market, central-bank-nlp, macro-regime, cross-asset) |
-| Laptop dark (20260321_2319) | `cover-laptop.jpg` | ~5 articles Institutional (governance, mifid, research-automation, trading-desk, future-2026) |
-| Skyscrapers (20260321_2315) | `cover-skyscrapers.jpg` | ~5 articles Institutional (explainability, manual-vs-ai, research-desk, institutional-intelligence, tools-comparison) + remaining quant (signal-noise, signal-validation, stop-loss, trade-sizing, real-time, momentum, multi-timeframe, entry-exit, risk-reward, regime-detection, quant-workflow, backtest-strategy) |
+| Image | Fichier cible | Articles reassignes (pris dans les groupes satures) |
+|-------|--------------|------|
+| Finance charts (thedigitalartist-finance) | `cover-finance-charts.jpg` | 6 articles Quant du groupe skyscrapers: `ai-signal-noise-filtering`, `ai-signal-validation-trading`, `real-time-signal-generation`, `regime-detection-trading-ai`, `momentum-vs-mean-reversion-ai`, `multi-timeframe-signal-analysis` |
+| Dollar globe (geralt-dollar) | `cover-dollar-globe.jpg` | 6 articles FX du groupe dollar-bill: `fx-carry-trade-ai-analysis`, `fx-carry-trade-optimization`, `fx-volatility-forecasting-ai`, `fx-order-flow-analysis-ai`, `usd-strength-ai-model`, `fx-hedging-strategies-ai` |
+| $100 bills (sandra-gabriel) | `cover-hundred-bills.jpg` | 6 articles Portfolio du groupe market-rise: `drawdown-management-ai`, `tail-risk-hedging-ai`, `liquidity-risk-portfolio-ai`, `stress-testing-portfolios-ai`, `ai-risk-management-trading`, `ai-portfolio-monitoring` |
+| Euro coins (fotoblend) | `cover-euro-coins.jpg` | 6 articles Macro du groupe currencies: `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai`, `gdp-nowcasting-ai-models`, `labor-market-ai-analysis`, `economic-calendar-ai-trading` |
+| Dollar bills spread (hbschw) | `cover-dollars-spread.jpg` | 5 articles restants skyscrapers (institutional): `ai-explainability-trading-research`, `ai-research-desk-finance`, `institutional-ai-market-intelligence`, `manual-vs-ai-market-research`, `ai-trading-tools-comparison` |
+| Central Bank (denisstreltsov) | `cover-central-bank.jpg` | 5 articles Macro du groupe currencies: `central-bank-communication-nlp`, `macro-regime-shifts-ai`, `cross-asset-macro-correlations`, `geopolitical-risk-ai-assessment`, `market-data-to-decision-ready-commentary` |
+
+### Resultat apres reassignation
+
+| Image | Articles |
+|-------|----------|
+| cover-skyscrapers.png | 6 (quant: backtest, entry-exit, stop-loss, trade-sizing, quant-workflow, risk-reward) |
+| cover-finance-charts.jpg | 6 (quant signals) |
+| cover-dollar-bill.jpg | 6 (FX) |
+| cover-dollar-globe.jpg | 6 (FX) |
+| cover-market-rise.jpg | 6 (Portfolio) |
+| cover-hundred-bills.jpg | 6 (Portfolio) |
+| cover-currencies.jpg | 1 (ai-macro-market-analysis-guide) |
+| cover-euro-coins.jpg | 6 (Macro) |
+| cover-central-bank.jpg | 5 (Macro) |
+| cover-coins.jpg | 11 (Commodities) |
+| cover-futuristic.jpg | 11 (Quant batch 1-14) |
+| cover-dollars-pile.jpg | 6 (Crypto) |
+| cover-laptop.png | 5 (Institutional) |
+| cover-dollars-spread.jpg | 5 (Institutional) |
+
+Total: 14 images pour 86 articles — bien plus de variete visuelle.
 
 ### Execution
 
-1. **Copier 8 images** dans `public/images/blog/`
-2. **1 migration SQL** avec ~86 UPDATE statements assignant `cover_image` par slug
-3. **Aucun changement de code** -- le composant Blog.tsx affiche deja `post.cover_image` en priorite
+1. **Copier 6 images** dans `public/images/blog/`
+2. **UPDATE** ~34 articles via API PATCH pour reassigner les cover_image
+3. **Aucun changement de code** — Blog.tsx utilise deja `post.cover_image`
 
