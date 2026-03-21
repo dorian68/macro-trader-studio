@@ -4,6 +4,7 @@
 User-agent: *
 Allow: /
 Allow: /blog
+Allow: /blog/category/
 
 # Private / auth-gated areas
 Disallow: /admin
