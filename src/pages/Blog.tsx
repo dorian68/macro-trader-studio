@@ -140,6 +140,11 @@ export default function Blog() {
           webPageSchema("Blog", "/blog", "Market insights, AI trading research, and institutional-grade analysis from the AlphaLens team."),
         ]}
       />
+      {/* SEO: rel prev/next in <head> */}
+      <Helmet>
+        {prevPage && <link rel="prev" href={`https://alphalensai.com${prevPage}`} />}
+        {nextPage && <link rel="next" href={`https://alphalensai.com${nextPage}`} />}
+      </Helmet>
       <PublicNavbar />
 
       <main className="flex-1">
