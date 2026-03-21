@@ -101,4 +101,10 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/blog/industrial-metals-ai-analysis', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/energy-transition-commodities-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/commodity-supercycle-ai-analysis', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 5 — Quant & Backtesting
+  { path: '/blog/backtesting-pitfalls-overfitting-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/walk-forward-optimization-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/monte-carlo-simulation-trading-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/factor-models-ai-trading', changefreq: 'weekly', priority: 0.7 },
 ];
