@@ -1,43 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
 import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
 import ResearchLabVisual from "@/components/homepage/ResearchLabVisual";
 import { useTranslation } from "react-i18next";
 import PublicNavbar from "@/components/PublicNavbar";
 import { SEOHead } from "@/components/SEOHead";
-import { useAuth } from "@/hooks/useAuth";
-import { useCreditManager } from "@/hooks/useCreditManager";
-import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
 import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
 
 export default function Homepage() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { activateFreeTrial } = useCreditManager();
-  const { toast } = useToast();
   const { t } = useTranslation(['common', 'toasts']);
-
-  const handleFreeTrialClick = async () => {
-    if (!user) {
-      // Not logged in - redirect to auth with intent
-      navigate('/auth?intent=free_trial');
-    } else {
-      // Already logged in - activate free trial directly
-      const { error } = await activateFreeTrial();
-      if (!error) {
-        toast({
-          title: t('toasts:freeTrial.started'),
-          description: t('toasts:freeTrial.startedDescription'),
-        });
-        navigate('/payment-success?type=free_trial');
-      }
-    }
-  };
   return <div className="min-h-screen bg-background">
     <SEOHead
       titleKey="seo.homeTitle"
