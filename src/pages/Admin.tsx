@@ -37,7 +37,8 @@ import {
   ArrowRightLeft,
   AlertCircle,
   Upload,
-  FlaskConical
+  FlaskConical,
+  FileText
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -51,6 +52,7 @@ import { SubscriptionPlanOverview } from "@/components/admin/SubscriptionPlanOve
 import { UserCreditsOverview } from "@/components/admin/UserCreditsOverview";
 import { ReactivationRequestsManagement } from "@/components/admin/ReactivationRequestsManagement";
 import ImportABCGPortfolio from "@/components/admin/ImportABCGPortfolio";
+import { BlogManagement } from "@/components/admin/BlogManagement";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -866,7 +868,7 @@ export default function Admin() {
         {/* Main Content Tabs */}
         <Tabs defaultValue="users" className="space-y-4">
           <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-            <TabsList className={`grid w-full ${isSuperUser ? 'grid-cols-6 min-w-[900px]' : 'grid-cols-2'} sm:min-w-full`}>
+            <TabsList className={`grid w-full ${isSuperUser ? 'grid-cols-7 min-w-[1000px]' : 'grid-cols-2'} sm:min-w-full`}>
               <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
                 <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">User Management</span>
@@ -902,6 +904,12 @@ export default function Admin() {
                   <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Realtime Diagnostic</span>
                   <span className="sm:hidden">Diagnostic</span>
+                </TabsTrigger>
+              )}
+              {isSuperUser && (
+                <TabsTrigger value="blog" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Blog</span>
                 </TabsTrigger>
               )}
             </TabsList>
@@ -1012,6 +1020,12 @@ export default function Admin() {
           {isSuperUser && (
             <TabsContent value="realtime-diagnostic">
               <RealtimeDiagnostic />
+            </TabsContent>
+          )}
+
+          {isSuperUser && (
+            <TabsContent value="blog">
+              <BlogManagement />
             </TabsContent>
           )}
 

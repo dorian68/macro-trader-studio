@@ -14,6 +14,7 @@ export const SITE_URL = 'https://macro-trader-studio.lovable.app';
 export const sitemapRoutes: SitemapRoute[] = [
   // Core
   { path: '/', changefreq: 'weekly', priority: 1.0 },
+  { path: '/blog', changefreq: 'daily', priority: 0.9 },
   { path: '/features', changefreq: 'monthly', priority: 0.9 },
   { path: '/pricing', changefreq: 'monthly', priority: 0.9 },
   { path: '/product', changefreq: 'monthly', priority: 0.8 },

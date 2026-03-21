@@ -22,6 +22,7 @@ export default function PublicNavbar() {
     { name: t('nav.about'), path: "/about" },
     { name: t('nav.features'), path: "/features" },
     { name: t('nav.pricing'), path: "/pricing" },
+    { name: "Blog", path: "/blog" },
     { name: t('nav.contact'), path: "/contact" },
   ];
 

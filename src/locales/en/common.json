@@ -104,6 +104,8 @@
     "termsDescription": "Read the AlphaLens terms of service. Understand the rules, guidelines, and conditions for using our trading research platform.",
     "apiTitle": "API | AlphaLens",
     "apiDescription": "Integrate AlphaLens trading insights into your applications, bots, and platforms with our powerful financial research API.",
+    "blogTitle": "Blog | AlphaLens",
+    "blogDescription": "Market insights, AI trading research, macro analysis, and institutional-grade commentary from the AlphaLens research team.",
     "resetPasswordTitle": "Reset Password | AlphaLens",
     "resetPasswordDescription": "Reset your AlphaLens account password securely. Enter your new password to regain access to your trading research dashboard.",
     "authTitle": "Sign In | AlphaLens",

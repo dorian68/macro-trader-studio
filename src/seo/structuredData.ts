@@ -68,3 +68,34 @@ export function breadcrumbList(
     ],
   };
 }
+
+export interface ArticleSchemaInput {
+  title: string;
+  description: string;
+  slug: string;
+  author: string;
+  publishedAt: string;
+  modifiedAt: string;
+  coverImage: string | null;
+}
+
+export function articleSchema(post: ArticleSchemaInput): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.description,
+    author: {
+      '@type': 'Person',
+      name: post.author,
+    },
+    publisher: organizationSchema,
+    datePublished: post.publishedAt,
+    dateModified: post.modifiedAt,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${SITE_URL}/blog/${post.slug}`,
+    },
+    ...(post.coverImage ? { image: post.coverImage } : {}),
+  };
+}
