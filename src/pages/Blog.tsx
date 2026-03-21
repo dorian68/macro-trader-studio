@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Calendar, User, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
-import { breadcrumbList, organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
+import { breadcrumbList, organizationSchema, webSiteSchema, siteNavigationSchema, webPageSchema } from "@/seo/structuredData";
 
 interface BlogPost {
   id: string;
