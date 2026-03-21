@@ -156,7 +156,6 @@ export default function Blog() {
         </section>
 
         <RelatedPages
-          currentPath="/blog"
           links={[
             { label: "Features", path: "/features" },
             { label: "Pricing", path: "/pricing" },

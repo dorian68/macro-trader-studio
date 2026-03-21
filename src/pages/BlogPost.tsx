@@ -215,7 +215,6 @@ export default function BlogPost() {
         </article>
 
         <RelatedPages
-          currentPath={`/blog/${post.slug}`}
           links={[
             { label: "Blog", path: "/blog" },
             { label: "Features", path: "/features" },
