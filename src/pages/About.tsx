@@ -13,7 +13,7 @@ export default function About() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead titleKey="seo.aboutTitle" descriptionKey="seo.aboutDescription" canonicalPath="/about" jsonLd={breadcrumbList('About', '/about')} />
+      <SEOHead titleKey="seo.aboutTitle" descriptionKey="seo.aboutDescription" canonicalPath="/about" jsonLd={[breadcrumbList('About', '/about'), webPageSchema('About', '/about', 'Learn about AlphaLens AI, the team behind institutional-grade trading intelligence.')]} />
       <PublicNavbar />
       <div className="max-w-4xl mx-auto space-y-6 px-4 py-6">
         <div className="text-center space-y-4">

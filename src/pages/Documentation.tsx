@@ -16,7 +16,7 @@ export default function Documentation() {
   
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead titleKey="seo.documentationTitle" descriptionKey="seo.documentationDescription" canonicalPath="/docs" jsonLd={breadcrumbList('Documentation', '/docs')} />
+      <SEOHead titleKey="seo.documentationTitle" descriptionKey="seo.documentationDescription" canonicalPath="/docs" jsonLd={[breadcrumbList('Documentation', '/docs'), webPageSchema('Documentation', '/docs', 'Complete documentation for AlphaLens AI features, API, and trading workflows.')]} />
       <PublicNavbar />
       {/* Hero Section */}
       <section className="py-20 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">

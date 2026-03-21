@@ -57,6 +57,7 @@ export default function Blog() {
           webSiteSchema,
           siteNavigationSchema,
           breadcrumbList("Blog", "/blog"),
+          webPageSchema("Blog", "/blog", "Market insights, AI trading research, and institutional-grade analysis from the AlphaLens team."),
         ]}
       />
       <PublicNavbar />

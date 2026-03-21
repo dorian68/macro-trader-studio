@@ -72,7 +72,7 @@ export default function HelpCenter() {
         titleKey="seo.helpCenterTitle"
         descriptionKey="seo.helpCenterDescription"
         canonicalPath="/help"
-        jsonLd={[breadcrumbList('Help Center', '/help'), faqSchema(faqItems)]}
+        jsonLd={[breadcrumbList('Help Center', '/help'), faqSchema(faqItems), webPageSchema('Help Center', '/help', 'Find answers to common questions about AlphaLens AI features, billing, and workflows.')]}
       />
       <PublicNavbar />
 

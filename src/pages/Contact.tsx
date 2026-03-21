@@ -74,7 +74,7 @@ export default function Contact() {
     }));
   };
   return <div className="min-h-screen bg-background">
-    <SEOHead titleKey="seo.contactTitle" descriptionKey="seo.contactDescription" canonicalPath="/contact" jsonLd={breadcrumbList('Contact', '/contact')} />
+    <SEOHead titleKey="seo.contactTitle" descriptionKey="seo.contactDescription" canonicalPath="/contact" jsonLd={[breadcrumbList('Contact', '/contact'), webPageSchema('Contact', '/contact', 'Get in touch with the AlphaLens AI team for demos, partnerships, or support.')]} />
     <PublicNavbar />
 
     {/* Hero Section */}

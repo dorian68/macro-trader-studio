@@ -13,7 +13,7 @@ export default function API() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead titleKey="seo.apiTitle" descriptionKey="seo.apiDescription" canonicalPath="/api" jsonLd={breadcrumbList('API', '/api')} />
+      <SEOHead titleKey="seo.apiTitle" descriptionKey="seo.apiDescription" canonicalPath="/api" jsonLd={[breadcrumbList('API', '/api'), webPageSchema('API', '/api', 'Integrate AlphaLens AI trading intelligence into your applications via our API.')]} />
       <PublicNavbar />
       {/* Hero Section */}
       <section className="py-20 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
