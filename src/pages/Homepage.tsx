@@ -163,12 +163,16 @@ export default function Homepage() {
           {t('cta.subtitle')}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" variant="secondary" className="text-lg px-8 py-3" onClick={() => navigate("/contact")}>
-            {t('cta.requestDemo')}
-          </Button>
-          <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" onClick={handleFreeTrialClick}>
-            {t('cta.startFreeTrial')}
-          </Button>
+          <Link to="/contact">
+            <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
+              {t('cta.requestDemo')}
+            </Button>
+          </Link>
+          <Link to="/auth?intent=free_trial">
+            <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+              {t('cta.startFreeTrial')}
+            </Button>
+          </Link>
         </div>
       </div>
     </section>
