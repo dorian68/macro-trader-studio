@@ -1,69 +1,37 @@
 
 
-## Full SEO Optimization Sprint
+## SEO Quick Wins (No AI Credits Required)
 
-### Summary
-Execute all SEO improvements identified in the audit to move from 68/100 to 85+/100 and accelerate organic traffic growth. This covers 6 workstreams.
+### Current State
+- 58 articles in DB, sitemap aligned at 70 URLs
+- Homepage links and prerender tags already fixed
+- **14 meta_descriptions** too short (57-117 chars vs target 130-155)
+- Several crawlability and performance issues in code
 
----
+### Changes
 
-### 1. Fix Homepage onClick Buttons → Semantic Links
-**Files:** `src/pages/Homepage.tsx`
-- Line 86: Hero "Try Demo" button uses `onClick={handleFreeTrialClick}` → Replace with `<Link to="/auth?intent=free_trial">`
-- Line 164: CTA "Request Demo" uses `onClick={() => navigate("/contact")}` → Replace with `<Link to="/contact">`
-- Line 167: CTA "Start Free Trial" uses `onClick={handleFreeTrialClick}` → Replace with `<Link to="/auth?intent=free_trial">`
-- Keep the visual styling identical, just wrap with `<Link>` instead of `onClick`
+**1. Fix 14 Short Meta Descriptions** (SQL UPDATE)
+Manually rewrite meta_descriptions to 130-155 chars for:
+- 5 Wave 3 stubs: `multi-timeframe-signal-analysis`, `risk-reward-optimization-ai`, `momentum-vs-mean-reversion-ai`, `ai-entry-exit-timing`, `how-ai-generates-trading-signals`
+- 9 Wave 1-2 articles: `market-data-to-decision-ready-commentary`, `ai-explainability-trading-research`, `manual-vs-ai-market-research`, `commodities-research-ai-assistance`, `ai-macro-market-analysis-guide`, `quant-research-workflow-data-to-signal`, `ai-crypto-market-intelligence`, `fx-carry-trade-ai-analysis`, `ai-fx-research-workflows`
 
-### 2. Enrich 12 Short Articles (< 4000 chars)
-**Method:** AI gateway script → UPDATE in DB via psql
+**2. Fix Pricing Page onClick → Semantic Link**
+`src/pages/Pricing.tsx` line 183: `onClick={() => navigate('/features')}` → `<Link to="/features">`
+This is a public, indexed page — crawlers miss this link currently.
 
-12 articles need content expansion from ~2K to 7K+ chars:
-`multi-timeframe-signal-analysis`, `momentum-vs-mean-reversion-ai`, `ai-entry-exit-timing`, `ai-signal-validation-trading`, `risk-reward-optimization-ai`, `ai-portfolio-monitoring`, `ai-trading-tools-comparison`, `institutional-ai-market-intelligence`, `fx-carry-trade-ai-analysis`, `how-ai-generates-trading-signals`, `ai-research-desk-finance`, `ai-risk-management-trading`
+**3. Add `loading="lazy"` to Blog Cover Images**
+`src/pages/BlogPost.tsx` line 187: Add `loading="lazy"` attribute to the cover image for Core Web Vitals (LCP optimization).
 
-Also fix 14 short meta_descriptions (< 120 chars) to 130-155 chars.
+**4. Improve Blog Article Breadcrumb Depth**
+`src/pages/BlogPost.tsx`: Change breadcrumb from Home → Article to Home → Blog → Article (3 levels). This helps Google understand site hierarchy better.
 
-Process: Generate enriched content in batches of 4 via AI gateway, then UPDATE each row.
+**5. Add Estimated Reading Time to Blog Posts**
+`src/pages/BlogPost.tsx`: Calculate and display reading time (~200 words/min) in the article header. This improves user engagement metrics and can appear in search snippets.
 
-### 3. Generate 28 Remaining Articles + Insert
-**Method:** AI gateway script → INSERT via psql in batches of 5
-
-Missing clusters:
-- Batch 1-2: Quant & Backtesting (10 articles)
-- Batch 3-4: Portfolio & Risk (10 articles)
-- Batch 5: Institutional (5 articles)
-- Batch 6: Commodities extras (3 articles: `precious-metals-portfolio-ai`, `commodity-futures-curve-ai`, `commodity-correlation-macro-ai`)
-
-Dates continue from Nov 5, 2025 → Mar 15, 2026 at 3-day intervals.
-
-### 4. Add Prerender Meta Tag for SPA Indexing
-**Files:** `index.html`
-- Add `<meta name="fragment" content="!">` for AJAX crawling hint
-- Add `<link rel="prerender">` hints for key pages
-- This is a quick win; full prerender.io integration requires hosting config outside Lovable
-
-### 5. Update Sitemap with All Articles
-**Files:** `src/seo/sitemapRoutes.ts`, `public/sitemap.xml`
-- Add 28 new article slugs to routes
-- Regenerate sitemap.xml with all ~86 article URLs + 12 static pages = ~98 URLs
-
-### 6. Generate Cover Images for All Articles
-**Method:** AI image generation via gateway → Upload to Supabase storage → UPDATE `cover_image` in DB
-
-Generate dark-themed finance visuals for all 86 articles using AI image generation. Process in batches of 5. Upload to `email-assets` public bucket (or create a `blog-images` public bucket).
-
----
-
-### Execution Order
-1. Homepage link fixes (quick code change)
-2. Prerender meta tag (quick code change)
-3. Enrich 12 short articles (3 batches × 4 articles)
-4. Generate 28 new articles (6 batches × ~5 articles)
-5. Update sitemap (code + file)
-6. Generate cover images (17 batches × 5 images)
-
-### Expected Impact
-- SEO score: 68 → 85+
-- All 86+ articles with full content (7K+ chars), proper meta, and cover images
-- Homepage fully crawlable with semantic links
-- Sitemap accurate with zero 404s
+### Impact
+- All 58 articles get proper-length meta descriptions (better CTR in search results)
+- 1 additional crawlable internal link on Pricing page
+- Better Core Web Vitals with lazy-loaded images
+- Improved structured data with 3-level breadcrumbs
+- Reading time signals content depth to users and search engines
 
