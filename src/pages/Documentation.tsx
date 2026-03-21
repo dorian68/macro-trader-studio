@@ -1,5 +1,5 @@
 import { SEOHead } from "@/components/SEOHead";
-import { breadcrumbList } from "@/seo/structuredData";
+import { breadcrumbList, webPageSchema } from "@/seo/structuredData";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";

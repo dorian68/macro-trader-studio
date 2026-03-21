@@ -1,5 +1,5 @@
 import { SEOHead } from "@/components/SEOHead";
-import { breadcrumbList } from "@/seo/structuredData";
+import { breadcrumbList, webPageSchema } from "@/seo/structuredData";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
