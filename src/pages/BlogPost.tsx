@@ -39,9 +39,11 @@ function renderMarkdown(md: string): string {
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary underline hover:text-primary/80">$1</a>')
+    .replace(/^\s*\d+\.\s+(.*$)/gm, '<li class="ml-4 list-decimal text-muted-foreground">$1</li>')
     .replace(/^\s*[-*] (.*$)/gm, '<li class="ml-4 list-disc text-muted-foreground">$1</li>')
-    .replace(/^(?!<[hul]|<li)(.*\S.*)$/gm, '<p class="text-muted-foreground leading-relaxed mb-4">$1</p>')
-    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, '<ul class="space-y-2 mb-6">$&</ul>');
+    .replace(/^(?!<[hulo]|<li)(.*\S.*)$/gm, '<p class="text-muted-foreground leading-relaxed mb-4">$1</p>')
+    .replace(/(<li class="ml-4 list-decimal[^"]*">.*<\/li>\n?)+/g, '<ol class="space-y-2 mb-6">$&</ol>')
+    .replace(/(<li class="ml-4 list-disc[^"]*">.*<\/li>\n?)+/g, '<ul class="space-y-2 mb-6">$&</ul>');
 }
 
 export default function BlogPost() {
