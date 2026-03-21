@@ -1,37 +1,37 @@
 
 
-## SEO Quick Wins (No AI Credits Required)
+## Insérer 4 Articles Quant (Batch 1-2)
 
-### Current State
-- 58 articles in DB, sitemap aligned at 70 URLs
-- Homepage links and prerender tags already fixed
-- **14 meta_descriptions** too short (57-117 chars vs target 130-155)
-- Several crawlability and performance issues in code
+### Articles identifiés
 
-### Changes
+| # | Slug | Titre | Catégorie | Auteur | Date |
+|---|------|-------|-----------|--------|------|
+| 1 | `backtesting-pitfalls-overfitting-ai` | Backtesting Pitfalls: How AI Detects and Prevents Overfitting | quant | AlphaLens Quant Desk | 2025-11-05 |
+| 2 | `walk-forward-optimization-ai` | Walk-Forward Optimization with AI Trading Models | quant | AlphaLens Research | 2025-11-08 |
+| 3 | `monte-carlo-simulation-trading-ai` | Monte Carlo Simulation for AI-Driven Trading Strategies | quant | AlphaLens Quant Desk | 2025-11-11 |
+| 4 | `factor-models-ai-trading` | Factor Models in AI Trading: From Theory to Implementation | quant | AlphaLens Research | 2025-11-14 |
 
-**1. Fix 14 Short Meta Descriptions** (SQL UPDATE)
-Manually rewrite meta_descriptions to 130-155 chars for:
-- 5 Wave 3 stubs: `multi-timeframe-signal-analysis`, `risk-reward-optimization-ai`, `momentum-vs-mean-reversion-ai`, `ai-entry-exit-timing`, `how-ai-generates-trading-signals`
-- 9 Wave 1-2 articles: `market-data-to-decision-ready-commentary`, `ai-explainability-trading-research`, `manual-vs-ai-market-research`, `commodities-research-ai-assistance`, `ai-macro-market-analysis-guide`, `quant-research-workflow-data-to-signal`, `ai-crypto-market-intelligence`, `fx-carry-trade-ai-analysis`, `ai-fx-research-workflows`
+### Execution
 
-**2. Fix Pricing Page onClick → Semantic Link**
-`src/pages/Pricing.tsx` line 183: `onClick={() => navigate('/features')}` → `<Link to="/features">`
-This is a public, indexed page — crawlers miss this link currently.
+1. **INSERT 4 rows** into `blog_posts` via psql with:
+   - Full Markdown content as-is (no modifications)
+   - SEO-optimized `meta_title` (50-60 chars with primary keyword)
+   - SEO-optimized `meta_description` (130-155 chars)
+   - `excerpt` (first 2 sentences summarizing the article)
+   - `tags` array with relevant keywords for each article
+   - `status = 'published'`, `language = 'en'`
+   - Staggered `published_at` dates (3-day intervals from Nov 5, 2025)
 
-**3. Add `loading="lazy"` to Blog Cover Images**
-`src/pages/BlogPost.tsx` line 187: Add `loading="lazy"` attribute to the cover image for Core Web Vitals (LCP optimization).
+2. **Update `src/seo/sitemapRoutes.ts`** — add the 4 new slugs to the routes array
 
-**4. Improve Blog Article Breadcrumb Depth**
-`src/pages/BlogPost.tsx`: Change breadcrumb from Home → Article to Home → Blog → Article (3 levels). This helps Google understand site hierarchy better.
+3. **Regenerate `public/sitemap.xml`** — include the 4 new URLs (total: 74 URLs)
 
-**5. Add Estimated Reading Time to Blog Posts**
-`src/pages/BlogPost.tsx`: Calculate and display reading time (~200 words/min) in the article header. This improves user engagement metrics and can appear in search snippets.
+### SEO Maximization per Article
+- `meta_title`: keyword-front-loaded, under 60 chars
+- `meta_description`: action-oriented, 130-155 chars, includes primary keyword
+- `tags`: 5-8 relevant tags per article for internal categorization
+- `excerpt`: compelling 2-sentence summary for blog listing cards
+- Content kept exactly as provided (already includes H2/H3 structure, FAQ schema-ready sections, internal linking references)
 
-### Impact
-- All 58 articles get proper-length meta descriptions (better CTR in search results)
-- 1 additional crawlable internal link on Pricing page
-- Better Core Web Vitals with lazy-loaded images
-- Improved structured data with 3-level breadcrumbs
-- Reading time signals content depth to users and search engines
+### After insertion: 62 articles total, 24 remaining
 
