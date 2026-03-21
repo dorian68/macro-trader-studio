@@ -15,6 +15,10 @@ export const sitemapRoutes: SitemapRoute[] = [
   // Core
   { path: '/', changefreq: 'weekly', priority: 1.0 },
   { path: '/blog', changefreq: 'daily', priority: 0.9 },
+  { path: '/blog/category/quant-backtesting', changefreq: 'weekly', priority: 0.8 },
+  { path: '/blog/category/portfolio-risk', changefreq: 'weekly', priority: 0.8 },
+  { path: '/blog/category/institutional-governance', changefreq: 'weekly', priority: 0.8 },
+  { path: '/blog/category/commodities-macro', changefreq: 'weekly', priority: 0.8 },
   { path: '/features', changefreq: 'monthly', priority: 0.9 },
   { path: '/pricing', changefreq: 'monthly', priority: 0.9 },
   { path: '/product', changefreq: 'monthly', priority: 0.8 },
