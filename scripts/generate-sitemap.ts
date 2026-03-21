@@ -38,6 +38,15 @@ const routes: SitemapRoute[] = [
   { path: '/blog/commodities-research-ai-assistance', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/ai-explainability-trading-research', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/manual-vs-ai-market-research', changefreq: 'weekly', priority: 0.7 },
+  // Wave 2
+  { path: '/blog/ai-backtest-trading-strategy', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-risk-management-trading', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-research-desk-finance', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/institutional-ai-market-intelligence', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-signal-validation-trading', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-portfolio-monitoring', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-trading-tools-comparison', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/fx-carry-trade-ai-analysis', changefreq: 'weekly', priority: 0.7 },
 ];
 
 export function generateSitemapXml(): string {
