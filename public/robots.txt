@@ -1,5 +1,5 @@
 # robots.txt — AlphaLens AI
-# https://macro-trader-studio.lovable.app
+# https://alphalensai.com
 
 User-agent: *
 Allow: /
@@ -28,4 +28,4 @@ Disallow: /confirm-success
 Disallow: /reset-password
 Disallow: /test-webhook
 
-Sitemap: https://macro-trader-studio.lovable.app/sitemap.xml
+Sitemap: https://alphalensai.com/sitemap.xml

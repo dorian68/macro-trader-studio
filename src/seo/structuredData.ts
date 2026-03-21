@@ -1,4 +1,4 @@
-const SITE_URL = 'https://macro-trader-studio.lovable.app';
+const SITE_URL = 'https://alphalensai.com';
 const SITE_NAME = 'AlphaLens';
 const LOGO_URL = `${SITE_URL}/alphalens_logo_new.png`;
 
