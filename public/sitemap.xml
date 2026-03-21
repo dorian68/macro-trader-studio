@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://alphalensai.com</loc>
+    <loc>https://alphalensai.com/</loc>
     <lastmod>2026-03-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -440,6 +440,42 @@
   </url>
   <url>
     <loc>https://alphalensai.com/blog/factor-models-ai-trading</loc>
+    <lastmod>2026-03-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://alphalensai.com/blog/model-validation-ai-trading</loc>
+    <lastmod>2026-03-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://alphalensai.com/blog/feature-engineering-trading-ai</loc>
+    <lastmod>2026-03-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://alphalensai.com/blog/ensemble-methods-trading-ai</loc>
+    <lastmod>2026-03-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://alphalensai.com/blog/alternative-data-trading-ai</loc>
+    <lastmod>2026-03-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://alphalensai.com/blog/reinforcement-learning-trading</loc>
+    <lastmod>2026-03-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://alphalensai.com/blog/quantitative-strategy-lifecycle-ai</loc>
     <lastmod>2026-03-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
