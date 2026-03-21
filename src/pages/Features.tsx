@@ -138,12 +138,12 @@ export default function Features() {
                   </ul>
 
                   {/* CTA */}
-                  <button
-                    onClick={() => navigate(feature.ctaRoute)}
-                    className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer bg-transparent border-none p-0"
+                  <Link
+                    to={feature.ctaRoute}
+                    className="mt-auto flex items-center gap-1.5 text-sm text-accent hover:underline underline-offset-4 cursor-pointer"
                   >
                     {feature.ctaText} <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
+                  </Link>
                 </CardContent>
               </Card>
             ))}

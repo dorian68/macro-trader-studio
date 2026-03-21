@@ -172,7 +172,7 @@ export default function Homepage() {
     <RelatedPages links={[
       { label: "Features", path: "/features" },
       { label: "Pricing", path: "/pricing" },
-      { label: "Documentation", path: "/docs" },
+      { label: "Blog", path: "/blog" },
       { label: "Help Center", path: "/help" },
       { label: "About", path: "/about" },
     ]} />

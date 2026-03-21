@@ -15,7 +15,7 @@ export default function ComingSoon() {
 
   return (
     <Layout>
-      <SEOHead titleKey="seo.comingSoonTitle" descriptionKey="seo.comingSoonDescription" canonicalPath="/coming-soon" />
+      <SEOHead titleKey="seo.comingSoonTitle" descriptionKey="seo.comingSoonDescription" noIndex />
       <div className="container-wrapper min-h-screen flex items-center justify-center py-8 px-4">
         <Card className="max-w-2xl w-full">
           <CardHeader className="text-center space-y-4">

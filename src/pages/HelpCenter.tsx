@@ -1,18 +1,17 @@
 import { SEOHead } from "@/components/SEOHead";
-import { breadcrumbList } from "@/seo/structuredData";
+import { breadcrumbList, faqSchema } from "@/seo/structuredData";
 import { useState } from "react";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MessageCircle, Mail, Book } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Footer } from '@/components/Footer';
 import { RelatedPages } from '@/components/RelatedPages';
 
 export default function HelpCenter() {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useTranslation('help');
 
@@ -59,9 +58,22 @@ export default function HelpCenter() {
     },
   ];
 
+  // Build FAQ items for JSON-LD
+  const faqItems = helpTopics.flatMap((topic) =>
+    topic.articles.map((article) => ({
+      question: article.title,
+      answer: `Learn about ${article.title.toLowerCase()} in our documentation. Visit AlphaLens for detailed guides and step-by-step instructions.`,
+    }))
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead titleKey="seo.helpCenterTitle" descriptionKey="seo.helpCenterDescription" canonicalPath="/help" jsonLd={breadcrumbList('Help Center', '/help')} />
+      <SEOHead
+        titleKey="seo.helpCenterTitle"
+        descriptionKey="seo.helpCenterDescription"
+        canonicalPath="/help"
+        jsonLd={[breadcrumbList('Help Center', '/help'), faqSchema(faqItems)]}
+      />
       <PublicNavbar />
 
       {/* Hero Section */}
@@ -108,12 +120,12 @@ export default function HelpCenter() {
                   <ul className="space-y-3">
                     {topic.articles.map((article) => (
                       <li key={article.title}>
-                        <button
-                          onClick={() => navigate(article.link)}
-                          className="text-muted-foreground hover:text-primary transition-colors text-left"
+                        <Link
+                          to={article.link}
+                          className="text-muted-foreground hover:text-primary transition-colors"
                         >
                           {article.title}
-                        </button>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -136,21 +148,18 @@ export default function HelpCenter() {
                 Can't find what you're looking for? Our support team is here to help.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  onClick={() => navigate("/contact")}
-                  className="gap-2"
-                >
-                  <Mail className="w-4 h-4" />
-                  Contact Support
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/docs")}
-                  className="gap-2"
-                >
-                  <Book className="w-4 h-4" />
-                  View Full Documentation
-                </Button>
+                <Link to="/contact">
+                  <Button className="gap-2">
+                    <Mail className="w-4 h-4" />
+                    Contact Support
+                  </Button>
+                </Link>
+                <Link to="/docs">
+                  <Button variant="outline" className="gap-2">
+                    <Book className="w-4 h-4" />
+                    View Full Documentation
+                  </Button>
+                </Link>
               </div>
               <div className="pt-4 border-t border-border">
                 <p className="text-sm text-muted-foreground">
@@ -168,7 +177,7 @@ export default function HelpCenter() {
 
       <RelatedPages links={[
         { label: "Features", path: "/features" },
-        { label: "Documentation", path: "/docs" },
+        { label: "Blog", path: "/blog" },
         { label: "Contact", path: "/contact" },
       ]} />
       <Footer />

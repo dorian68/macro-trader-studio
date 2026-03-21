@@ -99,3 +99,20 @@ export function articleSchema(post: ArticleSchemaInput): Record<string, unknown>
     ...(post.coverImage ? { image: post.coverImage } : {}),
   };
 }
+
+export function faqSchema(
+  items: { question: string; answer: string }[],
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  };
+}
