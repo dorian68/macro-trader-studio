@@ -46,6 +46,8 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Documentation = lazy(() => import("./pages/Documentation"));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const API = lazy(() => import("./pages/API"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
 
 // Utility pages (lazy loaded)
 const ProductPresentation = lazy(() => import("./pages/ProductPresentation"));
