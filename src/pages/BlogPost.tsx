@@ -126,6 +126,7 @@ export default function BlogPost() {
 
   const pageTitle = post.meta_title || `${post.title} | AlphaLens`;
   const pageDescription = post.meta_description || post.excerpt || "";
+  const faqItems = extractFaqItems(post.content);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
