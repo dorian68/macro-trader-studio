@@ -1,73 +1,46 @@
 
 
-## 100 Blog Articles + SEO Fixes + Pagination
+## Generate 65 Remaining Articles + Fix 5 Placeholders
 
 ### Current State
-- 16 published articles, infrastructure solid
-- Footer/Navbar already use `<Link>` (fixed previously)
-- SITE_URL already `alphalensai.com`
-- noIndex on all utility pages
-- Blog page limited to 50 posts — needs pagination for 100+ articles
-- Homepage feature cards still use `onClick` buttons (lines 86-91) — not crawlable
-
-### Phase 1: Code Fixes
-
-**1. Blog page: add pagination (load more / infinite scroll)**
-- `src/pages/Blog.tsx`: Replace `.limit(50)` with paginated fetch (12 per page, "Load More" button)
-- Add category filter dropdown so users can browse by topic
-
-**2. Homepage: replace remaining `<button onClick>` CTAs with `<Link>`**
-- `src/pages/Homepage.tsx` lines 86-91: Hero buttons use `onClick={() => navigate()}` — change to `<Link to>`
-
-**3. Blog listing limit bump**
-- Ensure pagination handles 100+ articles efficiently
-
-### Phase 2: Generate 100 Articles via Script
-
-Using the AI gateway script, generate articles in **20 batches of 5**, each batch targeting a specific cluster/topic. Articles will be written as full Markdown (~1,200-1,800 words each) with:
-- SEO title, meta description, excerpt
-- Internal links to other articles and product pages
-- Staggered `published_at` dates spread across **12 months** (April 2025 → March 2026, ~2 articles/week) to look natural
-- Mixed authors: "AlphaLens Research", "AlphaLens Quant Desk", "AlphaLens Macro Team"
-- Diverse categories matching existing taxonomy
-
-**10 Topic Clusters (10 articles each):**
-
-| # | Cluster | Category |
-|---|---------|----------|
-| 1 | AI Trading Signals & Setups | research |
-| 2 | Macro Analysis & Central Banks | market-commentary |
-| 3 | FX Trading & Currency Markets | fx |
-| 4 | Crypto Research & DeFi | crypto |
-| 5 | Commodities (Gold, Oil, Agri) | commodities |
-| 6 | Quant Workflows & Backtesting | quant |
-| 7 | Portfolio Management & Risk | research |
-| 8 | Institutional AI Adoption | research |
-| 9 | Fintech Tools & Comparisons | product-guide |
-| 10 | Market Commentary & Outlooks | market-commentary |
-
-**Date distribution**: Articles dated from April 2025 to March 2026 (~2/week), looking like a steady editorial cadence over 12 months.
-
-### Phase 3: Insert into Database
-
-All 100 articles inserted via SQL (using the insert tool) in batches. Each with:
-- Unique slug, proper meta_title (50-60 chars), meta_description (120-155 chars)
-- `status: 'published'`
-- Staggered `published_at` across 12 months
-- Tags array, category, language `en`
-
-### Phase 4: Update Sitemap
-
-- Add all 100 new slugs to `src/seo/sitemapRoutes.ts`
-- Regenerate `public/sitemap.xml` with all entries
-
-### Files Modified
-- `src/pages/Blog.tsx` — pagination + category filter
-- `src/pages/Homepage.tsx` — fix hero button links
-- `src/seo/sitemapRoutes.ts` — add 100 new routes
-- `public/sitemap.xml` — add 100 new URLs
-- Database: INSERT 100 rows into `blog_posts`
+- **21 articles in DB** (16 with real content, 5 with "Placeholder" content)
+- **Sitemap routes** already has 30 future slugs (waves 3: signals, macro, FX, crypto) not yet in DB
+- Need: 5 placeholder fixes + 30 articles matching existing sitemap slugs + 35 new articles = 70 total operations
 
 ### Execution Strategy
-Generate articles using the AI gateway script in `/tmp/`, then insert via SQL. This is a large operation — will process in sequential batches of 5 articles each, writing content to `/mnt/documents/articles-bulk/` for reference.
+
+**Phase 1: Fix 5 placeholder articles** (batch 1)
+UPDATE content for: `how-ai-generates-trading-signals`, `momentum-vs-mean-reversion-ai`, `multi-timeframe-signal-analysis`, `ai-entry-exit-timing`, `risk-reward-optimization-ai`
+
+**Phase 2: Generate 30 articles matching existing sitemap slugs** (batches 2-7, 5 per batch)
+These slugs are already in `sitemapRoutes.ts` — just need DB rows with real content:
+- Batch 2: `ai-signal-noise-filtering`, `regime-detection-trading-ai`, `ai-stop-loss-placement`, `ai-trade-sizing-algorithms`, `real-time-signal-generation`
+- Batch 3: `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai`, `geopolitical-risk-ai-assessment`, `economic-calendar-ai-trading`
+- Batch 4: `gdp-nowcasting-ai-models`, `labor-market-ai-analysis`, `central-bank-communication-nlp`, `macro-regime-shifts-ai`, `cross-asset-macro-correlations`
+- Batch 5: `ai-fx-pair-selection`, `fx-carry-trade-optimization`, `fx-volatility-forecasting-ai`, `emerging-market-fx-ai`, `fx-order-flow-analysis-ai`
+- Batch 6: `usd-strength-ai-model`, `fx-technical-patterns-ai`, `fx-news-sentiment-trading`, `asian-fx-markets-ai`, `fx-hedging-strategies-ai`
+- Batch 7: `bitcoin-on-chain-analysis-ai`, `defi-yield-analysis-ai`, `crypto-market-microstructure`, `ethereum-ecosystem-ai-analysis`, `crypto-sentiment-on-chain-signals`
+
+**Phase 3: Generate 35 NEW articles** (batches 8-14, 5 per batch)
+New clusters to fill remaining quota:
+- Batch 8-9: Commodities (10 articles) — gold, oil, natural gas, agriculture, metals, energy transition
+- Batch 10-11: Quant & Backtesting (10 articles) — model validation, overfitting, walk-forward, Monte Carlo, factor models
+- Batch 12-13: Portfolio & Risk (10 articles) — allocation, drawdown, correlation, hedging, rebalancing
+- Batch 14: Institutional & Fintech (5 articles) — compliance, MiFID, research automation, desk workflows
+
+### Content Generation Method
+Use AI gateway script (`/tmp/lovable_ai.py`) with a finance-expert system prompt to generate ~1,200-1,500 word Markdown articles. Each includes:
+- H1 title, H2/H3 structure, internal links, CTA
+- Staggered `published_at` dates (April 24, 2025 → March 15, 2026, ~3 days apart)
+- Mixed authors: "AlphaLens Research", "AlphaLens Quant Desk", "AlphaLens Macro Team"
+
+### Database Operations
+- Phase 1: UPDATE 5 rows (fix placeholders)
+- Phase 2-3: INSERT 65 new rows via SQL in batches of 5
+
+### Code Changes
+- `src/seo/sitemapRoutes.ts` — add 35 new slugs (for Phase 3 articles)
+- `public/sitemap.xml` — regenerate with all ~86 article URLs
+
+### Total: 14 batches × 5 articles = 70 operations (5 updates + 65 inserts)
 
