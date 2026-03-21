@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
@@ -12,13 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Calendar, User, ArrowRight, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { breadcrumbList, organizationSchema, webSiteSchema, siteNavigationSchema, webPageSchema } from "@/seo/structuredData";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface BlogPost {
   id: string;
@@ -34,16 +27,34 @@ interface BlogPost {
 
 const PAGE_SIZE = 12;
 
+const CATEGORY_SLUGS: Record<string, string> = {
+  "quant-backtesting": "Quant & Backtesting",
+  "portfolio-risk": "Portfolio & Risk",
+  "institutional-governance": "Institutional & Governance",
+  "commodities-macro": "Commodities & Macro",
+};
+
+const CATEGORY_TO_SLUG: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORY_SLUGS).map(([slug, name]) => [name, slug])
+);
+
 export default function Blog() {
+  const { category: categoryParam, page: pageParam } = useParams();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [category, setCategory] = useState<string>("all");
   const [categories, setCategories] = useState<string[]>([]);
 
-  const fetchPosts = useCallback(async (offset: number, cat: string, replace: boolean) => {
-    if (offset === 0) setLoading(true);
+  // Derive category from URL param
+  const category = categoryParam ? (CATEGORY_SLUGS[categoryParam] || "all") : "all";
+  // Derive current page from URL param
+  const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
+  const fetchPosts = useCallback(async (off: number, cat: string, replace: boolean) => {
+    if (off === 0) setLoading(true);
     else setLoadingMore(true);
 
     let query = supabase
@@ -51,7 +62,7 @@ export default function Blog() {
       .select("id, slug, title, excerpt, cover_image, author, category, language, published_at")
       .eq("status", "published")
       .order("published_at", { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
+      .range(off, off + PAGE_SIZE - 1);
 
     if (cat !== "all") {
       query = query.eq("category", cat);
@@ -83,25 +94,43 @@ export default function Blog() {
     fetchCategories();
   }, []);
 
-  // Fetch posts on mount and category change
+  // Fetch posts on mount and when URL params change
   useEffect(() => {
-    fetchPosts(0, category, true);
-  }, [category, fetchPosts]);
+    fetchPosts(offset, category, true);
+  }, [category, offset, fetchPosts]);
 
   const handleLoadMore = () => {
     fetchPosts(posts.length, category, false);
   };
 
   const handleCategoryChange = (val: string) => {
-    setCategory(val);
+    if (val === "all") {
+      navigate("/blog");
+    } else {
+      const slug = CATEGORY_TO_SLUG[val];
+      if (slug) navigate(`/blog/category/${slug}`);
+    }
   };
+
+  // Build canonical path
+  const canonicalPath = categoryParam
+    ? `/blog/category/${categoryParam}`
+    : pageParam
+      ? `/blog/page/${pageParam}`
+      : "/blog";
+
+  // Compute next/prev page URLs for SEO
+  const prevPage = currentPage > 1
+    ? currentPage === 2 ? "/blog" : `/blog/page/${currentPage - 1}`
+    : null;
+  const nextPage = hasMore ? `/blog/page/${currentPage + 1}` : null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <SEOHead
         titleKey="seo.blogTitle"
         descriptionKey="seo.blogDescription"
-        canonicalPath="/blog"
+        canonicalPath={canonicalPath}
         jsonLd={[
           organizationSchema,
           webSiteSchema,
@@ -124,19 +153,32 @@ export default function Blog() {
                   Market insights, AI trading research, and institutional-grade analysis from the AlphaLens team.
                 </p>
               </div>
-              {categories.length > 1 && (
-                <Select value={category} onValueChange={handleCategoryChange}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All categories</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              {/* Crawlable category links */}
+              <nav aria-label="Blog categories" className="flex flex-wrap gap-2">
+                <Link
+                  to="/blog"
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    category === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  All
+                </Link>
+                {Object.entries(CATEGORY_SLUGS).map(([slug, name]) => (
+                  <Link
+                    key={slug}
+                    to={`/blog/category/${slug}`}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      category === name
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {name}
+                  </Link>
+                ))}
+              </nav>
             </div>
 
             {loading ? (
@@ -207,25 +249,23 @@ export default function Blog() {
                   ))}
                 </div>
 
-                {hasMore && (
-                  <div className="flex justify-center mt-10">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={handleLoadMore}
-                      disabled={loadingMore}
-                    >
-                      {loadingMore ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Loading…
-                        </>
-                      ) : (
-                        "Load more articles"
-                      )}
-                    </Button>
-                  </div>
-                )}
+                {/* Crawlable pagination */}
+                <div className="flex justify-center items-center gap-4 mt-10">
+                  {prevPage && (
+                    <Link to={prevPage}>
+                      <Button variant="outline" size="lg">← Previous</Button>
+                    </Link>
+                  )}
+                  {hasMore && (
+                    <Link to={`/blog/page/${currentPage + 1}`}>
+                      <Button variant="outline" size="lg">Next →</Button>
+                    </Link>
+                  )}
+                </div>
+
+                {/* SEO: rel prev/next hints */}
+                {prevPage && <link rel="prev" href={`https://alphalensai.com${prevPage}`} />}
+                {nextPage && <link rel="next" href={`https://alphalensai.com${nextPage}`} />}
               </>
             )}
           </div>
