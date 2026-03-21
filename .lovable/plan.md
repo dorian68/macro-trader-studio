@@ -1,33 +1,82 @@
 
 
-## Fix 5 SEO Quick Wins
+## SEO Audit + 8 New Blog Articles
 
-### 1. Add all 8 blog article URLs to `public/sitemap.xml` and `scripts/generate-sitemap.ts`
-- Add 8 `/blog/{slug}` entries to `public/sitemap.xml` with priority 0.7, changefreq weekly
-- Update `scripts/generate-sitemap.ts`: fix SITE_URL to `alphalensai.com`, add `/blog` route, remove `/auth` and `/coming-soon`
-- Add blog slugs to `sitemapRoutes.ts` for build-time generation
+### Current SEO Score: 42/100
 
-### 2. Fix WebSite SearchAction in `src/seo/structuredData.ts`
-- Change `target` from `/dashboard?q={search_term_string}` to `/blog?q={search_term_string}` (public route, not private dashboard)
+**CRITICAL BLOCKER: alphalensai.com/blog returns 404**
+The blog works on the Lovable preview domain (`macro-trader-studio.lovable.app/blog`) but `alphalensai.com/blog` returns a 404. This means the custom domain deployment is missing or the SPA fallback is not configured. **Zero SEO value until this is fixed.** This is an infrastructure/hosting issue outside of code — the custom domain needs proper SPA routing (all paths should serve `index.html`).
 
-### 3. Stagger publication dates via SQL UPDATE
-- Space the 8 articles across ~2 weeks (every 2 days) so Google sees a natural editorial cadence instead of all published at the same second
+**Can this site reach 10K visits/day? Not yet.** Here's what's missing:
 
-### 4. Inject internal links into article content via SQL UPDATE
-For each article, append a "Related Reading" section at the end of the Markdown content with links to 2-3 other articles and 1-2 product pages (`/features`, `/pricing`). The existing Markdown renderer already supports `[text](url)` → `<a>` conversion.
+| Dimension | Score | Issue |
+|-----------|-------|-------|
+| Production accessibility | 0/20 | Blog 404 on production domain |
+| Content volume | 8/20 | 8 articles (need 100+) |
+| Cover images / OG | 3/10 | All 8 articles have `cover_image: null` |
+| SPA rendering for bots | 2/10 | No prerender — bots see empty HTML |
+| Internal linking | 7/10 | Related Reading sections present |
+| Structured data | 8/10 | Article + Breadcrumb JSON-LD good |
+| Sitemap / robots | 8/10 | All 8 articles in sitemap, robots correct |
+| Meta / canonicals | 8/10 | Proper meta titles, descriptions, canonicals |
+| Backlinks / DA | 0/10 | New domain, no referring domains |
 
-### 5. Fix `scripts/generate-sitemap.ts` domain mismatch
-- The build-time generator still uses `macro-trader-studio.lovable.app` — fix to `alphalensai.com`
+### What needs to happen (priority order):
+
+1. **Fix production 404** — Ensure `alphalensai.com` serves the SPA correctly (hosting config, not code)
+2. **Add prerendering** — Without it, Googlebot sees blank pages
+3. **Scale content to 50+ articles** — 8 articles cannot generate meaningful traffic
+4. **Add cover images** — Improves CTR in social shares and search
+5. **Build backlinks** — DA=0 means Google won't rank content regardless of quality
+
+---
+
+### Track 1: Generate 8 New Articles (Database Insert)
+
+These 8 articles expand into new clusters (backtesting, risk management, institutional use cases, portfolio AI) to broaden topical authority. All inserted directly into `blog_posts` via a script.
+
+**3 New Clusters:**
+
+| Cluster | Why | Audience |
+|---------|-----|----------|
+| Backtesting & Validation | High-intent quant queries, directly maps to product | Quants, algo traders |
+| Risk Management & AI | Underserved niche, strong commercial intent | PMs, risk officers |
+| Institutional AI Adoption | Decision-maker audience, BOFU conversion | Heads of research, CTOs |
+
+**8 Articles:**
+
+| # | Title | Keyword | Intent | Funnel |
+|---|-------|---------|--------|--------|
+| 1 | How to Backtest Trading Strategies with AI: A Step-by-Step Guide | ai backtest trading strategy | informational | MOFU |
+| 2 | AI Risk Management for Trading Portfolios: What Works in Practice | ai risk management trading | commercial | MOFU |
+| 3 | Building an AI-Powered Research Desk: Tools, Workflows, and Lessons | ai research desk finance | informational | TOFU |
+| 4 | How Institutional Investors Are Using AI for Market Intelligence | institutional ai market intelligence | informational | TOFU |
+| 5 | Signal Validation with AI: From Raw Data to Tradeable Conviction | ai signal validation trading | commercial | MOFU |
+| 6 | The Complete Guide to AI-Assisted Portfolio Monitoring | ai portfolio monitoring | informational | MOFU |
+| 7 | Why Most AI Trading Tools Fail — And What to Look For Instead | ai trading tools comparison | commercial | BOFU |
+| 8 | FX Carry Trade Analysis with AI: A Practical Framework | fx carry trade ai analysis | informational | MOFU |
+
+Each article: ~1,500 words, full SEO metadata, internal links to existing articles + product pages, CTA, Article JSON-LD schema.
+
+### Track 2: Generate Strategy Documents
+
+Create `/mnt/documents/seo-audit-march-2026.md` with:
+- Full scored audit
+- Prioritized fix list
+- Roadmap to 10K visits/month (realistic) then 10K/day (stretch)
+
+### Execution
+
+1. Write 8 articles as Markdown, generate to `/mnt/documents/articles-wave2/`
+2. Insert all 8 into `blog_posts` table with `published` status, staggered dates (March 22–April 5)
+3. Update `public/sitemap.xml` with 8 new URLs
+4. Update `src/seo/sitemapRoutes.ts` with new slugs
+5. Generate audit document
 
 ### Files modified
-- `public/sitemap.xml` — add 8 article URLs
-- `src/seo/sitemapRoutes.ts` — add 8 article paths
-- `scripts/generate-sitemap.ts` — fix domain, add blog routes, remove /auth and /coming-soon
-- `src/seo/structuredData.ts` — fix SearchAction target
-- Database: UPDATE blog_posts content (add internal links) and published_at (stagger dates)
-
-### Technical details
-- Internal links format: Markdown `[Article Title](/blog/slug)` and `[Features](/features)` appended as a `## Related Reading` section
-- Date staggering: March 7, 9, 11, 13, 15, 17, 19, 21 (2-day intervals)
-- No code logic changes — only content/config fixes
+- `public/sitemap.xml` — add 8 new article URLs
+- `src/seo/sitemapRoutes.ts` — add 8 new paths
+- Database: INSERT 8 new rows into `blog_posts`
+- `/mnt/documents/articles-wave2/` — 8 Markdown files
+- `/mnt/documents/seo-audit-march-2026.md` — audit report
 
