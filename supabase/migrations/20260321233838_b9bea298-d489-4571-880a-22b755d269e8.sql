@@ -1,0 +1,1 @@
+UPDATE blog_posts SET cover_image = '/images/blog/cover-finance-desk.jpg' WHERE slug IN ('commodity-futures-curve-ai', 'agricultural-commodities-ai');
