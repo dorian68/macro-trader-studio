@@ -10,8 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, User, ArrowLeft, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
-import { breadcrumbList, articleSchema } from "@/seo/structuredData";
+import { breadcrumbList, articleSchema, faqSchema } from "@/seo/structuredData";
 import { Helmet } from "react-helmet-async";
+
+/** Extract FAQ items from Markdown content (## FAQ or ## Frequently Asked Questions) */
+function extractFaqItems(content: string): { question: string; answer: string }[] {
+  const faqMatch = content.match(/## (?:FAQ|Frequently Asked Questions)\s*\n([\s\S]*?)(?=\n## |\n---|\n\*\*\[|$)/i);
+  if (!faqMatch) return [];
+
+  const faqBlock = faqMatch[1];
+  const items: { question: string; answer: string }[] = [];
+
+  // Match **Q: ...** or ### ... followed by answer text
+  const questionPattern = /(?:\*\*Q:\s*(.+?)\*\*|###\s*(.+?))\s*\n([\s\S]*?)(?=(?:\*\*Q:|\n###|\n## |\n---|\n\*\*\[|$))/gi;
+  let match;
+  while ((match = questionPattern.exec(faqBlock)) !== null) {
+    const question = (match[1] || match[2] || '').trim();
+    const answer = match[3].replace(/\n+/g, ' ').replace(/\*\*/g, '').trim();
+    if (question && answer) {
+      items.push({ question, answer });
+    }
+  }
+
+  return items;
+}
 
 interface BlogPostData {
   id: string;
