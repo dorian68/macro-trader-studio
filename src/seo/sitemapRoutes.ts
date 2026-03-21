@@ -129,4 +129,12 @@ export const sitemapRoutes: SitemapRoute[] = [
   // Wave 10-11 — Institutional
   { path: '/blog/mifid-compliance-ai-research', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/research-automation-buy-side', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 12-14 — Institutional & Commodities
+  { path: '/blog/ai-trading-desk-integration', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-model-governance-finance', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/future-of-ai-trading-2026', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/precious-metals-portfolio-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/commodity-futures-curve-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/commodity-correlation-macro-ai', changefreq: 'weekly', priority: 0.7 },
 ];
