@@ -1,0 +1,1 @@
+UPDATE blog_posts SET cover_image = '/images/blog/cover-coins-trading.jpg' WHERE slug IN ('cross-asset-macro-correlations', 'macro-regime-shifts-ai', 'future-of-ai-trading-2026');
