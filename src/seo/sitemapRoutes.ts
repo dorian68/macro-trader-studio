@@ -49,4 +49,47 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/blog/ai-portfolio-monitoring', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/ai-trading-tools-comparison', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/fx-carry-trade-ai-analysis', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 3 — AI Trading Signals
+  { path: '/blog/how-ai-generates-trading-signals', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/momentum-vs-mean-reversion-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/multi-timeframe-signal-analysis', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-entry-exit-timing', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/risk-reward-optimization-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-signal-noise-filtering', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/regime-detection-trading-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-stop-loss-placement', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ai-trade-sizing-algorithms', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/real-time-signal-generation', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 3 — Macro & Central Banks
+  { path: '/blog/central-bank-policy-ai-analysis', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/inflation-forecasting-ai-models', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/yield-curve-analysis-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/geopolitical-risk-ai-assessment', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/economic-calendar-ai-trading', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/gdp-nowcasting-ai-models', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/labor-market-ai-analysis', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/central-bank-communication-nlp', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/macro-regime-shifts-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/cross-asset-macro-correlations', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 3 — FX
+  { path: '/blog/ai-fx-pair-selection', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/fx-carry-trade-optimization', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/fx-volatility-forecasting-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/emerging-market-fx-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/fx-order-flow-analysis-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/usd-strength-ai-model', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/fx-technical-patterns-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/fx-news-sentiment-trading', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/asian-fx-markets-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/fx-hedging-strategies-ai', changefreq: 'weekly', priority: 0.7 },
+
+  // Wave 3 — Crypto
+  { path: '/blog/bitcoin-on-chain-analysis-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/defi-yield-analysis-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/crypto-market-microstructure', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ethereum-ecosystem-ai-analysis', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/crypto-sentiment-on-chain-signals', changefreq: 'weekly', priority: 0.7 },
 ];

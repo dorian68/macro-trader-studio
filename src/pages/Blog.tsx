@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PublicNavbar from "@/components/PublicNavbar";
@@ -9,9 +9,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Calendar, User, ArrowRight } from "lucide-react";
+import { Calendar, User, ArrowRight, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { breadcrumbList, organizationSchema, webSiteSchema, siteNavigationSchema, webPageSchema } from "@/seo/structuredData";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface BlogPost {
   id: string;
@@ -25,26 +32,69 @@ interface BlogPost {
   published_at: string | null;
 }
 
+const PAGE_SIZE = 12;
+
 export default function Blog() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [category, setCategory] = useState<string>("all");
+  const [categories, setCategories] = useState<string[]>([]);
 
-  useEffect(() => {
-    async function fetchPosts() {
-      const { data, error } = await supabase
-        .from("blog_posts")
-        .select("id, slug, title, excerpt, cover_image, author, category, language, published_at")
-        .eq("status", "published")
-        .order("published_at", { ascending: false })
-        .limit(50);
+  const fetchPosts = useCallback(async (offset: number, cat: string, replace: boolean) => {
+    if (offset === 0) setLoading(true);
+    else setLoadingMore(true);
 
-      if (!error && data) {
-        setPosts(data);
-      }
-      setLoading(false);
+    let query = supabase
+      .from("blog_posts")
+      .select("id, slug, title, excerpt, cover_image, author, category, language, published_at")
+      .eq("status", "published")
+      .order("published_at", { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (cat !== "all") {
+      query = query.eq("category", cat);
     }
-    fetchPosts();
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      setPosts(prev => replace ? data : [...prev, ...data]);
+      setHasMore(data.length === PAGE_SIZE);
+    }
+    setLoading(false);
+    setLoadingMore(false);
   }, []);
+
+  // Fetch categories once
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data } = await supabase
+        .from("blog_posts")
+        .select("category")
+        .eq("status", "published")
+        .not("category", "is", null);
+      if (data) {
+        const unique = [...new Set(data.map(d => d.category).filter(Boolean))] as string[];
+        setCategories(unique.sort());
+      }
+    }
+    fetchCategories();
+  }, []);
+
+  // Fetch posts on mount and category change
+  useEffect(() => {
+    fetchPosts(0, category, true);
+  }, [category, fetchPosts]);
+
+  const handleLoadMore = () => {
+    fetchPosts(posts.length, category, false);
+  };
+
+  const handleCategoryChange = (val: string) => {
+    setCategory(val);
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -65,12 +115,29 @@ export default function Blog() {
       <main className="flex-1">
         <section className="py-16 px-4">
           <div className="container mx-auto max-w-5xl">
-            <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
-              AlphaLens Blog
-            </h1>
-            <p className="text-lg text-muted-foreground mb-12 max-w-2xl">
-              Market insights, AI trading research, and institutional-grade analysis from the AlphaLens team.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-12">
+              <div>
+                <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+                  AlphaLens Blog
+                </h1>
+                <p className="text-lg text-muted-foreground max-w-2xl">
+                  Market insights, AI trading research, and institutional-grade analysis from the AlphaLens team.
+                </p>
+              </div>
+              {categories.length > 1 && (
+                <Select value={category} onValueChange={handleCategoryChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
 
             {loading ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -91,53 +158,75 @@ export default function Blog() {
                 <p className="text-muted-foreground text-lg">No articles published yet. Check back soon!</p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {posts.map((post) => (
-                  <Link
-                    key={post.id}
-                    to={`/blog/${post.slug}`}
-                    className="block group"
-                  >
-                    <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow h-full">
-                      {post.cover_image && (
-                        <img
-                          src={post.cover_image}
-                          alt={post.title}
-                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                      )}
-                      <CardContent className="p-5 space-y-3">
-                        {post.category && (
-                          <Badge variant="secondary" className="text-xs">
-                            {post.category}
-                          </Badge>
+              <>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {posts.map((post) => (
+                    <Link
+                      key={post.id}
+                      to={`/blog/${post.slug}`}
+                      className="block group"
+                    >
+                      <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow h-full">
+                        {post.cover_image && (
+                          <img
+                            src={post.cover_image}
+                            alt={post.title}
+                            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
                         )}
-                        <h2 className="text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-                          {post.title}
-                        </h2>
-                        {post.excerpt && (
-                          <p className="text-sm text-muted-foreground line-clamp-3">
-                            {post.excerpt}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {post.author}
-                          </span>
-                          {post.published_at && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(post.published_at), "MMM d, yyyy")}
-                            </span>
+                        <CardContent className="p-5 space-y-3">
+                          {post.category && (
+                            <Badge variant="secondary" className="text-xs">
+                              {post.category}
+                            </Badge>
                           )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+                          <h2 className="text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                            {post.title}
+                          </h2>
+                          {post.excerpt && (
+                            <p className="text-sm text-muted-foreground line-clamp-3">
+                              {post.excerpt}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {post.author}
+                            </span>
+                            {post.published_at && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(post.published_at), "MMM d, yyyy")}
+                              </span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+
+                {hasMore && (
+                  <div className="flex justify-center mt-10">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading…
+                        </>
+                      ) : (
+                        "Load more articles"
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
