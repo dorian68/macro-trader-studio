@@ -93,7 +93,7 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/blog/ethereum-ecosystem-ai-analysis', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/crypto-sentiment-on-chain-signals', changefreq: 'weekly', priority: 0.7 },
 
-  // Wave 4 — Commodities
+  // Wave 4 — Commodities (published)
   { path: '/blog/gold-price-forecasting-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/crude-oil-supply-demand-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/natural-gas-trading-ai', changefreq: 'weekly', priority: 0.7 },
@@ -101,38 +101,4 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/blog/industrial-metals-ai-analysis', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/energy-transition-commodities-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/commodity-supercycle-ai-analysis', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/precious-metals-portfolio-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/commodity-futures-curve-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/commodity-correlation-macro-ai', changefreq: 'weekly', priority: 0.7 },
-
-  // Wave 4 — Quant & Backtesting
-  { path: '/blog/backtesting-pitfalls-overfitting-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/walk-forward-optimization-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/monte-carlo-simulation-trading-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/factor-models-ai-trading', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/model-validation-ai-trading', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/feature-engineering-trading-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/ensemble-methods-trading-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/alternative-data-trading-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/reinforcement-learning-trading', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/quantitative-strategy-lifecycle-ai', changefreq: 'weekly', priority: 0.7 },
-
-  // Wave 4 — Portfolio & Risk
-  { path: '/blog/ai-portfolio-allocation-optimization', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/drawdown-management-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/correlation-regime-changes-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/tail-risk-hedging-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/dynamic-rebalancing-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/multi-asset-portfolio-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/esg-portfolio-integration-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/volatility-targeting-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/liquidity-risk-portfolio-ai', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/stress-testing-portfolios-ai', changefreq: 'weekly', priority: 0.7 },
-
-  // Wave 4 — Institutional & Governance
-  { path: '/blog/mifid-compliance-ai-research', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/research-automation-buy-side', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/ai-trading-desk-integration', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/ai-model-governance-finance', changefreq: 'weekly', priority: 0.7 },
-  { path: '/blog/future-of-ai-trading-2026', changefreq: 'weekly', priority: 0.7 },
 ];
