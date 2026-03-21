@@ -1,0 +1,1 @@
+UPDATE blog_posts SET cover_image = '/images/blog/cover-coin-jar.jpg' WHERE slug IN ('ai-model-governance-finance', 'research-automation-buy-side');
