@@ -1,37 +1,30 @@
 
 
-## Insérer 4 Articles Quant (Batch 1-2)
+## Insert 6 Quant Articles (Batches 3-5)
 
-### Articles identifiés
+### Articles
 
-| # | Slug | Titre | Catégorie | Auteur | Date |
-|---|------|-------|-----------|--------|------|
-| 1 | `backtesting-pitfalls-overfitting-ai` | Backtesting Pitfalls: How AI Detects and Prevents Overfitting | quant | AlphaLens Quant Desk | 2025-11-05 |
-| 2 | `walk-forward-optimization-ai` | Walk-Forward Optimization with AI Trading Models | quant | AlphaLens Research | 2025-11-08 |
-| 3 | `monte-carlo-simulation-trading-ai` | Monte Carlo Simulation for AI-Driven Trading Strategies | quant | AlphaLens Quant Desk | 2025-11-11 |
-| 4 | `factor-models-ai-trading` | Factor Models in AI Trading: From Theory to Implementation | quant | AlphaLens Research | 2025-11-14 |
+| # | Slug | Title | Author | Date |
+|---|------|-------|--------|------|
+| 5 | `model-validation-ai-trading` | AI Model Validation for Trading: Best Practices | AlphaLens Quant Desk | 2025-11-17 |
+| 6 | `feature-engineering-trading-ai` | Feature Engineering for AI Trading Systems | AlphaLens Research | 2025-11-20 |
+| 7 | `ensemble-methods-trading-ai` | Ensemble Methods in AI Trading Strategies | AlphaLens Quant Desk | 2025-11-23 |
+| 8 | `alternative-data-trading-ai` | Alternative Data Sources for AI Trading Intelligence | AlphaLens Research | 2025-11-26 |
+| 9 | `reinforcement-learning-trading` | Reinforcement Learning Applied to Trading | AlphaLens Quant Desk | 2025-11-29 |
+| 10 | `quantitative-strategy-lifecycle-ai` | The Full Lifecycle of a Quantitative AI Strategy | AlphaLens Research | 2025-12-02 |
 
 ### Execution
 
-1. **INSERT 4 rows** into `blog_posts` via psql with:
-   - Full Markdown content as-is (no modifications)
-   - SEO-optimized `meta_title` (50-60 chars with primary keyword)
-   - SEO-optimized `meta_description` (130-155 chars)
-   - `excerpt` (first 2 sentences summarizing the article)
-   - `tags` array with relevant keywords for each article
+1. **INSERT 6 rows** into `blog_posts` via SQL migration with:
+   - Full Markdown content as provided (no modifications)
+   - SEO-optimized `meta_title` (50-60 chars), `meta_description` (130-155 chars)
+   - `excerpt`, `tags` array, `category = 'quant'`
    - `status = 'published'`, `language = 'en'`
-   - Staggered `published_at` dates (3-day intervals from Nov 5, 2025)
+   - Staggered dates (3-day intervals from Nov 17, 2025)
 
-2. **Update `src/seo/sitemapRoutes.ts`** — add the 4 new slugs to the routes array
+2. **Update `src/seo/sitemapRoutes.ts`** — add the 6 new slugs
 
-3. **Regenerate `public/sitemap.xml`** — include the 4 new URLs (total: 74 URLs)
+3. **Regenerate `public/sitemap.xml`** — total: 80 URLs (12 static + 68 articles)
 
-### SEO Maximization per Article
-- `meta_title`: keyword-front-loaded, under 60 chars
-- `meta_description`: action-oriented, 130-155 chars, includes primary keyword
-- `tags`: 5-8 relevant tags per article for internal categorization
-- `excerpt`: compelling 2-sentence summary for blog listing cards
-- Content kept exactly as provided (already includes H2/H3 structure, FAQ schema-ready sections, internal linking references)
-
-### After insertion: 62 articles total, 24 remaining
+### After insertion: 68 articles total, 18 remaining
 
