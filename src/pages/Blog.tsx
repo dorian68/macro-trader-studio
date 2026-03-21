@@ -222,9 +222,9 @@ export default function Blog() {
                       className="block group"
                     >
                       <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow h-full">
-                        {post.cover_image && (
+                        {(post.cover_image || (post.category && CATEGORY_COVERS[post.category])) && (
                           <img
-                            src={post.cover_image}
+                            src={post.cover_image || CATEGORY_COVERS[post.category!]}
                             alt={post.title}
                             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                             loading="lazy"
