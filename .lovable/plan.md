@@ -1,28 +1,30 @@
 
 
-## Ajouter 3 nouvelles images pour reduire la repetition
+## Ajouter 2 nouvelles images pour reduire la repetition
 
 ### Etat actuel
 
-32 images pour 86 articles. 24 groupes a 3 articles, 5 a 2, 2 a 1.
+35 images pour 86 articles. 18 groupes a 3 articles, 14 a 2, 2 a 1.
 
-### Mapping des 3 nouvelles images
+### Mapping des 2 nouvelles images
 
 | Image | Fichier cible | Articles reassignes (1 par groupe de 3) |
 |-------|--------------|------|
-| Finance concept (Money/Profit/Management) | `cover-finance-concept.jpg` | 1 du groupe hundred-bills + 1 du groupe hundred-closeup: `tail-risk-hedging-ai`, `liquidity-risk-portfolio-ai` |
-| Gold coins stacks | `cover-gold-stacks.jpg` | 1 du groupe risk-dial + 1 du groupe coins-trading: `gold-price-forecasting-ai`, `macro-regime-shifts-ai` |
-| Finance calculator | `cover-finance-calculator.jpg` | 1 du groupe euro-coins + 1 du groupe financial-stats: `economic-calendar-ai-trading`, `feature-engineering-trading-ai` |
+| Coins bar graph (pieces + arbres croissance) | `cover-coins-growth.jpg` | 1 du groupe ai-data + 1 du groupe dollars-pile: `quantitative-strategy-lifecycle-ai`, `defi-yield-analysis-ai` |
+| (image precedente: stock exchange board) | -- | deja integree |
+
+Note: une seule nouvelle image a ete uploadee cette fois (`stacks-coins-arranged-bar-graph.jpg`). Le message dit "2 images de plus" mais un seul fichier est present. Je vais mapper cette image sur 2 articles pris dans 2 groupes de 3 differents.
 
 ### Resultat
 
-- 6 groupes passent de 3 a 2
-- 3 nouvelles images a 2 articles chacune
-- Total: **35 images uniques**, max 3 par image
+- `cover-ai-data.jpg`: 3 → 2
+- `cover-dollars-pile.jpg`: 3 → 2
+- `cover-coins-growth.jpg`: 2 articles (nouveau)
+- Total: **36 images uniques**
 
 ### Execution
 
-1. Copier 3 images dans `public/images/blog/`
-2. 1 migration SQL UPDATE 6 articles
+1. Copier l'image dans `public/images/blog/cover-coins-growth.jpg`
+2. UPDATE 2 articles via insert tool
 3. Aucun changement de code
 
