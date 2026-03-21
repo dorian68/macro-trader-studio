@@ -37,9 +37,10 @@ export default function PublicNavbar() {
           >
             <img
               src="/header_logo.png"
-              alt="alphaLens.ai"
+              alt="AlphaLens AI — AI-Powered Trading Intelligence"
               className="h-10 sm:h-14 w-auto object-contain"
             />
+            <span className="sr-only">AlphaLens AI</span>
           </Link>
 
           {/* Mobile hamburger menu */}
