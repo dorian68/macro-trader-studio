@@ -107,4 +107,10 @@ export const sitemapRoutes: SitemapRoute[] = [
   { path: '/blog/walk-forward-optimization-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/monte-carlo-simulation-trading-ai', changefreq: 'weekly', priority: 0.7 },
   { path: '/blog/factor-models-ai-trading', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/model-validation-ai-trading', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/feature-engineering-trading-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/ensemble-methods-trading-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/alternative-data-trading-ai', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/reinforcement-learning-trading', changefreq: 'weekly', priority: 0.7 },
+  { path: '/blog/quantitative-strategy-lifecycle-ai', changefreq: 'weekly', priority: 0.7 },
 ];
