@@ -10,6 +10,10 @@ export const organizationSchema: Record<string, unknown> = {
   logo: LOGO_URL,
   description:
     'AI-powered financial research and trading intelligence platform delivering institutional-grade trade setups, macro commentary, and research reports.',
+  sameAs: [
+    'https://www.linkedin.com/company/alphalens-ai',
+    'https://x.com/alphalens_ai',
+  ],
   contactPoint: {
     '@type': 'ContactPoint',
     email: 'research@albaricg.com',
@@ -37,6 +41,7 @@ export const siteNavigationSchema: Record<string, unknown> = {
   itemListElement: [
     { '@type': 'SiteNavigationElement', name: 'Features', url: `${SITE_URL}/features` },
     { '@type': 'SiteNavigationElement', name: 'Pricing', url: `${SITE_URL}/pricing` },
+    { '@type': 'SiteNavigationElement', name: 'Blog', url: `${SITE_URL}/blog` },
     { '@type': 'SiteNavigationElement', name: 'Documentation', url: `${SITE_URL}/docs` },
     { '@type': 'SiteNavigationElement', name: 'About', url: `${SITE_URL}/about` },
     { '@type': 'SiteNavigationElement', name: 'Contact', url: `${SITE_URL}/contact` },
@@ -44,6 +49,21 @@ export const siteNavigationSchema: Record<string, unknown> = {
     { '@type': 'SiteNavigationElement', name: 'API', url: `${SITE_URL}/api` },
   ],
 };
+
+export function webPageSchema(
+  name: string,
+  path: string,
+  description: string,
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name,
+    url: `${SITE_URL}${path}`,
+    description,
+    isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
+  };
+}
 
 export function breadcrumbList(
   pageName: string,

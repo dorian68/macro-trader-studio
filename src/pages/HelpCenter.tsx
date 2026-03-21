@@ -1,5 +1,5 @@
 import { SEOHead } from "@/components/SEOHead";
-import { breadcrumbList, faqSchema } from "@/seo/structuredData";
+import { breadcrumbList, faqSchema, webPageSchema } from "@/seo/structuredData";
 import { useState } from "react";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +72,7 @@ export default function HelpCenter() {
         titleKey="seo.helpCenterTitle"
         descriptionKey="seo.helpCenterDescription"
         canonicalPath="/help"
-        jsonLd={[breadcrumbList('Help Center', '/help'), faqSchema(faqItems)]}
+        jsonLd={[breadcrumbList('Help Center', '/help'), faqSchema(faqItems), webPageSchema('Help Center', '/help', 'Find answers to common questions about AlphaLens AI features, billing, and workflows.')]}
       />
       <PublicNavbar />
 
