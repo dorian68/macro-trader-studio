@@ -906,6 +906,12 @@ export default function Admin() {
                   <span className="sm:hidden">Diagnostic</span>
                 </TabsTrigger>
               )}
+              {isSuperUser && (
+                <TabsTrigger value="blog" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
+                  <FileEdit className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Blog</span>
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
