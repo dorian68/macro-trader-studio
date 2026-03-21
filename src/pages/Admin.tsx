@@ -907,7 +907,7 @@ export default function Admin() {
               )}
               {isSuperUser && (
                 <TabsTrigger value="blog" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-                  <FileEdit className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>Blog</span>
                 </TabsTrigger>
               )}
