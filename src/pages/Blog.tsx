@@ -35,6 +35,13 @@ const CATEGORY_SLUGS: Record<string, string> = {
   "commodities-macro": "Commodities & Macro",
 };
 
+const CATEGORY_COVERS: Record<string, string> = {
+  'Quant & Backtesting': '/images/blog/cover-quant-backtesting.jpg',
+  'Portfolio & Risk': '/images/blog/cover-portfolio-risk.jpg',
+  'Institutional & Governance': '/images/blog/cover-institutional-governance.jpg',
+  'Commodities & Macro': '/images/blog/cover-commodities-macro.jpg',
+};
+
 const CATEGORY_TO_SLUG: Record<string, string> = Object.fromEntries(
   Object.entries(CATEGORY_SLUGS).map(([slug, name]) => [name, slug])
 );
