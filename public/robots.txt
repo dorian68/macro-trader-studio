@@ -3,6 +3,7 @@
 
 User-agent: *
 Allow: /
+Allow: /blog
 
 # Private / auth-gated areas
 Disallow: /admin

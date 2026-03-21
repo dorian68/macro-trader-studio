@@ -1023,6 +1023,12 @@ export default function Admin() {
             </TabsContent>
           )}
 
+          {isSuperUser && (
+            <TabsContent value="blog">
+              <BlogManagement />
+            </TabsContent>
+          )}
+
         </Tabs>
       </div>
     </Layout>
