@@ -3,7 +3,7 @@ import { breadcrumbList } from "@/seo/structuredData";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
