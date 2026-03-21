@@ -166,6 +166,11 @@ export default function BlogPost() {
             coverImage: post.cover_image,
           }))}
         </script>
+        {faqItems.length > 0 && (
+          <script type="application/ld+json">
+            {JSON.stringify(faqSchema(faqItems))}
+          </script>
+        )}
       </Helmet>
 
       <PublicNavbar />
