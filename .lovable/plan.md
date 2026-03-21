@@ -4,43 +4,38 @@
 
 ### Etat actuel
 
-8 images couvrent 86 articles. Les groupes les plus gros (skyscrapers: 17, currencies/dollar-bill/market-rise: 12 chacun) ont trop de repetition visuelle.
+14 images couvrent 86 articles. Les 2 groupes les plus gros (`cover-futuristic.jpg`: 11, `cover-coins.jpg`: 11) ont encore de la repetition.
 
 ### Mapping des 6 nouvelles images
 
-| Image | Fichier cible | Articles reassignes (pris dans les groupes satures) |
-|-------|--------------|------|
-| Finance charts (thedigitalartist-finance) | `cover-finance-charts.jpg` | 6 articles Quant du groupe skyscrapers: `ai-signal-noise-filtering`, `ai-signal-validation-trading`, `real-time-signal-generation`, `regime-detection-trading-ai`, `momentum-vs-mean-reversion-ai`, `multi-timeframe-signal-analysis` |
-| Dollar globe (geralt-dollar) | `cover-dollar-globe.jpg` | 6 articles FX du groupe dollar-bill: `fx-carry-trade-ai-analysis`, `fx-carry-trade-optimization`, `fx-volatility-forecasting-ai`, `fx-order-flow-analysis-ai`, `usd-strength-ai-model`, `fx-hedging-strategies-ai` |
-| $100 bills (sandra-gabriel) | `cover-hundred-bills.jpg` | 6 articles Portfolio du groupe market-rise: `drawdown-management-ai`, `tail-risk-hedging-ai`, `liquidity-risk-portfolio-ai`, `stress-testing-portfolios-ai`, `ai-risk-management-trading`, `ai-portfolio-monitoring` |
-| Euro coins (fotoblend) | `cover-euro-coins.jpg` | 6 articles Macro du groupe currencies: `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai`, `gdp-nowcasting-ai-models`, `labor-market-ai-analysis`, `economic-calendar-ai-trading` |
-| Dollar bills spread (hbschw) | `cover-dollars-spread.jpg` | 5 articles restants skyscrapers (institutional): `ai-explainability-trading-research`, `ai-research-desk-finance`, `institutional-ai-market-intelligence`, `manual-vs-ai-market-research`, `ai-trading-tools-comparison` |
-| Central Bank (denisstreltsov) | `cover-central-bank.jpg` | 5 articles Macro du groupe currencies: `central-bank-communication-nlp`, `macro-regime-shifts-ai`, `cross-asset-macro-correlations`, `geopolitical-risk-ai-assessment`, `market-data-to-decision-ready-commentary` |
+| Image | Fichier cible | Articles reassignes |
+|-------|--------------|---------------------|
+| Banner US/Shanghai (geralt-banner) | `cover-us-shanghai.jpg` | 5 articles Commodities du groupe coins: `crude-oil-supply-demand-ai`, `natural-gas-trading-ai`, `energy-transition-commodities-ai`, `commodity-supercycle-ai-analysis`, `industrial-metals-ai-analysis` |
+| Laptop trading (istockphoto) | `cover-trading-screen.jpg` | 5 articles Quant du groupe futuristic: `backtesting-pitfalls-overfitting-ai`, `walk-forward-optimization-ai`, `monte-carlo-simulation-trading-ai`, `factor-models-ai-trading`, `model-validation-ai-trading` |
+| Dirham banknote (mabelamber) | `cover-dirham.jpg` | 3 articles FX du groupe dollar-bill: `emerging-market-fx-ai`, `asian-fx-markets-ai`, `fx-technical-patterns-ai` + 3 du groupe dollar-globe: `fx-news-sentiment-trading`, `ai-fx-pair-selection`, `ai-fx-research-workflows` |
+| Frankfurt skyline (leonhard) | `cover-frankfurt.jpg` | 5 articles Institutional du groupe laptop: `mifid-compliance-ai-research`, `research-automation-buy-side`, `ai-trading-desk-integration`, `ai-model-governance-finance`, `future-of-ai-trading-2026` |
+| Futuristic finance (thedigitalartist-finance-8045002) | `cover-ai-data.jpg` | 6 articles Quant restants du groupe futuristic: `feature-engineering-trading-ai`, `ensemble-methods-trading-ai`, `alternative-data-trading-ai`, `reinforcement-learning-trading`, `quantitative-strategy-lifecycle-ai`, `how-ai-generates-trading-signals` |
+| Currencies (cover-currencies deja a 1 article) | Pas de changement, `cover-currencies.jpg` reste a 1 |
 
 ### Resultat apres reassignation
 
 | Image | Articles |
 |-------|----------|
-| cover-skyscrapers.png | 6 (quant: backtest, entry-exit, stop-loss, trade-sizing, quant-workflow, risk-reward) |
-| cover-finance-charts.jpg | 6 (quant signals) |
-| cover-dollar-bill.jpg | 6 (FX) |
-| cover-dollar-globe.jpg | 6 (FX) |
-| cover-market-rise.jpg | 6 (Portfolio) |
-| cover-hundred-bills.jpg | 6 (Portfolio) |
-| cover-currencies.jpg | 1 (ai-macro-market-analysis-guide) |
-| cover-euro-coins.jpg | 6 (Macro) |
-| cover-central-bank.jpg | 5 (Macro) |
-| cover-coins.jpg | 11 (Commodities) |
-| cover-futuristic.jpg | 11 (Quant batch 1-14) |
-| cover-dollars-pile.jpg | 6 (Crypto) |
-| cover-laptop.png | 5 (Institutional) |
-| cover-dollars-spread.jpg | 5 (Institutional) |
+| cover-coins.jpg | 6 (gold, agricultural, commodities-research, commodity-futures, commodity-correlation, precious-metals) |
+| cover-us-shanghai.jpg | 5 (oil, gas, energy, supercycle, industrial-metals) |
+| cover-futuristic.jpg | 0 (vide, remplace par 2 nouvelles) |
+| cover-trading-screen.jpg | 5 (backtesting, walk-forward, monte-carlo, factor-models, model-validation) |
+| cover-ai-data.jpg | 6 (feature-eng, ensemble, alt-data, RL, strategy-lifecycle, how-ai-generates) |
+| cover-dirham.jpg | 6 (emerging-fx, asian-fx, fx-technical, fx-news, fx-pair, fx-research) |
+| cover-frankfurt.jpg | 5 (mifid, research-auto, trading-desk, governance, future-2026) |
+| cover-dollar-bill.jpg | 3 (fx-carry-opt deja la... restants) |
+| + 8 images existantes inchangees | ~50 articles |
 
-Total: 14 images pour 86 articles — bien plus de variete visuelle.
+Total: **20 images** pour 86 articles.
 
 ### Execution
 
-1. **Copier 6 images** dans `public/images/blog/`
-2. **UPDATE** ~34 articles via API PATCH pour reassigner les cover_image
-3. **Aucun changement de code** — Blog.tsx utilise deja `post.cover_image`
+1. **Copier 5 images** dans `public/images/blog/` (le banner est en double, on prend une seule version)
+2. **1 SQL migration** UPDATE ~30 articles pour reassigner les cover_image
+3. **Aucun changement de code**
 
