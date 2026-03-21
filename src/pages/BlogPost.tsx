@@ -52,6 +52,18 @@ interface BlogPostData {
   updated_at: string;
 }
 
+/** Map category to a default cover image */
+const CATEGORY_COVERS: Record<string, string> = {
+  'Quant & Backtesting': '/images/blog/cover-quant-backtesting.jpg',
+  'Portfolio & Risk': '/images/blog/cover-portfolio-risk.jpg',
+  'Institutional & Governance': '/images/blog/cover-institutional-governance.jpg',
+  'Commodities & Macro': '/images/blog/cover-commodities-macro.jpg',
+};
+
+function getCoverImage(post: BlogPostData): string | null {
+  return post.cover_image || (post.category ? CATEGORY_COVERS[post.category] : null) || null;
+}
+
 /** Simple markdown-to-HTML for blog content */
 function renderMarkdown(md: string): string {
   return md
