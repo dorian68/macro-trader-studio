@@ -1,36 +1,36 @@
 
 
-## Insert Batch 1 (AI Signals) + Generate & Insert Batch 2 (Macro 1)
+## Insert Batches 3 (Macro 2) + 4 (FX 1) — 10 Articles
 
 ### Current State
-- 21 articles in DB, 13 with full content (7K+), 8 with shorter content (2K-4K)
-- Batch 1 slugs missing: `ai-signal-noise-filtering`, `regime-detection-trading-ai`, `ai-stop-loss-placement`, `ai-trade-sizing-algorithms`, `real-time-signal-generation`
-- Batch 2 slugs missing: `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai`, `geopolitical-risk-ai-assessment`, `economic-calendar-ai-trading`
+- **31 articles** in DB, last batch ended at 2025-05-21
+- Batches 3-4 continue the staggered schedule from 2025-05-24 onward
+
+### Batch 3 — Macro 2 (dates: May 24 → Jun 5)
+
+| Slug | Author | Date |
+|------|--------|------|
+| `gdp-nowcasting-ai-models` | AlphaLens Macro Team | 2025-05-24 |
+| `labor-market-ai-analysis` | AlphaLens Research | 2025-05-27 |
+| `central-bank-communication-nlp` | AlphaLens Macro Team | 2025-05-30 |
+| `macro-regime-shifts-ai` | AlphaLens Research | 2025-06-02 |
+| `cross-asset-macro-correlations` | AlphaLens Quant Desk | 2025-06-05 |
+
+### Batch 4 — FX 1 (dates: Jun 8 → Jun 20)
+
+| Slug | Author | Date |
+|------|--------|------|
+| `ai-fx-pair-selection` | AlphaLens Quant Desk | 2025-06-08 |
+| `fx-carry-trade-optimization` | AlphaLens Macro Team | 2025-06-11 |
+| `fx-volatility-forecasting-ai` | AlphaLens Quant Desk | 2025-06-14 |
+| `emerging-market-fx-ai` | AlphaLens Research | 2025-06-17 |
+| `fx-order-flow-analysis-ai` | AlphaLens Quant Desk | 2025-06-20 |
 
 ### Execution
+1. Generate 10 articles (~1,500 words each) via AI gateway with finance-expert system prompt
+2. INSERT 10 rows into `blog_posts` via psql
+3. Categories: `market-commentary` for Macro 2, `fx` for FX 1
+4. All slugs already in `sitemapRoutes.ts` — no code changes needed
 
-1. **Generate 10 articles** via AI gateway script (2 batches of 5), each ~1,500 words Markdown with H2/H3, internal links, CTA
-2. **Insert 10 rows** into `blog_posts` via migration with staggered dates:
-   - Batch 1 dates: 2025-04-24, 2025-04-27, 2025-04-30, 2025-05-03, 2025-05-06
-   - Batch 2 dates: 2025-05-09, 2025-05-12, 2025-05-15, 2025-05-18, 2025-05-21
-3. Authors: Mix of "AlphaLens Research", "AlphaLens Quant Desk", "AlphaLens Macro Team"
-
-### Articles
-
-| # | Slug | Category | Author |
-|---|------|----------|--------|
-| 1 | ai-signal-noise-filtering | research | AlphaLens Quant Desk |
-| 2 | regime-detection-trading-ai | research | AlphaLens Research |
-| 3 | ai-stop-loss-placement | research | AlphaLens Quant Desk |
-| 4 | ai-trade-sizing-algorithms | research | AlphaLens Quant Desk |
-| 5 | real-time-signal-generation | research | AlphaLens Research |
-| 6 | central-bank-policy-ai-analysis | market-commentary | AlphaLens Macro Team |
-| 7 | inflation-forecasting-ai-models | market-commentary | AlphaLens Macro Team |
-| 8 | yield-curve-analysis-ai | market-commentary | AlphaLens Macro Team |
-| 9 | geopolitical-risk-ai-assessment | market-commentary | AlphaLens Research |
-| 10 | economic-calendar-ai-trading | market-commentary | AlphaLens Macro Team |
-
-### Files Modified
-- Database: INSERT 10 rows into `blog_posts` (1 migration)
-- No code file changes needed (slugs already in sitemapRoutes.ts)
+### After insertion: 41 articles total, 45 remaining
 
