@@ -180,12 +180,12 @@ const Pricing = () => {
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
             {t('hero.subtitle')}
           </p>
-          <button
-            onClick={() => navigate('/features')}
-            className="mt-3 text-sm text-accent hover:underline underline-offset-4 cursor-pointer bg-transparent border-none"
+          <Link
+            to="/features"
+            className="mt-3 inline-block text-sm text-accent hover:underline underline-offset-4"
           >
             {t('hero.compareFeatures', 'Compare all features →')}
-          </button>
+          </Link>
         </div>
 
         {/* B2C Plans Section */}

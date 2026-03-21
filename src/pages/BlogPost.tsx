@@ -140,13 +140,16 @@ export default function BlogPost() {
       <main className="flex-1">
         <article className="py-12 px-4">
           <div className="container mx-auto max-w-3xl">
-            {/* Back link */}
-            <Link
-              to="/blog"
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back to Blog
-            </Link>
+            {/* Breadcrumb: Home → Blog → Article */}
+            <nav aria-label="Breadcrumb" className="mb-8 text-sm text-muted-foreground">
+              <ol className="flex items-center gap-1 flex-wrap">
+                <li><Link to="/" className="hover:text-foreground transition-colors">Home</Link></li>
+                <li>/</li>
+                <li><Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
+                <li>/</li>
+                <li className="text-foreground truncate max-w-[200px]">{post.title}</li>
+              </ol>
+            </nav>
 
             {/* Header */}
             <header className="mb-8">
@@ -169,6 +172,9 @@ export default function BlogPost() {
                     {format(new Date(post.published_at), "MMMM d, yyyy")}
                   </span>
                 )}
+                <span className="flex items-center gap-1">
+                  ⏱ {Math.max(1, Math.round(post.content.split(/\s+/).length / 200))} min read
+                </span>
               </div>
               {post.tags && post.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-4">
@@ -186,6 +192,7 @@ export default function BlogPost() {
               <img
                 src={post.cover_image}
                 alt={post.title}
+                loading="lazy"
                 className="w-full rounded-lg mb-10 shadow-md"
               />
             )}
