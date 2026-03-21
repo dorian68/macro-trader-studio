@@ -1,41 +1,35 @@
 
 
-## Ajouter 6 nouvelles images pour diversifier les covers du blog
+## Ajouter 5 nouvelles images pour passer de 20 a 25 images uniques
 
 ### Etat actuel
 
-14 images couvrent 86 articles. Les 2 groupes les plus gros (`cover-futuristic.jpg`: 11, `cover-coins.jpg`: 11) ont encore de la repetition.
+20 images couvrent 86 articles. 10 images sont a 6 articles chacune — encore de la repetition.
 
-### Mapping des 6 nouvelles images
+### Mapping des 5 nouvelles images
 
-| Image | Fichier cible | Articles reassignes |
-|-------|--------------|---------------------|
-| Banner US/Shanghai (geralt-banner) | `cover-us-shanghai.jpg` | 5 articles Commodities du groupe coins: `crude-oil-supply-demand-ai`, `natural-gas-trading-ai`, `energy-transition-commodities-ai`, `commodity-supercycle-ai-analysis`, `industrial-metals-ai-analysis` |
-| Laptop trading (istockphoto) | `cover-trading-screen.jpg` | 5 articles Quant du groupe futuristic: `backtesting-pitfalls-overfitting-ai`, `walk-forward-optimization-ai`, `monte-carlo-simulation-trading-ai`, `factor-models-ai-trading`, `model-validation-ai-trading` |
-| Dirham banknote (mabelamber) | `cover-dirham.jpg` | 3 articles FX du groupe dollar-bill: `emerging-market-fx-ai`, `asian-fx-markets-ai`, `fx-technical-patterns-ai` + 3 du groupe dollar-globe: `fx-news-sentiment-trading`, `ai-fx-pair-selection`, `ai-fx-research-workflows` |
-| Frankfurt skyline (leonhard) | `cover-frankfurt.jpg` | 5 articles Institutional du groupe laptop: `mifid-compliance-ai-research`, `research-automation-buy-side`, `ai-trading-desk-integration`, `ai-model-governance-finance`, `future-of-ai-trading-2026` |
-| Futuristic finance (thedigitalartist-finance-8045002) | `cover-ai-data.jpg` | 6 articles Quant restants du groupe futuristic: `feature-engineering-trading-ai`, `ensemble-methods-trading-ai`, `alternative-data-trading-ai`, `reinforcement-learning-trading`, `quantitative-strategy-lifecycle-ai`, `how-ai-generates-trading-signals` |
-| Currencies (cover-currencies deja a 1 article) | Pas de changement, `cover-currencies.jpg` reste a 1 |
+| Image | Fichier cible | Articles reassignes (3 par nouvelle image, pris dans les groupes a 6) |
+|-------|--------------|------|
+| $100 bills close-up (benscripps) | `cover-hundred-closeup.jpg` | 3 articles Portfolio du groupe hundred-bills: `ai-risk-management-trading`, `ai-portfolio-monitoring`, `liquidity-risk-portfolio-ai` |
+| Bank facade (jamesqube) | `cover-bank-facade.jpg` | 3 articles Macro du groupe euro-coins: `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai` |
+| British pounds (stux) | `cover-british-pound.jpg` | 3 articles FX du groupe dirham: `emerging-market-fx-ai`, `asian-fx-markets-ai`, `fx-technical-patterns-ai` |
+| Vault/safe (8385) | `cover-vault.jpg` | 3 articles Portfolio du groupe market-rise: `correlation-regime-changes-ai`, `esg-portfolio-integration-ai`, `volatility-targeting-ai` |
+| Polish zloty green (alicja) | `cover-zloty-green.jpg` | 3 articles FX du groupe dollar-globe: `fx-carry-trade-ai-analysis`, `fx-carry-trade-optimization`, `fx-hedging-strategies-ai` |
 
 ### Resultat apres reassignation
 
 | Image | Articles |
 |-------|----------|
-| cover-coins.jpg | 6 (gold, agricultural, commodities-research, commodity-futures, commodity-correlation, precious-metals) |
-| cover-us-shanghai.jpg | 5 (oil, gas, energy, supercycle, industrial-metals) |
-| cover-futuristic.jpg | 0 (vide, remplace par 2 nouvelles) |
-| cover-trading-screen.jpg | 5 (backtesting, walk-forward, monte-carlo, factor-models, model-validation) |
-| cover-ai-data.jpg | 6 (feature-eng, ensemble, alt-data, RL, strategy-lifecycle, how-ai-generates) |
-| cover-dirham.jpg | 6 (emerging-fx, asian-fx, fx-technical, fx-news, fx-pair, fx-research) |
-| cover-frankfurt.jpg | 5 (mifid, research-auto, trading-desk, governance, future-2026) |
-| cover-dollar-bill.jpg | 3 (fx-carry-opt deja la... restants) |
-| + 8 images existantes inchangees | ~50 articles |
+| 15 images existantes inchangees ou reduites a 3 | ~56 |
+| 5 nouvelles images × 3 articles | 15 |
+| + 5 images a 5 articles | 15 |
+| **Total** | **86** |
 
-Total: **20 images** pour 86 articles.
+Distribution max par image passe de 6 a 6 (les groupes non touches) mais 5 groupes descendent de 6 a 3, ce qui ajoute beaucoup de variete visuelle. Total: **25 images uniques** (incluant currencies a 1 article).
 
 ### Execution
 
-1. **Copier 5 images** dans `public/images/blog/` (le banner est en double, on prend une seule version)
-2. **1 SQL migration** UPDATE ~30 articles pour reassigner les cover_image
+1. **Copier 5 images** dans `public/images/blog/`
+2. **1 SQL migration** UPDATE 15 articles pour reassigner les cover_image
 3. **Aucun changement de code**
 
