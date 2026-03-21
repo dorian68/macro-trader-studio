@@ -139,6 +139,8 @@ export default function BlogPost() {
   const pageTitle = post.meta_title || `${post.title} | AlphaLens`;
   const pageDescription = post.meta_description || post.excerpt || "";
   const faqItems = extractFaqItems(post.content);
+  const coverImage = getCoverImage(post);
+  const ogImage = coverImage?.startsWith('http') ? coverImage : coverImage ? `https://alphalensai.com${coverImage}` : null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
