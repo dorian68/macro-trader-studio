@@ -37,8 +37,7 @@ import {
   ArrowRightLeft,
   AlertCircle,
   Upload,
-  FlaskConical,
-  FileEdit
+  FlaskConical
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
 import { useUserRole } from "@/hooks/useUserRole";
