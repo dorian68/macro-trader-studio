@@ -1,35 +1,39 @@
 
 
-## Ajouter 5 nouvelles images pour passer de 20 a 25 images uniques
+## Ajouter 7 nouvelles images pour passer de 25 a 32 images uniques
 
 ### Etat actuel
 
-20 images couvrent 86 articles. 10 images sont a 6 articles chacune — encore de la repetition.
+25 images pour 86 articles. 5 groupes a 6 articles, 5 groupes a 5 articles.
 
-### Mapping des 5 nouvelles images
+### Mapping des 7 nouvelles images
 
-| Image | Fichier cible | Articles reassignes (3 par nouvelle image, pris dans les groupes a 6) |
+| Image | Fichier cible | Articles reassignes (pris dans les groupes a 5-6) |
 |-------|--------------|------|
-| $100 bills close-up (benscripps) | `cover-hundred-closeup.jpg` | 3 articles Portfolio du groupe hundred-bills: `ai-risk-management-trading`, `ai-portfolio-monitoring`, `liquidity-risk-portfolio-ai` |
-| Bank facade (jamesqube) | `cover-bank-facade.jpg` | 3 articles Macro du groupe euro-coins: `central-bank-policy-ai-analysis`, `inflation-forecasting-ai-models`, `yield-curve-analysis-ai` |
-| British pounds (stux) | `cover-british-pound.jpg` | 3 articles FX du groupe dirham: `emerging-market-fx-ai`, `asian-fx-markets-ai`, `fx-technical-patterns-ai` |
-| Vault/safe (8385) | `cover-vault.jpg` | 3 articles Portfolio du groupe market-rise: `correlation-regime-changes-ai`, `esg-portfolio-integration-ai`, `volatility-targeting-ai` |
-| Polish zloty green (alicja) | `cover-zloty-green.jpg` | 3 articles FX du groupe dollar-globe: `fx-carry-trade-ai-analysis`, `fx-carry-trade-optimization`, `fx-hedging-strategies-ai` |
+| Stats financieres bleu/rouge | `cover-financial-stats.png` | 3 du groupe ai-data: `feature-engineering-trading-ai`, `ensemble-methods-trading-ai`, `alternative-data-trading-ai` |
+| Puzzle Risk Management | `cover-risk-puzzle.png` | 3 du groupe dollars-pile (crypto): `ethereum-ecosystem-ai-analysis`, `crypto-sentiment-on-chain-signals`, `bitcoin-on-chain-analysis-ai` |
+| Fleches marche haussier | `cover-market-arrows.png` | 3 du groupe finance-charts: `ai-signal-validation-trading`, `ai-signal-noise-filtering`, `regime-detection-trading-ai` |
+| Laptop sombre ambiance | `cover-laptop-dark.png` | 3 du groupe skyscrapers: `ai-backtest-trading-strategy`, `ai-entry-exit-timing`, `risk-reward-optimization-ai` |
+| Dashboard hologramme | `cover-dashboard-holo.png` | 3 du groupe dollars-spread (institutional): `ai-explainability-trading-research`, `manual-vs-ai-market-research`, `ai-trading-tools-comparison` |
+| Calculatrice + pieces | `cover-calculator.png` | 3 du groupe coins: `gold-price-forecasting-ai`, `commodity-correlation-macro-ai`, `precious-metals-portfolio-ai` |
+| Laptop teal | `cover-laptop-teal.png` | 3 du groupe trading-screen: `monte-carlo-simulation-trading-ai`, `factor-models-ai-trading`, `model-validation-ai-trading` |
 
 ### Resultat apres reassignation
 
+Tous les groupes passent de 5-6 a 2-3 articles max. Distribution finale :
+
 | Image | Articles |
 |-------|----------|
-| 15 images existantes inchangees ou reduites a 3 | ~56 |
-| 5 nouvelles images × 3 articles | 15 |
-| + 5 images a 5 articles | 15 |
+| 18 images a 3 articles | 54 |
+| 7 images a 2-3 articles | ~19 |
+| + images a 1-2 articles | ~13 |
 | **Total** | **86** |
 
-Distribution max par image passe de 6 a 6 (les groupes non touches) mais 5 groupes descendent de 6 a 3, ce qui ajoute beaucoup de variete visuelle. Total: **25 images uniques** (incluant currencies a 1 article).
+Max par image : 3. Total : **32 images uniques**.
 
 ### Execution
 
-1. **Copier 5 images** dans `public/images/blog/`
-2. **1 SQL migration** UPDATE 15 articles pour reassigner les cover_image
+1. **Copier 7 images** dans `public/images/blog/`
+2. **UPDATE 21 articles** via insert tool pour reassigner les cover_image
 3. **Aucun changement de code**
 
