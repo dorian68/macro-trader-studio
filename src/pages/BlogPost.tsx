@@ -10,8 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, User, ArrowLeft, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
-import { breadcrumbList, articleSchema } from "@/seo/structuredData";
+import { breadcrumbList, articleSchema, faqSchema } from "@/seo/structuredData";
 import { Helmet } from "react-helmet-async";
+
+/** Extract FAQ items from Markdown content (## FAQ or ## Frequently Asked Questions) */
+function extractFaqItems(content: string): { question: string; answer: string }[] {
+  const faqMatch = content.match(/## (?:FAQ|Frequently Asked Questions)\s*\n([\s\S]*?)(?=\n## |\n---|\n\*\*\[|$)/i);
+  if (!faqMatch) return [];
+
+  const faqBlock = faqMatch[1];
+  const items: { question: string; answer: string }[] = [];
+
+  // Match **Q: ...** or ### ... followed by answer text
+  const questionPattern = /(?:\*\*Q:\s*(.+?)\*\*|###\s*(.+?))\s*\n([\s\S]*?)(?=(?:\*\*Q:|\n###|\n## |\n---|\n\*\*\[|$))/gi;
+  let match;
+  while ((match = questionPattern.exec(faqBlock)) !== null) {
+    const question = (match[1] || match[2] || '').trim();
+    const answer = match[3].replace(/\n+/g, ' ').replace(/\*\*/g, '').trim();
+    if (question && answer) {
+      items.push({ question, answer });
+    }
+  }
+
+  return items;
+}
 
 interface BlogPostData {
   id: string;
@@ -28,6 +50,18 @@ interface BlogPostData {
   language: string;
   published_at: string | null;
   updated_at: string;
+}
+
+/** Map category to a default cover image */
+const CATEGORY_COVERS: Record<string, string> = {
+  'Quant & Backtesting': '/images/blog/cover-quant-backtesting.jpg',
+  'Portfolio & Risk': '/images/blog/cover-portfolio-risk.jpg',
+  'Institutional & Governance': '/images/blog/cover-institutional-governance.jpg',
+  'Commodities & Macro': '/images/blog/cover-commodities-macro.jpg',
+};
+
+function getCoverImage(post: BlogPostData): string | null {
+  return post.cover_image || (post.category ? CATEGORY_COVERS[post.category] : null) || null;
 }
 
 /** Simple markdown-to-HTML for blog content */
@@ -104,6 +138,9 @@ export default function BlogPost() {
 
   const pageTitle = post.meta_title || `${post.title} | AlphaLens`;
   const pageDescription = post.meta_description || post.excerpt || "";
+  const faqItems = extractFaqItems(post.content);
+  const coverImage = getCoverImage(post);
+  const ogImage = coverImage?.startsWith('http') ? coverImage : coverImage ? `https://alphalensai.com${coverImage}` : null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -116,11 +153,11 @@ export default function BlogPost() {
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={`https://alphalensai.com/blog/${post.slug}`} />
-        {post.cover_image && <meta property="og:image" content={post.cover_image} />}
+        {ogImage && <meta property="og:image" content={ogImage} />}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
-        {post.cover_image && <meta name="twitter:image" content={post.cover_image} />}
+        {ogImage && <meta name="twitter:image" content={ogImage} />}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
@@ -143,6 +180,11 @@ export default function BlogPost() {
             coverImage: post.cover_image,
           }))}
         </script>
+        {faqItems.length > 0 && (
+          <script type="application/ld+json">
+            {JSON.stringify(faqSchema(faqItems))}
+          </script>
+        )}
       </Helmet>
 
       <PublicNavbar />
@@ -198,9 +240,9 @@ export default function BlogPost() {
             </header>
 
             {/* Cover */}
-            {post.cover_image && (
+            {coverImage && (
               <img
-                src={post.cover_image}
+                src={coverImage}
                 alt={post.title}
                 loading="lazy"
                 className="w-full rounded-lg mb-10 shadow-md"

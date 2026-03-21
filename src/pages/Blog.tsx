@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import PublicNavbar from "@/components/PublicNavbar";
 import { Footer } from "@/components/Footer";
@@ -32,6 +33,13 @@ const CATEGORY_SLUGS: Record<string, string> = {
   "portfolio-risk": "Portfolio & Risk",
   "institutional-governance": "Institutional & Governance",
   "commodities-macro": "Commodities & Macro",
+};
+
+const CATEGORY_COVERS: Record<string, string> = {
+  'Quant & Backtesting': '/images/blog/cover-quant-backtesting.jpg',
+  'Portfolio & Risk': '/images/blog/cover-portfolio-risk.jpg',
+  'Institutional & Governance': '/images/blog/cover-institutional-governance.jpg',
+  'Commodities & Macro': '/images/blog/cover-commodities-macro.jpg',
 };
 
 const CATEGORY_TO_SLUG: Record<string, string> = Object.fromEntries(
@@ -139,6 +147,11 @@ export default function Blog() {
           webPageSchema("Blog", "/blog", "Market insights, AI trading research, and institutional-grade analysis from the AlphaLens team."),
         ]}
       />
+      {/* SEO: rel prev/next in <head> */}
+      <Helmet>
+        {prevPage && <link rel="prev" href={`https://alphalensai.com${prevPage}`} />}
+        {nextPage && <link rel="next" href={`https://alphalensai.com${nextPage}`} />}
+      </Helmet>
       <PublicNavbar />
 
       <main className="flex-1">
@@ -209,9 +222,9 @@ export default function Blog() {
                       className="block group"
                     >
                       <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow h-full">
-                        {post.cover_image && (
+                        {(post.cover_image || (post.category && CATEGORY_COVERS[post.category])) && (
                           <img
-                            src={post.cover_image}
+                            src={post.cover_image || CATEGORY_COVERS[post.category!]}
                             alt={post.title}
                             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                             loading="lazy"
@@ -263,9 +276,6 @@ export default function Blog() {
                   )}
                 </div>
 
-                {/* SEO: rel prev/next hints */}
-                {prevPage && <link rel="prev" href={`https://alphalensai.com${prevPage}`} />}
-                {nextPage && <link rel="next" href={`https://alphalensai.com${nextPage}`} />}
               </>
             )}
           </div>
