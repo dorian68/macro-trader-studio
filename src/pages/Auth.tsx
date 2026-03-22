@@ -414,30 +414,12 @@ export default function Auth() {
             });
           }
 
-          // Handle free trial if needed
-          if (intent === 'free_trial') {
-            const { error: trialError } = await activateFreeTrial();
-            if (!trialError) {
-              toast({
-                title: t('success.freeTrialActivated'),
-                description: t('success.freeTrialActivatedDescription'),
-              });
-              navigate('/payment-success?type=free_trial');
-              setProcessingOAuth(false);
-              return;
-            }
-          }
-
-          // Navigate to dashboard
+          // Navigate to dashboard (no trial activation for returning users)
           // Clear OAuth flags
           localStorage.removeItem('oauth_flow');
           localStorage.removeItem('oauth_started_at');
 
-          if (intent !== 'free_trial') {
-            navigate('/dashboard');
-          } else {
-            navigate('/');
-          }
+          navigate('/dashboard');
 
           setProcessingOAuth(false);
         }
