@@ -161,12 +161,14 @@ export default function Homepage() {
               {t('cta.requestDemo')}
             </Button>
           </Link>
-          {user && trialUsed ? (
-            <Button size="lg" variant="outline" disabled className="text-lg px-8 py-3 opacity-60 cursor-not-allowed">
-              <CheckCircle2 className="mr-2 h-5 w-5" /> {t('hero.trialAlreadyActivated', 'Trial Already Activated')}
-            </Button>
+          {user ? (
+            <Link to="/dashboard">
+              <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+                {t('hero.goToDashboard', 'Go to Dashboard')}
+              </Button>
+            </Link>
           ) : (
-            <Link to="/auth?intent=free_trial">
+            <Link to="/auth?intent=free_trial&tab=signup">
               <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
                 {t('cta.startFreeTrial')}
               </Button>

@@ -294,9 +294,9 @@ export default function Blog() {
             <p className="text-muted-foreground mb-6">
               Get institutional-grade trade setups, macro commentary, and portfolio analytics powered by AI.
             </p>
-            <Link to="/auth">
+            <Link to={user ? "/dashboard" : "/auth?intent=free_trial&tab=signup"}>
               <Button size="lg">
-                Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                {user ? "Go to Dashboard" : "Start Free Trial"} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
