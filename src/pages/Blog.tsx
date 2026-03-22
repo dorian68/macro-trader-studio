@@ -48,6 +48,7 @@ const CATEGORY_TO_SLUG: Record<string, string> = Object.fromEntries(
 );
 
 export default function Blog() {
+  const { user } = useAuth();
   const { category: categoryParam, page: pageParam } = useParams();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
