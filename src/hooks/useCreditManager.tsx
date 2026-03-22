@@ -187,12 +187,11 @@ export function useCreditManager() {
     }
   }, [user?.id, fetchCredits]);
 
-  // Initialize credits for new users
-  useEffect(() => {
-    if (user?.id && !loading && !credits) {
-      initializeCredits();
-    }
-  }, [user?.id, loading, credits, initializeCredits]);
+  // NOTE: Removed dangerous auto-init that called initializeCredits('free_trial')
+  // for users without credits. Credits must only be initialized via:
+  // 1. Signup flow (activate_free_trial_safe)
+  // 2. Stripe webhook (provision_plan_credits)
+  // 3. Admin action
 
   const activateFreeTrial = useCallback(async () => {
     try {
