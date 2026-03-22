@@ -129,6 +129,66 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     return null;
   }
 
+  // ✅ Trial expired → show upgrade modal
+  if (isTrialExpired) {
+    const handleUpgrade = async () => {
+      setCheckoutLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { 
+            plan: 'basic', 
+            success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', 
+            cancel_url: 'https://alphalensai.com/payment-canceled' 
+          }
+        });
+        if (!error && data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+      } catch (e) {
+        console.error('[AuthGuard] Checkout error:', e);
+      }
+      setCheckoutLoading(false);
+    };
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="h-8 w-8 text-amber-600" />
+            </div>
+            <CardTitle className="text-xl">Your Free Trial Has Expired</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Your 7-day free trial has ended. Subscribe to our Basic plan to continue using AlphaLens with full access.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button 
+                onClick={handleUpgrade} 
+                disabled={checkoutLoading}
+                className="w-full"
+              >
+                {checkoutLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecting...
+                  </>
+                ) : (
+                  "Upgrade to Basic Plan"
+                )}
+              </Button>
+              <Button variant="outline" onClick={() => signOut()} className="w-full" disabled={checkoutLoading}>
+                Sign Out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // If approval is required, check profile status
   if (requireApproval && profile) {
     if (isPending) {
