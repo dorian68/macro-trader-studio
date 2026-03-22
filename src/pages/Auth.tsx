@@ -678,9 +678,11 @@ export default function Auth() {
         }
       }
 
-      // Check for pending free trial from signup flow
+      // Note: Free trial is ONLY activated for new signups via localStorage pending_free_trial
+      // Existing users logging in should NEVER get trial credits
+      // The pendingTrial path here is kept only for the genuine first-login-after-signup case
       const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
-      if (pendingTrial || intent === 'free_trial') {
+      if (pendingTrial) {
         localStorage.removeItem('alphalens_pending_free_trial');
         const { error: trialError } = await activateFreeTrial();
         if (!trialError) {
