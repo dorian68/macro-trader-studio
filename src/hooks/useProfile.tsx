@@ -90,6 +90,12 @@ export function useProfile() {
     }
   };
 
+  // Trial expiration check: 7 days after trial_started_at
+  const trialStartedAt = (profile as any)?.trial_started_at;
+  const userPlan = (profile as any)?.user_plan;
+  const isTrialExpired = userPlan === 'free_trial' && trialStartedAt && 
+    new Date(trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000 < Date.now();
+
   return {
     profile,
     loading,
@@ -97,6 +103,8 @@ export function useProfile() {
     isApproved: profile?.status === 'approved',
     isPending: profile?.status === 'pending',
     isRejected: profile?.status === 'rejected',
-    isDeleted: (profile as any)?.is_deleted || false
+    isDeleted: (profile as any)?.is_deleted || false,
+    isTrialExpired,
+    userPlan,
   };
 }
