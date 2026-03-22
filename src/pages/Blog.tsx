@@ -226,6 +226,8 @@ export default function Blog() {
                           <img
                             src={post.cover_image || CATEGORY_COVERS[post.category!]}
                             alt={post.title}
+                            width={1200}
+                            height={630}
                             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                             loading="lazy"
                           />

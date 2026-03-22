@@ -244,6 +244,8 @@ export default function BlogPost() {
               <img
                 src={coverImage}
                 alt={post.title}
+                width={1200}
+                height={630}
                 loading="lazy"
                 className="w-full rounded-lg mb-10 shadow-md"
               />
