@@ -252,6 +252,7 @@ export function useCreditManager() {
     effectiveReports,
     loading,
     trialUsed,
+    isProcessing,
     fetchCredits,
     decrementCredit,
     checkCredits,
