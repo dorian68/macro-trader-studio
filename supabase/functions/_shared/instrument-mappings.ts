@@ -50,6 +50,11 @@ export const TWELVE_DATA_MAPPINGS: Record<string, string | null> = {
   'XAG/USD': 'XAG/USD',
   'XAGUSD': 'XAG/USD',
   
+  // ===== CRYPTO no-slash variants =====
+  'BTCUSD': 'BTC/USD',
+  'ETHUSD': 'ETH/USD',
+  'XLMUSD': 'XLM/USD',
+  
   // ===== ENERGY (⚠️ Limited) =====
   'OIL': 'WTI/USD',
   'WTI': 'WTI/USD',
