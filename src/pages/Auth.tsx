@@ -189,7 +189,7 @@ export default function Auth() {
       const isOAuthActive = oauthFlow && oauthStartedAt && (Date.now() - parseInt(oauthStartedAt)) < 300000; // 5min
       const hasOAuthParams = window.location.search.includes('code') || window.location.hash.includes('access_token');
 
-      if (session?.user && window.location.pathname === '/auth' && intent !== 'free_trial' && !isOAuthActive && !hasOAuthParams) {
+      if (session?.user && window.location.pathname === '/auth' && !isOAuthActive && !hasOAuthParams) {
         // Check for pending plan checkout before redirecting to dashboard
         const pendingPlan = localStorage.getItem('alphalens_pending_plan');
         if (pendingPlan) {
