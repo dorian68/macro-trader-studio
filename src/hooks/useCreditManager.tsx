@@ -193,7 +193,11 @@ export function useCreditManager() {
   // 2. Stripe webhook (provision_plan_credits)
   // 3. Admin action
 
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const activateFreeTrial = useCallback(async () => {
+    if (isProcessing) return { data: null, error: null, alreadyUsed: false };
+    setIsProcessing(true);
     try {
       const { data, error } = await supabase.functions.invoke('activate-free-trial');
       
