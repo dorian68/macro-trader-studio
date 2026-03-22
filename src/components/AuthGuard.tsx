@@ -23,6 +23,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   const navigate = useNavigate();
   const { toast } = useToast();
   const [reactivating, setReactivating] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
