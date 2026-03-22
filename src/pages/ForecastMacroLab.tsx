@@ -1221,7 +1221,7 @@ export default function ForecastMacroLab() {
             </div>
           )}
 
-          <div className="h-[600px]">
+          <div className="h-[600px] mb-8">
              <CandlestickChart
                forceMode="light"
                asset={selectedAsset.tradingViewSymbol}
