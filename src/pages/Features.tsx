@@ -1,5 +1,5 @@
 import { SEOHead } from "@/components/SEOHead";
-import { breadcrumbList, webPageSchema } from "@/seo/structuredData";
+import { breadcrumbList, webPageSchema, softwareApplicationSchema } from "@/seo/structuredData";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
