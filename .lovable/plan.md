@@ -1,35 +1,49 @@
 
 
-## Ajouter 6 nouvelles images (8 uploadees, 2 paires de doublons)
+## Ajouter 8 nouvelles images optimisees (WebP, 1200px) pour diversifier les covers
 
-### Analyse des uploads
+### Images uploadees (8 uniques)
 
-Les images 2.png et 6.png sont identiques (laptop+telephone trading). Les images 3.png et 7.png sont identiques (globe sur pieces). Donc **6 images uniques** sur 8 uploadees.
+| # | Description |
+|---|---|
+| 11.png | Analyste examinant des graphiques barres + laptop |
+| 12.png | Lingots or + liasses dollars + fleches marche |
+| 13.png | Taureau or + ours argent (bull vs bear) |
+| 14.png | Telephone + double ecran trading |
+| 21.png | Pieces or + fleche verte montante + chandelier |
+| 22.png | Trader laptop + telephone charts |
+| 23.png | Globe + calculatrice + dollars + chandelier |
+| 24.png | Taureau + ours noirs (bull vs bear sombre) |
 
 ### Etat actuel
 
-36 images pour 86 articles. 15 groupes a 3 articles.
+42 images pour 86 articles. 9 groupes a 3 articles, le reste a 2 ou 1.
 
-### Mapping des 6 nouvelles images
+### Mapping des 8 nouvelles images
 
-| Image source | Fichier cible | Articles reassignes (pris dans groupes de 3) |
+Chaque image prend 1 article d'un groupe de 3 + 1 d'un groupe de 2.
+
+| Image | Fichier cible | Articles reassignes |
 |---|---|---|
-| 2.png (laptop + telephone trading) | `cover-mobile-trading.webp` | 2 du groupe laptop-teal: `factor-models-ai-trading`, `model-validation-ai-trading` |
-| 4.png (carnet INVEST + loupe) | `cover-invest-notebook.webp` | 2 du groupe skyscrapers: `quant-research-workflow-data-to-signal`, `ai-stop-loss-placement` |
-| 1.png (pieces + calculatrice desk) | `cover-coins-desk.webp` | 2 du groupe british-pound: `asian-fx-markets-ai`, `emerging-market-fx-ai` |
-| 7.png (globe sur pieces + fleche) | `cover-global-investment.webp` | 2 du groupe market-rise: `dynamic-rebalancing-ai`, `multi-asset-portfolio-ai` |
-| 5.png (piles pieces + lunettes) | `cover-coins-stacks-reports.webp` | 2 du groupe vault: `esg-portfolio-integration-ai`, `volatility-targeting-ai` |
-| 8.png (skyline ville + fleche) | `cover-city-growth.webp` | 2 du groupe laptop-charts: `natural-gas-trading-ai`, `energy-transition-commodities-ai` |
+| 11.png | `cover-analyst-review.webp` | `regime-detection-trading-ai` (market-arrows×3), `alternative-data-trading-ai` (financial-stats×2) |
+| 12.png | `cover-gold-bars-market.webp` | `usd-strength-ai-model` (dollar-globe×3), `stress-testing-portfolios-ai` (hundred-bills×2) |
+| 13.png | `cover-bull-bear-gold.webp` | `real-time-signal-generation` (finance-charts×3), `future-of-ai-trading-2026` (coins-trading×2) |
+| 14.png | `cover-multi-screen.webp` | `fx-news-sentiment-trading` (dirham×3), `ai-portfolio-monitoring` (hundred-closeup×2) |
+| 21.png | `cover-coins-arrow-up.webp` | `yield-curve-analysis-ai` (bank-facade×3), `gdp-nowcasting-ai-models` (euro-coins×2) |
+| 22.png | `cover-trader-desk.webp` | `ai-backtest-trading-strategy` (laptop-dark×3), `reinforcement-learning-trading` (ai-data×2) |
+| 23.png | `cover-global-finance.webp` | `fx-carry-trade-optimization` (zloty-green×3), `geopolitical-risk-ai-assessment` (central-bank×3) |
+| 24.png | `cover-bull-bear-dark.webp` | `bitcoin-on-chain-analysis-ai` (risk-puzzle×3), `institutional-ai-market-intelligence` (dollars-spread×2) |
 
 ### Resultat
 
-- 6 groupes passent de 3 a 1 article
-- 6 nouvelles images a 2 articles chacune
-- Total: **42 images uniques**, max 3 par image (9 groupes restants)
+- 9 groupes de 3 → tous passent a 2
+- 6 groupes de 2 → passent a 1
+- 8 nouvelles images × 2 articles chacune
+- Total: **50 images uniques**, max **2** par image partout
 
 ### Execution
 
-1. Copier 6 images dans `public/images/blog/` (convertir en WebP, 1200px)
-2. 1 migration SQL UPDATE 12 articles
+1. Convertir 8 images en WebP (1200px) via ImageMagick, copier dans `public/images/blog/`
+2. 1 migration SQL UPDATE 16 articles
 3. Aucun changement de code
 
