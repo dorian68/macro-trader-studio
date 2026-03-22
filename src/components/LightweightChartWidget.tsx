@@ -61,15 +61,30 @@ const TIMEFRAME_MAPPING: Record<string, string> = {
 // Local TwelveData symbol mapping
 const mapToTwelveDataSymbol = (asset: string): string => {
   const mappings: Record<string, string> = {
-    // Forex
+    // Forex (with slash)
     'EUR/USD': 'EUR/USD',
     'GBP/USD': 'GBP/USD',
     'USD/JPY': 'USD/JPY',
     'AUD/USD': 'AUD/USD',
     'NZD/USD': 'NZD/USD',
     'USD/CHF': 'USD/CHF',
+    'USD/CAD': 'USD/CAD',
     'EUR/GBP': 'EUR/GBP',
     'EUR/JPY': 'EUR/JPY',
+    'GBP/JPY': 'GBP/JPY',
+    'AUD/JPY': 'AUD/JPY',
+    // Forex (TradingView-style, no slash)
+    'EURUSD': 'EUR/USD',
+    'GBPUSD': 'GBP/USD',
+    'USDJPY': 'USD/JPY',
+    'AUDUSD': 'AUD/USD',
+    'NZDUSD': 'NZD/USD',
+    'USDCHF': 'USD/CHF',
+    'USDCAD': 'USD/CAD',
+    'EURGBP': 'EUR/GBP',
+    'EURJPY': 'EUR/JPY',
+    'GBPJPY': 'GBP/JPY',
+    'AUDJPY': 'AUD/JPY',
     
     // Crypto
     'Bitcoin': 'BTC/USD',
@@ -78,12 +93,16 @@ const mapToTwelveDataSymbol = (asset: string): string => {
     'ETH': 'ETH/USD',
     'BTC-USD': 'BTC/USD',
     'ETH-USD': 'ETH/USD',
+    'BTCUSD': 'BTC/USD',
+    'ETHUSD': 'ETH/USD',
     
     // Commodities
     'GOLD': 'XAU/USD',
     'Gold': 'XAU/USD',
+    'XAUUSD': 'XAU/USD',
     'SILVER': 'XAG/USD',
     'Silver': 'XAG/USD',
+    'XAGUSD': 'XAG/USD',
     'CRUDE': 'WTI/USD',
     'Crude Oil': 'WTI/USD',
     'NATGAS': 'NG/USD',

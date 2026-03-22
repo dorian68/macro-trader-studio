@@ -14,6 +14,18 @@ export const TWELVE_DATA_MAPPINGS: Record<string, string | null> = {
   'EUR/GBP': 'EUR/GBP',
   'GBP/JPY': 'GBP/JPY',
   'AUD/JPY': 'AUD/JPY',
+  // TradingView-style (no slash)
+  'EURUSD': 'EUR/USD',
+  'GBPUSD': 'GBP/USD',
+  'USDJPY': 'USD/JPY',
+  'USDCHF': 'USD/CHF',
+  'AUDUSD': 'AUD/USD',
+  'NZDUSD': 'NZD/USD',
+  'USDCAD': 'USD/CAD',
+  'EURGBP': 'EUR/GBP',
+  'GBPJPY': 'GBP/JPY',
+  'AUDJPY': 'AUD/JPY',
+  'EURJPY': 'EUR/JPY',
   
   // ===== CRYPTO (✅ Full support) =====
   'BITCOIN': 'BTC/USD',
