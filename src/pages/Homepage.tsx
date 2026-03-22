@@ -16,6 +16,8 @@ import { useCreditManager } from "@/hooks/useCreditManager";
 
 export default function Homepage() {
   const { t } = useTranslation(['common', 'toasts']);
+  const { user } = useAuth();
+  const { trialUsed } = useCreditManager();
   return <div className="min-h-screen bg-background">
     <SEOHead
       titleKey="seo.homeTitle"
