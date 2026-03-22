@@ -36,10 +36,10 @@ const CATEGORY_SLUGS: Record<string, string> = {
 };
 
 const CATEGORY_COVERS: Record<string, string> = {
-  'Quant & Backtesting': '/images/blog/cover-quant-backtesting.jpg',
-  'Portfolio & Risk': '/images/blog/cover-portfolio-risk.jpg',
-  'Institutional & Governance': '/images/blog/cover-institutional-governance.jpg',
-  'Commodities & Macro': '/images/blog/cover-commodities-macro.jpg',
+  'Quant & Backtesting': '/images/blog/cover-quant-backtesting.webp',
+  'Portfolio & Risk': '/images/blog/cover-portfolio-risk.webp',
+  'Institutional & Governance': '/images/blog/cover-institutional-governance.webp',
+  'Commodities & Macro': '/images/blog/cover-commodities-macro.webp',
 };
 
 const CATEGORY_TO_SLUG: Record<string, string> = Object.fromEntries(
@@ -226,6 +226,8 @@ export default function Blog() {
                           <img
                             src={post.cover_image || CATEGORY_COVERS[post.category!]}
                             alt={post.title}
+                            width={1200}
+                            height={630}
                             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                             loading="lazy"
                           />
