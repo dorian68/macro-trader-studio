@@ -64,11 +64,17 @@ export default function Homepage() {
             {t('hero.description')}
           </p>
           <div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link to="/auth?intent=free_trial">
-              <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
-                {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
+            {user && trialUsed ? (
+              <Button size="lg" disabled className="text-lg px-8 py-3 bg-muted text-muted-foreground cursor-not-allowed">
+                <CheckCircle2 className="mr-2 h-5 w-5" /> {t('hero.trialAlreadyActivated', 'Trial Already Activated')}
               </Button>
-            </Link>
+            ) : (
+              <Link to="/auth?intent=free_trial">
+                <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
+                  {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            )}
             <Link to="/auth">
               <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-white/30 text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
                 {t('hero.getStarted')}
