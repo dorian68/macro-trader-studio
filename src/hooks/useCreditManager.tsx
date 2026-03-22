@@ -187,14 +187,17 @@ export function useCreditManager() {
     }
   }, [user?.id, fetchCredits]);
 
-  // Initialize credits for new users
-  useEffect(() => {
-    if (user?.id && !loading && !credits) {
-      initializeCredits();
-    }
-  }, [user?.id, loading, credits, initializeCredits]);
+  // NOTE: Removed dangerous auto-init that called initializeCredits('free_trial')
+  // for users without credits. Credits must only be initialized via:
+  // 1. Signup flow (activate_free_trial_safe)
+  // 2. Stripe webhook (provision_plan_credits)
+  // 3. Admin action
+
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const activateFreeTrial = useCallback(async () => {
+    if (isProcessing) return { data: null, error: null, alreadyUsed: false };
+    setIsProcessing(true);
     try {
       const { data, error } = await supabase.functions.invoke('activate-free-trial');
       
@@ -231,8 +234,10 @@ export function useCreditManager() {
     } catch (err) {
       console.error('Free trial activation error:', err);
       return { data: null, error: err };
+    } finally {
+      setIsProcessing(false);
     }
-  }, [toast, fetchCredits]);
+  }, [toast, fetchCredits, isProcessing]);
 
   // Effective balances: remaining minus engaged
   const effectiveQueries = Math.max(0, (credits?.credits_queries_remaining ?? 0) - engaged.queries);
@@ -247,6 +252,7 @@ export function useCreditManager() {
     effectiveReports,
     loading,
     trialUsed,
+    isProcessing,
     fetchCredits,
     decrementCredit,
     checkCredits,

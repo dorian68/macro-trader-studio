@@ -602,6 +602,42 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_transactions: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          created_at: string | null
+          credit_type: string
+          id: string
+          reference_id: string | null
+          source: string
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          created_at?: string | null
+          credit_type: string
+          id?: string
+          reference_id?: string | null
+          source: string
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          created_at?: string | null
+          credit_type?: string
+          id?: string
+          reference_id?: string | null
+          source?: string
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       credits_engaged: {
         Row: {
           engaged_at: string | null
@@ -1048,6 +1084,24 @@ export type Database = {
         }
         Relationships: []
       }
+      processed_stripe_events: {
+        Row: {
+          event_id: string
+          event_type: string | null
+          processed_at: string | null
+        }
+        Insert: {
+          event_id: string
+          event_type?: string | null
+          processed_at?: string | null
+        }
+        Update: {
+          event_id?: string
+          event_type?: string | null
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           broker_id: string | null
@@ -1398,6 +1452,15 @@ export type Database = {
         Returns: undefined
       }
       is_admin_or_super_user: { Args: { user_id: string }; Returns: boolean }
+      provision_plan_credits: {
+        Args: {
+          p_plan_type: Database["public"]["Enums"]["plan_type"]
+          p_reference_id: string
+          p_source: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       search_chunks_cosine: {
         Args: { match_count: number; query_embedding: string }
         Returns: {
