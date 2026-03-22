@@ -12,7 +12,6 @@ import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
 import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreditManager } from "@/hooks/useCreditManager";
 
 export default function Homepage() {
   const { t } = useTranslation(['common', 'toasts']);
