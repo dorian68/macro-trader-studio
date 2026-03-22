@@ -157,7 +157,8 @@ export default function Auth() {
               navigate('/dashboard');
             }, 0);
           } else if (pendingTrial) {
-            // Deferred free trial activation after email confirmation
+            // Trial activation only for NEW users after email confirmation
+            // Check if this is genuinely a first-time login (pending trial from signup)
             localStorage.removeItem('alphalens_pending_free_trial');
             setTimeout(async () => {
               try {
@@ -171,7 +172,8 @@ export default function Auth() {
               }
               navigate('/dashboard');
             }, 0);
-          } else if (intent !== 'free_trial') {
+          } else {
+            // No pending plan or trial — redirect to dashboard
             navigate('/dashboard');
           }
         }
@@ -187,7 +189,7 @@ export default function Auth() {
       const isOAuthActive = oauthFlow && oauthStartedAt && (Date.now() - parseInt(oauthStartedAt)) < 300000; // 5min
       const hasOAuthParams = window.location.search.includes('code') || window.location.hash.includes('access_token');
 
-      if (session?.user && window.location.pathname === '/auth' && intent !== 'free_trial' && !isOAuthActive && !hasOAuthParams) {
+      if (session?.user && window.location.pathname === '/auth' && !isOAuthActive && !hasOAuthParams) {
         // Check for pending plan checkout before redirecting to dashboard
         const pendingPlan = localStorage.getItem('alphalens_pending_plan');
         if (pendingPlan) {
@@ -412,30 +414,12 @@ export default function Auth() {
             });
           }
 
-          // Handle free trial if needed
-          if (intent === 'free_trial') {
-            const { error: trialError } = await activateFreeTrial();
-            if (!trialError) {
-              toast({
-                title: t('success.freeTrialActivated'),
-                description: t('success.freeTrialActivatedDescription'),
-              });
-              navigate('/payment-success?type=free_trial');
-              setProcessingOAuth(false);
-              return;
-            }
-          }
-
-          // Navigate to dashboard
+          // Navigate to dashboard (no trial activation for returning users)
           // Clear OAuth flags
           localStorage.removeItem('oauth_flow');
           localStorage.removeItem('oauth_started_at');
 
-          if (intent !== 'free_trial') {
-            navigate('/dashboard');
-          } else {
-            navigate('/');
-          }
+          navigate('/dashboard');
 
           setProcessingOAuth(false);
         }
@@ -694,9 +678,11 @@ export default function Auth() {
         }
       }
 
-      // Check for pending free trial from signup flow
+      // Note: Free trial is ONLY activated for new signups via localStorage pending_free_trial
+      // Existing users logging in should NEVER get trial credits
+      // The pendingTrial path here is kept only for the genuine first-login-after-signup case
       const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
-      if (pendingTrial || intent === 'free_trial') {
+      if (pendingTrial) {
         localStorage.removeItem('alphalens_pending_free_trial');
         const { error: trialError } = await activateFreeTrial();
         if (!trialError) {

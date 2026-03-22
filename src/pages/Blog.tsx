@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ const CATEGORY_TO_SLUG: Record<string, string> = Object.fromEntries(
 );
 
 export default function Blog() {
+  const { user } = useAuth();
   const { category: categoryParam, page: pageParam } = useParams();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -292,9 +294,9 @@ export default function Blog() {
             <p className="text-muted-foreground mb-6">
               Get institutional-grade trade setups, macro commentary, and portfolio analytics powered by AI.
             </p>
-            <Link to="/auth">
+            <Link to={user ? "/dashboard" : "/auth?intent=free_trial&tab=signup"}>
               <Button size="lg">
-                Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                {user ? "Go to Dashboard" : "Start Free Trial"} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>

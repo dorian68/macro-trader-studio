@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
 import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
@@ -12,12 +12,10 @@ import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
 import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreditManager } from "@/hooks/useCreditManager";
 
 export default function Homepage() {
   const { t } = useTranslation(['common', 'toasts']);
   const { user } = useAuth();
-  const { trialUsed } = useCreditManager();
   return <div className="min-h-screen bg-background">
     <SEOHead
       titleKey="seo.homeTitle"
@@ -64,22 +62,28 @@ export default function Homepage() {
             {t('hero.description')}
           </p>
           <div className="inline-flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {user && trialUsed ? (
-              <Button size="lg" disabled className="text-lg px-8 py-3 bg-muted text-muted-foreground cursor-not-allowed">
-                <CheckCircle2 className="mr-2 h-5 w-5" /> {t('hero.trialAlreadyActivated', 'Trial Already Activated')}
-              </Button>
-            ) : (
-              <Link to="/auth?intent=free_trial">
+            {user ? (
+              /* Authenticated user → go to dashboard, never show trial CTA */
+              <Link to="/dashboard">
                 <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
-                  {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
+                  {t('hero.goToDashboard', 'Go to Dashboard')} <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
+            ) : (
+              /* Not authenticated → show trial CTA pointing to signup */
+              <>
+                <Link to="/auth?intent=free_trial&tab=signup">
+                  <Button size="lg" className="text-lg px-8 py-3 bg-primary text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
+                    {t('hero.tryDemo')} <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-white/30 text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
+                    {t('hero.getStarted')}
+                  </Button>
+                </Link>
+              </>
             )}
-            <Link to="/auth">
-              <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-white/30 text-white hover:bg-accent hover:text-white hover:border-accent transition-colors duration-300">
-                {t('hero.getStarted')}
-              </Button>
-            </Link>
           </div>
         </div>
       </div>
@@ -155,12 +159,14 @@ export default function Homepage() {
               {t('cta.requestDemo')}
             </Button>
           </Link>
-          {user && trialUsed ? (
-            <Button size="lg" variant="outline" disabled className="text-lg px-8 py-3 opacity-60 cursor-not-allowed">
-              <CheckCircle2 className="mr-2 h-5 w-5" /> {t('hero.trialAlreadyActivated', 'Trial Already Activated')}
-            </Button>
+          {user ? (
+            <Link to="/dashboard">
+              <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+                {t('hero.goToDashboard', 'Go to Dashboard')}
+              </Button>
+            </Link>
           ) : (
-            <Link to="/auth?intent=free_trial">
+            <Link to="/auth?intent=free_trial&tab=signup">
               <Button size="lg" variant="outline" className="text-lg px-8 py-3 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
                 {t('cta.startFreeTrial')}
               </Button>

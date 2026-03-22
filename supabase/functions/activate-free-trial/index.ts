@@ -39,6 +39,21 @@ serve(async (req) => {
     
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Guard: reject if user already has a paid plan
+    const { data: profileData } = await supabaseClient
+      .from('profiles')
+      .select('user_plan')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const paidPlans = ['basic', 'standard', 'premium'];
+    if (profileData?.user_plan && paidPlans.includes(profileData.user_plan)) {
+      logStep("REJECTED: user already has paid plan", { plan: profileData.user_plan });
+      return new Response(
+        JSON.stringify({ error: 'Users with a paid plan cannot activate a free trial', reason: 'has_paid_plan' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
     // Call the safe, atomic, additive RPC
     const { data, error } = await supabaseClient.rpc('activate_free_trial_safe', {
       p_user_id: user.id

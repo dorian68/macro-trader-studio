@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PublicNavbar from "@/components/PublicNavbar";
@@ -81,6 +82,7 @@ function renderMarkdown(md: string): string {
 }
 
 export default function BlogPost() {
+  const { user } = useAuth();
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPostData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -266,9 +268,9 @@ export default function BlogPost() {
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                 Get AI-powered trade setups, macro commentary, and portfolio analytics — start your free trial today.
               </p>
-              <Link to="/auth">
+              <Link to={user ? "/dashboard" : "/auth?intent=free_trial&tab=signup"}>
                 <Button size="lg">
-                  Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                  {user ? "Go to Dashboard" : "Start Free Trial"} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </div>
