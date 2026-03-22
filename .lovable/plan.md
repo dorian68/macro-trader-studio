@@ -1,81 +1,118 @@
 
 
-# Refondre le Free Trial : uniquement pour les nouveaux utilisateurs + conversion auto
+# Audit complet du systeme de billing/credits — Vulnerabilites et plan de remediation
 
-## Probleme actuel
+## Audit : vulnerabilites identifiees
 
-Le bouton "Start Free Trial" est accessible a tous, meme aux utilisateurs deja connectes avec des credits existants. Un utilisateur avec un abonnement payant peut cliquer dessus et declencher `activateFreeTrial()`, ce qui ajoute des credits gratuits en plus de son plan paye.
+### CRITIQUE 1 — `initialize_user_credits` ecrase les credits (PARTIELLEMENT CORRIGE)
 
-**Points d'entree du bug :**
-1. **Homepage** — 2 boutons "Start Free Trial" visibles meme pour les utilisateurs connectes (juste masques si `trialUsed`)
-2. **Auth.tsx** — Si un utilisateur connecte arrive sur `/auth?intent=free_trial`, le trial est active directement
-3. **Blog/BlogPost** — Boutons "Start Free Trial" en bas de page (sans aucune guard)
-4. **onAuthStateChange** dans Auth.tsx — Active le trial pour un utilisateur existant qui se reconnecte
+Le RPC `initialize_user_credits` utilise `ON CONFLICT DO UPDATE SET credits = plan.max_credits`. Il est appele dans :
+- `stripe-webhook` : `checkout.session.completed`, `subscription.updated`, `invoice.payment_succeeded`, `subscription.deleted` → **ecrase les credits a chaque appel**
+- `renew-credits` : renouvellement periodique → **ecrase les credits restants au lieu de les recharger**
+- `useCreditManager.tsx` ligne 82 : auto-initialization pour les nouveaux users sans credits → OK pour le premier appel, mais dangereux si appele deux fois
 
-## Nouvelle logique metier
+**Le trial a ete corrige** avec `activate_free_trial_safe` (additif), mais les webhooks Stripe utilisent encore `initialize_user_credits` qui ecrase.
 
-Le Free Trial est **exclusivement pour les nouveaux utilisateurs** :
-- L'utilisateur s'inscrit → recoit 7 jours de trial avec credits
-- A la fin des 7 jours → redirection automatique vers checkout du plan Basic (le moins cher)
-- Un utilisateur deja inscrit ne doit **jamais** voir "Start Free Trial"
+**Scenario de bug actif :** Un utilisateur avec 50 credits queries restants (sur 80 du plan premium) recoit un `invoice.payment_succeeded` → ses credits sont reinitialises a 80, OK dans ce cas. Mais si un `checkout.session.completed` est rejoue par Stripe (retry), les credits sont aussi reinitialises.
 
-## Changements
+### CRITIQUE 2 — Pas d'idempotence sur les webhooks Stripe
 
-### 1. Homepage.tsx — Conditionner les CTA
+Le webhook ne verifie pas si un `event.id` a deja ete traite. Stripe peut renvoyer le meme evenement plusieurs fois. Actuellement :
+- `checkout.session.completed` → appelle `initialize_user_credits` a chaque replay (ecrase)
+- `invoice.payment_succeeded` → idem
+- `customer.subscription.updated` → idem
 
-**Logique actuelle :** Si `user && trialUsed` → bouton disabled, sinon → lien vers `/auth?intent=free_trial`
+Pas de table `processed_webhook_events` pour deduplication.
 
-**Nouvelle logique :**
-- Si `user` (connecte, quel que soit le statut trial) → **ne pas afficher** le bouton "Start Free Trial" du tout. Afficher uniquement "Go to Dashboard"
-- Si pas connecte → garder le lien `/auth?intent=free_trial&tab=signup` (force l'onglet signup)
+### CRITIQUE 3 — `renew-credits` ecrase les credits non consommes
 
-Meme logique pour le CTA en bas de page.
+Le cron `renew-credits` appelle `initialize_user_credits` qui reset les credits au max du plan. Un utilisateur qui a 50/80 queries se retrouve avec 80/80 — dans ce cas c'est le comportement attendu pour un renouvellement. Mais si le cron s'execute deux fois (retry), pas de probleme car c'est idempotent pour le meme cycle. **Risque faible.**
 
-### 2. Auth.tsx — Bloquer le trial pour les utilisateurs existants
+### MOYEN 4 — Race condition sur `useCreditManager.initializeCredits`
 
-**handleSignIn (ligne ~697-711)** : Supprimer la logique qui active le trial quand un utilisateur existant se connecte avec `intent=free_trial`. Un login ne doit jamais activer de trial.
+Ligne 191-195 : si `!loading && !credits` → appelle `initializeCredits('free_trial')`. Si deux onglets sont ouverts, deux appels concurrents peuvent arriver. Grace au `ON CONFLICT`, le second ecrase le premier. **Risque faible** car meme valeur.
 
-**onAuthStateChange (ligne ~159-173)** : Supprimer le bloc `pendingTrial` qui active le trial quand un utilisateur existant revient via refresh.
+### MOYEN 5 — `handleSignIn` dans Auth.tsx peut encore activer le trial
 
-**Redirect guard (ligne ~190)** : Supprimer l'exception `intent !== 'free_trial'` — un utilisateur connecte doit toujours etre redirige au dashboard.
+Lignes 684-697 : si `localStorage` contient `alphalens_pending_free_trial`, le trial est active au login. Un utilisateur pourrait manuellement ecrire dans localStorage et activer le trial. **Mitigation existante :** le RPC `activate_free_trial_safe` verifie `trial_used` cote serveur, donc le second appel est rejete. **Risque residuel faible.**
 
-**handleOAuthEvent (ligne ~416-427)** : Supprimer le bloc qui active le trial pour un utilisateur Google existant.
+### MOYEN 6 — Credits negatifs theoriquement possibles
 
-**Le trial reste active uniquement dans le flow signup** (ligne ~541) via `localStorage.setItem('alphalens_pending_free_trial')`, qui est consomme une seule fois apres la confirmation email.
+Le RPC `decrement_credit` fait `SET col = col - 1 WHERE col > 0`, ce qui est safe. Mais `auto_manage_credits` trigger fait `SET col = col - 1` avec un check `IF current_credits > 0` — race condition si deux jobs completent en meme temps. Le `FOR UPDATE` lock existe mais sur le SELECT, pas sur l'UPDATE. **Risque faible** grace au lock.
 
-### 3. Blog.tsx + BlogPost.tsx — CTA conditionnel
+### MINEUR 7 — Frontend ne desactive pas les boutons pendant le processing du trial/payment
 
-Remplacer les boutons "Start Free Trial" hardcodes par une logique conditionnelle :
-- Non connecte → "Start Free Trial" vers `/auth?intent=free_trial&tab=signup`
-- Connecte → "Go to Dashboard" vers `/dashboard`
+Le bouton "Start Free Trial" dans Homepage n'a pas de state `loading`. Double-click possible. Mitigation cote serveur existante.
 
-### 4. Backend — Ajouter une guard supplementaire dans activate-free-trial
+---
 
-Dans `activate-free-trial/index.ts` et/ou dans le RPC `activate_free_trial_safe` :
-- Verifier que l'utilisateur n'a **pas** de plan paye (`user_plan` != basic/standard/premium)
-- Si l'utilisateur a deja un plan paye, retourner une erreur 403
+## Plan de remediation
 
-### 5. Expiration du trial → redirection checkout Basic
+### Phase 1 — Idempotence webhook (CRITIQUE)
 
-Ajouter une logique frontend dans le `Layout.tsx` ou `AuthGuard.tsx` :
-- Si `user.plan_type === 'free_trial'` ET `trial_started_at + 7 jours < now()` → afficher une modale "Your trial has expired" avec un CTA vers le checkout Basic
-- Utiliser les donnees deja presentes dans `profiles.trial_started_at`
+**Fichier : migration SQL**
+- Creer une table `processed_stripe_events` avec `event_id TEXT PRIMARY KEY, processed_at TIMESTAMPTZ DEFAULT now()`
 
-### Fichiers modifies
+**Fichier : `supabase/functions/stripe-webhook/index.ts`**
+- Au debut du traitement de chaque event : `INSERT INTO processed_stripe_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING event_id`
+- Si pas de `RETURNING` → event deja traite, return 200 immediatement
+- Cela garantit qu'un replay Stripe n'ecrase jamais les credits
+
+### Phase 2 — Credit ledger (audit trail)
+
+**Fichier : migration SQL**
+- Creer une table `credit_transactions`:
+  ```
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  user_id UUID NOT NULL
+  transaction_type TEXT NOT NULL  -- 'plan_provision', 'trial', 'usage', 'renewal', 'adjustment'
+  credit_type TEXT NOT NULL       -- 'queries', 'ideas', 'reports'
+  amount INTEGER NOT NULL         -- positif = ajout, negatif = consommation
+  source TEXT NOT NULL             -- 'stripe_webhook', 'trial_activation', 'job_completion', 'admin', 'cron_renewal'
+  reference_id TEXT                -- event_id stripe, job_id, etc.
+  balance_after INTEGER
+  created_at TIMESTAMPTZ DEFAULT now()
+  ```
+- RLS : users voient les leurs, admins voient tout
+
+**Note :** Le ledger est un **audit trail** supplementaire, pas un remplacement du systeme actuel. `user_credits` reste la source de verite pour les balances (performances). Le ledger permet le debugging et la reconciliation.
+
+### Phase 3 — Wrapper RPC `provision_plan_credits` (remplace `initialize_user_credits` dans les webhooks)
+
+**Fichier : migration SQL**
+- Creer un RPC `provision_plan_credits(p_user_id, p_plan_type, p_source, p_reference_id)` :
+  - Pour `checkout.session.completed` (premier achat) : SET credits au max du plan + insert ledger
+  - Pour `invoice.payment_succeeded` (renouvellement) : SET credits au max du plan + insert ledger
+  - Pour `subscription.deleted` : SET credits a 0 + insert ledger
+  - Chaque appel enregistre dans `credit_transactions`
+  - Idempotent via `p_reference_id` : si deja dans le ledger, skip
+
+**Fichier : `supabase/functions/stripe-webhook/index.ts`**
+- Remplacer tous les appels `initialize_user_credits` par `provision_plan_credits` avec le `event.id` comme reference
+
+**Fichier : `supabase/functions/renew-credits/index.ts`**
+- Remplacer `initialize_user_credits` par `provision_plan_credits` avec reference `renew_{user_id}_{date}`
+
+### Phase 4 — Frontend safety
+
+**Fichier : `src/hooks/useCreditManager.tsx`**
+- Supprimer l'auto-init `useEffect` qui appelle `initializeCredits('free_trial')` pour les users sans credits (lignes 191-195). C'est dangereux — les credits doivent etre initialises uniquement par le signup flow ou le webhook.
+- Ajouter un `isProcessing` state pour empecher les appels concurrents a `activateFreeTrial`
+
+### Fichiers modifies (resume)
 
 | Fichier | Changement |
 |---------|-----------|
-| `src/pages/Homepage.tsx` | CTA conditionnel : masquer trial pour users connectes |
-| `src/pages/Auth.tsx` | Supprimer activation trial pour login/reconnexion |
-| `src/pages/Blog.tsx` | CTA conditionnel |
-| `src/pages/BlogPost.tsx` | CTA conditionnel |
-| `supabase/functions/activate-free-trial/index.ts` | Guard: refuser si plan paye |
-| `src/components/AuthGuard.tsx` ou `Layout.tsx` | Modale expiration trial → checkout Basic |
+| Migration SQL | Tables `processed_stripe_events`, `credit_transactions` + RPC `provision_plan_credits` |
+| `stripe-webhook/index.ts` | Deduplication par event_id + utilisation `provision_plan_credits` + ledger |
+| `renew-credits/index.ts` | Utilisation `provision_plan_credits` avec reference idempotente |
+| `useCreditManager.tsx` | Supprimer auto-init dangereux + ajouter `isProcessing` guard |
 
 ### Ce qui ne change PAS
 
-- Le RPC `activate_free_trial_safe` (deja safe et idempotent)
-- Le systeme de credits existant
-- Les flows Stripe
-- L'admin panel
+- `activate_free_trial_safe` — deja corrige et safe
+- `try_engage_credit` / `auto_manage_credits` / `decrement_credit` — logique de consommation intacte
+- `create-checkout` — inchange
+- Toutes les pages frontend (Homepage, Auth, Blog) — deja corrigees dans le dernier patch
+- Le systeme d'authentification
 
