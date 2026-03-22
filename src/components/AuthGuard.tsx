@@ -19,7 +19,7 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children, requireApproval = true }: AuthGuardProps) {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { profile, loading: profileLoading, isPending, isRejected, isApproved, isDeleted } = useProfile();
+  const { profile, loading: profileLoading, isPending, isRejected, isApproved, isDeleted, isTrialExpired } = useProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [reactivating, setReactivating] = useState(false);
