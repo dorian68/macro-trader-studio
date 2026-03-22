@@ -87,7 +87,7 @@ export default function Features() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead titleKey="seo.featuresTitle" descriptionKey="seo.featuresDescription" canonicalPath="/features" jsonLd={[breadcrumbList('Features', '/features'), webPageSchema('Features', '/features', 'AI-powered trade setups, macro commentary, research reports, and portfolio intelligence.')]} />
+      <SEOHead titleKey="seo.featuresTitle" descriptionKey="seo.featuresDescription" canonicalPath="/features" jsonLd={[breadcrumbList('Features', '/features'), webPageSchema('Features', '/features', 'AI-powered trade setups, macro commentary, research reports, and portfolio intelligence.'), softwareApplicationSchema]} />
       <PublicNavbar />
 
       <section className="pt-10 pb-8 px-4 text-center bg-gradient-to-br from-background via-background to-secondary/10">
