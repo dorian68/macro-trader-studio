@@ -46,8 +46,9 @@ export default function Homepage() {
             <div className="flex items-center gap-4">
               <img
                 src="/alphalens_logo_new.png"
-                alt="alphaLens.ai logo"
+                alt="alphaLens.ai – AI-powered trading intelligence platform"
                 className="h-56 sm:h-52 md:h-64 w-auto object-contain"
+                fetchPriority="high"
               />
             </div>
           </div>

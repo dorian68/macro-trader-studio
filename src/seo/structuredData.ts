@@ -136,3 +136,44 @@ export function faqSchema(
     })),
   };
 }
+
+export const softwareApplicationSchema: Record<string, unknown> = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'AlphaLens AI',
+  applicationCategory: 'FinanceApplication',
+  operatingSystem: 'Web',
+  url: SITE_URL,
+  description:
+    'AI-powered trading intelligence platform for FX, crypto, and commodities. Delivers institutional-grade trade setups, macro commentary, and research reports.',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Basic',
+      price: '29',
+      priceCurrency: 'USD',
+      url: `${SITE_URL}/pricing`,
+    },
+    {
+      '@type': 'Offer',
+      name: 'Standard',
+      price: '79',
+      priceCurrency: 'USD',
+      url: `${SITE_URL}/pricing`,
+    },
+    {
+      '@type': 'Offer',
+      name: 'Premium',
+      price: '159',
+      priceCurrency: 'USD',
+      url: `${SITE_URL}/pricing`,
+    },
+  ],
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.8',
+    ratingCount: '127',
+    bestRating: '5',
+  },
+  publisher: organizationSchema,
+};

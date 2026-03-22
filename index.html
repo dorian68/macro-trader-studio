@@ -34,5 +34,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- GA config: placed after app script for non-blocking parsing -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-KYJV42E72H');
+    </script>
   </body>
 </html>
