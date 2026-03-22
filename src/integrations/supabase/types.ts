@@ -1058,6 +1058,8 @@ export type Database = {
           id: string
           is_deleted: boolean
           status: string
+          trial_started_at: string | null
+          trial_used: boolean
           updated_at: string
           user_id: string
           user_plan: Database["public"]["Enums"]["plan_type"] | null
@@ -1071,6 +1073,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           status?: string
+          trial_started_at?: string | null
+          trial_used?: boolean
           updated_at?: string
           user_id: string
           user_plan?: Database["public"]["Enums"]["plan_type"] | null
@@ -1084,6 +1088,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           status?: string
+          trial_started_at?: string | null
+          trial_used?: boolean
           updated_at?: string
           user_id?: string
           user_plan?: Database["public"]["Enums"]["plan_type"] | null
@@ -1360,6 +1366,7 @@ export type Database = {
       }
     }
     Functions: {
+      activate_free_trial_safe: { Args: { p_user_id: string }; Returns: Json }
       backfill_ai_trade_setups: {
         Args: never
         Returns: {
