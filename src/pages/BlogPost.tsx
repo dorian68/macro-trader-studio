@@ -82,6 +82,7 @@ function renderMarkdown(md: string): string {
 }
 
 export default function BlogPost() {
+  const { user } = useAuth();
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPostData | null>(null);
   const [loading, setLoading] = useState(true);
