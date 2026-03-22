@@ -157,7 +157,8 @@ export default function Auth() {
               navigate('/dashboard');
             }, 0);
           } else if (pendingTrial) {
-            // Deferred free trial activation after email confirmation
+            // Trial activation only for NEW users after email confirmation
+            // Check if this is genuinely a first-time login (pending trial from signup)
             localStorage.removeItem('alphalens_pending_free_trial');
             setTimeout(async () => {
               try {
@@ -171,7 +172,8 @@ export default function Auth() {
               }
               navigate('/dashboard');
             }, 0);
-          } else if (intent !== 'free_trial') {
+          } else {
+            // No pending plan or trial — redirect to dashboard
             navigate('/dashboard');
           }
         }
