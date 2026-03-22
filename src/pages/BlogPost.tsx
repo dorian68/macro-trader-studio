@@ -243,10 +243,11 @@ export default function BlogPost() {
             {coverImage && (
               <img
                 src={coverImage}
-                alt={post.title}
+                alt={`${post.title}${post.category ? ` – ${post.category}` : ''}`}
                 width={1200}
                 height={630}
-                loading="lazy"
+                loading="eager"
+                fetchPriority="high"
                 className="w-full rounded-lg mb-10 shadow-md"
               />
             )}

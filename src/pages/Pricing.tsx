@@ -1,6 +1,6 @@
 import { SEOHead } from "@/components/SEOHead";
 import { Link } from 'react-router-dom';
-import { breadcrumbList, webPageSchema } from "@/seo/structuredData";
+import { breadcrumbList, webPageSchema, softwareApplicationSchema } from "@/seo/structuredData";
 import React, { useEffect, useState } from 'react';
 import { Check, User, LogIn } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -168,7 +168,7 @@ const Pricing = () => {
     return checkoutLoading === planName.toLowerCase();
   };
   return <>
-    <SEOHead titleKey="seo.pricingTitle" descriptionKey="seo.pricingDescription" canonicalPath="/pricing" jsonLd={[breadcrumbList('Pricing', '/pricing'), webPageSchema('Pricing', '/pricing', 'Choose the right AlphaLens AI plan for your trading research needs.')]} />
+    <SEOHead titleKey="seo.pricingTitle" descriptionKey="seo.pricingDescription" canonicalPath="/pricing" jsonLd={[breadcrumbList('Pricing', '/pricing'), webPageSchema('Pricing', '/pricing', 'Choose the right AlphaLens AI plan for your trading research needs.'), softwareApplicationSchema]} />
     <PublicNavbar />
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">

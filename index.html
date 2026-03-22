@@ -21,18 +21,12 @@
     <link rel="preload" as="image" type="image/webp" href="/images/hero-bg.webp" fetchpriority="high" />
     
     <!-- PERFORMANCE: Preload critical font weights -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" as="style" />
-    <!-- PERFORMANCE: Optimized font loading with font-display swap -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" as="style" />
+    <!-- PERFORMANCE: Optimized font loading — only 3 weights (400, 600, 700) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 
-    <!-- Google Analytics (deferred) -->
-    <script async defer src="https://www.googletagmanager.com/gtag/js?id=G-KYJV42E72H"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-KYJV42E72H');
-    </script>
+    <!-- Google Analytics (fully deferred, non-blocking) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-KYJV42E72H"></script>
 
     <!-- OG/Twitter tags managed dynamically by react-helmet-async per page -->
   </head>
@@ -40,5 +34,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- GA config: placed after app script for non-blocking parsing -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-KYJV42E72H');
+    </script>
   </body>
 </html>
