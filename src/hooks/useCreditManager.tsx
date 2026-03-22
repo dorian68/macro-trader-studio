@@ -27,13 +27,14 @@ export function useCreditManager() {
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [engaged, setEngaged] = useState<EngagedCounts>({ queries: 0, ideas: 0, reports: 0 });
   const [loading, setLoading] = useState(true);
+  const [trialUsed, setTrialUsed] = useState(false);
 
   const fetchCredits = useCallback(async () => {
     if (!user?.id) return;
 
     try {
-      // Fetch credits and engaged counts in parallel
-      const [creditsResult, engagedResult] = await Promise.all([
+      // Fetch credits, engaged counts, and trial status in parallel
+      const [creditsResult, engagedResult, profileResult] = await Promise.all([
         supabase
           .from('user_credits')
           .select('*')
@@ -42,7 +43,12 @@ export function useCreditManager() {
         supabase
           .from('credits_engaged')
           .select('feature')
+          .eq('user_id', user.id),
+        supabase
+          .from('profiles')
+          .select('trial_used')
           .eq('user_id', user.id)
+          .maybeSingle()
       ]);
 
       if (creditsResult.error) {
@@ -59,6 +65,9 @@ export function useCreditManager() {
         ideas: engagedRows.filter(r => r.feature === 'ideas').length,
         reports: engagedRows.filter(r => r.feature === 'reports').length,
       });
+
+      // Set trial status
+      setTrialUsed(profileResult.data?.trial_used ?? false);
     } catch (err) {
       console.error('Error fetching credits:', err);
     } finally {
@@ -121,12 +130,9 @@ export function useCreditManager() {
         return false;
       }
 
-      // Force immediate refresh of credits
       await fetchCredits();
       
       console.log(`✅ [CreditSystem] Deducted 1 credit for ${creditType}`);
-      
-      // Trigger global credit refresh event for other components
       window.dispatchEvent(new Event('creditsUpdated'));
       
       return true;
@@ -140,7 +146,6 @@ export function useCreditManager() {
     if (!credits || !user?.id) return false;
     
     try {
-      // 1. Obtenir les crédits totaux
       const creditColumn = {
         'queries': 'credits_queries_remaining',
         'ideas': 'credits_ideas_remaining',
@@ -149,18 +154,11 @@ export function useCreditManager() {
       
       const totalCredits = credits[creditColumn as keyof typeof credits] as number || 0;
       
-      // 2. Obtenir les crédits engagés
-      const featureMap = {
-        'queries': 'queries',
-        'ideas': 'ideas',
-        'reports': 'reports'
-      };
-      
       const { data: engaged, error } = await supabase
         .from('credits_engaged')
         .select('id')
         .eq('user_id', user.id)
-        .eq('feature', featureMap[creditType]);
+        .eq('feature', creditType);
       
       if (error) {
         console.error('[CreditManager] Error fetching engaged credits:', error);
@@ -201,6 +199,20 @@ export function useCreditManager() {
       const { data, error } = await supabase.functions.invoke('activate-free-trial');
       
       if (error) {
+        // Handle 409 (already used) gracefully
+        const isAlreadyUsed = error.message?.includes('already been activated') || 
+                              (error as any)?.status === 409;
+        
+        if (isAlreadyUsed) {
+          console.log('[CreditSystem] Free trial already used');
+          setTrialUsed(true);
+          toast({
+            title: "Trial Already Activated",
+            description: "Your free trial has already been used. Your credits remain unchanged.",
+          });
+          return { data: null, error: null, alreadyUsed: true };
+        }
+        
         console.error('Error activating free trial:', error);
         toast({
           title: "Activation Failed",
@@ -210,7 +222,8 @@ export function useCreditManager() {
         return { data: null, error };
       }
       
-      // Refresh credits after activation
+      // Success — refresh credits and mark trial as used
+      setTrialUsed(true);
       await fetchCredits();
       window.dispatchEvent(new Event('creditsUpdated'));
       
@@ -233,6 +246,7 @@ export function useCreditManager() {
     effectiveIdeas,
     effectiveReports,
     loading,
+    trialUsed,
     fetchCredits,
     decrementCredit,
     checkCredits,

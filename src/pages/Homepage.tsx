@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import SignalsEngineVisual from "@/components/homepage/SignalsEngineVisual";
 import MacroDeskVisual from "@/components/homepage/MacroDeskVisual";
@@ -11,6 +11,8 @@ import { SEOHead } from "@/components/SEOHead";
 import { Footer } from "@/components/Footer";
 import { RelatedPages } from "@/components/RelatedPages";
 import { organizationSchema, webSiteSchema, siteNavigationSchema } from "@/seo/structuredData";
+import { useAuth } from "@/hooks/useAuth";
+import { useCreditManager } from "@/hooks/useCreditManager";
 
 export default function Homepage() {
   const { t } = useTranslation(['common', 'toasts']);
