@@ -234,8 +234,10 @@ export function useCreditManager() {
     } catch (err) {
       console.error('Free trial activation error:', err);
       return { data: null, error: err };
+    } finally {
+      setIsProcessing(false);
     }
-  }, [toast, fetchCredits]);
+  }, [toast, fetchCredits, isProcessing]);
 
   // Effective balances: remaining minus engaged
   const effectiveQueries = Math.max(0, (credits?.credits_queries_remaining ?? 0) - engaged.queries);

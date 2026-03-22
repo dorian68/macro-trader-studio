@@ -25,14 +25,12 @@ serve(async (req) => {
     
     const webhookSecret = config.webhookSecret;
 
-    // Create Supabase client with service role
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    // Get raw body and signature
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
 
@@ -53,12 +51,65 @@ serve(async (req) => {
 
     logStep("Processing event", { type: event.type, id: event.id });
 
+    // ============================================================
+    // IDEMPOTENCY GUARD: Deduplicate Stripe events
+    // ============================================================
+    const { data: insertedEvent, error: dedupError } = await supabase
+      .from('processed_stripe_events')
+      .insert({ event_id: event.id, event_type: event.type })
+      .select('event_id')
+      .maybeSingle();
+
+    if (dedupError) {
+      // Unique constraint violation = already processed
+      if (dedupError.code === '23505') {
+        logStep("Event already processed (idempotency skip)", { eventId: event.id });
+        return new Response(JSON.stringify({ received: true, skipped: true }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      logStep("WARNING: Dedup check error (proceeding anyway)", { error: dedupError.message });
+    }
+
+    if (!insertedEvent) {
+      logStep("Event already processed (idempotency skip)", { eventId: event.id });
+      return new Response(JSON.stringify({ received: true, skipped: true }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // ============================================================
+    // Helper: find user by email
+    // ============================================================
+    const findUserByEmail = async (email: string) => {
+      const { data: userList } = await supabase.auth.admin.listUsers();
+      return userList?.users?.find(u => u.email === email) || null;
+    };
+
+    // ============================================================
+    // Helper: resolve plan type from price ID
+    // ============================================================
+    const resolvePlanType = async (priceId: string): Promise<string> => {
+      const { data: planData, error: planError } = await supabase
+        .from('plan_parameters')
+        .select('plan_type')
+        .eq('stripe_price_id', priceId)
+        .single();
+
+      if (planError || !planData?.plan_type) {
+        logStep("Could not find plan for price, using fallback", { priceId });
+        return 'premium';
+      }
+      return planData.plan_type;
+    };
+
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         logStep("Checkout session completed", { sessionId: session.id });
         
-        // Get customer email
         const customerEmail = session.customer_email || 
           (session.customer && typeof session.customer === 'string' ? 
             (await stripe.customers.retrieve(session.customer) as Stripe.Customer).email : null);
@@ -68,14 +119,7 @@ serve(async (req) => {
           break;
         }
 
-        // Find user by email
-        const { data: userList, error: listError } = await supabase.auth.admin.listUsers();
-        let existingUser = null;
-        
-        if (userList?.users) {
-          existingUser = userList.users.find(user => user.email === customerEmail);
-        }
-        
+        let existingUser = await findUserByEmail(customerEmail);
         let userId: string;
         
         if (existingUser) {
@@ -100,54 +144,37 @@ serve(async (req) => {
           logStep("Created new user", { userId, email: customerEmail });
         }
 
-        // Get plan type from metadata or fallback to line items
         let planType = session.metadata?.plan_type;
         
         if (!planType) {
-          logStep("No plan_type in metadata, fetching from line items");
-          
           const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
             expand: ['line_items']
           });
-          
           const priceId = fullSession.line_items?.data[0]?.price?.id;
-          
           if (priceId) {
-            const { data: planData, error: planError } = await supabase
-              .from('plan_parameters')
-              .select('plan_type')
-              .eq('stripe_price_id', priceId)
-              .single();
-            
-            if (planData?.plan_type) {
-              planType = planData.plan_type;
-              logStep("Determined plan from price_id", { priceId, planType });
-            } else {
-              logStep("Could not determine plan from price_id", { priceId, error: planError });
-            }
+            planType = await resolvePlanType(priceId);
           }
         }
         
         if (planType) {
-          // Initialize user credits based on plan
-          const { error: creditsError } = await supabase.rpc('initialize_user_credits', {
-            target_user_id: userId,
-            target_plan_type: planType
+          // Use idempotent provision_plan_credits instead of initialize_user_credits
+          const { data: provisionResult, error: creditsError } = await supabase.rpc('provision_plan_credits', {
+            p_user_id: userId,
+            p_plan_type: planType,
+            p_source: 'stripe_webhook_checkout',
+            p_reference_id: event.id
           });
 
           if (creditsError) {
-            logStep("Failed to initialize credits", { error: creditsError });
+            logStep("Failed to provision credits", { error: creditsError });
           } else {
-            logStep("User credits initialized", { userId, planType });
+            logStep("Credits provisioned", { userId, planType, result: provisionResult });
           }
 
-          // Update user profile: set plan AND auto-approve paying customers
+          // Update profile: set plan + auto-approve
           const { error: profileError } = await supabase
             .from('profiles')
-            .update({ 
-              user_plan: planType,
-              status: 'approved'
-            })
+            .update({ user_plan: planType, status: 'approved' })
             .eq('user_id', userId);
 
           if (profileError) {
@@ -170,50 +197,30 @@ serve(async (req) => {
           const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
           
           if (customer.email) {
-            const { data: userList } = await supabase.auth.admin.listUsers();
-            let user = null;
-            
-            if (userList?.users) {
-              user = userList.users.find(u => u.email === customer.email);
-            }
+            const user = await findUserByEmail(customer.email);
             
             if (user) {
               const priceId = subscription.items.data[0]?.price?.id;
-              
-              const { data: planData, error: planError } = await supabase
-                .from('plan_parameters')
-                .select('plan_type')
-                .eq('stripe_price_id', priceId)
-                .single();
-              
-              let planType = planData?.plan_type || 'premium';
-              
-              if (planError) {
-                console.log(`⚠️ Could not find plan for price ${priceId}, using fallback`);
-              }
+              const planType = priceId ? await resolvePlanType(priceId) : 'premium';
               
               // Update profile plan
-              const { error: profileError } = await supabase
+              await supabase
                 .from('profiles')
                 .update({ user_plan: planType })
                 .eq('user_id', user.id);
               
-              if (profileError) {
-                console.error('❌ Error updating profile:', profileError);
-              } else {
-                console.log(`✅ Profile updated to plan: ${planType}`);
-              }
-              
-              // Update user credits
-              const { error: creditsError } = await supabase.rpc('initialize_user_credits', {
-                target_user_id: user.id,
-                target_plan_type: planType
+              // Use idempotent provision
+              const { error: creditsError } = await supabase.rpc('provision_plan_credits', {
+                p_user_id: user.id,
+                p_plan_type: planType,
+                p_source: 'stripe_webhook_subscription_updated',
+                p_reference_id: event.id
               });
 
               if (creditsError) {
-                logStep("Failed to update credits for subscription change", { error: creditsError });
+                logStep("Failed to provision credits for subscription change", { error: creditsError });
               } else {
-                logStep("Credits updated for subscription change", { userId: user.id, planType });
+                logStep("Credits provisioned for subscription change", { userId: user.id, planType });
               }
             }
           }
@@ -231,35 +238,22 @@ serve(async (req) => {
           const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
           
           if (customer.email) {
-            const { data: userList } = await supabase.auth.admin.listUsers();
-            let user = null;
-            
-            if (userList?.users) {
-              user = userList.users.find(u => u.email === customer.email);
-            }
+            const user = await findUserByEmail(customer.email);
             
             if (user) {
               const priceId = subscription.items.data[0]?.price?.id;
+              const planType = priceId ? await resolvePlanType(priceId) : 'premium';
               
-              const { data: planData, error: planError } = await supabase
-                .from('plan_parameters')
-                .select('plan_type')
-                .eq('stripe_price_id', priceId)
-                .single();
-              
-              let planType = planData?.plan_type || 'premium';
-              
-              if (planError) {
-                console.log(`⚠️ Could not find plan for price ${priceId}, using fallback`);
-              }
-              
-              const { error: creditsError } = await supabase.rpc('initialize_user_credits', {
-                target_user_id: user.id,
-                target_plan_type: planType
+              // Use idempotent provision for billing renewal
+              const { error: creditsError } = await supabase.rpc('provision_plan_credits', {
+                p_user_id: user.id,
+                p_plan_type: planType,
+                p_source: 'stripe_webhook_invoice',
+                p_reference_id: event.id
               });
 
               if (!creditsError) {
-                logStep("Credits reset for billing period", { userId: user.id, planType });
+                logStep("Credits provisioned for billing period", { userId: user.id, planType });
               }
             }
           }
@@ -281,25 +275,21 @@ serve(async (req) => {
         const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
         
         if (customer.email) {
-          const { data: userList } = await supabase.auth.admin.listUsers();
-          let user = null;
-          
-          if (userList?.users) {
-            user = userList.users.find(u => u.email === customer.email);
-          }
+          const user = await findUserByEmail(customer.email);
           
           if (user) {
-            // Downgrade credits to free plan
-            const { error: creditsError } = await supabase.rpc('initialize_user_credits', {
-              target_user_id: user.id,
-              target_plan_type: 'free_trial'
+            // Use idempotent provision to downgrade
+            const { error: creditsError } = await supabase.rpc('provision_plan_credits', {
+              p_user_id: user.id,
+              p_plan_type: 'free_trial',
+              p_source: 'stripe_webhook_cancellation',
+              p_reference_id: event.id
             });
 
             if (!creditsError) {
               logStep("User credits downgraded to free plan", { userId: user.id });
             }
 
-            // Also downgrade profile user_plan
             const { error: profileError } = await supabase
               .from('profiles')
               .update({ user_plan: 'free_trial' })

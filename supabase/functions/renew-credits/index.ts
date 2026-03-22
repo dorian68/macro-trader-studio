@@ -55,16 +55,22 @@ serve(async (req) => {
 
       // Check if renewal is due
       if (now >= nextResetDate) {
+        // Build idempotent reference: renew_{userId}_{date} to prevent double-renewal
+        const renewalDate = now.toISOString().split('T')[0];
+        const referenceId = `renew_${credit.user_id}_${renewalDate}`;
+
         logStep("Renewing credits", { 
           user_id: credit.user_id, 
           plan_type: credit.plan_type,
-          last_reset: credit.last_reset_date,
-          next_reset: nextResetDate.toISOString()
+          reference_id: referenceId
         });
 
-        const { error: renewError } = await supabaseClient.rpc('initialize_user_credits', {
-          target_user_id: credit.user_id,
-          target_plan_type: credit.plan_type
+        // Use idempotent provision_plan_credits instead of initialize_user_credits
+        const { data: result, error: renewError } = await supabaseClient.rpc('provision_plan_credits', {
+          p_user_id: credit.user_id,
+          p_plan_type: credit.plan_type,
+          p_source: 'cron_renewal',
+          p_reference_id: referenceId
         });
 
         if (renewError) {
@@ -74,8 +80,13 @@ serve(async (req) => {
           });
           errors.push({ user_id: credit.user_id, error: renewError.message });
         } else {
-          renewedUsers.push(credit.user_id);
-          logStep("Credits renewed successfully", { user_id: credit.user_id });
+          const skipped = result?.skipped === true;
+          if (skipped) {
+            logStep("Renewal skipped (already processed)", { user_id: credit.user_id });
+          } else {
+            renewedUsers.push(credit.user_id);
+            logStep("Credits renewed successfully", { user_id: credit.user_id });
+          }
         }
       }
     }
