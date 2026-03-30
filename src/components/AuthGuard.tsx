@@ -185,6 +185,42 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   // If approval is required, check profile status
   if (requireApproval && profile) {
     if (isPending) {
+      // Check if user has a paid plan — if so, the webhook is still processing
+      const paidPlans = ['basic', 'standard', 'premium'];
+      const hasPaidPlan = paidPlans.includes((profile as any)?.user_plan);
+
+      if (hasPaidPlan) {
+        // Paid user: webhook is processing, show a payment processing message
+        // The realtime listener in useProfile will auto-update when webhook completes
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader className="text-center">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+                <CardTitle className="text-xl">Processing Your Payment</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <p className="text-muted-foreground">
+                  Your payment has been received and your account is being activated. 
+                  This usually takes just a few seconds.
+                </p>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <p className="text-sm text-primary">
+                    This page will update automatically — no need to refresh.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => signOut()} className="w-full">
+                  Sign Out
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
+      // Non-paid user: standard pending approval flow
       return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
           <Card className="w-full max-w-md">
