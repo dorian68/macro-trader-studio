@@ -147,14 +147,31 @@ Deno.serve(async (req) => {
     })
 
     // ✅ ORPHAN RECONCILIATION: Detect auth users without profiles and auto-create them
-    const profileUserIds = new Set((profiles || []).map(p => p.user_id))
-    const orphanAuthUsers = allAuthUsers.filter(au => !profileUserIds.has(au.id))
+    // Use ALL profiles (not just filtered ones) to avoid false positives from broker scoping
+    const { data: allProfileIds } = await supabaseAdmin
+      .from('profiles')
+      .select('user_id')
+
+    const allProfileUserIds = new Set((allProfileIds || []).map(p => p.user_id))
+    const orphanAuthUsers = allAuthUsers.filter(au => !allProfileUserIds.has(au.id))
 
     if (orphanAuthUsers.length > 0) {
-      console.log(`[fetch-users] Found ${orphanAuthUsers.length} orphan auth users without profiles, reconciling...`)
+      console.log(`[fetch-users] Found ${orphanAuthUsers.length} true orphan auth users, reconciling...`)
       
+      let createdCount = 0
       for (const orphan of orphanAuthUsers) {
         try {
+          // Double-check with a direct lookup before inserting
+          const { data: existingProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('user_id', orphan.id)
+            .maybeSingle()
+
+          if (existingProfile) {
+            continue // Profile exists, skip
+          }
+
           const { error: insertError } = await supabaseAdmin
             .from('profiles')
             .insert({
@@ -163,9 +180,14 @@ Deno.serve(async (req) => {
               broker_name: orphan.user_metadata?.broker_name || null,
             })
           
-          if (insertError && insertError.code !== '23505') {
-            console.error(`[fetch-users] Failed to create profile for orphan ${orphan.id}:`, insertError)
+          if (insertError) {
+            if (insertError.code === '23505') {
+              console.log(`[fetch-users] Profile for ${orphan.id} created concurrently, skipping`)
+            } else {
+              console.error(`[fetch-users] Failed to create profile for orphan ${orphan.id}:`, insertError)
+            }
           } else {
+            createdCount++
             console.log(`[fetch-users] Created pending profile for orphan user ${orphan.id} (${orphan.email})`)
           }
         } catch (e) {
@@ -173,32 +195,33 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Re-fetch profiles to include newly created ones
-      let refetchQuery = supabaseAdmin.from('profiles').select('*')
-      if (!showDeleted) {
-        refetchQuery = refetchQuery.eq('is_deleted', false)
-      }
-      refetchQuery = refetchQuery.order('created_at', { ascending: false })
-      if (roles.includes('admin') && !roles.includes('super_user') && profileData.broker_id) {
-        refetchQuery = refetchQuery.eq('broker_id', profileData.broker_id)
-      }
-      
-      const { data: updatedProfiles, error: refetchError } = await refetchQuery
-      if (!refetchError && updatedProfiles) {
-        // Use updated profiles for the response
-        const usersWithEmails: UserWithEmail[] = updatedProfiles.map(profile => ({
-          ...profile,
-          email: emailMap.get(profile.user_id) || 'Unknown',
-          roles: rolesMap.get(profile.user_id) || ['user']
-        }))
+      // Only re-fetch if we actually created new profiles
+      if (createdCount > 0) {
+        let refetchQuery = supabaseAdmin.from('profiles').select('*')
+        if (!showDeleted) {
+          refetchQuery = refetchQuery.eq('is_deleted', false)
+        }
+        refetchQuery = refetchQuery.order('created_at', { ascending: false })
+        if (roles.includes('admin') && !roles.includes('super_user') && profileData.broker_id) {
+          refetchQuery = refetchQuery.eq('broker_id', profileData.broker_id)
+        }
+        
+        const { data: updatedProfiles, error: refetchError } = await refetchQuery
+        if (!refetchError && updatedProfiles) {
+          const usersWithEmails: UserWithEmail[] = updatedProfiles.map(profile => ({
+            ...profile,
+            email: emailMap.get(profile.user_id) || 'Unknown',
+            roles: rolesMap.get(profile.user_id) || ['user']
+          }))
 
-        return new Response(
-          JSON.stringify({ users: usersWithEmails }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        )
+          return new Response(
+            JSON.stringify({ users: usersWithEmails }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            }
+          )
+        }
       }
     }
 
