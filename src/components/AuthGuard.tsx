@@ -22,7 +22,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [ensureProfileCalled, setEnsureProfileCalled] = useState(false);
+  const [ensureProfileFailed, setEnsureProfileFailed] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -32,21 +32,41 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
 
   // ✅ SAFETY NET: If user is authenticated but profile is null after loading,
   // call ensure-profile to create the missing profile (fixes orphan case)
+  // Uses sessionStorage to survive reload and prevent infinite loops (max 2 attempts)
   useEffect(() => {
-    if (!authLoading && !profileLoading && user && !profile && !ensureProfileCalled) {
-      setEnsureProfileCalled(true);
-      console.log('[AuthGuard] No profile found for authenticated user, calling ensure-profile...');
+    if (!authLoading && !profileLoading && user && !profile) {
+      const STORAGE_KEY = 'ensure_profile_attempts';
+      const attempts = parseInt(sessionStorage.getItem(STORAGE_KEY) || '0', 10);
+
+      if (attempts >= 2) {
+        console.error('[AuthGuard] ensure-profile failed after 2 attempts, stopping');
+        sessionStorage.removeItem(STORAGE_KEY);
+        setEnsureProfileFailed(true);
+        return;
+      }
+
+      console.log(`[AuthGuard] No profile found, calling ensure-profile (attempt ${attempts + 1}/2)...`);
+      sessionStorage.setItem(STORAGE_KEY, String(attempts + 1));
+
       supabase.functions.invoke('ensure-profile').then(({ error }) => {
         if (error) {
           console.error('[AuthGuard] ensure-profile failed:', error);
+          setEnsureProfileFailed(true);
+          sessionStorage.removeItem(STORAGE_KEY);
         } else {
-          console.log('[AuthGuard] ensure-profile succeeded, profile should appear via realtime');
-          // Force refetch profile by reloading the page once
+          console.log('[AuthGuard] ensure-profile succeeded, reloading to fetch profile');
           window.location.reload();
         }
       });
     }
-  }, [authLoading, profileLoading, user, profile, ensureProfileCalled]);
+  }, [authLoading, profileLoading, user, profile]);
+
+  // Clear sessionStorage flag when profile is successfully loaded
+  useEffect(() => {
+    if (profile) {
+      sessionStorage.removeItem('ensure_profile_attempts');
+    }
+  }, [profile]);
 
   // Show loading while checking auth status
   if (authLoading || profileLoading) {
