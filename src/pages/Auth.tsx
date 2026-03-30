@@ -36,8 +36,7 @@ export default function Auth() {
   const [showBrokerPicker, setShowBrokerPicker] = useState(false);
   const [brokerChoice, setBrokerChoice] = useState<string | null>(null);
   const [pendingGoogleSession, setPendingGoogleSession] = useState<any>(null);
-  const [showReactivation, setShowReactivation] = useState(false);
-  const [pendingReactivationUser, setPendingReactivationUser] = useState<any>(null);
+  // Reactivation states removed — deleted accounts are hard-deleted from auth.users
   const [session, setSession] = useState(null);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [activeBrokers, setActiveBrokers] = useState([]);
