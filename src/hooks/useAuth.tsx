@@ -97,30 +97,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       console.log('[Auth] Initial session check:', {
         hasSession: !!currentSession,
         timestamp: new Date().toISOString()
       });
-      
-      // Safety net: if profile is soft-deleted but auth user somehow still exists,
-      // force sign out immediately (should not happen after hard delete)
-      if (currentSession?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_deleted')
-          .eq('user_id', currentSession.user.id)
-          .maybeSingle();
-        
-        if (profile?.is_deleted) {
-          console.log('[Auth] User profile is soft-deleted, forcing sign out');
-          await supabase.auth.signOut();
-          setUser(null);
-          setSession(null);
-          setLoading(false);
-          return;
-        }
-      }
       
       setSession(currentSession);
       setUser(currentSession?.user ?? null);

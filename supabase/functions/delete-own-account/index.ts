@@ -90,6 +90,29 @@ serve(async (req) => {
       )
     }
 
+    // 2b. Cancel any active Stripe subscriptions before deletion
+    try {
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || Deno.env.get('STRIPE_SECRET_KEY_LIVE');
+      if (stripeKey && user.email) {
+        const { default: Stripe } = await import('https://esm.sh/stripe@18.5.0');
+        const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' });
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        if (customers.data.length > 0) {
+          const customerId = customers.data[0].id;
+          const subscriptions = await stripe.subscriptions.list({ customer: customerId, status: 'active' });
+          for (const sub of subscriptions.data) {
+            console.log(`[DELETE-OWN-ACCOUNT] Canceling subscription ${sub.id} for customer ${customerId}`);
+            await stripe.subscriptions.cancel(sub.id);
+          }
+          console.log(`[DELETE-OWN-ACCOUNT] Canceled ${subscriptions.data.length} active subscription(s)`);
+        }
+      } else {
+        console.warn('[DELETE-OWN-ACCOUNT] No Stripe key or email available, skipping subscription cleanup');
+      }
+    } catch (stripeErr) {
+      console.error('[DELETE-OWN-ACCOUNT] Stripe cleanup failed (non-blocking):', stripeErr);
+    }
+
     // 3. Soft delete profile
     const { error: updateError } = await supabase
       .from('profiles')

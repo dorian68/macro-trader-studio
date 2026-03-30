@@ -84,8 +84,32 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     return null;
   }
 
-  // If ensure-profile was just called and profile is still null, show loading
-  if (user && !profile && ensureProfileCalled) {
+  // If ensure-profile exhausted retries, show error instead of looping
+  if (user && !profile && ensureProfileFailed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <CardTitle className="text-xl">Profile Setup Error</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              We couldn't create your profile. Please try signing out and back in, or contact support.
+            </p>
+            <Button variant="outline" onClick={() => signOut()} className="w-full">
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // If ensure-profile is in progress, show loading
+  if (user && !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
