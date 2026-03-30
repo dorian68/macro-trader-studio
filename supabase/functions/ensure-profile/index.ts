@@ -15,29 +15,24 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Verify user with anon key + user token
-    const supabaseUser = createClient(
+    const token = authHeader.replace('Bearer ', '')
+
+    // Use service role client to verify user and bypass RLS
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token)
-    if (claimsError || !claimsData?.claims) {
+    // Verify user with getUser (standard pattern, consistent with other edge functions)
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+    if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const userId = claimsData.claims.sub as string
-
-    // Use service role to bypass RLS for profile creation
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const userId = userData.user.id
 
     // Check if profile already exists
     const { data: existing, error: selectError } = await supabaseAdmin
@@ -59,8 +54,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    // If profile exists but is deleted, this is a new auth user reusing an old profile row — 
-    // should not happen since hard delete removes auth.users. Safety: skip.
+    // If profile exists but is deleted, skip (safety)
     if (existing?.is_deleted) {
       return new Response(JSON.stringify({ created: false, message: 'Deleted profile exists for different auth user' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -77,7 +71,6 @@ Deno.serve(async (req) => {
       })
 
     if (insertError) {
-      // ON CONFLICT (user_id) DO NOTHING equivalent — might be a race condition
       if (insertError.code === '23505') {
         console.log('[ensure-profile] Profile created by concurrent request, ignoring duplicate')
         return new Response(JSON.stringify({ created: false, message: 'Profile created concurrently' }), {

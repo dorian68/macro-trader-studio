@@ -22,7 +22,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [ensureProfileCalled, setEnsureProfileCalled] = useState(false);
+  const [ensureProfileFailed, setEnsureProfileFailed] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -32,21 +32,41 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
 
   // ✅ SAFETY NET: If user is authenticated but profile is null after loading,
   // call ensure-profile to create the missing profile (fixes orphan case)
+  // Uses sessionStorage to survive reload and prevent infinite loops (max 2 attempts)
   useEffect(() => {
-    if (!authLoading && !profileLoading && user && !profile && !ensureProfileCalled) {
-      setEnsureProfileCalled(true);
-      console.log('[AuthGuard] No profile found for authenticated user, calling ensure-profile...');
+    if (!authLoading && !profileLoading && user && !profile) {
+      const STORAGE_KEY = 'ensure_profile_attempts';
+      const attempts = parseInt(sessionStorage.getItem(STORAGE_KEY) || '0', 10);
+
+      if (attempts >= 2) {
+        console.error('[AuthGuard] ensure-profile failed after 2 attempts, stopping');
+        sessionStorage.removeItem(STORAGE_KEY);
+        setEnsureProfileFailed(true);
+        return;
+      }
+
+      console.log(`[AuthGuard] No profile found, calling ensure-profile (attempt ${attempts + 1}/2)...`);
+      sessionStorage.setItem(STORAGE_KEY, String(attempts + 1));
+
       supabase.functions.invoke('ensure-profile').then(({ error }) => {
         if (error) {
           console.error('[AuthGuard] ensure-profile failed:', error);
+          setEnsureProfileFailed(true);
+          sessionStorage.removeItem(STORAGE_KEY);
         } else {
-          console.log('[AuthGuard] ensure-profile succeeded, profile should appear via realtime');
-          // Force refetch profile by reloading the page once
+          console.log('[AuthGuard] ensure-profile succeeded, reloading to fetch profile');
           window.location.reload();
         }
       });
     }
-  }, [authLoading, profileLoading, user, profile, ensureProfileCalled]);
+  }, [authLoading, profileLoading, user, profile]);
+
+  // Clear sessionStorage flag when profile is successfully loaded
+  useEffect(() => {
+    if (profile) {
+      sessionStorage.removeItem('ensure_profile_attempts');
+    }
+  }, [profile]);
 
   // Show loading while checking auth status
   if (authLoading || profileLoading) {
@@ -64,8 +84,32 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     return null;
   }
 
-  // If ensure-profile was just called and profile is still null, show loading
-  if (user && !profile && ensureProfileCalled) {
+  // If ensure-profile exhausted retries, show error instead of looping
+  if (user && !profile && ensureProfileFailed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <CardTitle className="text-xl">Profile Setup Error</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              We couldn't create your profile. Please try signing out and back in, or contact support.
+            </p>
+            <Button variant="outline" onClick={() => signOut()} className="w-full">
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // If ensure-profile is in progress, show loading
+  if (user && !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
