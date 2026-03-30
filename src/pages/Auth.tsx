@@ -479,7 +479,7 @@ export default function Auth() {
 
     const redirectUrl = `https://alphalensai.com/confirm-success`;
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -496,6 +496,16 @@ export default function Auth() {
         description: error.message,
         variant: "destructive"
       });
+    } else if (data.user && data.user.identities?.length === 0) {
+      // Email already exists — Supabase returns a fake user with no identities
+      toast({
+        title: t('errors.emailAlreadyRegistered') || 'Email already registered',
+        description: t('errors.emailAlreadyRegisteredDescription') || 'This email is already registered. Please sign in instead.',
+        variant: "destructive"
+      });
+      setTabValue('signin');
+      setLoading(false);
+      return;
     } else {
       // Fire-and-forget notification to admins about new registration
       const selectedBrokerName = activeBrokers.find(b => b.id === selectedBrokerId)?.name || null;
