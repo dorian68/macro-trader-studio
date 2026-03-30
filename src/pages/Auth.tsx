@@ -619,19 +619,23 @@ export default function Auth() {
       password
     });
 
-    // ✅ Check for soft-deleted users
+    // Safety net: if profile is soft-deleted but auth user somehow still exists
+    // (should not happen after hard delete), force sign out
     if (data.user && !error) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_deleted, deleted_at')
+        .select('is_deleted')
         .eq('user_id', data.user.id)
         .maybeSingle();
 
       if (profile?.is_deleted) {
-        // Offer reactivation instead of blocking
-        console.log('[Email Auth] User is soft-deleted, offering reactivation');
-        setPendingReactivationUser(data.user);
-        setShowReactivation(true);
+        console.log('[Email Auth] Profile is deleted, signing out');
+        await supabase.auth.signOut();
+        toast({
+          title: t('errors.loginError'),
+          description: t('errors.invalidCredentials') || 'Invalid login credentials',
+          variant: 'destructive',
+        });
         setLoading(false);
         isManualSignInRef.current = false;
         return;
