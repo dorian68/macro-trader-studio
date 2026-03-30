@@ -1,181 +1,126 @@
 
 
-# Question-Led SEO Content Architecture for AlphaLens Blog
+# Patch: Cycle de vie des comptes supprimés
 
-## Overview
+## Audit — Cause racine
 
-Build a scalable "question-first" editorial system entirely within the existing blog infrastructure. 6 thematic hub pages aggregate articles by topic. ~40 question articles are inserted as `blog_posts` rows with enhanced rendering. No new database tables needed — leverages existing `blog_posts` with a `tags` field to link articles to hubs.
+Le système actuel fait un **soft delete** (`profiles.is_deleted = true`) mais conserve la ligne `auth.users` intacte. Conséquences :
 
-## Architecture
+1. **L'email reste bloqué** — `signUp` retourne "User already registered" car `auth.users` existe toujours
+2. **Le login fonctionne encore** — `signInWithPassword` réussit, puis le code détecte `is_deleted` et propose une **réactivation** (comportement inverse du besoin)
+3. **Google OAuth reconnecte** l'utilisateur à son ancien compte supprimé et propose la réactivation
+4. **Reset password** peut théoriquement réactiver un compte supprimé
+5. **AuthGuard** affiche un écran de réactivation au lieu de bloquer définitivement
+6. **Pas de self-service deletion** — seuls les super_users peuvent supprimer
 
-```text
-/blog                          ← existing listing (unchanged)
-/blog/hub/ai-trading           ← NEW hub page (6 total)
-/blog/hub/forex-ai
-/blog/hub/crypto-ai
-/blog/hub/macro-analysis
-/blog/hub/portfolio-risk
-/blog/hub/quant-education
-/blog/:slug                    ← existing + enhanced article template
+## Stratégie
+
+**Hard delete de `auth.users` + conservation du profil archivé pour audit.**
+
+Quand un compte est supprimé :
+1. Le profil est marqué `is_deleted=true` avec `deleted_at` (audit trail conservé)
+2. `auth.users` est **hard-deleté** via `supabase.auth.admin.deleteUser()` — libère l'email
+3. Toutes les sessions sont révoquées immédiatement
+
+Quand l'utilisateur revient avec le même email :
+- `signUp` crée un nouveau `auth.users` avec un **nouveau UUID**
+- Le trigger `handle_new_user` crée un **nouveau profil** (pas de collision : `ON CONFLICT (user_id) DO NOTHING`)
+- L'ancien profil reste en base avec l'ancien `user_id` pour audit
+- Aucune donnée de l'ancien compte n'est accessible depuis le nouveau
+
+## Changements
+
+### 1. Migration SQL — Table `deleted_accounts_audit`
+
+Table dédiée pour centraliser les traces :
+- `id UUID`, `original_user_id UUID`, `email_hash TEXT` (SHA256, pas l'email en clair), `deleted_at TIMESTAMPTZ`, `deleted_by UUID`, `deletion_type TEXT` ('admin' | 'self_service'), `metadata JSONB` (broker_name, plan_type, created_at du profil original)
+- RLS : lecture super_user/admin uniquement
+
+### 2. Edge Function `delete-user/index.ts` — Ajouter hard delete auth
+
+Après le soft delete du profil, ajouter :
 ```
-
-Articles are tagged with hub slugs (e.g. `tags: ["hub:ai-trading", "hub:quant-education"]`) so hub pages can query dynamically.
-
-## Deliverables
-
-### 1. Question Article Data — `src/data/seoQuestionArticles.ts`
-
-A single TypeScript file containing all ~40 question articles as structured objects:
-
-```ts
-interface SEOQuestionArticle {
-  slug: string;
-  title: string;           // H1 = exact search question
-  metaTitle: string;        // ≤60 chars with "| AlphaLens AI"
-  metaDescription: string;  // ≤155 chars
-  excerpt: string;
-  category: string;         // maps to existing 4 categories
-  tags: string[];           // includes "hub:xxx" + "seo-question"
-  hubSlugs: string[];       // which hubs this belongs to
-  author: string;
-  content: string;          // full markdown following template
-  relatedSlugs: string[];   // 2-3 related question article slugs
-  publishedAt: string;      // staggered dates
-}
+await supabase.auth.admin.deleteUser(userId)
 ```
+Avant le hard delete, capturer l'email de l'utilisateur via `admin.getUserById()` pour insérer dans `deleted_accounts_audit` (email hashé).
 
-Each article follows this markdown template:
-- Short direct answer (2-4 lines, featured-snippet optimized)
-- Table of contents (markdown links to H2s)
-- 4-7 H2/H3 sections with practical examples
-- "Common Mistakes" section
-- "How AlphaLens AI Helps" section
-- Soft CTA
-- "## FAQ" section (3-4 Q&As for FAQ schema)
-- Related questions links block
-- Internal links to hub, pricing, product pages
+Séquence atomique :
+1. Soft delete profil (`is_deleted=true`)
+2. Insert dans `deleted_accounts_audit`
+3. Hard delete `auth.users`
+4. Si le hard delete échoue, log l'erreur (le profil est déjà soft-deleted, intervention manuelle possible)
 
-### 2. Hub Page Data — `src/data/seoHubPages.ts`
+### 3. Nouvelle Edge Function `delete-own-account/index.ts` — Self-service
 
-6 hub definitions:
+Permet à un utilisateur connecté de supprimer **son propre compte** :
+- Vérifie le JWT, extrait `user_id`
+- Soft delete le profil
+- Insert dans `deleted_accounts_audit` (type: 'self_service')
+- Hard delete `auth.users`
+- Retourne success (le client gère la déconnexion)
 
-```ts
-interface SEOHubPage {
-  slug: string;              // e.g. "ai-trading"
-  title: string;
-  metaTitle: string;
-  metaDescription: string;
-  heroDescription: string;   // 2-3 sentence intro
-  sections: {                // grouped question clusters
-    title: string;
-    description: string;
-    articleSlugs: string[];
-  }[];
-  relatedHubs: string[];
-  ctaText: string;
-}
-```
+Config.toml : `[functions.delete-own-account]` avec `verify_jwt = false`
 
-### 3. Migration — Seed question articles into `blog_posts`
+### 4. `Auth.tsx` — Supprimer toute logique de réactivation
 
-A Supabase migration that INSERTs all ~40 question articles into `blog_posts` with:
-- `status: 'published'`
-- `tags` including `"seo-question"` and `"hub:xxx"`
-- Staggered `published_at` dates (every 2-3 days, past dates only)
-- `category` mapped to existing 4 categories
+- **handleSignIn (~L624-640)** : Supprimer le check `is_deleted` + dialog réactivation. Après hard delete de `auth.users`, `signInWithPassword` retournera "Invalid login credentials" naturellement — aucune fuite d'information.
+- **handleOAuthEvent (~L239-246)** : Supprimer le check `is_deleted` + réactivation. L'ancien `auth.users` n'existant plus, Google OAuth créera une nouvelle entrée.
+- **Dialog de réactivation (~L868-943)** : Supprimer entièrement.
+- **States** : Supprimer `showReactivation`, `pendingReactivationUser`.
 
-Uses `ON CONFLICT (slug) DO NOTHING` to be idempotent.
+### 5. `useAuth.tsx` — Supprimer le check soft-delete
 
-### 4. Hub Page Component — `src/pages/BlogHub.tsx`
+Supprimer le bloc L106-118 qui vérifie `is_deleted` au chargement de session. Si l'utilisateur est hard-deleted de `auth.users`, `getSession()` retournera `null` naturellement.
 
-New page component that:
-- Takes `hubSlug` from URL params
-- Looks up hub data from the static data file
-- Queries `blog_posts` where `tags` contains `hub:{hubSlug}`
-- Renders:
-  - Breadcrumb: Home > Blog > Hub Name
-  - Hero section with hub title + description
-  - "Popular Questions" grid (top 6 articles as cards)
-  - Sectioned article lists grouped by cluster
-  - Related hubs cross-links
-  - CTA to signup/dashboard
-  - RelatedPages footer
-- Full SEO: Helmet with meta tags, canonical, OG, breadcrumb + WebPage JSON-LD
+### 6. `AuthGuard.tsx` — Simplifier le bloc isDeleted
 
-### 5. Enhanced BlogPost Template
+Remplacer l'écran de réactivation (L77-124) par un simple force signOut. Ce cas ne devrait jamais se produire en conditions normales (safety net uniquement).
 
-Modify `src/pages/BlogPost.tsx` to detect question articles (tag `"seo-question"`) and render enhanced UI:
-- **Table of Contents** sidebar/block (extracted from H2 headings in markdown)
-- **Share buttons** (Twitter, LinkedIn, copy link)
-- **"Related Questions" block** at bottom (query by `relatedSlugs` from article data)
-- **"Updated" date** display (using `updated_at`)
-- **Author card** with byline
-- Existing features preserved: breadcrumb, reading time, cover image, FAQ schema, CTA
+### 7. Composant `DeleteAccountSection.tsx` — Self-service deletion
 
-### 6. Routes — `src/App.tsx`
+Composant pour le Dashboard/Settings :
+- Bouton "Delete My Account"
+- Dialog de confirmation avec double confirmation (texte "DELETE" à taper)
+- Appel à `delete-own-account`
+- SignOut immédiat + redirection vers `/auth`
+- État `isProcessing` pour éviter les double-clicks
 
-Add hub route:
-```tsx
-<Route path="/blog/hub/:hubSlug" element={<BlogHub />} />
-```
+### 8. Dashboard — Intégrer DeleteAccountSection
 
-### 7. Sitemap & Robots — `src/seo/sitemapRoutes.ts` + `scripts/generate-sitemap.ts`
+Ajouter le composant dans la page Dashboard ou dans un onglet Settings existant.
 
-- Add all 6 hub pages: `/blog/hub/ai-trading` etc. (priority 0.8)
-- Add all ~40 question article slugs (priority 0.7)
-- Sync `generate-sitemap.ts` routes array
+## Fichiers modifiés/créés
 
-### 8. Internal Linking Integration
+| Fichier | Action |
+|---------|--------|
+| `supabase/migrations/xxx.sql` | CREATE — table `deleted_accounts_audit` |
+| `supabase/functions/delete-user/index.ts` | EDIT — ajouter audit + `admin.deleteUser()` |
+| `supabase/functions/delete-own-account/index.ts` | CREATE — self-service deletion |
+| `supabase/config.toml` | EDIT — ajouter `[functions.delete-own-account]` |
+| `src/pages/Auth.tsx` | EDIT — supprimer réactivation dialog + checks `is_deleted` |
+| `src/hooks/useAuth.tsx` | EDIT — supprimer check soft-delete |
+| `src/components/AuthGuard.tsx` | EDIT — simplifier bloc isDeleted (force signOut) |
+| `src/components/DeleteAccountSection.tsx` | CREATE — composant self-service |
+| `src/pages/Dashboard.tsx` | EDIT — intégrer DeleteAccountSection |
 
-- **Blog.tsx**: Add a "Topic Hubs" section above the post grid with 6 hub cards
-- **BlogPost.tsx**: For non-question articles, add "Explore by Topic" links to relevant hubs
-- **Hub pages**: Cross-link to other hubs + pricing/features
+## Ce qui ne change PAS
 
-### 9. Blog Category Expansion
+- `handle_new_user` trigger — déjà compatible (`ON CONFLICT (user_id) DO NOTHING`)
+- Reset password — naturellement safe (pas d'envoi d'email si user n'existe plus dans `auth.users`)
+- `restore-user` edge function — reste pour l'admin (cas exceptionnel, mais ne pourra restaurer que le profil, pas le `auth.users`)
+- Système de credits, abonnements, billing
+- Admin panel (UsersTable, UserActionsDialog)
+- Blog, Homepage, SEO
 
-The existing 4 categories remain. Question articles are assigned to the closest matching category. The `tags` field handles hub membership separately, so no category schema change is needed.
+## Sécurité
 
-## Files Modified/Created
+- Hard delete de `auth.users` = aucun token existant ne fonctionnera
+- Pas de fuite d'information : erreur générique "Invalid login credentials"
+- Double confirmation UX pour la self-service deletion
+- Race condition couverte : soft delete profil en premier, puis hard delete auth (séquentiel)
 
-| File | Action |
-|------|--------|
-| `src/data/seoQuestionArticles.ts` | CREATE — all 40 article definitions with full content |
-| `src/data/seoHubPages.ts` | CREATE — 6 hub page definitions |
-| `src/pages/BlogHub.tsx` | CREATE — hub page component |
-| `src/pages/BlogPost.tsx` | EDIT — enhanced template for question articles |
-| `src/pages/Blog.tsx` | EDIT — add hub cards section |
-| `src/App.tsx` | EDIT — add hub route |
-| `src/seo/sitemapRoutes.ts` | EDIT — add hub + question URLs |
-| `scripts/generate-sitemap.ts` | EDIT — sync routes |
-| `supabase/migrations/xxx.sql` | CREATE — seed question articles |
-| `src/seo/structuredData.ts` | EDIT — add hub page schema helper |
+## Risques résiduels
 
-## What Does NOT Change
-
-- Existing 86 blog articles — untouched
-- Blog listing page layout and pagination — preserved
-- Existing category system — preserved
-- BlogPost rendering for non-question articles — preserved
-- Admin BlogManagement — works as before (question articles editable too)
-- Auth, payments, credits — untouched
-
-## Content Quality Guardrails
-
-- Each article has a unique angle — no duplicate intros
-- Expert tone matching existing blog voice
-- Practical examples tied to FX/crypto/commodities/macro
-- "How AlphaLens AI Helps" section is product-relevant, not generic
-- FAQ sections only where genuinely useful (not forced)
-- All internal links use semantic `<Link>` components
-
-## Implementation Order
-
-1. Create data files (articles + hubs)
-2. Create migration to seed articles
-3. Create BlogHub page component
-4. Enhance BlogPost for question articles
-5. Add hub route to App.tsx
-6. Add hub cards to Blog.tsx
-7. Update sitemap routes
-8. Verify no regressions on existing blog pages
+- Si `admin.deleteUser()` échoue après le soft delete, le profil est soft-deleted mais l'email reste bloqué → log d'erreur pour intervention manuelle admin
+- `restore-user` ne pourra plus restaurer complètement un compte (pas de `auth.users` à restaurer) → acceptable, l'admin peut créer un nouveau compte manuellement si besoin
 
