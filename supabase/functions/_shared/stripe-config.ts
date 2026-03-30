@@ -10,7 +10,14 @@ export interface StripeConfig {
  * @throws Error if the required secret key is not set
  */
 export function getStripeConfig(): StripeConfig {
-  const mode = (Deno.env.get("STRIPE_MODE") || "test") as 'test' | 'live';
+  const rawMode = Deno.env.get("STRIPE_MODE") || "test";
+  
+  // Validate STRIPE_MODE — must be exactly "test" or "live"
+  if (rawMode !== "test" && rawMode !== "live") {
+    console.warn(`[STRIPE-CONFIG] ⚠️ STRIPE_MODE is set to an invalid value: "${rawMode.substring(0, 20)}...". Defaulting to "test". Ensure STRIPE_MODE is either "test" or "live".`);
+  }
+  
+  const mode = (rawMode === "live" ? "live" : "test") as 'test' | 'live';
   
   let secretKey: string;
   let webhookSecret: string | null;
