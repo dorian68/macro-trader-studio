@@ -22,12 +22,31 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [ensureProfileCalled, setEnsureProfileCalled] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
+
+  // ✅ SAFETY NET: If user is authenticated but profile is null after loading,
+  // call ensure-profile to create the missing profile (fixes orphan case)
+  useEffect(() => {
+    if (!authLoading && !profileLoading && user && !profile && !ensureProfileCalled) {
+      setEnsureProfileCalled(true);
+      console.log('[AuthGuard] No profile found for authenticated user, calling ensure-profile...');
+      supabase.functions.invoke('ensure-profile').then(({ error }) => {
+        if (error) {
+          console.error('[AuthGuard] ensure-profile failed:', error);
+        } else {
+          console.log('[AuthGuard] ensure-profile succeeded, profile should appear via realtime');
+          // Force refetch profile by reloading the page once
+          window.location.reload();
+        }
+      });
+    }
+  }, [authLoading, profileLoading, user, profile, ensureProfileCalled]);
 
   // Show loading while checking auth status
   if (authLoading || profileLoading) {
@@ -43,6 +62,15 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   if (isDeleted) {
     signOut();
     return null;
+  }
+
+  // If ensure-profile was just called and profile is still null, show loading
+  if (user && !profile && ensureProfileCalled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Redirect to auth if not authenticated

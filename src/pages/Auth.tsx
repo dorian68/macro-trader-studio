@@ -640,6 +640,17 @@ export default function Auth() {
         isManualSignInRef.current = false;
         return;
       }
+
+      // ✅ SAFETY NET: Ensure profile exists (fixes orphan case where trigger failed)
+      if (!profile) {
+        console.log('[Email Auth] No profile found, calling ensure-profile...');
+        try {
+          await supabase.functions.invoke('ensure-profile');
+          console.log('[Email Auth] ensure-profile completed');
+        } catch (e) {
+          console.error('[Email Auth] ensure-profile failed:', e);
+        }
+      }
     }
 
     // Store stay logged in preference separately after successful login

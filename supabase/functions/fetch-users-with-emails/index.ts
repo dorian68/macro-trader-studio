@@ -146,6 +146,62 @@ Deno.serve(async (req) => {
       rolesMap.get(ur.user_id)!.push(ur.role)
     })
 
+    // ✅ ORPHAN RECONCILIATION: Detect auth users without profiles and auto-create them
+    const profileUserIds = new Set((profiles || []).map(p => p.user_id))
+    const orphanAuthUsers = allAuthUsers.filter(au => !profileUserIds.has(au.id))
+
+    if (orphanAuthUsers.length > 0) {
+      console.log(`[fetch-users] Found ${orphanAuthUsers.length} orphan auth users without profiles, reconciling...`)
+      
+      for (const orphan of orphanAuthUsers) {
+        try {
+          const { error: insertError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+              user_id: orphan.id,
+              status: 'pending',
+              broker_name: orphan.user_metadata?.broker_name || null,
+            })
+          
+          if (insertError && insertError.code !== '23505') {
+            console.error(`[fetch-users] Failed to create profile for orphan ${orphan.id}:`, insertError)
+          } else {
+            console.log(`[fetch-users] Created pending profile for orphan user ${orphan.id} (${orphan.email})`)
+          }
+        } catch (e) {
+          console.error(`[fetch-users] Error reconciling orphan ${orphan.id}:`, e)
+        }
+      }
+
+      // Re-fetch profiles to include newly created ones
+      let refetchQuery = supabaseAdmin.from('profiles').select('*')
+      if (!showDeleted) {
+        refetchQuery = refetchQuery.eq('is_deleted', false)
+      }
+      refetchQuery = refetchQuery.order('created_at', { ascending: false })
+      if (roles.includes('admin') && !roles.includes('super_user') && profileData.broker_id) {
+        refetchQuery = refetchQuery.eq('broker_id', profileData.broker_id)
+      }
+      
+      const { data: updatedProfiles, error: refetchError } = await refetchQuery
+      if (!refetchError && updatedProfiles) {
+        // Use updated profiles for the response
+        const usersWithEmails: UserWithEmail[] = updatedProfiles.map(profile => ({
+          ...profile,
+          email: emailMap.get(profile.user_id) || 'Unknown',
+          roles: rolesMap.get(profile.user_id) || ['user']
+        }))
+
+        return new Response(
+          JSON.stringify({ users: usersWithEmails }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      }
+    }
+
     // Combine profiles with emails and roles
     const usersWithEmails: UserWithEmail[] = (profiles || []).map(profile => ({
       ...profile,
