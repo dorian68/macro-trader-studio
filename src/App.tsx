@@ -48,6 +48,7 @@ const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const API = lazy(() => import("./pages/API"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogPost = lazy(() => import("./pages/BlogPost"));
+const BlogHub = lazy(() => import("./pages/BlogHub"));
 
 // Utility pages (lazy loaded)
 const ProductPresentation = lazy(() => import("./pages/ProductPresentation"));
@@ -123,6 +124,7 @@ const App = () => {
                             <Route path="/blog" element={<Blog />} />
                             <Route path="/blog/category/:category" element={<Blog />} />
                             <Route path="/blog/page/:page" element={<Blog />} />
+                            <Route path="/blog/hub/:hubSlug" element={<BlogHub />} />
                             <Route path="/blog/:slug" element={<BlogPost />} />
                             <Route path="/features" element={<Features />} />
                             <Route path="/contact" element={<Contact />} />
