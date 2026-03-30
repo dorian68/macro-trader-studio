@@ -507,6 +507,78 @@ function getEmailContent(type: string, userName: string, metadata?: any): { subj
         `,
       };
 
+    case 'paid_subscription': {
+      const { userEmail: paidEmail, planType: paidPlan, stripeCustomerId, subscriptionId, subscribedAt } = metadata || {};
+      return {
+        subject: `New Paid Subscription: ${paidPlan?.toUpperCase() || 'Unknown'} Plan - Alphalens`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>New Paid Subscription</title>
+              <style>${baseStyles}</style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <img src="${LOGO_URL}" alt="Alphalens AI" class="logo" />
+                  <p class="header-text">Admin Notification</p>
+                </div>
+                <div class="content">
+                  <h2>New Paid Subscription</h2>
+                  <p>A user has successfully subscribed to a paid plan via Stripe. Their account has been auto-approved and credits provisioned.</p>
+                  
+                  <div class="highlight-box success">
+                    <p style="margin: 0 0 15px 0; font-size: 16px; font-weight: 600; color: #10b981;">Subscription Details</p>
+                    <table class="credits-table">
+                      <tbody>
+                        <tr>
+                          <td><strong>Customer Email</strong></td>
+                          <td>${paidEmail || userName}</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Plan</strong></td>
+                          <td><strong style="color: #002244;">${paidPlan?.toUpperCase() || 'Unknown'}</strong></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Subscribed At</strong></td>
+                          <td>${subscribedAt ? new Date(subscribedAt).toLocaleString() : new Date().toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Stripe Customer ID</strong></td>
+                          <td><code>${stripeCustomerId || 'N/A'}</code></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Subscription ID</strong></td>
+                          <td><code>${subscriptionId || 'N/A'}</code></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Status</strong></td>
+                          <td><span style="color: #10b981; font-weight: 600;">Auto-Approved</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <p style="text-align: center;">
+                    <a href="https://alphalensai.com/admin?tab=users" class="cta-button">
+                      View in Admin Panel →
+                    </a>
+                  </p>
+                </div>
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} Alphalens Research Platform. All rights reserved.</p>
+                  <p>This is an automated notification for administrators.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+      };
+    }
+
     case 'new_registration':
       const { userEmail: regEmail, brokerName: regBroker, registeredAt } = metadata || {};
       return {

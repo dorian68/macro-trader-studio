@@ -181,6 +181,53 @@ serve(async (req) => {
             logStep("Failed to update profile", { error: profileError });
           } else {
             logStep("Profile updated (plan + auto-approved)", { userId, planType });
+
+            // ============================================================
+            // ADMIN NOTIFICATION: notify super admins of paid subscription
+            // ============================================================
+            try {
+              const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+              const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+              // Fetch super user IDs
+              const { data: superUserRoles } = await supabase
+                .from('user_roles')
+                .select('user_id')
+                .eq('role', 'super_user');
+
+              if (superUserRoles && superUserRoles.length > 0) {
+                for (const role of superUserRoles) {
+                  const { data: adminUser } = await supabase.auth.admin.getUserById(role.user_id);
+                  if (adminUser?.user?.email) {
+                    // Fire-and-forget notification
+                    fetch(`${supabaseUrl}/functions/v1/send-admin-notification`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${serviceKey}`,
+                      },
+                      body: JSON.stringify({
+                        to: adminUser.user.email,
+                        notificationType: 'paid_subscription',
+                        userName: customerEmail,
+                        metadata: {
+                          userEmail: customerEmail,
+                          planType,
+                          stripeCustomerId: typeof session.customer === 'string' ? session.customer : null,
+                          subscriptionId: session.subscription || null,
+                          subscribedAt: new Date().toISOString(),
+                        }
+                      }),
+                    }).catch(err => logStep("Admin notification fetch failed (non-blocking)", { error: String(err) }));
+                  }
+                }
+                logStep("Admin notification(s) dispatched", { count: superUserRoles.length });
+              } else {
+                logStep("No super users found to notify");
+              }
+            } catch (notifError) {
+              logStep("Admin notification error (non-blocking)", { error: String(notifError) });
+            }
           }
         } else {
           logStep("ERROR: Could not determine plan_type", { sessionId: session.id });
