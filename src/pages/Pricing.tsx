@@ -99,6 +99,9 @@ const Pricing = () => {
     ];
   };
   const handleCTAClick = async (plan: string) => {
+    // Prevent double-click: if a checkout is already in progress, ignore
+    if (checkoutLoading) return;
+    
     console.log(`📊 [Pricing] CTA clicked: ${plan}`);
     if (plan === 'B2B Contact Sales') {
       navigate('/contact');
