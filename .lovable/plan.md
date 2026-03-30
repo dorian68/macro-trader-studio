@@ -1,76 +1,66 @@
 
 
-# Patch : Corrections mineures du module d'authentification
+# Audit: Système "Credit Limit Reached"
 
-## Problèmes identifiés
+## Résumé des findings
 
-### P1 (CRITIQUE) — Boucle de reload infinie dans AuthGuard
-`AuthGuard` appelle `ensure-profile` puis `window.location.reload()`. Le state `ensureProfileCalled` est réinitialisé à `false` après le reload, causant potentiellement une boucle infinie si la création de profil échoue.
+Le système de crédits a **2 problèmes** qui causent des faux positifs "Credit limit reached" :
 
-**Fix** : Utiliser `sessionStorage` pour marquer que ensure-profile a été appelé, évitant le re-appel après reload. Ajouter un compteur max (2 tentatives) pour stopper la boucle.
+### Problème 1 (MAJEUR) — Double credit-check dans `useAIInteractionLogger` bloque le logging APRÈS le travail déjà fait
 
-### P2 (MODÉRÉ) — `ensure-profile` utilise `getClaims()` non standard
-L'API `getClaims(token)` n'est pas documentée dans toutes les versions du SDK Supabase pour Deno. Les autres edge functions utilisent `getUser(token)`.
+**Flow actuel problématique :**
+1. `tryEngageCredit()` → vérifie et réserve le crédit ✅
+2. Le job s'exécute, le backend répond ✅
+3. Le trigger `auto_manage_credits` débite le crédit et supprime l'engagement ✅
+4. `logInteraction()` est appelé pour logger l'historique...
+5. **`checkAndLogInteraction()` L52 re-vérifie les crédits** via `checkCredits()`
+6. À ce stade, le crédit a DÉJÀ été consommé par le trigger → `checkCredits()` retourne `false` si c'était le dernier crédit
+7. **L'utilisateur voit "Credit limit reached"** alors que l'opération a réussi
 
-**Fix** : Remplacer `getClaims()` par `getUser(token)` dans `ensure-profile`, aligné avec le pattern utilisé dans `delete-user` et `delete-own-account`.
+C'est un **faux positif UX** : le toast d'erreur s'affiche après une opération réussie, et l'interaction n'est pas loggée dans l'historique.
 
-### P3 (MINEUR) — Check `is_deleted` superflu dans `useAuth.tsx`
-Ajoute une requête Supabase à chaque chargement d'app. Après le hard delete, ce cas ne se produira jamais en conditions normales.
+### Problème 2 (MODÉRÉ) — `checkCredits` utilise un state potentiellement stale
 
-**Fix** : Supprimer ce check. Le safety net dans AuthGuard (L62-65) et Auth.tsx (L631) suffit comme double protection.
+`checkCredits` (L145-182 de `useCreditManager`) lit `credits` depuis le state React local, qui peut être désynchronisé de la base. Le `totalCredits` vient du state, tandis que `engagedCount` est fetché fresh. Si le state n'a pas été rafraîchi (ex: après un `tryEngageCredit` qui a modifié la base), le calcul est faux.
 
-### P4 (MINEUR) — `delete-own-account` ne gère pas Stripe
-Un utilisateur avec un abonnement actif peut supprimer son compte mais continuer à être facturé.
+### Problème 3 (MINEUR) — `decrementCredit` jamais appelé mais toujours importé
 
-**Fix** : Avant la suppression, vérifier si un `stripe_customer_id` existe et annuler l'abonnement via l'API Stripe. Non-bloquant si l'annulation échoue (log + continuer).
+`useAIInteractionLogger` importe `decrementCredit` dans ses deps de `useCallback` (L87) mais ne l'appelle jamais. C'est un vestige du système pré-atomique. Ça ne cause pas de bug mais c'est du dead code qui crée des re-renders inutiles.
+
+## Correction proposée
+
+### Fix 1 : Supprimer le credit check de `useAIInteractionLogger`
+
+Le `checkAndLogInteraction` ne devrait **PAS** vérifier les crédits. Son rôle est uniquement de logger l'interaction dans `ai_interactions`. La vérification et le débit sont déjà gérés de manière atomique par `tryEngageCredit` + le trigger `auto_manage_credits`.
+
+Supprimer :
+- Le `checkCredits` call (L52-59)
+- L'import de `decrementCredit` et `checkCredits` depuis `useCreditManager`
+- La dépendance dans le `useCallback`
+
+### Fix 2 : Nettoyer le hook
+
+- Supprimer l'import de `useCreditManager`
+- Simplifier `checkAndLogInteraction` pour ne faire que le logging
+- Garder l'export `checkCredits` sur le return pour backward compat mais le sourcer directement
 
 ## Fichiers modifiés
 
 | Fichier | Action |
 |---------|--------|
-| `src/components/AuthGuard.tsx` | EDIT — sessionStorage guard + max retry pour éviter boucle reload |
-| `supabase/functions/ensure-profile/index.ts` | EDIT — remplacer `getClaims()` par `getUser()` |
-| `src/hooks/useAuth.tsx` | EDIT — supprimer le check `is_deleted` dans `getSession().then()` |
-| `supabase/functions/delete-own-account/index.ts` | EDIT — ajouter annulation Stripe avant suppression |
+| `src/hooks/useAIInteractionLogger.tsx` | EDIT — supprimer credit check, garder uniquement le logging |
 
 ## Ce qui ne change PAS
-- Auth.tsx — flow login/signup/OAuth intact
-- delete-user (admin) — inchangé
-- fetch-users-with-emails — inchangé
-- RLS policies — inchangées
-- Dashboard, credits, billing — inchangés
 
-## Détail technique
+- `tryEngageCredit` — reste la source de vérité pour les crédits (atomique, avant le job)
+- `auto_manage_credits` trigger — continue de débiter après completion
+- `useCreditManager` — inchangé
+- Tous les composants appelant `tryEngageCredit` — inchangés
+- Toast "Insufficient Credits" dans chaque composant après `tryEngageCredit.success === false` — inchangé et correct
 
-### AuthGuard — Anti-boucle
-```text
-Before reload:
-  sessionStorage.set('ensure_profile_attempts', count + 1)
+## Impact
 
-On mount:
-  if sessionStorage.get('ensure_profile_attempts') >= 2:
-    show error card instead of looping
-    clear sessionStorage flag
-```
-
-### ensure-profile — getUser pattern
-```text
-Replace:
-  getClaims(token) → data.claims.sub
-
-With:
-  getUser(token) → data.user.id
-```
-
-### delete-own-account — Stripe cleanup
-```text
-Before soft delete:
-  1. Check profile.stripe_customer_id (if column exists)
-  2. If customer exists, list active subscriptions
-  3. Cancel each subscription
-  4. Log result
-  5. Continue with deletion even if Stripe fails
-```
-
-Note : La colonne `stripe_customer_id` n'existe pas dans le schéma actuel de `profiles`. Si l'annulation Stripe n'est pas faisable sans cette donnée, ce point sera reporté. Le fix se limitera alors à un log d'avertissement.
+- Suppression des faux positifs "Credit limit reached" qui apparaissent après une opération réussie
+- Les interactions seront correctement loggées dans `ai_interactions` même quand c'est le dernier crédit
+- Aucune régression : la vraie vérification de crédits reste dans `tryEngageCredit` (avant le job)
 
