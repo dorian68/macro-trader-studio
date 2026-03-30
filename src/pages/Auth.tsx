@@ -234,11 +234,11 @@ export default function Auth() {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        // 🔄 Offer reactivation for soft-deleted users
+        // Deleted account check: if profile is soft-deleted but auth somehow exists,
+        // force sign out. This is a safety net — normally auth.users is hard-deleted.
         if (profile?.is_deleted) {
-          console.log('[Google Auth] User is soft-deleted, offering reactivation');
-          setPendingReactivationUser(session.user);
-          setShowReactivation(true);
+          console.log('[Google Auth] User profile is deleted, signing out');
+          await supabase.auth.signOut();
           setProcessingOAuth(false);
           setGoogleLoading(false);
           return;
