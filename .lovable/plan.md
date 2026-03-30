@@ -1,118 +1,181 @@
 
 
-# Audit complet du systeme de billing/credits — Vulnerabilites et plan de remediation
+# Question-Led SEO Content Architecture for AlphaLens Blog
 
-## Audit : vulnerabilites identifiees
+## Overview
 
-### CRITIQUE 1 — `initialize_user_credits` ecrase les credits (PARTIELLEMENT CORRIGE)
+Build a scalable "question-first" editorial system entirely within the existing blog infrastructure. 6 thematic hub pages aggregate articles by topic. ~40 question articles are inserted as `blog_posts` rows with enhanced rendering. No new database tables needed — leverages existing `blog_posts` with a `tags` field to link articles to hubs.
 
-Le RPC `initialize_user_credits` utilise `ON CONFLICT DO UPDATE SET credits = plan.max_credits`. Il est appele dans :
-- `stripe-webhook` : `checkout.session.completed`, `subscription.updated`, `invoice.payment_succeeded`, `subscription.deleted` → **ecrase les credits a chaque appel**
-- `renew-credits` : renouvellement periodique → **ecrase les credits restants au lieu de les recharger**
-- `useCreditManager.tsx` ligne 82 : auto-initialization pour les nouveaux users sans credits → OK pour le premier appel, mais dangereux si appele deux fois
+## Architecture
 
-**Le trial a ete corrige** avec `activate_free_trial_safe` (additif), mais les webhooks Stripe utilisent encore `initialize_user_credits` qui ecrase.
+```text
+/blog                          ← existing listing (unchanged)
+/blog/hub/ai-trading           ← NEW hub page (6 total)
+/blog/hub/forex-ai
+/blog/hub/crypto-ai
+/blog/hub/macro-analysis
+/blog/hub/portfolio-risk
+/blog/hub/quant-education
+/blog/:slug                    ← existing + enhanced article template
+```
 
-**Scenario de bug actif :** Un utilisateur avec 50 credits queries restants (sur 80 du plan premium) recoit un `invoice.payment_succeeded` → ses credits sont reinitialises a 80, OK dans ce cas. Mais si un `checkout.session.completed` est rejoue par Stripe (retry), les credits sont aussi reinitialises.
+Articles are tagged with hub slugs (e.g. `tags: ["hub:ai-trading", "hub:quant-education"]`) so hub pages can query dynamically.
 
-### CRITIQUE 2 — Pas d'idempotence sur les webhooks Stripe
+## Deliverables
 
-Le webhook ne verifie pas si un `event.id` a deja ete traite. Stripe peut renvoyer le meme evenement plusieurs fois. Actuellement :
-- `checkout.session.completed` → appelle `initialize_user_credits` a chaque replay (ecrase)
-- `invoice.payment_succeeded` → idem
-- `customer.subscription.updated` → idem
+### 1. Question Article Data — `src/data/seoQuestionArticles.ts`
 
-Pas de table `processed_webhook_events` pour deduplication.
+A single TypeScript file containing all ~40 question articles as structured objects:
 
-### CRITIQUE 3 — `renew-credits` ecrase les credits non consommes
+```ts
+interface SEOQuestionArticle {
+  slug: string;
+  title: string;           // H1 = exact search question
+  metaTitle: string;        // ≤60 chars with "| AlphaLens AI"
+  metaDescription: string;  // ≤155 chars
+  excerpt: string;
+  category: string;         // maps to existing 4 categories
+  tags: string[];           // includes "hub:xxx" + "seo-question"
+  hubSlugs: string[];       // which hubs this belongs to
+  author: string;
+  content: string;          // full markdown following template
+  relatedSlugs: string[];   // 2-3 related question article slugs
+  publishedAt: string;      // staggered dates
+}
+```
 
-Le cron `renew-credits` appelle `initialize_user_credits` qui reset les credits au max du plan. Un utilisateur qui a 50/80 queries se retrouve avec 80/80 — dans ce cas c'est le comportement attendu pour un renouvellement. Mais si le cron s'execute deux fois (retry), pas de probleme car c'est idempotent pour le meme cycle. **Risque faible.**
+Each article follows this markdown template:
+- Short direct answer (2-4 lines, featured-snippet optimized)
+- Table of contents (markdown links to H2s)
+- 4-7 H2/H3 sections with practical examples
+- "Common Mistakes" section
+- "How AlphaLens AI Helps" section
+- Soft CTA
+- "## FAQ" section (3-4 Q&As for FAQ schema)
+- Related questions links block
+- Internal links to hub, pricing, product pages
 
-### MOYEN 4 — Race condition sur `useCreditManager.initializeCredits`
+### 2. Hub Page Data — `src/data/seoHubPages.ts`
 
-Ligne 191-195 : si `!loading && !credits` → appelle `initializeCredits('free_trial')`. Si deux onglets sont ouverts, deux appels concurrents peuvent arriver. Grace au `ON CONFLICT`, le second ecrase le premier. **Risque faible** car meme valeur.
+6 hub definitions:
 
-### MOYEN 5 — `handleSignIn` dans Auth.tsx peut encore activer le trial
+```ts
+interface SEOHubPage {
+  slug: string;              // e.g. "ai-trading"
+  title: string;
+  metaTitle: string;
+  metaDescription: string;
+  heroDescription: string;   // 2-3 sentence intro
+  sections: {                // grouped question clusters
+    title: string;
+    description: string;
+    articleSlugs: string[];
+  }[];
+  relatedHubs: string[];
+  ctaText: string;
+}
+```
 
-Lignes 684-697 : si `localStorage` contient `alphalens_pending_free_trial`, le trial est active au login. Un utilisateur pourrait manuellement ecrire dans localStorage et activer le trial. **Mitigation existante :** le RPC `activate_free_trial_safe` verifie `trial_used` cote serveur, donc le second appel est rejete. **Risque residuel faible.**
+### 3. Migration — Seed question articles into `blog_posts`
 
-### MOYEN 6 — Credits negatifs theoriquement possibles
+A Supabase migration that INSERTs all ~40 question articles into `blog_posts` with:
+- `status: 'published'`
+- `tags` including `"seo-question"` and `"hub:xxx"`
+- Staggered `published_at` dates (every 2-3 days, past dates only)
+- `category` mapped to existing 4 categories
 
-Le RPC `decrement_credit` fait `SET col = col - 1 WHERE col > 0`, ce qui est safe. Mais `auto_manage_credits` trigger fait `SET col = col - 1` avec un check `IF current_credits > 0` — race condition si deux jobs completent en meme temps. Le `FOR UPDATE` lock existe mais sur le SELECT, pas sur l'UPDATE. **Risque faible** grace au lock.
+Uses `ON CONFLICT (slug) DO NOTHING` to be idempotent.
 
-### MINEUR 7 — Frontend ne desactive pas les boutons pendant le processing du trial/payment
+### 4. Hub Page Component — `src/pages/BlogHub.tsx`
 
-Le bouton "Start Free Trial" dans Homepage n'a pas de state `loading`. Double-click possible. Mitigation cote serveur existante.
+New page component that:
+- Takes `hubSlug` from URL params
+- Looks up hub data from the static data file
+- Queries `blog_posts` where `tags` contains `hub:{hubSlug}`
+- Renders:
+  - Breadcrumb: Home > Blog > Hub Name
+  - Hero section with hub title + description
+  - "Popular Questions" grid (top 6 articles as cards)
+  - Sectioned article lists grouped by cluster
+  - Related hubs cross-links
+  - CTA to signup/dashboard
+  - RelatedPages footer
+- Full SEO: Helmet with meta tags, canonical, OG, breadcrumb + WebPage JSON-LD
 
----
+### 5. Enhanced BlogPost Template
 
-## Plan de remediation
+Modify `src/pages/BlogPost.tsx` to detect question articles (tag `"seo-question"`) and render enhanced UI:
+- **Table of Contents** sidebar/block (extracted from H2 headings in markdown)
+- **Share buttons** (Twitter, LinkedIn, copy link)
+- **"Related Questions" block** at bottom (query by `relatedSlugs` from article data)
+- **"Updated" date** display (using `updated_at`)
+- **Author card** with byline
+- Existing features preserved: breadcrumb, reading time, cover image, FAQ schema, CTA
 
-### Phase 1 — Idempotence webhook (CRITIQUE)
+### 6. Routes — `src/App.tsx`
 
-**Fichier : migration SQL**
-- Creer une table `processed_stripe_events` avec `event_id TEXT PRIMARY KEY, processed_at TIMESTAMPTZ DEFAULT now()`
+Add hub route:
+```tsx
+<Route path="/blog/hub/:hubSlug" element={<BlogHub />} />
+```
 
-**Fichier : `supabase/functions/stripe-webhook/index.ts`**
-- Au debut du traitement de chaque event : `INSERT INTO processed_stripe_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING event_id`
-- Si pas de `RETURNING` → event deja traite, return 200 immediatement
-- Cela garantit qu'un replay Stripe n'ecrase jamais les credits
+### 7. Sitemap & Robots — `src/seo/sitemapRoutes.ts` + `scripts/generate-sitemap.ts`
 
-### Phase 2 — Credit ledger (audit trail)
+- Add all 6 hub pages: `/blog/hub/ai-trading` etc. (priority 0.8)
+- Add all ~40 question article slugs (priority 0.7)
+- Sync `generate-sitemap.ts` routes array
 
-**Fichier : migration SQL**
-- Creer une table `credit_transactions`:
-  ```
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  user_id UUID NOT NULL
-  transaction_type TEXT NOT NULL  -- 'plan_provision', 'trial', 'usage', 'renewal', 'adjustment'
-  credit_type TEXT NOT NULL       -- 'queries', 'ideas', 'reports'
-  amount INTEGER NOT NULL         -- positif = ajout, negatif = consommation
-  source TEXT NOT NULL             -- 'stripe_webhook', 'trial_activation', 'job_completion', 'admin', 'cron_renewal'
-  reference_id TEXT                -- event_id stripe, job_id, etc.
-  balance_after INTEGER
-  created_at TIMESTAMPTZ DEFAULT now()
-  ```
-- RLS : users voient les leurs, admins voient tout
+### 8. Internal Linking Integration
 
-**Note :** Le ledger est un **audit trail** supplementaire, pas un remplacement du systeme actuel. `user_credits` reste la source de verite pour les balances (performances). Le ledger permet le debugging et la reconciliation.
+- **Blog.tsx**: Add a "Topic Hubs" section above the post grid with 6 hub cards
+- **BlogPost.tsx**: For non-question articles, add "Explore by Topic" links to relevant hubs
+- **Hub pages**: Cross-link to other hubs + pricing/features
 
-### Phase 3 — Wrapper RPC `provision_plan_credits` (remplace `initialize_user_credits` dans les webhooks)
+### 9. Blog Category Expansion
 
-**Fichier : migration SQL**
-- Creer un RPC `provision_plan_credits(p_user_id, p_plan_type, p_source, p_reference_id)` :
-  - Pour `checkout.session.completed` (premier achat) : SET credits au max du plan + insert ledger
-  - Pour `invoice.payment_succeeded` (renouvellement) : SET credits au max du plan + insert ledger
-  - Pour `subscription.deleted` : SET credits a 0 + insert ledger
-  - Chaque appel enregistre dans `credit_transactions`
-  - Idempotent via `p_reference_id` : si deja dans le ledger, skip
+The existing 4 categories remain. Question articles are assigned to the closest matching category. The `tags` field handles hub membership separately, so no category schema change is needed.
 
-**Fichier : `supabase/functions/stripe-webhook/index.ts`**
-- Remplacer tous les appels `initialize_user_credits` par `provision_plan_credits` avec le `event.id` comme reference
+## Files Modified/Created
 
-**Fichier : `supabase/functions/renew-credits/index.ts`**
-- Remplacer `initialize_user_credits` par `provision_plan_credits` avec reference `renew_{user_id}_{date}`
+| File | Action |
+|------|--------|
+| `src/data/seoQuestionArticles.ts` | CREATE — all 40 article definitions with full content |
+| `src/data/seoHubPages.ts` | CREATE — 6 hub page definitions |
+| `src/pages/BlogHub.tsx` | CREATE — hub page component |
+| `src/pages/BlogPost.tsx` | EDIT — enhanced template for question articles |
+| `src/pages/Blog.tsx` | EDIT — add hub cards section |
+| `src/App.tsx` | EDIT — add hub route |
+| `src/seo/sitemapRoutes.ts` | EDIT — add hub + question URLs |
+| `scripts/generate-sitemap.ts` | EDIT — sync routes |
+| `supabase/migrations/xxx.sql` | CREATE — seed question articles |
+| `src/seo/structuredData.ts` | EDIT — add hub page schema helper |
 
-### Phase 4 — Frontend safety
+## What Does NOT Change
 
-**Fichier : `src/hooks/useCreditManager.tsx`**
-- Supprimer l'auto-init `useEffect` qui appelle `initializeCredits('free_trial')` pour les users sans credits (lignes 191-195). C'est dangereux — les credits doivent etre initialises uniquement par le signup flow ou le webhook.
-- Ajouter un `isProcessing` state pour empecher les appels concurrents a `activateFreeTrial`
+- Existing 86 blog articles — untouched
+- Blog listing page layout and pagination — preserved
+- Existing category system — preserved
+- BlogPost rendering for non-question articles — preserved
+- Admin BlogManagement — works as before (question articles editable too)
+- Auth, payments, credits — untouched
 
-### Fichiers modifies (resume)
+## Content Quality Guardrails
 
-| Fichier | Changement |
-|---------|-----------|
-| Migration SQL | Tables `processed_stripe_events`, `credit_transactions` + RPC `provision_plan_credits` |
-| `stripe-webhook/index.ts` | Deduplication par event_id + utilisation `provision_plan_credits` + ledger |
-| `renew-credits/index.ts` | Utilisation `provision_plan_credits` avec reference idempotente |
-| `useCreditManager.tsx` | Supprimer auto-init dangereux + ajouter `isProcessing` guard |
+- Each article has a unique angle — no duplicate intros
+- Expert tone matching existing blog voice
+- Practical examples tied to FX/crypto/commodities/macro
+- "How AlphaLens AI Helps" section is product-relevant, not generic
+- FAQ sections only where genuinely useful (not forced)
+- All internal links use semantic `<Link>` components
 
-### Ce qui ne change PAS
+## Implementation Order
 
-- `activate_free_trial_safe` — deja corrige et safe
-- `try_engage_credit` / `auto_manage_credits` / `decrement_credit` — logique de consommation intacte
-- `create-checkout` — inchange
-- Toutes les pages frontend (Homepage, Auth, Blog) — deja corrigees dans le dernier patch
-- Le systeme d'authentification
+1. Create data files (articles + hubs)
+2. Create migration to seed articles
+3. Create BlogHub page component
+4. Enhance BlogPost for question articles
+5. Add hub route to App.tsx
+6. Add hub cards to Blog.tsx
+7. Update sitemap routes
+8. Verify no regressions on existing blog pages
 
