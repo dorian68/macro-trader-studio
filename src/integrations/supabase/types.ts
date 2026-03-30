@@ -662,6 +662,39 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_accounts_audit: {
+        Row: {
+          created_at: string
+          deleted_at: string
+          deleted_by: string | null
+          deletion_type: string
+          email_hash: string
+          id: string
+          metadata: Json | null
+          original_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string
+          deleted_by?: string | null
+          deletion_type?: string
+          email_hash: string
+          id?: string
+          metadata?: Json | null
+          original_user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string
+          deleted_by?: string | null
+          deletion_type?: string
+          email_hash?: string
+          id?: string
+          metadata?: Json | null
+          original_user_id?: string
+        }
+        Relationships: []
+      }
       indicators_tv: {
         Row: {
           adx: number | null

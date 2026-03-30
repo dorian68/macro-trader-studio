@@ -36,8 +36,7 @@ export default function Auth() {
   const [showBrokerPicker, setShowBrokerPicker] = useState(false);
   const [brokerChoice, setBrokerChoice] = useState<string | null>(null);
   const [pendingGoogleSession, setPendingGoogleSession] = useState<any>(null);
-  const [showReactivation, setShowReactivation] = useState(false);
-  const [pendingReactivationUser, setPendingReactivationUser] = useState<any>(null);
+  // Reactivation states removed — deleted accounts are hard-deleted from auth.users
   const [session, setSession] = useState(null);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [activeBrokers, setActiveBrokers] = useState([]);
@@ -235,11 +234,11 @@ export default function Auth() {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        // 🔄 Offer reactivation for soft-deleted users
+        // Deleted account check: if profile is soft-deleted but auth somehow exists,
+        // force sign out. This is a safety net — normally auth.users is hard-deleted.
         if (profile?.is_deleted) {
-          console.log('[Google Auth] User is soft-deleted, offering reactivation');
-          setPendingReactivationUser(session.user);
-          setShowReactivation(true);
+          console.log('[Google Auth] User profile is deleted, signing out');
+          await supabase.auth.signOut();
           setProcessingOAuth(false);
           setGoogleLoading(false);
           return;
@@ -620,19 +619,23 @@ export default function Auth() {
       password
     });
 
-    // ✅ Check for soft-deleted users
+    // Safety net: if profile is soft-deleted but auth user somehow still exists
+    // (should not happen after hard delete), force sign out
     if (data.user && !error) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_deleted, deleted_at')
+        .select('is_deleted')
         .eq('user_id', data.user.id)
         .maybeSingle();
 
       if (profile?.is_deleted) {
-        // Offer reactivation instead of blocking
-        console.log('[Email Auth] User is soft-deleted, offering reactivation');
-        setPendingReactivationUser(data.user);
-        setShowReactivation(true);
+        console.log('[Email Auth] Profile is deleted, signing out');
+        await supabase.auth.signOut();
+        toast({
+          title: t('errors.loginError'),
+          description: t('errors.invalidCredentials') || 'Invalid login credentials',
+          variant: 'destructive',
+        });
         setLoading(false);
         isManualSignInRef.current = false;
         return;
@@ -864,83 +867,7 @@ export default function Auth() {
           </DialogContent>
         </Dialog>
 
-        {/* Reactivation Dialog for soft-deleted users */}
-        <Dialog open={showReactivation} onOpenChange={setShowReactivation}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t('reactivation.title')}</DialogTitle>
-              <DialogDescription>
-                {t('reactivation.description')}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  Your request will be reviewed by our team within 24-48 hours. You'll receive an email notification with the decision.
-                </p>
-              </div>
-            </div>
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowReactivation(false);
-                  setPendingReactivationUser(null);
-                  supabase.auth.signOut();
-                  navigate('/auth');
-                }}
-                disabled={loading}
-                className="w-full"
-              >
-                {t('reactivation.cancel')}
-              </Button>
-              <Button
-                onClick={async () => {
-                  setLoading(true);
-                  try {
-                    const { data, error } = await supabase.functions.invoke('request-reactivation');
-
-                    if (error) throw error;
-
-                    toast({
-                      title: t('reactivation.request_sent_title'),
-                      description: t('reactivation.request_sent_description'),
-                    });
-
-                    setShowReactivation(false);
-                    setPendingReactivationUser(null);
-                    await supabase.auth.signOut();
-                    navigate('/auth');
-                  } catch (error: any) {
-                    console.error('[Auth] Reactivation request error:', error);
-
-                    if (error.message?.includes('already have a pending')) {
-                      toast({
-                        title: t('reactivation.pending_request_title'),
-                        description: t('reactivation.pending_request_description'),
-                      });
-                    } else {
-                      toast({
-                        title: t('reactivation.request_error_title'),
-                        description: t('reactivation.request_error_description'),
-                        variant: "destructive",
-                      });
-                    }
-                    await supabase.auth.signOut();
-                    navigate('/auth');
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading}
-                className="w-full"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t('reactivation.request_button')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Reactivation dialog removed — deleted accounts use hard delete */}
 
 
         {signupSuccess ? (

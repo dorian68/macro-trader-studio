@@ -103,17 +103,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         timestamp: new Date().toISOString()
       });
       
-      // ✅ Check if user is soft-deleted - don't block, let AuthGuard handle
+      // Safety net: if profile is soft-deleted but auth user somehow still exists,
+      // force sign out immediately (should not happen after hard delete)
       if (currentSession?.user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('is_deleted, deleted_at')
+          .select('is_deleted')
           .eq('user_id', currentSession.user.id)
           .maybeSingle();
         
         if (profile?.is_deleted) {
-          console.log('⚠️ [Auth] User is soft-deleted, will be handled by AuthGuard');
-          // Don't signOut here - let AuthGuard display reactivation option
+          console.log('[Auth] User profile is soft-deleted, forcing sign out');
+          await supabase.auth.signOut();
+          setUser(null);
+          setSession(null);
+          setLoading(false);
+          return;
         }
       }
       
