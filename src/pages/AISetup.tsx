@@ -196,8 +196,7 @@ export default function AISetup() {
   } = useAuth();
   const globalLoading = useGlobalLoading();
   const {
-    logInteraction,
-    checkCredits
+    logInteraction
   } = useAIInteractionLogger();
   const {
     createJob

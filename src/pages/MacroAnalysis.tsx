@@ -68,8 +68,7 @@ export default function MacroAnalysis() {
     user
   } = useAuth();
   const {
-    logInteraction,
-    checkCredits
+    logInteraction
   } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
   const { tryEngageCredit } = useCreditEngagement();
