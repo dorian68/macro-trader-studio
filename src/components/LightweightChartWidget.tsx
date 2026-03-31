@@ -238,20 +238,23 @@ export default function LightweightChartWidget({
       
       console.log('✅ Chart created successfully');
 
-      // Handle resize
-      const handleResize = () => {
-        if (chartContainerRef.current && chartRef.current) {
-          chartRef.current.applyOptions({
-            width: chartContainerRef.current.clientWidth,
-          });
+      // Handle resize via ResizeObserver for robust layout sync
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (chartRef.current && chartContainerRef.current) {
+            const { width, height } = entry.contentRect;
+            chartRef.current.applyOptions({
+              width: Math.floor(width),
+              height: Math.floor(height) || 500,
+            });
+          }
         }
-      };
-
-      window.addEventListener('resize', handleResize);
+      });
+      resizeObserver.observe(chartContainerRef.current);
 
       return () => {
         console.log('🧹 Cleanup: removing chart on UNMOUNT');
-        window.removeEventListener('resize', handleResize);
+        resizeObserver.disconnect();
         if (chartRef.current) {
           chartRef.current.remove();
           chartRef.current = null;
