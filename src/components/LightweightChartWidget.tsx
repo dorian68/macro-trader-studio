@@ -201,8 +201,8 @@ export default function LightweightChartWidget({
           textColor: 'rgba(255,255,255,0.6)',
         },
         grid: {
-          vertLines: { color: gridColor },
-          horzLines: { color: gridColor },
+          vertLines: { color: 'transparent' },
+          horzLines: { color: 'transparent' },
         },
         width: chartContainerRef.current.clientWidth,
         height: chartContainerRef.current.clientHeight || 500,
