@@ -280,11 +280,10 @@ export default function LightweightChartWidget({
   // Apply display options changes dynamically
   useEffect(() => {
     if (!chartRef.current) return;
-    const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.04)' : 'transparent';
     chartRef.current.applyOptions({
       grid: {
-        vertLines: { color: gridColor },
-        horzLines: { color: gridColor },
+        vertLines: { color: 'transparent' },
+        horzLines: { color: 'transparent' },
       },
       timeScale: {
         visible: displayOptions.showTimeScale,

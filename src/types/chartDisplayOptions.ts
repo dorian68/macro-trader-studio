@@ -8,7 +8,7 @@ export interface DisplayOptions {
 }
 
 export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
-  showGrid: true,
+  showGrid: false,
   showPriceScale: true,
   showTimeScale: true,
   showVolume: false,
