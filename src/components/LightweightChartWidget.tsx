@@ -207,7 +207,7 @@ export default function LightweightChartWidget({
           horzLines: { color: gridColor },
         },
         width: chartContainerRef.current.clientWidth,
-        height: 500,
+        height: chartContainerRef.current.clientHeight || 500,
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
