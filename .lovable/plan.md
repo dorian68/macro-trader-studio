@@ -1,87 +1,70 @@
 
 
-# Audit du systeme de subscription Stripe
+# Investigation: Dashboard Chart Not Displaying
 
-## Diagnostic : 3 problemes critiques identifies
+## Root Cause Analysis
 
-### PROBLEME 1 (CRITIQUE) — Le webhook Stripe ne recoit AUCUN evenement
+The chart code itself has not been modified recently. The regression likely stems from one of these causes:
 
-La table `processed_stripe_events` ne contient qu'un seul enregistrement de test manuel (`evt_test_idempotency_001`). Les logs de la edge function `stripe-webhook` sont vides. **Aucun paiement n'a jamais ete traite par le webhook.**
+### Most Likely: Edge Function `fetch-historical-prices` failure
 
-Sans webhook fonctionnel :
-- Pas d'auto-approbation du profil
-- Pas d'attribution de credits
-- Pas de notification admin
-- Le user paie, revient sur `/payment-success`, mais son profil reste `pending` → bloque
+The `LightweightChartWidget` calls `supabase.functions.invoke('fetch-historical-prices')` to get OHLC data. If this fails AND the client-side TwelveData fallback also fails, the chart shows a loading spinner indefinitely or an error state.
 
-**Cause probable** : Le webhook n'est pas configure dans le Stripe Dashboard, ou l'URL configuree est incorrecte.
+Possible sub-causes:
+- **`TWELVE_DATA_API_KEY` not set as a Supabase secret** (the edge function reads `Deno.env.get('TWELVE_DATA_API_KEY')`)
+- **TwelveData API rate limit exhausted** (Basic plan has 800 requests/day)
+- **Edge function deployment stale** after recent shared code changes
 
-**Action requise (manuelle)** : Configurer le webhook dans Stripe Dashboard :
-- URL : `https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/stripe-webhook`
-- Evenements : `checkout.session.completed`, `invoice.payment_succeeded`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-- Copier le Signing Secret → le mettre a jour dans Supabase secrets sous `STRIPE_WEBHOOK_SECRET`
+### Secondary: Chart container height collapse
 
-### PROBLEME 2 (CRITIQUE) — STRIPE_MODE mal configure
+The `chartContainerRef` div uses `className="w-full flex-1 min-h-0 relative"` without an explicit height. The chart library creates a canvas with `height: 500px`, but if the flex container collapses (e.g., parent doesn't propagate height correctly), the chart may render at 0 height.
 
-Les logs `create-checkout` montrent :
-```text
-"mode":"pk_live_51SC35fB2Pjgoe0Q1TjJmejBC3GMlqRrzaQ..."
+## Plan
+
+### Step 1 — Redeploy `fetch-historical-prices`
+Ensure the edge function is running the latest code after recent shared module changes.
+
+### Step 2 — Add explicit minimum height to chart container
+In `LightweightChartWidget.tsx`, change the `chartContainerRef` div to have a minimum height so the chart is always visible even if the flex chain breaks:
+
+```tsx
+// Line 747-749: Change from
+<div ref={chartContainerRef} className="w-full flex-1 min-h-0 relative" />
+// To
+<div ref={chartContainerRef} className="w-full flex-1 min-h-[300px] relative" />
 ```
 
-Le secret `STRIPE_MODE` contient une **cle publique Stripe** au lieu de la valeur `"test"` ou `"live"`. Dans `getStripeConfig()`, le code fait :
-```text
-if (mode === "live") → utilise STRIPE_SECRET_KEY_LIVE
-else → utilise STRIPE_SECRET_KEY (test)
+### Step 3 — Add dynamic height from container instead of hardcoded 500px
+In the chart initialization (line 210), use the container's actual height instead of a fixed value:
+
+```tsx
+height: chartContainerRef.current.clientHeight || 500,
 ```
 
-Comme la valeur n'est ni `"test"` ni `"live"`, le systeme utilise les cles TEST par defaut. Cela fonctionne tant que les `stripe_price_id` dans `plan_parameters` sont des prix TEST. Mais c'est une bombe a retardement et empeche le passage en production.
+### Step 4 — Add a ResizeObserver for robust height sync
+Replace the `window.addEventListener('resize')` with a `ResizeObserver` on the container, which handles layout changes more reliably (e.g., sidebar open/close, AURA panel).
 
-**Action requise** : Mettre a jour le secret `STRIPE_MODE` a la valeur `"test"` (pour l'instant) ou `"live"` (quand pret pour la production).
+### Step 5 — Verify `TWELVE_DATA_API_KEY` in Supabase secrets
+Check that this secret exists in the Supabase project settings. If missing, the edge function silently falls back to an empty API key, causing TwelveData to return errors.
 
-### PROBLEME 3 (MINEUR) — Double creation de checkout session
+## Files to Modify
 
-Les logs montrent deux sessions checkout creees a la meme seconde pour le meme utilisateur. Cause probable : double-clic ou React StrictMode. Il faut ajouter un guard dans `Pricing.tsx`.
+| File | Change |
+|------|--------|
+| `src/components/LightweightChartWidget.tsx` | Add min-height, dynamic height init, ResizeObserver |
+| Edge function `fetch-historical-prices` | Redeploy |
 
-## Ce qui fonctionne correctement
+## Technical Details
 
-- `create-checkout` : cree les sessions Stripe correctement (prix, customer, metadata)
-- `stripe-webhook` : le code est correct (idempotence, auto-approbation, credits, notification admin)
-- `check-subscription` : lit correctement le statut Stripe
-- `AuthGuard` : gere le cas "Processing Payment" pour les plans payants
-- `provision_plan_credits` RPC : idempotent avec `reference_id`
-- Les `stripe_price_id` dans `plan_parameters` correspondent aux prix Stripe TEST
+The `LightweightChartWidget` rendering chain is:
+```text
+Layout (fillViewport → h-[calc(100dvh-3.5rem)])
+  → TradingDashboard grid (flex-1 min-h-0)
+    → CandlestickChart Card (flex-col flex-1)
+      → CardContent (flex-1 min-h-0)
+        → LightweightChartWidget (h-full flex-col)
+          → chartContainerRef (flex-1 min-h-0) ← potential 0-height
+```
 
-## Plan de correction
-
-### Fix 1 — Corriger STRIPE_MODE
-Mettre a jour le secret `STRIPE_MODE` de sa valeur actuelle (une cle publique) vers `"test"`.
-
-### Fix 2 — Guide de configuration webhook
-L'utilisateur doit configurer le webhook manuellement dans le Stripe Dashboard. Je fournirai les instructions exactes.
-
-### Fix 3 — Anti double-clic sur le checkout
-Dans `Pricing.tsx`, le guard existe deja via `checkoutLoading` state, mais il faut verifier qu'il bloque correctement les appels concurrents.
-
-### Fix 4 — Ajouter un log dans getStripeConfig pour debugger
-Ajouter un log explicite si `STRIPE_MODE` n'est ni `"test"` ni `"live"` pour detecter les mauvaises configurations.
-
-## Fichiers a modifier
-
-| Fichier | Action |
-|---------|--------|
-| Secret `STRIPE_MODE` | UPDATE → `"test"` |
-| `supabase/functions/_shared/stripe-config.ts` | EDIT — ajouter validation/warning si mode invalide |
-| Deploy `stripe-webhook` | Redeploy pour s'assurer que la derniere version est active |
-
-## Ce que l'utilisateur doit faire manuellement
-
-1. Aller sur https://dashboard.stripe.com/test/webhooks
-2. Ajouter un endpoint : `https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/stripe-webhook`
-3. Selectionner les evenements : `checkout.session.completed`, `invoice.payment_succeeded`, `customer.subscription.updated`, `customer.subscription.deleted`
-4. Copier le Signing Secret (commence par `whsec_`)
-5. Mettre a jour le secret `STRIPE_WEBHOOK_SECRET` dans Supabase avec cette valeur
-
-## Resume
-
-Le code est correct mais le webhook Stripe n'est pas configure cote Stripe Dashboard, donc aucun evenement de paiement n'arrive jamais au backend. C'est la raison pour laquelle les comptes ne sont jamais approuves et les credits jamais attribues apres paiement. En plus, `STRIPE_MODE` est mal configure (contient une cle publique au lieu de "test"/"live").
+The fix ensures the chart container always has a usable height regardless of flex chain behavior.
 
