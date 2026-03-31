@@ -195,16 +195,14 @@ export default function LightweightChartWidget({
     }
 
     try {
-      const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.04)' : 'transparent';
-
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: '#0f1117' },
           textColor: 'rgba(255,255,255,0.6)',
         },
         grid: {
-          vertLines: { color: gridColor },
-          horzLines: { color: gridColor },
+          vertLines: { color: 'transparent' },
+          horzLines: { color: 'transparent' },
         },
         width: chartContainerRef.current.clientWidth,
         height: chartContainerRef.current.clientHeight || 500,
@@ -282,11 +280,10 @@ export default function LightweightChartWidget({
   // Apply display options changes dynamically
   useEffect(() => {
     if (!chartRef.current) return;
-    const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.04)' : 'transparent';
     chartRef.current.applyOptions({
       grid: {
-        vertLines: { color: gridColor },
-        horzLines: { color: gridColor },
+        vertLines: { color: 'transparent' },
+        horzLines: { color: 'transparent' },
       },
       timeScale: {
         visible: displayOptions.showTimeScale,
