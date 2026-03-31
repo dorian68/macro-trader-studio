@@ -282,7 +282,7 @@ export default function LightweightChartWidget({
   // Apply display options changes dynamically
   useEffect(() => {
     if (!chartRef.current) return;
-    const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.06)' : 'transparent';
+    const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.04)' : 'transparent';
     chartRef.current.applyOptions({
       grid: {
         vertLines: { color: gridColor },
