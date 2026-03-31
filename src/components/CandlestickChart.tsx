@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useRef } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -6,7 +6,6 @@ import { BarChart3, Wifi, WifiOff, Activity, TrendingUp, TrendingDown, Search, M
 import { getSymbolForAsset, supportsRealTimeData, getSymbolForTradingView } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
-import LightweightChartWidget from './LightweightChartWidget';
 
 import { HybridSearchBar } from './HybridSearchBar';
 import { DisplayOptions, DEFAULT_DISPLAY_OPTIONS } from '@/types/chartDisplayOptions';
