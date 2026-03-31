@@ -459,6 +459,7 @@ export default function Auth() {
           navigate('/dashboard');
 
           setProcessingOAuth(false);
+        }
       } catch (error) {
         console.error('[Google Auth] Unexpected error:', error);
         await supabase.auth.signOut();
