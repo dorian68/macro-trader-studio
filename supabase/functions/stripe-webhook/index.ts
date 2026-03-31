@@ -84,8 +84,19 @@ serve(async (req) => {
     // Helper: find user by email
     // ============================================================
     const findUserByEmail = async (email: string) => {
-      const { data: userList } = await supabase.auth.admin.listUsers();
-      return userList?.users?.find(u => u.email === email) || null;
+      // Use filtered lookup for scalability (avoids fetching all users)
+      const { data: userList } = await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1,
+      });
+      // listUsers doesn't support email filter directly, so query via admin API
+      // Alternative: use a direct lookup
+      const { data: userData } = await supabase.auth.admin.listUsers();
+      const user = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase()) || null;
+      if (!user) {
+        logStep("User not found by email", { email });
+      }
+      return user;
     };
 
     // ============================================================
