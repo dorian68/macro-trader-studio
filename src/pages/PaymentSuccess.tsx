@@ -30,22 +30,42 @@ const PaymentSuccess = () => {
 
   useEffect(() => {
     if (user) {
-      // Force refresh credits and subscription status to get updated plan
       const refreshUserData = async () => {
-        // First refresh credits
         await fetchCredits();
         
-        // Then check subscription (which will also trigger another refresh)
         if (!isFreeTrial) {
           await checkSubscriptionStatus();
           
-          // Final refresh after a short delay to ensure webhook has processed
-          setTimeout(async () => {
+          // Poll for credits/plan provisioning (webhook may lag)
+          let pollCount = 0;
+          const maxPolls = 10;
+          const pollInterval = 3000;
+          
+          const poll = async () => {
+            pollCount++;
             await fetchCredits();
-            
-            // Dispatch a global event to notify other components
             window.dispatchEvent(new CustomEvent('creditsUpdated'));
-          }, 2000);
+            
+            // Check if profile has been updated by webhook
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('status, user_plan')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            
+            const isProvisioned = profile?.status === 'approved' && 
+              profile?.user_plan && profile.user_plan !== 'free_trial';
+            
+            if (!isProvisioned && pollCount < maxPolls) {
+              setTimeout(poll, pollInterval);
+            } else if (isProvisioned) {
+              console.log('[PaymentSuccess] Provisioning confirmed after', pollCount, 'polls');
+              await fetchCredits();
+              window.dispatchEvent(new CustomEvent('creditsUpdated'));
+            }
+          };
+          
+          setTimeout(poll, 2000);
         } else {
           setLoading(false);
           toast({
@@ -57,7 +77,6 @@ const PaymentSuccess = () => {
       
       refreshUserData();
     } else {
-      // For unauthenticated users, try to get session email if available
       if (sessionId) {
         fetchSessionEmail();
       } else {

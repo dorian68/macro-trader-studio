@@ -84,8 +84,18 @@ serve(async (req) => {
     // Helper: find user by email
     // ============================================================
     const findUserByEmail = async (email: string) => {
-      const { data: userList } = await supabase.auth.admin.listUsers();
-      return userList?.users?.find(u => u.email === email) || null;
+      // Paginate through users to find by email (handles >1000 users)
+      const normalizedEmail = email.toLowerCase();
+      let page = 1;
+      const perPage = 1000;
+      while (true) {
+        const { data: userList } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (!userList?.users?.length) return null;
+        const found = userList.users.find(u => u.email?.toLowerCase() === normalizedEmail);
+        if (found) return found;
+        if (userList.users.length < perPage) return null;
+        page++;
+      }
     };
 
     // ============================================================
