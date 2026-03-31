@@ -124,6 +124,7 @@ const CandlestickChart = memo(function CandlestickChart({
   const [useFallback, setUseFallback] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const fallbackAttemptsRef = useRef(0);
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
 
@@ -132,6 +133,7 @@ const CandlestickChart = memo(function CandlestickChart({
 
   // Reset fallback when asset or timeframe changes
   useEffect(() => {
+    fallbackAttemptsRef.current = 0;
     setUseFallback(false);
   }, [asset, timeframe]);
 
