@@ -306,7 +306,7 @@ const CandlestickChart = memo(function CandlestickChart({
               />
             ) : (
               <TradingViewWidget
-                selectedSymbol={binanceSymbol}
+                selectedSymbol={getSymbolForTradingView(asset)}
                 timeframe={timeframe}
                 displayOptions={displayOptions}
                 darkTheme={darkTheme}

@@ -463,13 +463,13 @@ export default function LightweightChartWidget({
         setLoading(false);
         
         if (onFallback) {
-          console.warn(`⏰ Chart data loading failed after 15s, triggering fallback to TradingView...`);
+          console.warn(`⚡ Chart data loading failed, triggering immediate fallback to TradingView`);
           console.error('Failed to load data for:', {
             symbol: selectedSymbol,
             timeframe: timeframe,
             error: err
           });
-          setTimeout(onFallback, 15000);
+          onFallback();
         }
       }
     };

@@ -104,3 +104,55 @@ export const supportsRealTimeData = (asset: string): boolean => {
 export const getNormalizedSymbol = (symbol: string): string => {
   return symbolCorrections[symbol] || symbol;
 };
+
+// Mapping vers les symboles TradingView (avec préfixe exchange)
+const assetToTradingViewSymbol: Record<string, string> = {
+  // Forex
+  'EUR/USD': 'FX:EURUSD',
+  'GBP/USD': 'FX:GBPUSD',
+  'USD/JPY': 'FX:USDJPY',
+  'AUD/USD': 'FX:AUDUSD',
+  'NZD/USD': 'FX:NZDUSD',
+  'USD/CAD': 'FX:USDCAD',
+  'USD/CHF': 'FX:USDCHF',
+  'EUR/GBP': 'FX:EURGBP',
+  'EUR/JPY': 'FX:EURJPY',
+  'GBP/JPY': 'FX:GBPJPY',
+  'AUD/JPY': 'FX:AUDJPY',
+  'EURUSD': 'FX:EURUSD',
+  'GBPUSD': 'FX:GBPUSD',
+  'USDJPY': 'FX:USDJPY',
+  'AUDUSD': 'FX:AUDUSD',
+  'NZDUSD': 'FX:NZDUSD',
+  'USDCAD': 'FX:USDCAD',
+  'USDCHF': 'FX:USDCHF',
+  'EURGBP': 'FX:EURGBP',
+  'EURJPY': 'FX:EURJPY',
+  'GBPJPY': 'FX:GBPJPY',
+
+  // Crypto
+  'Bitcoin': 'COINBASE:BTCUSD',
+  'BTC': 'COINBASE:BTCUSD',
+  'Ethereum': 'COINBASE:ETHUSD',
+  'ETH': 'COINBASE:ETHUSD',
+  'BTCUSD': 'COINBASE:BTCUSD',
+  'ETHUSD': 'COINBASE:ETHUSD',
+  'BTC-USD': 'COINBASE:BTCUSD',
+  'ETH-USD': 'COINBASE:ETHUSD',
+
+  // Commodities
+  'GOLD': 'OANDA:XAUUSD',
+  'Gold': 'OANDA:XAUUSD',
+  'XAUUSD': 'OANDA:XAUUSD',
+  'SILVER': 'OANDA:XAGUSD',
+  'Silver': 'OANDA:XAGUSD',
+  'XAGUSD': 'OANDA:XAGUSD',
+  'CRUDE': 'TVC:USOIL',
+  'Crude Oil': 'TVC:USOIL',
+};
+
+// Retourne le symbole TradingView complet (avec exchange) pour un actif donné
+export const getSymbolForTradingView = (asset: string): string => {
+  const corrected = symbolCorrections[asset] || asset;
+  return assetToTradingViewSymbol[corrected] || assetToTradingViewSymbol[asset] || asset;
+};
