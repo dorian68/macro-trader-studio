@@ -1,41 +1,44 @@
 
 
-# Fix: Dashboard chart visual regression — restore dark theme
+# Fix: Remove side panel and grid from TradingView chart
 
 ## Problem
 
-The screenshot shows the original look: dark background, green/red candles, clean institutional aesthetic. After the TwelveData expiration and fallback changes, the TradingView widget renders with a **white/light theme** because:
+The TradingView widget currently shows a **left drawing tools sidebar** and potentially **grid lines**, which weren't present in the original design (screenshot reference). The chart should be clean, centered, with no side panel.
 
-1. `TradingDashboard.tsx` never passes `darkTheme={true}` to `CandlestickChart`
-2. `CandlestickChart` defaults `darkTheme` to `undefined` (falsy)
-3. `TradingViewWidget` receives `darkTheme={false}` → renders light theme on a dark page
+**Root cause** in `TradingViewWidget.tsx`:
+- Line 136: `hide_side_toolbar: !displayOptions.showPriceScale` — `showPriceScale` defaults to `true`, so `hide_side_toolbar` is `false` → the left drawing tools panel is **visible**. This is a naming confusion: `showPriceScale` (right axis) was incorrectly mapped to `hide_side_toolbar` (left drawing tools).
+- Line 148: `disabled_features` conditionally includes `"left_toolbar"` based on `showPriceScale` — same wrong mapping.
 
-## Fix
+## Fix (single file: `src/components/TradingViewWidget.tsx`)
 
-### File: `src/components/CandlestickChart.tsx`
+1. **Always hide the left drawing tools sidebar**: `hide_side_toolbar: true` — this panel should never show in the embedded widget.
+2. **Always disable `left_toolbar`** in `disabled_features` — remove the conditional tied to `showPriceScale`.
+3. **Ensure grid is fully suppressed** — the overrides look correct (`showGrid: false` → `gridColor: 'transparent'`), but add `"go_to_date"` and `"display_market_status"` to disabled features for a cleaner look matching the screenshot.
 
-Force `darkTheme={true}` on the TradingView fallback widget regardless of the prop value. The app is always in dark mode, so TradingView must always use dark theme:
+### Exact change in the widget config (lines 134-151):
 
-```tsx
-<TradingViewWidget
-  selectedSymbol={getSymbolForTradingView(asset)}
-  timeframe={timeframe}
-  displayOptions={displayOptions}
-  darkTheme={true}           // ← always dark, matching the app theme
-  onPriceUpdate={price => setCurrentPrice(price)}
-  className="border-0 shadow-none"
-/>
+```typescript
+hide_top_toolbar: !displayOptions.showToolbar,
+hide_side_toolbar: true,  // Always hide left drawing tools panel
+hide_legend: true,
+allow_symbol_change: false,
+withdateranges: false,
+studies,
+toolbar_bg: 'transparent',
+container_id: CONTAINER_ID,
+enabled_features: ["maximize_chart_area"],
+disabled_features: [
+  ...(displayOptions.showToolbar ? [] : ["header_widget"]),
+  "left_toolbar",           // Always disable drawing tools
+  "timeline_marks",
+  "control_bar",
+  ...(displayOptions.showTimeScale ? [] : ["timeframes_toolbar"]),
+  "volume_force_overlay",
+  "go_to_date",
+  "display_market_status",
+],
 ```
 
-This is the only change needed. The TradingView widget already has all the correct dark overrides (transparent background, green/red candles, matching colors) — it just needs `darkTheme={true}` to activate them.
-
-## Files to modify
-
-| File | Change |
-|------|--------|
-| `src/components/CandlestickChart.tsx` | Set `darkTheme={true}` on TradingViewWidget (line 314) |
-
-## Result
-
-The TradingView fallback chart will render with the same dark aesthetic as the original TwelveData lightweight chart: dark background, green/red candles, no jarring white flash.
+This is the only change needed. The chart will render full-width without the side panel, no grid, centered — matching the screenshot.
 
