@@ -120,21 +120,12 @@ const CandlestickChart = memo(function CandlestickChart({
   const [localTimeframe, setLocalTimeframe] = useState('1h');
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
-  const [useFallback, setUseFallback] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const fallbackAttemptsRef = useRef(0);
-  const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
 
   // Use controlled timeframe if provided, otherwise use local state
   const timeframe = timeframeProp || localTimeframe;
-
-  // Reset fallback when asset or timeframe changes
-  useEffect(() => {
-    fallbackAttemptsRef.current = 0;
-    setUseFallback(false);
-  }, [asset, timeframe]);
 
   // Prix de fallback mis à jour (utilisés seulement en attendant WebSocket)
   useEffect(() => {
