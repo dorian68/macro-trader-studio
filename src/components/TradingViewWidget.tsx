@@ -133,7 +133,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
         locale: 'en',
         enable_publishing: false,
         hide_top_toolbar: !displayOptions.showToolbar,
-        hide_side_toolbar: !displayOptions.showPriceScale,
+        hide_side_toolbar: true,
         hide_legend: true,
         allow_symbol_change: false,
         withdateranges: false,
@@ -143,11 +143,13 @@ const TradingViewWidget = memo(function TradingViewWidget({
         enabled_features: ["maximize_chart_area"],
         disabled_features: [
           ...(displayOptions.showToolbar ? [] : ["header_widget"]),
-          ...(displayOptions.showPriceScale ? [] : ["left_toolbar"]),
+          "left_toolbar",
           "timeline_marks",
           "control_bar",
           ...(displayOptions.showTimeScale ? [] : ["timeframes_toolbar"]),
           "volume_force_overlay",
+          "go_to_date",
+          "display_market_status",
         ],
         loading_screen: { backgroundColor: "transparent", foregroundColor: "#68b4bc" },
         overrides: {
