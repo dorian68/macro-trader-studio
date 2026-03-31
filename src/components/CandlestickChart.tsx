@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -124,6 +124,7 @@ const CandlestickChart = memo(function CandlestickChart({
   const [useFallback, setUseFallback] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const fallbackAttemptsRef = useRef(0);
   const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
 
@@ -132,6 +133,7 @@ const CandlestickChart = memo(function CandlestickChart({
 
   // Reset fallback when asset or timeframe changes
   useEffect(() => {
+    fallbackAttemptsRef.current = 0;
     setUseFallback(false);
   }, [asset, timeframe]);
 
@@ -299,9 +301,9 @@ const CandlestickChart = memo(function CandlestickChart({
                   setIsConnected(true);
                 }}
                 onFallback={() => {
-                  // In forceMode="light", retry once more before falling back
-                  if (forceMode === 'light' && !useFallback) {
-                    console.warn('⚠️ forceMode=light: suppressing first fallback attempt');
+                  fallbackAttemptsRef.current++;
+                  if (forceMode === 'light' && fallbackAttemptsRef.current <= 1) {
+                    console.warn('⚠️ forceMode=light: retrying once before fallback');
                     return;
                   }
                   console.log('Lightweight Chart failed, switching to TradingView fallback');
