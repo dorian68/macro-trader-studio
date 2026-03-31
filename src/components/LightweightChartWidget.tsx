@@ -195,12 +195,12 @@ export default function LightweightChartWidget({
     }
 
     try {
-      const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.06)' : 'transparent';
+      const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.04)' : 'transparent';
 
       const chart = createChart(chartContainerRef.current, {
         layout: {
-          background: { color: 'transparent' },
-          textColor: 'hsl(var(--foreground))',
+          background: { color: '#0f1117' },
+          textColor: 'rgba(255,255,255,0.6)',
         },
         grid: {
           vertLines: { color: gridColor },
@@ -211,16 +211,18 @@ export default function LightweightChartWidget({
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
-          borderVisible: false,
+          borderVisible: true,
+          borderColor: 'rgba(255,255,255,0.08)',
           visible: displayOptions.showTimeScale,
         },
         rightPriceScale: {
-          borderVisible: false,
+          borderVisible: true,
+          borderColor: 'rgba(255,255,255,0.08)',
           visible: displayOptions.showPriceScale,
         },
         crosshair: {
-          vertLine: { labelVisible: false },
-          horzLine: { labelBackgroundColor: 'hsl(var(--muted))' },
+          vertLine: { labelVisible: false, color: 'rgba(255,255,255,0.15)' },
+          horzLine: { labelBackgroundColor: '#1a1d27', color: 'rgba(255,255,255,0.15)' },
         },
       });
 
