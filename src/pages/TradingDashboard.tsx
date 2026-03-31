@@ -398,7 +398,7 @@ export default function TradingDashboard() {
           <div className="w-full h-full">
             <CandlestickChart
               forceMode="light"
-              asset={selectedAssetProfile ? selectedAssetProfile.symbol : selectedAsset}
+              asset={selectedAsset}
               showHeader={true}
               compact={true}
               height={350}

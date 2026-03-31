@@ -293,9 +293,17 @@ export default function LightweightChartWidget({
       },
       timeScale: {
         visible: displayOptions.showTimeScale,
+        borderVisible: false,
+        borderColor: 'transparent',
       },
       rightPriceScale: {
         visible: displayOptions.showPriceScale,
+        borderVisible: false,
+        borderColor: 'transparent',
+        scaleMargins: {
+          top: 0.08,
+          bottom: 0.04,
+        },
       },
     });
   }, [displayOptions]);
