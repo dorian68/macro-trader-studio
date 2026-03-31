@@ -556,6 +556,12 @@ export default function Auth() {
     localStorage.setItem('oauth_flow', 'signin');
     localStorage.setItem('oauth_started_at', Date.now().toString());
 
+    // Preserve selected plan for post-OAuth checkout
+    if (selectedPlan) {
+      localStorage.setItem('alphalens_pending_plan', selectedPlan);
+      console.log('[Google Sign In] Stored pending plan before OAuth:', selectedPlan);
+    }
+
     const redirectUrl = `${window.location.origin}/auth`;
     console.log('[Google Sign In] Starting OAuth redirect', { redirectTo: redirectUrl });
 
