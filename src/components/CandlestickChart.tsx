@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useRef } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -6,7 +6,6 @@ import { BarChart3, Wifi, WifiOff, Activity, TrendingUp, TrendingDown, Search, M
 import { getSymbolForAsset, supportsRealTimeData, getSymbolForTradingView } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
 import { TradingViewWidget } from './TradingViewWidget';
-import LightweightChartWidget from './LightweightChartWidget';
 
 import { HybridSearchBar } from './HybridSearchBar';
 import { DisplayOptions, DEFAULT_DISPLAY_OPTIONS } from '@/types/chartDisplayOptions';
@@ -121,21 +120,12 @@ const CandlestickChart = memo(function CandlestickChart({
   const [localTimeframe, setLocalTimeframe] = useState('1h');
   const [isConnected, setIsConnected] = useState(true);
   const [currentPrice, setCurrentPrice] = useState<string>('0');
-  const [useFallback, setUseFallback] = useState(false);
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const fallbackAttemptsRef = useRef(0);
-  const binanceSymbol = getSymbolForAsset(asset);
   const hasRealTimeData = supportsRealTimeData(asset);
 
   // Use controlled timeframe if provided, otherwise use local state
   const timeframe = timeframeProp || localTimeframe;
-
-  // Reset fallback when asset or timeframe changes
-  useEffect(() => {
-    fallbackAttemptsRef.current = 0;
-    setUseFallback(false);
-  }, [asset, timeframe]);
 
   // Prix de fallback mis à jour (utilisés seulement en attendant WebSocket)
   useEffect(() => {
@@ -151,14 +141,7 @@ const CandlestickChart = memo(function CandlestickChart({
     }
   };
 
-  // Determine effective chart mode based on forceMode (admin override)
-  const effectiveUseFallback = forceMode === 'tradingview'
-    ? true
-    : useFallback;
-
-  const effectiveProvider = forceMode === 'tradingview'
-    ? 'tradingview'
-    : 'twelvedata';
+  // Always use TradingView widget
 
   // Whether to show searchbar and chips (hidden on mobile unless toggled, always on desktop; hidden in compact mode)
   const showSearchAndChips = !compact;
@@ -291,36 +274,14 @@ const CandlestickChart = memo(function CandlestickChart({
 
         <CardContent className="px-0 pb-0 pt-0 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
-            {!effectiveUseFallback && effectiveProvider === 'twelvedata' ? (
-              <LightweightChartWidget
-                selectedSymbol={asset}
-                timeframe={timeframe}
-                displayOptions={displayOptions}
-                onPriceUpdate={(price) => {
-                  setCurrentPrice(price);
-                  setIsConnected(true);
-                }}
-                onFallback={() => {
-                  fallbackAttemptsRef.current++;
-                  if (forceMode === 'light' && fallbackAttemptsRef.current <= 1) {
-                    console.warn('⚠️ forceMode=light: retrying once before fallback');
-                    return;
-                  }
-                  console.log('Lightweight Chart failed, switching to TradingView fallback');
-                  setUseFallback(true);
-                  setIsConnected(false);
-                }}
-              />
-            ) : (
-              <TradingViewWidget
-                selectedSymbol={getSymbolForTradingView(asset)}
-                timeframe={timeframe}
-                displayOptions={displayOptions}
-                darkTheme={true}
-                onPriceUpdate={price => setCurrentPrice(price)}
-                className="border-0 shadow-none"
-              />
-            )}
+            <TradingViewWidget
+              selectedSymbol={getSymbolForTradingView(asset)}
+              timeframe={timeframe}
+              displayOptions={displayOptions}
+              darkTheme={true}
+              onPriceUpdate={price => setCurrentPrice(price)}
+              className="border-0 shadow-none"
+            />
 
             {/* Mobile-responsive Trade Levels Overlay */}
             {tradeLevels && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-lg sm:rounded-xl p-2 sm:p-3 shadow-xl w-[calc(100%-1rem)] max-w-[280px] sm:min-w-[240px] sm:max-w-[300px] sm:w-auto z-10">
