@@ -274,36 +274,14 @@ const CandlestickChart = memo(function CandlestickChart({
 
         <CardContent className="px-0 pb-0 pt-0 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
-            {!effectiveUseFallback && effectiveProvider === 'twelvedata' ? (
-              <LightweightChartWidget
-                selectedSymbol={asset}
-                timeframe={timeframe}
-                displayOptions={displayOptions}
-                onPriceUpdate={(price) => {
-                  setCurrentPrice(price);
-                  setIsConnected(true);
-                }}
-                onFallback={() => {
-                  fallbackAttemptsRef.current++;
-                  if (forceMode === 'light' && fallbackAttemptsRef.current <= 1) {
-                    console.warn('⚠️ forceMode=light: retrying once before fallback');
-                    return;
-                  }
-                  console.log('Lightweight Chart failed, switching to TradingView fallback');
-                  setUseFallback(true);
-                  setIsConnected(false);
-                }}
-              />
-            ) : (
-              <TradingViewWidget
-                selectedSymbol={getSymbolForTradingView(asset)}
-                timeframe={timeframe}
-                displayOptions={displayOptions}
-                darkTheme={true}
-                onPriceUpdate={price => setCurrentPrice(price)}
-                className="border-0 shadow-none"
-              />
-            )}
+            <TradingViewWidget
+              selectedSymbol={getSymbolForTradingView(asset)}
+              timeframe={timeframe}
+              displayOptions={displayOptions}
+              darkTheme={true}
+              onPriceUpdate={price => setCurrentPrice(price)}
+              className="border-0 shadow-none"
+            />
 
             {/* Mobile-responsive Trade Levels Overlay */}
             {tradeLevels && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-card/95 backdrop-blur-lg border border-border/50 rounded-lg sm:rounded-xl p-2 sm:p-3 shadow-xl w-[calc(100%-1rem)] max-w-[280px] sm:min-w-[240px] sm:max-w-[300px] sm:w-auto z-10">
