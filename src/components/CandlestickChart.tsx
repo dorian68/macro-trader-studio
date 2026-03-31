@@ -287,7 +287,7 @@ const CandlestickChart = memo(function CandlestickChart({
           </CardHeader>
         )}
 
-        <CardContent className="px-2 sm:px-3 pb-0 sm:pb-1 pt-0 flex-1 min-h-0 overflow-hidden">
+        <CardContent className="px-0 pb-0 pt-0 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
             {!effectiveUseFallback && effectiveProvider === 'twelvedata' ? (
               <LightweightChartWidget
@@ -299,6 +299,11 @@ const CandlestickChart = memo(function CandlestickChart({
                   setIsConnected(true);
                 }}
                 onFallback={() => {
+                  // In forceMode="light", retry once more before falling back
+                  if (forceMode === 'light' && !useFallback) {
+                    console.warn('⚠️ forceMode=light: suppressing first fallback attempt');
+                    return;
+                  }
                   console.log('Lightweight Chart failed, switching to TradingView fallback');
                   setUseFallback(true);
                   setIsConnected(false);
@@ -378,10 +383,6 @@ const CandlestickChart = memo(function CandlestickChart({
               </div>
             </div>}
           </div>
-
-          {showHeader && <div className="mt-1 text-xs text-muted-foreground text-center">
-            {!effectiveUseFallback ? 'Powered by TwelveData' : (hasRealTimeData ? `Real-time data from TradingView` : `Historical data • ${asset} chart`)}
-          </div>}
         </CardContent>
       </Card>
     </div>
