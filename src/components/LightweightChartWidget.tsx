@@ -750,7 +750,7 @@ export default function LightweightChartWidget({
           
           <div 
             ref={chartContainerRef} 
-            className="w-full flex-1 min-h-[300px] relative"
+            className="w-full h-full flex-1 min-h-[300px] relative"
           />
           
           {tooltipVisible && tooltipContent && (
