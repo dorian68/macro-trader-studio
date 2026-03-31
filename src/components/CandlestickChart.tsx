@@ -141,14 +141,7 @@ const CandlestickChart = memo(function CandlestickChart({
     }
   };
 
-  // Determine effective chart mode based on forceMode (admin override)
-  const effectiveUseFallback = forceMode === 'tradingview'
-    ? true
-    : useFallback;
-
-  const effectiveProvider = forceMode === 'tradingview'
-    ? 'tradingview'
-    : 'twelvedata';
+  // Always use TradingView widget
 
   // Whether to show searchbar and chips (hidden on mobile unless toggled, always on desktop; hidden in compact mode)
   const showSearchAndChips = !compact;
