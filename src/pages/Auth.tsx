@@ -437,10 +437,28 @@ export default function Auth() {
           localStorage.removeItem('oauth_flow');
           localStorage.removeItem('oauth_started_at');
 
+          // Check for pending plan from Pricing page before navigating
+          const pendingPlanReturning = localStorage.getItem('alphalens_pending_plan');
+          if (pendingPlanReturning) {
+            localStorage.removeItem('alphalens_pending_plan');
+            console.log('[Google Auth] Returning user has pending plan, redirecting to Stripe checkout:', pendingPlanReturning);
+            try {
+              const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+                body: { plan: pendingPlanReturning, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
+              });
+              if (!checkoutError && checkoutData?.url) {
+                window.location.href = checkoutData.url;
+                setProcessingOAuth(false);
+                return;
+              }
+            } catch (e) {
+              console.error('[Google Auth] Failed to create checkout for pending plan:', e);
+            }
+          }
+
           navigate('/dashboard');
 
           setProcessingOAuth(false);
-        }
       } catch (error) {
         console.error('[Google Auth] Unexpected error:', error);
         await supabase.auth.signOut();
