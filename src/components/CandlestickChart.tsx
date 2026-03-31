@@ -309,7 +309,7 @@ const CandlestickChart = memo(function CandlestickChart({
                 selectedSymbol={getSymbolForTradingView(asset)}
                 timeframe={timeframe}
                 displayOptions={displayOptions}
-                darkTheme={darkTheme}
+                darkTheme={true}
                 onPriceUpdate={price => setCurrentPrice(price)}
                 className="border-0 shadow-none"
               />
