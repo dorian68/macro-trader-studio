@@ -301,9 +301,9 @@ const CandlestickChart = memo(function CandlestickChart({
                   setIsConnected(true);
                 }}
                 onFallback={() => {
-                  // In forceMode="light", retry once more before falling back
-                  if (forceMode === 'light' && !useFallback) {
-                    console.warn('⚠️ forceMode=light: suppressing first fallback attempt');
+                  fallbackAttemptsRef.current++;
+                  if (forceMode === 'light' && fallbackAttemptsRef.current <= 1) {
+                    console.warn('⚠️ forceMode=light: retrying once before fallback');
                     return;
                   }
                   console.log('Lightweight Chart failed, switching to TradingView fallback');
