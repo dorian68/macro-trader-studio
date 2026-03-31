@@ -152,9 +152,7 @@ const CandlestickChart = memo(function CandlestickChart({
   // Determine effective chart mode based on forceMode (admin override)
   const effectiveUseFallback = forceMode === 'tradingview'
     ? true
-    : forceMode === 'light'
-      ? false
-      : useFallback;
+    : useFallback;
 
   const effectiveProvider = forceMode === 'tradingview'
     ? 'tradingview'
