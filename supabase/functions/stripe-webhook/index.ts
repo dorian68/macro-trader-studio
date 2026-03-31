@@ -84,19 +84,18 @@ serve(async (req) => {
     // Helper: find user by email
     // ============================================================
     const findUserByEmail = async (email: string) => {
-      // Use filtered lookup for scalability (avoids fetching all users)
-      const { data: userList } = await supabase.auth.admin.listUsers({
-        page: 1,
-        perPage: 1,
-      });
-      // listUsers doesn't support email filter directly, so query via admin API
-      // Alternative: use a direct lookup
-      const { data: userData } = await supabase.auth.admin.listUsers();
-      const user = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase()) || null;
-      if (!user) {
-        logStep("User not found by email", { email });
+      // Paginate through users to find by email (handles >1000 users)
+      const normalizedEmail = email.toLowerCase();
+      let page = 1;
+      const perPage = 1000;
+      while (true) {
+        const { data: userList } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (!userList?.users?.length) return null;
+        const found = userList.users.find(u => u.email?.toLowerCase() === normalizedEmail);
+        if (found) return found;
+        if (userList.users.length < perPage) return null;
+        page++;
       }
-      return user;
     };
 
     // ============================================================
