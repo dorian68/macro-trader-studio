@@ -119,8 +119,11 @@ const TradingViewWidget = memo(function TradingViewWidget({
         studies.push('ADX@tv-basicstudies');
       }
 
-      const gridColor = displayOptions.showGrid ? (darkTheme ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)') : 'transparent';
       const tvSymbol = ensureTradingViewSymbol(currentSymbol);
+      const chromeColor = darkTheme ? '#0b0d12' : '#ffffff';
+      const paneColor = darkTheme ? '#0f1117' : '#ffffff';
+      const textColor = darkTheme ? 'rgba(255,255,255,0.62)' : 'rgba(15,17,23,0.72)';
+      const crosshairColor = darkTheme ? 'rgba(255,255,255,0.16)' : 'rgba(15,17,23,0.16)';
 
       // @ts-ignore
       const widget = new window.TradingView.widget({
@@ -138,7 +141,7 @@ const TradingViewWidget = memo(function TradingViewWidget({
         allow_symbol_change: false,
         withdateranges: false,
         studies,
-        toolbar_bg: 'transparent',
+        toolbar_bg: chromeColor,
         container_id: CONTAINER_ID,
         enabled_features: ["maximize_chart_area"],
         disabled_features: [
@@ -151,18 +154,25 @@ const TradingViewWidget = memo(function TradingViewWidget({
           "go_to_date",
           "display_market_status",
         ],
-        loading_screen: { backgroundColor: "transparent", foregroundColor: "#68b4bc" },
+        loading_screen: { backgroundColor: paneColor, foregroundColor: "#68b4bc" },
         overrides: {
-          "paneProperties.vertGridProperties.color": gridColor,
-          "paneProperties.horzGridProperties.color": gridColor,
-          "paneProperties.vertGridProperties.style": displayOptions.showGrid ? 1 : 0,
-          "paneProperties.horzGridProperties.style": displayOptions.showGrid ? 1 : 0,
-          "paneProperties.gridProperties.color": gridColor,
-          "paneProperties.gridProperties.style": displayOptions.showGrid ? 1 : 0,
-          "paneProperties.gridLinesMode": displayOptions.showGrid ? "both" : "none",
+          "paneProperties.backgroundType": "solid",
+          "paneProperties.background": paneColor,
+          "paneProperties.backgroundGradientStartColor": paneColor,
+          "paneProperties.backgroundGradientEndColor": paneColor,
+          "paneProperties.vertGridProperties.color": "rgba(0,0,0,0)",
+          "paneProperties.horzGridProperties.color": "rgba(0,0,0,0)",
+          "paneProperties.vertGridProperties.style": 0,
+          "paneProperties.horzGridProperties.style": 0,
+          "paneProperties.gridProperties.color": "rgba(0,0,0,0)",
+          "paneProperties.gridProperties.style": 0,
+          "paneProperties.gridLinesMode": "none",
+          "paneProperties.crossHairProperties.color": crosshairColor,
           "paneProperties.crossHairProperties.style": 2,
+          "scalesProperties.textColor": textColor,
+          "scalesProperties.backgroundColor": chromeColor,
           "scalesProperties.showSymbolLabels": false,
-          "scalesProperties.lineColor": "transparent",
+          "scalesProperties.lineColor": "rgba(0,0,0,0)",
           "mainSeriesProperties.priceLineVisible": true,
           "mainSeriesProperties.priceLineColor": "#68b4bc",
           "mainSeriesProperties.priceLineWidth": 1,
@@ -312,10 +322,10 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
   return (
     <div className={`w-full h-full flex flex-col overflow-hidden rounded-2xl ${className}`}>
-      <div className="relative w-full flex-1 min-h-[300px] overflow-hidden rounded-2xl">
+      <div className="relative w-full flex-1 min-h-[300px] overflow-hidden rounded-2xl bg-card">
         <div
           ref={chartContainerRef}
-          className="absolute inset-0 [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&>div]:!m-0 [&>div]:!p-0"
+          className="absolute inset-0 bg-card [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&_iframe]:!bg-transparent [&>div]:!m-0 [&>div]:!p-0"
         />
         <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-white/90">
           <span>{displayLabel}</span>
