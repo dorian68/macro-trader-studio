@@ -322,10 +322,10 @@ const TradingViewWidget = memo(function TradingViewWidget({
 
   return (
     <div className={`w-full h-full flex flex-col overflow-hidden rounded-2xl ${className}`}>
-      <div className="relative w-full flex-1 min-h-[300px] overflow-hidden rounded-2xl bg-[hsl(var(--chart-panel))]">
+      <div className="relative w-full flex-1 min-h-[300px] overflow-hidden rounded-2xl bg-card">
         <div
           ref={chartContainerRef}
-          className="absolute inset-0 bg-[hsl(var(--chart-panel))] [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&_iframe]:!bg-transparent [&>div]:!m-0 [&>div]:!p-0"
+          className="absolute inset-0 bg-card [&_iframe]:!m-0 [&_iframe]:!p-0 [&_iframe]:!border-0 [&_iframe]:!bg-transparent [&>div]:!m-0 [&>div]:!p-0"
         />
         <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-md px-2 py-1 text-xs font-medium text-white/90">
           <span>{displayLabel}</span>
