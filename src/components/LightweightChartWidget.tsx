@@ -209,14 +209,20 @@ export default function LightweightChartWidget({
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
-          borderVisible: true,
-          borderColor: 'rgba(255,255,255,0.08)',
+          borderVisible: false,
+          borderColor: 'transparent',
           visible: displayOptions.showTimeScale,
+          rightOffset: 3,
+          barSpacing: 6,
         },
         rightPriceScale: {
-          borderVisible: true,
-          borderColor: 'rgba(255,255,255,0.08)',
+          borderVisible: false,
+          borderColor: 'transparent',
           visible: displayOptions.showPriceScale,
+          scaleMargins: {
+            top: 0.08,
+            bottom: 0.04,
+          },
         },
         crosshair: {
           vertLine: { labelVisible: false, color: 'rgba(255,255,255,0.15)' },
