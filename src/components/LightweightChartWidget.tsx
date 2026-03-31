@@ -195,8 +195,6 @@ export default function LightweightChartWidget({
     }
 
     try {
-      const gridColor = displayOptions.showGrid ? 'rgba(255,255,255,0.04)' : 'transparent';
-
       const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: '#0f1117' },
