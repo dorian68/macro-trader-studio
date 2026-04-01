@@ -154,6 +154,35 @@ serve(async (req) => {
           logStep("Created new user", { userId, email: customerEmail });
         }
 
+        // ============================================================
+        // Ensure profile exists before updating (race condition guard)
+        // The handle_new_user trigger may not have fired yet for new users
+        // ============================================================
+        let profileReady = false;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('user_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (existingProfile) {
+            profileReady = true;
+            break;
+          }
+          logStep("Profile not yet available, retrying...", { attempt: attempt + 1, userId });
+          await new Promise(r => setTimeout(r, 1000));
+        }
+
+        if (!profileReady) {
+          logStep("Profile not found after retries, creating manually", { userId });
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({ user_id: userId, status: 'pending', user_plan: 'free_trial' });
+          if (insertError) {
+            logStep("Manual profile insert failed (may already exist)", { error: insertError.message });
+          }
+        }
+
         let planType = session.metadata?.plan_type;
         
         if (!planType) {

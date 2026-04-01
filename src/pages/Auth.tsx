@@ -728,13 +728,8 @@ export default function Auth() {
       // User exists but email not confirmed, redirect to confirmation page
       navigate('/email-confirmation');
     } else if (data.user) {
-      // Store pending plan if coming from Pricing page (login flow)
-      if (selectedPlan) {
-        localStorage.setItem('alphalens_pending_plan', selectedPlan);
-      }
-
-      // Check for pending plan checkout
-      const pendingPlan = localStorage.getItem('alphalens_pending_plan');
+      // Check for pending plan checkout (use selectedPlan directly, fallback to localStorage)
+      const pendingPlan = selectedPlan || localStorage.getItem('alphalens_pending_plan');
       if (pendingPlan) {
         localStorage.removeItem('alphalens_pending_plan');
         try {
