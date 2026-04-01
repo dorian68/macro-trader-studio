@@ -87,8 +87,18 @@ export function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm">
+        <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground text-sm flex flex-col sm:flex-row items-center justify-center gap-2">
           <p>{t('footer.copyright')}</p>
+          <span className="hidden sm:inline">·</span>
+          <div className="flex items-center gap-3">
+            <Link to="/privacy" className="hover:text-foreground transition-colors">
+              {t('footer.privacy')}
+            </Link>
+            <span>·</span>
+            <Link to="/terms" className="hover:text-foreground transition-colors">
+              {t('footer.terms')}
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
