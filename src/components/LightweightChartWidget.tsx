@@ -449,7 +449,8 @@ export default function LightweightChartWidget({
             !isNaN(item.open) && !isNaN(item.high) && 
             !isNaN(item.low) && !isNaN(item.close)
           )
-          .sort((a, b) => (a.time as number) - (b.time as number));
+          .sort((a, b) => (a.time as number) - (b.time as number))
+          .filter((item, idx, arr) => idx === 0 || item.time !== arr[idx - 1].time);
 
         // ✅ Debug: Log formatted candles
         console.log(`📊 Formatted ${formattedData.length} candles:`, {
