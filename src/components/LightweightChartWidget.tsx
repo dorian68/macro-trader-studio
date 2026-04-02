@@ -428,6 +428,10 @@ export default function LightweightChartWidget({
         }
 
         const formattedData: CandlestickData[] = rows
+          .filter((item: any) => 
+            item.open != null && item.high != null && 
+            item.low != null && item.close != null
+          )
           .map((item: any) => {
             const ts = item.datetime ?? item.date;
             const time = ts ? (Math.floor(new Date(ts).getTime() / 1000) as UTCTimestamp) : undefined;

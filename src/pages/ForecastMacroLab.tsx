@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useCreditEngagement } from "@/hooks/useCreditEngagement";
-import { TradingViewWidget } from "@/components/TradingViewWidget";
+
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
