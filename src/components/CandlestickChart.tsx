@@ -141,7 +141,7 @@ const CandlestickChart = memo(function CandlestickChart({
     }
   };
 
-  // Always use TradingView widget
+  // Always use Lightweight Charts widget
 
   // Whether to show searchbar and chips (hidden on mobile unless toggled, always on desktop; hidden in compact mode)
   const showSearchAndChips = !compact;
