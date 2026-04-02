@@ -274,11 +274,10 @@ const CandlestickChart = memo(function CandlestickChart({
 
         <CardContent className="px-0 pb-0 pt-0 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
-            <TradingViewWidget
-              selectedSymbol={getSymbolForTradingView(asset)}
+            <LightweightChartWidget
+              selectedSymbol={asset}
               timeframe={timeframe}
               displayOptions={displayOptions}
-              darkTheme={true}
               onPriceUpdate={price => setCurrentPrice(price)}
               className="border-0 shadow-none"
             />
