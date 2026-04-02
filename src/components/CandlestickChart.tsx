@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, Wifi, WifiOff, Activity, TrendingUp, TrendingDown, Search, Maximize2 } from 'lucide-react';
-import { getSymbolForAsset, supportsRealTimeData, getSymbolForTradingView } from '@/lib/assetMapping';
+import { getSymbolForAsset, supportsRealTimeData } from '@/lib/assetMapping';
 import { cn } from '@/lib/utils';
-import { TradingViewWidget } from './TradingViewWidget';
+import LightweightChartWidget from './LightweightChartWidget';
 
 import { HybridSearchBar } from './HybridSearchBar';
 import { DisplayOptions, DEFAULT_DISPLAY_OPTIONS } from '@/types/chartDisplayOptions';
@@ -274,11 +274,10 @@ const CandlestickChart = memo(function CandlestickChart({
 
         <CardContent className="px-0 pb-0 pt-0 flex-1 min-h-0 overflow-hidden">
           <div className="relative overflow-hidden isolate z-0 h-full flex flex-col min-h-0">
-            <TradingViewWidget
-              selectedSymbol={getSymbolForTradingView(asset)}
+            <LightweightChartWidget
+              selectedSymbol={asset}
               timeframe={timeframe}
               displayOptions={displayOptions}
-              darkTheme={true}
               onPriceUpdate={price => setCurrentPrice(price)}
               className="border-0 shadow-none"
             />
