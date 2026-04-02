@@ -10,7 +10,7 @@ const priceCache = new Map<string, PriceCache>();
 const CACHE_TTL = 30000; // 30 seconds
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS_PER_MINUTE = 8;
-const TWELVE_API_KEY = 'e40fcead02054731aef55d2dfe01cf47';
+const TWELVE_API_KEY = '56f36529787b47209052b8d2bf66c907';
 
 let requestTimestamps: number[] = [];
 
