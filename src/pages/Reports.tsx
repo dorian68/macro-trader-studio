@@ -488,9 +488,14 @@ export default function Reports() {
       const sectionsText = includedSections.map(s => s.title).join(", ");
       
       // Prepare payload for n8n webhook
+    // Generate job_id upfront so it's included in the persisted request_payload
+    const { v4: uuidv4 } = await import('uuid');
+    const reportJobId = uuidv4();
+
     const reportPayload = {
       mode: "run",
       type: "reports",
+      job_id: reportJobId,
       question: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. ${reportConfig.customNotes}`,
       instrument: selectedAsset?.symbol || "Multi-Asset",
       timeframe: "1D",
