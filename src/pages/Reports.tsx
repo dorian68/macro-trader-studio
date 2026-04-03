@@ -16,7 +16,7 @@ import { SEOHead } from '@/components/SEOHead';
 import { useToast } from "@/hooks/use-toast";
 import { safePostRequest } from "@/lib/safe-request";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
-import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
 import { supabase } from "@/integrations/supabase/client";
