@@ -512,12 +512,13 @@ export default function Reports() {
       customNotes: reportConfig.customNotes
     };
 
-      // Create Realtime job for report generation
-      const reportJobId = await createJob(
+      // Create Realtime job for report generation (job_id already in payload)
+      await createJob(
         'reports',
         selectedAsset?.symbol || "Multi-Asset",
         reportPayload,
-        'Report'
+        'Report',
+        reportJobId
       );
       
       console.log('✅ [Reports] Job created:', { 
