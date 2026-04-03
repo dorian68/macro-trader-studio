@@ -652,65 +652,23 @@ export default function Reports() {
         timestamp: new Date().toISOString()
       });
 
-      // 3. Send POST request after subscription is active
-      const { response } = await enhancedPostRequest(
+      // 3. Send POST request directly (job already created above)
+      const response = await safePostRequest(
         'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-        {
-          ...reportPayload,
-          job_id: reportJobId
-        },
-        {
-          enableJobTracking: true,
-          jobType: 'reports',
-          instrument: selectedAsset?.symbol || "Multi-Asset",
-          feature: 'report',
-          jobId: reportJobId
-        }
+        reportPayload
       );
 
-      // 4. Handle HTTP response (secondary path)
+      // 4. Handle HTTP response (secondary path — Realtime is primary)
       try {
         if (response.ok) {
           const responseData = await response.json();
           console.log('📩 [HTTP] Response:', responseData);
-          // Note: Realtime is primary, HTTP is just a backup log
-          // The UI updates are handled by Realtime callback above
         } else {
           console.log(`⚠️ [HTTP] Error ${response.status}, waiting for Realtime…`);
         }
       } catch (httpError) {
         console.log(`⚠️ [HTTP] Timeout, waiting for Realtime…`, httpError);
-        // CRITICAL: Do NOT stop loading here - wait for Realtime
       }
-
-      // Report generation simulation for display (fallback)
-      if (!currentReport) {
-        const generatedSections = includedSections.map(section => ({
-          title: section.title,
-          content: `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
-          userNotes: section.userNotes || ""
-        }));
-
-        const newReport: GeneratedReport = {
-          id: Date.now().toString(),
-          title: reportConfig.title,
-          sections: generatedSections,
-          customNotes: reportConfig.customNotes,
-          exportFormat: reportConfig.exportFormat,
-          createdAt: new Date(),
-          status: "generated"
-        };
-
-        setCurrentReport(newReport);
-        setStep("generated");
-      }
-
-      // Credit logging handled by dual response handler to avoid duplicates
-
-      toast({
-        title: "Report Generated",
-        description: "Your report has been successfully generated.",
-      });
     } catch (error) {
       console.error('Error generating report:', error);
       
