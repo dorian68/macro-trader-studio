@@ -485,30 +485,29 @@ export default function Reports() {
       const includedSections = availableSections.filter(s => s.included);
       const sectionsText = includedSections.map(s => s.title).join(", ");
       
-      // Prepare payload for n8n webhook
-    // Generate job_id upfront so it's included in the persisted request_payload
-    const { v4: uuidv4 } = await import('uuid');
-    const reportJobId = uuidv4();
+      // Generate job_id upfront so it's included in the persisted request_payload
+      const { v4: uuidv4 } = await import('uuid');
+      const reportJobId = uuidv4();
 
-    const reportPayload = {
-      mode: "run",
-      type: "reports",
-      job_id: reportJobId,
-      question: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. ${reportConfig.customNotes}`,
-      instrument: selectedAsset?.symbol || "Multi-Asset",
-      timeframe: "1D",
-      user_email: user?.email || null,
-      exportFormat: reportConfig.exportFormat,
-      email: reportConfig.email,
-      sections: includedSections.map((section, index) => ({
-        id: section.id,
-        title: section.title,
-        description: section.description,
-        order: index + 1,
-        userNotes: section.userNotes || ""
-      })),
-      customNotes: reportConfig.customNotes
-    };
+      const reportPayload = {
+        mode: "run",
+        type: "reports",
+        job_id: reportJobId,
+        question: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. ${reportConfig.customNotes}`,
+        instrument: selectedAsset?.symbol || "Multi-Asset",
+        timeframe: "1D",
+        user_email: user?.email || null,
+        exportFormat: reportConfig.exportFormat,
+        email: reportConfig.email,
+        sections: includedSections.map((section, index) => ({
+          id: section.id,
+          title: section.title,
+          description: section.description,
+          order: index + 1,
+          userNotes: section.userNotes || ""
+        })),
+        customNotes: reportConfig.customNotes
+      };
 
       // Insert job directly with pre-generated jobId (so payload includes job_id)
       const { error: jobError } = await supabase
