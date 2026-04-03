@@ -569,36 +569,66 @@ export default function Reports() {
         });
         console.log(`📄 [Reports] Full response data from ${source}:`, data);
         
-        const generatedSections = includedSections.map(section => ({
-          title: section.title,
-          content: data.sections?.[section.id] || data.content || `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
-          userNotes: section.userNotes || ""
-        }));
+        // 🔹 Try HTML extraction first (primary path — backend returns HTML)
+        let htmlData: string | null = null;
+        if (typeof data === 'string') {
+          const trimmed = data.trim();
+          if (trimmed.startsWith('<')) {
+            htmlData = trimmed;
+          } else {
+            try {
+              const parsed = JSON.parse(trimmed);
+              htmlData = parsed?.output?.base_report || parsed?.base_report || parsed?.html || parsed?.content || null;
+              if (typeof htmlData !== 'string' || !htmlData.trim().startsWith('<')) htmlData = null;
+            } catch {}
+          }
+        } else if (data && typeof data === 'object') {
+          htmlData = data.output?.base_report || data.base_report || data.html || data.content || null;
+          if (typeof htmlData !== 'string' || !htmlData.trim().startsWith('<')) htmlData = null;
+        }
 
-        const newReport: GeneratedReport = {
-          id: reportJobId,
-          title: reportConfig.title,
-          sections: generatedSections,
-          customNotes: reportConfig.customNotes,
-          exportFormat: reportConfig.exportFormat,
-          createdAt: new Date(),
-          status: "generated"
-        };
+        if (htmlData) {
+          setHtmlContent(htmlData);
+          setStep("generated");
+          setIsGenerating(false);
+          toast({
+            title: "Report Generated",
+            description: "Your report has been successfully generated."
+          });
+        } else {
+          // Fallback to structured sections
+          const generatedSections = includedSections.map(section => ({
+            title: section.title,
+            content: data.sections?.[section.id] || data.content || `Generated content for the "${section.title}" section.`,
+            userNotes: section.userNotes || ""
+          }));
 
-        setCurrentReport(newReport);
-        setStep("generated");
+          const newReport: GeneratedReport = {
+            id: reportJobId,
+            title: reportConfig.title,
+            sections: generatedSections,
+            customNotes: reportConfig.customNotes,
+            exportFormat: reportConfig.exportFormat,
+            createdAt: new Date(),
+            status: "generated"
+          };
+
+          setCurrentReport(newReport);
+          setStep("generated");
+          setIsGenerating(false);
+          
+          toast({
+            title: "Report Generated",
+            description: "Your report has been successfully generated."
+          });
+        }
         
-        // Log successful interaction from dual response handler
+        // Log successful interaction
         logInteraction({
           featureName: 'report',
           userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
           aiResponse: data,
           jobId: reportJobId
-        });
-        
-        toast({
-          title: "Report Generated",
-          description: "Your report has been successfully generated."
         });
       });
 
