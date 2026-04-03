@@ -64,7 +64,6 @@ export default function Reports() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { logInteraction } = useAIInteractionLogger();
-  const { createJob } = useRealtimeJobManager();
   const { tryEngageCredit } = useCreditEngagement();
   const { t } = useTranslation(['dashboard', 'toasts']);
 
