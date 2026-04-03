@@ -16,8 +16,7 @@ import { SEOHead } from '@/components/SEOHead';
 import { useToast } from "@/hooks/use-toast";
 import { safePostRequest } from "@/lib/safe-request";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
-import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
-import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
+
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 import { dualResponseHandler } from "@/lib/dual-response-handler";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,7 +64,6 @@ export default function Reports() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { logInteraction } = useAIInteractionLogger();
-  const { createJob } = useRealtimeJobManager();
   const { tryEngageCredit } = useCreditEngagement();
   const { t } = useTranslation(['dashboard', 'toasts']);
 
@@ -488,9 +486,14 @@ export default function Reports() {
       const sectionsText = includedSections.map(s => s.title).join(", ");
       
       // Prepare payload for n8n webhook
+    // Generate job_id upfront so it's included in the persisted request_payload
+    const { v4: uuidv4 } = await import('uuid');
+    const reportJobId = uuidv4();
+
     const reportPayload = {
       mode: "run",
       type: "reports",
+      job_id: reportJobId,
       question: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. ${reportConfig.customNotes}`,
       instrument: selectedAsset?.symbol || "Multi-Asset",
       timeframe: "1D",
@@ -507,13 +510,21 @@ export default function Reports() {
       customNotes: reportConfig.customNotes
     };
 
-      // Create Realtime job for report generation
-      const reportJobId = await createJob(
-        'reports',
-        selectedAsset?.symbol || "Multi-Asset",
-        reportPayload,
-        'Report'
-      );
+      // Insert job directly with pre-generated jobId (so payload includes job_id)
+      const { error: jobError } = await supabase
+        .from('jobs')
+        .insert({
+          id: reportJobId,
+          status: 'pending',
+          request_payload: reportPayload,
+          user_id: user!.id,
+          feature: 'Report'
+        });
+
+      if (jobError) {
+        console.error('Error creating job:', jobError);
+        throw new Error('Failed to create job');
+      }
       
       console.log('✅ [Reports] Job created:', { 
         jobId: reportJobId, 
@@ -556,36 +567,66 @@ export default function Reports() {
         });
         console.log(`📄 [Reports] Full response data from ${source}:`, data);
         
-        const generatedSections = includedSections.map(section => ({
-          title: section.title,
-          content: data.sections?.[section.id] || data.content || `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
-          userNotes: section.userNotes || ""
-        }));
+        // 🔹 Try HTML extraction first (primary path — backend returns HTML)
+        let htmlData: string | null = null;
+        if (typeof data === 'string') {
+          const trimmed = data.trim();
+          if (trimmed.startsWith('<')) {
+            htmlData = trimmed;
+          } else {
+            try {
+              const parsed = JSON.parse(trimmed);
+              htmlData = parsed?.output?.base_report || parsed?.base_report || parsed?.html || parsed?.content || null;
+              if (typeof htmlData !== 'string' || !htmlData.trim().startsWith('<')) htmlData = null;
+            } catch {}
+          }
+        } else if (data && typeof data === 'object') {
+          htmlData = data.output?.base_report || data.base_report || data.html || data.content || null;
+          if (typeof htmlData !== 'string' || !htmlData.trim().startsWith('<')) htmlData = null;
+        }
 
-        const newReport: GeneratedReport = {
-          id: reportJobId,
-          title: reportConfig.title,
-          sections: generatedSections,
-          customNotes: reportConfig.customNotes,
-          exportFormat: reportConfig.exportFormat,
-          createdAt: new Date(),
-          status: "generated"
-        };
+        if (htmlData) {
+          setHtmlContent(htmlData);
+          setStep("generated");
+          setIsGenerating(false);
+          toast({
+            title: "Report Generated",
+            description: "Your report has been successfully generated."
+          });
+        } else {
+          // Fallback to structured sections
+          const generatedSections = includedSections.map(section => ({
+            title: section.title,
+            content: data.sections?.[section.id] || data.content || `Generated content for the "${section.title}" section.`,
+            userNotes: section.userNotes || ""
+          }));
 
-        setCurrentReport(newReport);
-        setStep("generated");
+          const newReport: GeneratedReport = {
+            id: reportJobId,
+            title: reportConfig.title,
+            sections: generatedSections,
+            customNotes: reportConfig.customNotes,
+            exportFormat: reportConfig.exportFormat,
+            createdAt: new Date(),
+            status: "generated"
+          };
+
+          setCurrentReport(newReport);
+          setStep("generated");
+          setIsGenerating(false);
+          
+          toast({
+            title: "Report Generated",
+            description: "Your report has been successfully generated."
+          });
+        }
         
-        // Log successful interaction from dual response handler
+        // Log successful interaction
         logInteraction({
           featureName: 'report',
           userQuery: `Generate report "${reportConfig.title}" with sections: ${sectionsText}. Custom notes: ${reportConfig.customNotes}`,
           aiResponse: data,
           jobId: reportJobId
-        });
-        
-        toast({
-          title: "Report Generated",
-          description: "Your report has been successfully generated."
         });
       });
 
@@ -609,65 +650,23 @@ export default function Reports() {
         timestamp: new Date().toISOString()
       });
 
-      // 3. Send POST request after subscription is active
-      const { response } = await enhancedPostRequest(
+      // 3. Send POST request directly (job already created above)
+      const response = await safePostRequest(
         'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
-        {
-          ...reportPayload,
-          job_id: reportJobId
-        },
-        {
-          enableJobTracking: true,
-          jobType: 'reports',
-          instrument: selectedAsset?.symbol || "Multi-Asset",
-          feature: 'report',
-          jobId: reportJobId
-        }
+        reportPayload
       );
 
-      // 4. Handle HTTP response (secondary path)
+      // 4. Handle HTTP response (secondary path — Realtime is primary)
       try {
         if (response.ok) {
           const responseData = await response.json();
           console.log('📩 [HTTP] Response:', responseData);
-          // Note: Realtime is primary, HTTP is just a backup log
-          // The UI updates are handled by Realtime callback above
         } else {
           console.log(`⚠️ [HTTP] Error ${response.status}, waiting for Realtime…`);
         }
       } catch (httpError) {
         console.log(`⚠️ [HTTP] Timeout, waiting for Realtime…`, httpError);
-        // CRITICAL: Do NOT stop loading here - wait for Realtime
       }
-
-      // Report generation simulation for display (fallback)
-      if (!currentReport) {
-        const generatedSections = includedSections.map(section => ({
-          title: section.title,
-          content: `Generated content for the "${section.title}" section. This section contains detailed analysis based on your recent trading data and current market conditions.`,
-          userNotes: section.userNotes || ""
-        }));
-
-        const newReport: GeneratedReport = {
-          id: Date.now().toString(),
-          title: reportConfig.title,
-          sections: generatedSections,
-          customNotes: reportConfig.customNotes,
-          exportFormat: reportConfig.exportFormat,
-          createdAt: new Date(),
-          status: "generated"
-        };
-
-        setCurrentReport(newReport);
-        setStep("generated");
-      }
-
-      // Credit logging handled by dual response handler to avoid duplicates
-
-      toast({
-        title: "Report Generated",
-        description: "Your report has been successfully generated.",
-      });
     } catch (error) {
       console.error('Error generating report:', error);
       
