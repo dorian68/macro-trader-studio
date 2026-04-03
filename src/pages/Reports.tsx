@@ -512,14 +512,21 @@ export default function Reports() {
       customNotes: reportConfig.customNotes
     };
 
-      // Create Realtime job for report generation (job_id already in payload)
-      await createJob(
-        'reports',
-        selectedAsset?.symbol || "Multi-Asset",
-        reportPayload,
-        'Report',
-        reportJobId
-      );
+      // Insert job directly with pre-generated jobId (so payload includes job_id)
+      const { error: jobError } = await supabase
+        .from('jobs')
+        .insert({
+          id: reportJobId,
+          status: 'pending',
+          request_payload: reportPayload,
+          user_id: user!.id,
+          feature: 'Report'
+        });
+
+      if (jobError) {
+        console.error('Error creating job:', jobError);
+        throw new Error('Failed to create job');
+      }
       
       console.log('✅ [Reports] Job created:', { 
         jobId: reportJobId, 
