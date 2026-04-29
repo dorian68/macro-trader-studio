@@ -1,54 +1,62 @@
 
+# Adoucir le message "Email non confirmé" à la connexion
 
-# Audit: Report Generation (`/reports`)
+## Problème actuel
 
-## Critical Bugs Found
+Dans `src/pages/Auth.tsx` (`handleSignIn`, ligne ~721), quand un utilisateur tente de se connecter sans avoir confirmé son email :
+- Supabase renvoie une erreur `Email not confirmed`
+- Le code tombe dans le bloc générique `if (error)` qui affiche un **toast rouge destructif** avec le message brut anglais
+- L'utilisateur a l'impression d'avoir fait une faute, alors qu'il doit juste cliquer sur le lien dans son email
 
-### 1. Double Job Creation (HIGH)
-`generateReport()` creates a job via `createJob()` (line 511), then `enhancedPostRequest()` creates **another job** with `enableJobTracking: true` (line 619). Since `jobId: reportJobId` is passed, `enhancedPostRequest` skips the insert (line 64 of enhanced-request.ts), but it still runs a full auth check, session refresh, and redundant logging. This is wasteful and fragile — if the option were ever removed, it would create duplicate jobs.
+À noter : un cas de redirection existe déjà ligne 727 (`navigate('/email-confirmation')`) mais il n'est jamais atteint, car Supabase renvoie une erreur **avant** de retourner `data.user` quand l'email n'est pas confirmé.
 
-**Fix**: Remove `enableJobTracking: true` from the `enhancedPostRequest` call. The job is already created by `createJob()`. Use `safePostRequest` directly instead, or pass `enableJobTracking: false`.
+## Solution
 
-### 2. Missing `job_id` in Initial Job Payload (HIGH)
-The first job created via `createJob()` (line 511) stores `reportPayload` as `request_payload`, but `reportPayload` does NOT contain `job_id`. The `job_id` is only added later at line 617 (`...reportPayload, job_id: reportJobId`). This means the `request_payload` in the DB lacks `job_id`. The n8n webhook receives it correctly, but the persisted record is incomplete.
+Détecter spécifiquement l'erreur "Email not confirmed" (code `email_not_confirmed` ou message contenant "not confirmed") **avant** le toast d'erreur générique, et :
 
-**Fix**: Add `job_id` to `reportPayload` before calling `createJob()`.
+1. Afficher un toast **informatif** (variant par défaut, pas destructif) avec un ton bienveillant :
+   - Titre : "Confirmez votre adresse email"
+   - Description : "Nous vous avons envoyé un lien de confirmation. Vérifiez votre boîte de réception (et vos spams)."
+2. Rediriger automatiquement vers `/email-confirmation?email=<email>` — la page existe déjà (`EmailConfirmation.tsx`) et accepte un paramètre `email` en fallback, et propose un bouton "Renvoyer l'email de confirmation".
 
-### 3. Fallback Overwrites Realtime Result (MEDIUM)
-Lines 644-663: After the HTTP request, the code checks `if (!currentReport)` and creates a fallback report with placeholder content. But `currentReport` is React state — it's always the value from the start of the render, so this fallback **always executes**, potentially overwriting the realtime result that arrives later via `useRealtimeResponseInjector`.
+## Changements
 
-**Fix**: Remove the synchronous fallback block (lines 644-663). The realtime injector and dual response handler already cover all response paths.
+### 1. `src/pages/Auth.tsx` — bloc `if (error)` de `handleSignIn`
 
-### 4. Duplicate Toast on Success (LOW)
-Line 667-670: A "Report Generated" toast fires unconditionally at the end of `generateReport()`, even though the realtime injector (line 125-129) and the dual response handler (line 586-589) each fire their own toast. This results in **2-3 "Report Generated" toasts**.
+Avant le toast destructif générique, ajouter une détection :
+```ts
+const isEmailNotConfirmed =
+  error.message?.toLowerCase().includes('not confirmed') ||
+  (error as any).code === 'email_not_confirmed';
 
-**Fix**: Remove the toast at line 667-670. Let the response handlers show it.
+if (isEmailNotConfirmed) {
+  toast({
+    title: t('emailConfirmation.pendingTitle'),
+    description: t('emailConfirmation.pendingDescription'),
+  });
+  navigate(`/email-confirmation?email=${encodeURIComponent(email)}`);
+  setLoading(false);
+  isManualSignInRef.current = false;
+  return;
+}
+```
 
-### 5. `dualResponseHandler` Never Extracts HTML (MEDIUM)
-The dual response handler (lines 549-590) only creates structured `GeneratedReport` sections — it never checks for HTML content (`base_report`, `html`, etc.). Meanwhile, the backend consistently returns HTML (confirmed: all completed jobs have `payload_type: string` starting with `<html>`). So if the dual handler fires instead of the realtime injector, the user gets placeholder text instead of the actual report.
+### 2. Clés i18n
 
-**Fix**: Add HTML extraction logic to the dual response handler, matching the pattern used in `onReportResult`.
+Ajouter dans `src/locales/{en,es,fa}/auth.json` sous `emailConfirmation` :
+- `pendingTitle` : "Confirm your email address" / "Confirme tu correo" / équivalent FA
+- `pendingDescription` : "We sent you a confirmation link. Please check your inbox (and spam folder)." et équivalents
 
-### 6. Orphaned Pending Jobs (LOW)
-Two jobs in the DB are stuck at `pending` forever (no timeout, no cleanup). There's no mechanism to expire or retry stale jobs.
+(La clé parente `emailConfirmation` existe déjà dans les 3 fichiers de locales.)
 
-**Fix**: Consider adding a cleanup query or a `created_at` timeout check when loading persisted reports.
+### 3. Vérifications
 
-### 7. `send-report-email` Uses Resend Dev Sender (LOW)
-The edge function sends from `onboarding@resend.dev` — this is Resend's sandbox domain. Emails may land in spam or be rejected. Should use a verified custom domain.
+- Pas de modification backend nécessaire
+- `EmailConfirmation.tsx` lit déjà `searchParams.get('email')` comme fallback — la redirection avec `?email=` fonctionnera même sans session active
+- Le bouton "Renvoyer le mail" est déjà fonctionnel sur cette page
 
-## Proposed Changes
+## Hors scope
 
-### File: `src/pages/Reports.tsx`
-1. **Remove double job creation**: Change `enhancedPostRequest` to use `safePostRequest` directly (the job already exists).
-2. **Add `job_id` to payload before `createJob`**.
-3. **Remove synchronous fallback** (lines 644-663) that creates placeholder content.
-4. **Remove duplicate toast** at line 667-670.
-5. **Add HTML extraction to dual response handler** (lines 549-590).
-
-### File: `supabase/functions/send-report-email/index.ts`
-6. No code change needed now, but flag the `onboarding@resend.dev` sender as a production blocker.
-
-## Summary
-The core flow works (n8n webhook → Supabase job → realtime update → HTML rendering), but there are redundant paths competing with each other (dual handler vs realtime injector vs synchronous fallback), causing duplicate toasts, placeholder content flashing, and wasted API calls. The fix consolidates to a single clean path: `createJob` → `POST to n8n` → realtime injector handles response.
-
+- Pas de changement au flux de signup
+- Pas de changement aux templates d'email
+- Pas de modification de la page `EmailConfirmation` elle-même
