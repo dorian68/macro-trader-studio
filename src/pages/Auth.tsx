@@ -719,6 +719,21 @@ export default function Auth() {
     }
 
     if (error) {
+      const isEmailNotConfirmed =
+        error.message?.toLowerCase().includes('not confirmed') ||
+        (error as any).code === 'email_not_confirmed';
+
+      if (isEmailNotConfirmed) {
+        toast({
+          title: t('emailConfirmation.pendingTitle'),
+          description: t('emailConfirmation.pendingDescription'),
+        });
+        navigate(`/email-confirmation?email=${encodeURIComponent(email)}`);
+        setLoading(false);
+        isManualSignInRef.current = false;
+        return;
+      }
+
       toast({
         title: t('errors.loginError'),
         description: error.message,
@@ -726,7 +741,7 @@ export default function Auth() {
       });
     } else if (data.user && !data.user.email_confirmed_at) {
       // User exists but email not confirmed, redirect to confirmation page
-      navigate('/email-confirmation');
+      navigate(`/email-confirmation?email=${encodeURIComponent(email)}`);
     } else if (data.user) {
       // Check for pending plan checkout (use selectedPlan directly, fallback to localStorage)
       const pendingPlan = selectedPlan || localStorage.getItem('alphalens_pending_plan');
