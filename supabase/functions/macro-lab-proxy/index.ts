@@ -9,7 +9,7 @@ const corsHeadersWithMethods = {
 };
 
 // Proxy target (HTTP) for internal Macro Lab webhook
-const TARGET_URL = "http://3.137.115.96:9000/run";
+const TARGET_URL = "http://178.105.21.238:9000/run";
 
 serve(async (req) => {
   const reqId = crypto.randomUUID();
