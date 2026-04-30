@@ -21,15 +21,8 @@ serve(async (req) => {
       );
     }
 
-    // Get API URL from environment
-    const apiUrl = Deno.env.get("ALPHALENS_API_URL");
-    if (!apiUrl) {
-      console.error("[forecast-proxy] ALPHALENS_API_URL not configured");
-      return new Response(
-        JSON.stringify({ error: "Backend API URL not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Backend API URL — new IP endpoint
+    const apiUrl = "http://178.105.21.238:8000/forecast";
 
     // Forward the request body to EC2
     const body = await req.text();
