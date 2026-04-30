@@ -1,6 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 
-const SURFACE_API_URL = Deno.env.get("ALPHALENS_SURFACE_API_URL") || "http://3.17.224.165:8001/surface";
+const SURFACE_API_URL = "http://178.105.21.238:8001/surface";
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
