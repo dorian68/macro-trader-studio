@@ -1637,7 +1637,7 @@ function NarrativeSection({ step, title, subtitle, icon, tagline, children, defa
 function ForecastTradeGeneratorContent() {
   useForceLanguage("en");
   const navigate = useNavigate();
-  const { isSuperUser } = useUserRole();
+  const { isSuperUser, isAdmin } = useUserRole();
   
   // ✅ NEW: Credit management and job tracking hooks
   const { createJob } = useRealtimeJobManager();
