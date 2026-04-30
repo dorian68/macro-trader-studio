@@ -2287,6 +2287,9 @@ function ForecastTradeGeneratorContent() {
               <DecisionSummaryCard decisionSummary={decisionSummary} />
             )}
 
+            {/* Sections below are restricted to admin / super users */}
+            {(isAdmin || isSuperUser) && (
+              <>
             {/* Section 1: Market Thesis */}
             <NarrativeSection
               step={1}
@@ -2447,6 +2450,9 @@ function ForecastTradeGeneratorContent() {
                   />
                 </div>
               )}
+            </NarrativeSection>
+              </>
+            )}
             </NarrativeSection>
 
           </div>
