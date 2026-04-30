@@ -2453,7 +2453,6 @@ function ForecastTradeGeneratorContent() {
             </NarrativeSection>
               </>
             )}
-            </NarrativeSection>
 
           </div>
         )}
