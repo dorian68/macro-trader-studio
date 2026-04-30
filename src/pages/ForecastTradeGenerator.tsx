@@ -1637,7 +1637,7 @@ function NarrativeSection({ step, title, subtitle, icon, tagline, children, defa
 function ForecastTradeGeneratorContent() {
   useForceLanguage("en");
   const navigate = useNavigate();
-  const { isSuperUser } = useUserRole();
+  const { isSuperUser, isAdmin } = useUserRole();
   
   // ✅ NEW: Credit management and job tracking hooks
   const { createJob } = useRealtimeJobManager();
@@ -2287,6 +2287,9 @@ function ForecastTradeGeneratorContent() {
               <DecisionSummaryCard decisionSummary={decisionSummary} />
             )}
 
+            {/* Sections below are restricted to admin / super users */}
+            {(isAdmin || isSuperUser) && (
+              <>
             {/* Section 1: Market Thesis */}
             <NarrativeSection
               step={1}
@@ -2448,6 +2451,8 @@ function ForecastTradeGeneratorContent() {
                 </div>
               )}
             </NarrativeSection>
+              </>
+            )}
 
           </div>
         )}
