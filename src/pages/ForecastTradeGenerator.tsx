@@ -1981,7 +1981,7 @@ function ForecastTradeGeneratorContent() {
     });
   };
 
-  const hasResults = aiSetupResult || forecastHorizons.length > 0 || finalAnswer || riskSurfaceData;
+  const hasResults = aiSetupResult || forecastHorizons.length > 0 || finalAnswer || riskSurfaceData || decisionSummary;
 
   return (
     <Layout>
