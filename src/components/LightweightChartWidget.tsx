@@ -395,32 +395,15 @@ export default function LightweightChartWidget({
           
           console.log(`✅ Edge function returned ${rows.length} data points`);
         } catch (edgeError) {
-          console.warn('⚠️ Edge function failed, trying direct TwelveData API:', edgeError);
-
-          // Fallback to direct TwelveData REST API
-          const apiKey = import.meta.env.VITE_TWELVE_DATA_API_KEY;
-          if (!apiKey) throw new Error('TwelveData API key not configured');
-
-          const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${interval}&start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}&apikey=${apiKey}&outputsize=500`;
-          
-          const response = await fetch(url);
-          const json = await response.json();
-
-          if (json.status === 'error') {
-            throw new Error(json.message || 'TwelveData API error');
-          }
-
-          rows = (json.values || []).map((v: any) => ({
-            datetime: v.datetime,
-            date: v.datetime?.split(' ')[0],
-            open: v.open,
-            high: v.high,
-            low: v.low,
-            close: v.close,
-            volume: v.volume
-          }));
-
-          console.log(`✅ Direct API returned ${rows.length} data points`);
+          // SECURITY: never fall back to calling TwelveData directly from the
+          // browser — that requires shipping the API key in the client bundle
+          // (it gets inlined by Vite and is visible to anyone). Historical
+          // prices must be fetched server-side only, via the
+          // `fetch-historical-prices` edge function which holds the key.
+          console.error('⚠️ Historical price edge function failed:', edgeError);
+          throw edgeError instanceof Error
+            ? edgeError
+            : new Error('Failed to load historical prices');
         }
         
         if (!rows || rows.length === 0) {

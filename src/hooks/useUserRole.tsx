@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+// Debug logger — no-op in production (avoids leaking user ids / roles).
+const debugLog = import.meta.env.DEV ? console.log : (..._args: unknown[]) => {};
+
 type AppRole = 'user' | 'admin' | 'super_user';
 
 interface UserRoleData {
@@ -41,7 +44,7 @@ export function useUserRole(): UserRoleData {
         const userRoles = (data || []).map(r => r.role as AppRole);
         setRoles(userRoles);
         
-        console.log('[useUserRole] User roles loaded:', {
+        debugLog('[useUserRole] User roles loaded:', {
           userId: user.id,
           roles: userRoles
         });
@@ -68,7 +71,7 @@ export function useUserRole(): UserRoleData {
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            console.log('[useUserRole] Roles changed, refetching...');
+            debugLog('[useUserRole] Roles changed, refetching...');
             fetchRoles();
           }
         )

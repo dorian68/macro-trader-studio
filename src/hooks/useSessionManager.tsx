@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 
+// Debug logger — no-op in production (avoids leaking user ids / session ids).
+const debugLog = import.meta.env.DEV ? console.log : (..._args: unknown[]) => {};
+
 export function useSessionManager() {
   const { user, session, signOut } = useAuth();
   const { toast } = useToast();
@@ -55,12 +58,12 @@ export function useSessionManager() {
             .maybeSingle();
           
           if (profile?.is_deleted) {
-            console.log('⚠️ [SessionManager] User is soft-deleted, will be handled by AuthGuard');
+            debugLog('⚠️ [SessionManager] User is soft-deleted, will be handled by AuthGuard');
             // Don't register session or signOut - let AuthGuard handle reactivation
             return;
           }
           
-          console.log('🔐 [SessionManager] Registering session:', { userId: user.id, sessionId });
+          debugLog('🔐 [SessionManager] Registering session:', { userId: user.id, sessionId });
           
           // ✅ FIX 6: Temporarily disable aggressive session invalidation for testing
           // COMMENTED OUT to test if this causes the logout loops
@@ -85,11 +88,11 @@ export function useSessionManager() {
           if (updateError) {
             console.error('❌ [SessionManager] Session update error:', updateError);
           } else {
-            console.log('✅ [SessionManager] Session updated:', { rowsUpdated: updatedRows?.length });
+            debugLog('✅ [SessionManager] Session updated:', { rowsUpdated: updatedRows?.length });
           }
 
           if (!updatedRows || updatedRows.length === 0) {
-            console.log('➕ [SessionManager] Creating new session record');
+            debugLog('➕ [SessionManager] Creating new session record');
             
             // Retry logic for session insert
             const tryInsertSession = async (attempt = 1): Promise<void> => {
@@ -100,7 +103,7 @@ export function useSessionManager() {
               const { data: { session: current } } = await supabase.auth.getSession();
               if (!current) {
                 if (attempt <= maxAttempts) {
-                  console.log(`⚠️ [SessionManager] No session token, retrying in ${backoffMs}ms (attempt ${attempt}/${maxAttempts})`);
+                  debugLog(`⚠️ [SessionManager] No session token, retrying in ${backoffMs}ms (attempt ${attempt}/${maxAttempts})`);
                   setTimeout(() => tryInsertSession(attempt + 1), backoffMs);
                 } else {
                   console.warn('⚠️ [SessionManager] Insert skipped: no session after retries');
@@ -124,15 +127,15 @@ export function useSessionManager() {
                 
                 // Retry on 401/42501/PGRST301 errors
                 if ((code === 'PGRST301' || code === '42501' || status === 401) && attempt < maxAttempts) {
-                  console.log(`⚠️ [SessionManager] Insert failed (${code || status}), retrying in ${backoffMs}ms (attempt ${attempt}/${maxAttempts})`);
+                  debugLog(`⚠️ [SessionManager] Insert failed (${code || status}), retrying in ${backoffMs}ms (attempt ${attempt}/${maxAttempts})`);
                   setTimeout(() => tryInsertSession(attempt + 1), backoffMs);
                 } else if (code === 'PGRST301' || code === '42501') {
-                  console.log('⚠️ [SessionManager] RLS prevented insert after retries');
+                  debugLog('⚠️ [SessionManager] RLS prevented insert after retries');
                 } else {
                   console.error('❌ [SessionManager] Session insert error:', insertError);
                 }
               } else {
-                console.log('✅ [SessionManager] Session created');
+                debugLog('✅ [SessionManager] Session created');
               }
             };
             
@@ -142,7 +145,7 @@ export function useSessionManager() {
           // Set up periodic session validation
           const validateSession = async () => {
             try {
-              console.log('🔍 [SessionManager] Validating session:', { userId: user.id, sessionId });
+              debugLog('🔍 [SessionManager] Validating session:', { userId: user.id, sessionId });
               
               const { data, error } = await supabase
                 .from('user_sessions')
@@ -157,7 +160,7 @@ export function useSessionManager() {
               }
 
               if (!data) {
-                console.log('⚠️ [SessionManager] No session data found, recreating...');
+                debugLog('⚠️ [SessionManager] No session data found, recreating...');
                 // If missing, recreate/activate without disconnecting the user
                 const updatePayload = {
                   device_info: getDeviceInfo(),
@@ -176,7 +179,7 @@ export function useSessionManager() {
                   // Only recreate if user is still authenticated
                   const { data: { session: currentSession } } = await supabase.auth.getSession();
                   if (currentSession) {
-                    console.log('➕ [SessionManager] Recreating session record');
+                    debugLog('➕ [SessionManager] Recreating session record');
                     const { error: insertError } = await supabase
                       .from('user_sessions')
                       .insert({
@@ -209,7 +212,7 @@ export function useSessionManager() {
                   return;
                 }
                 
-                console.log('🚫 [SessionManager] Session deactivated, signing out');
+                debugLog('🚫 [SessionManager] Session deactivated, signing out');
                 const isVoluntaryLogout = localStorage.getItem('alphalens_voluntary_logout') === 'true';
                 if (!isVoluntaryLogout) {
                   toast({
@@ -220,7 +223,7 @@ export function useSessionManager() {
                 }
                 await signOut();
               } else {
-                console.log('✅ [SessionManager] Session is valid');
+                debugLog('✅ [SessionManager] Session is valid');
               }
             } catch (e) {
               console.error('❌ [SessionManager] Session validate exception:', e);

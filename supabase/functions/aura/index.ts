@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,16 @@ serve(async (req) => {
   }
 
   try {
+    // Require an authenticated end-user (prevents anonymous abuse of the LLM)
+    const { user, error: authError } = await requireUser(req);
+    if (!user) {
+      console.warn("[aura] Unauthenticated request rejected:", authError);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log("=== AURA REQUEST RECEIVED ===");
     console.log("Method:", req.method);
     console.log("Timestamp:", new Date().toISOString());

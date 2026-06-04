@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
+import { edgeAuthHeaders } from "@/lib/edgeAuth";
 import { LabsComingSoon } from "@/components/labs/LabsComingSoon";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEOHead } from '@/components/SEOHead';
@@ -1851,7 +1852,7 @@ function ForecastTradeGeneratorContent() {
 
       const response = await fetch(MACRO_LAB_PROXY_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await edgeAuthHeaders(),
         body: JSON.stringify(macroPayload),
       });
 

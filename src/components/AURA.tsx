@@ -23,6 +23,7 @@ import { MarketChartWidget } from '@/components/aura/MarketChartWidget';
 import { AURAHistoryPanel } from '@/components/aura/AURAHistoryPanel';
 import { FEATURE_REGISTRY, resolveFeatureId, storeResultForPage } from '@/lib/auraFeatureRegistry';
 import type { FeatureId } from '@/lib/auraFeatureRegistry';
+import { edgeAuthHeaders } from '@/lib/edgeAuth';
 import { useAuraThread } from '@/hooks/useAuraThread';
 import type { Message, RichContent } from '@/hooks/useAuraThread';
 import auraLogo from '@/assets/aura-logo.png';
@@ -1698,7 +1699,8 @@ Now provide a complete, structured technical analysis based on this data.`;
           jobType: featureType,
           instrument: instrument,
           feature: dbFeature,
-          jobId: jobId
+          jobId: jobId,
+          headers: await edgeAuthHeaders()
         }
       );
 

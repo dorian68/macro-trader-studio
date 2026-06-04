@@ -21,6 +21,9 @@ import { useTranslation } from 'react-i18next';
 
 const { useState, useEffect, useRef } = React;
 
+// Debug logger — no-op in production (avoids leaking OAuth/provider/user details).
+const debugLog = import.meta.env.DEV ? console.log : (..._args: unknown[]) => {};
+
 export default function Auth() {
   const { t } = useTranslation('auth');
   const [fullName, setFullName] = useState('');
@@ -121,7 +124,7 @@ export default function Auth() {
     // To prevent deadlocks, defer all async operations to a separate function
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log(`[Auth] onAuthStateChange event: ${event}, provider: ${session?.user?.app_metadata?.provider}`);
+        debugLog(`[Auth] onAuthStateChange event: ${event}, provider: ${session?.user?.app_metadata?.provider}`);
         setSession(session);
 
         // Defer OAuth handling to prevent deadlock
@@ -132,7 +135,7 @@ export default function Auth() {
         } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
           // Skip if handleSignIn is already managing navigation
           if (isManualSignInRef.current) {
-            console.log('[Auth] Skipping onAuthStateChange navigation — handleSignIn is active');
+            debugLog('[Auth] Skipping onAuthStateChange navigation — handleSignIn is active');
             return;
           }
           // Email/password flow - check for pending plan from Pricing
@@ -193,7 +196,7 @@ export default function Auth() {
         const pendingPlan = localStorage.getItem('alphalens_pending_plan');
         if (pendingPlan) {
           localStorage.removeItem('alphalens_pending_plan');
-          console.log('[Auth] Already signed in, processing pending plan:', pendingPlan);
+          debugLog('[Auth] Already signed in, processing pending plan:', pendingPlan);
           try {
             const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
               body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
@@ -213,11 +216,11 @@ export default function Auth() {
     // Async handler for OAuth events (deferred from onAuthStateChange)
     const handleOAuthEvent = async (session: any) => {
       setProcessingOAuth(true);
-      console.log('[Google Auth] Processing OAuth callback');
+      debugLog('[Google Auth] Processing OAuth callback');
 
       try {
         // ✅ FIX 1: Check if profile exists instead of using created_at timing
-        console.log('[Google Auth] Checking for existing profile...');
+        debugLog('[Google Auth] Checking for existing profile...');
         const { data: existingProfile } = await supabase
           .from('profiles')
           .select('user_id, broker_id, broker_name, status')
@@ -225,7 +228,7 @@ export default function Auth() {
           .maybeSingle();
 
         const isNewUser = !existingProfile;
-        console.log('[Google Auth] Profile check:', { isNewUser, profile: existingProfile });
+        debugLog('[Google Auth] Profile check:', { isNewUser, profile: existingProfile });
 
         // Fetch initial profile
         let { data: profile } = await supabase
@@ -237,7 +240,7 @@ export default function Auth() {
         // Deleted account check: if profile is soft-deleted but auth somehow exists,
         // force sign out. This is a safety net — normally auth.users is hard-deleted.
         if (profile?.is_deleted) {
-          console.log('[Google Auth] User profile is deleted, signing out');
+          debugLog('[Google Auth] User profile is deleted, signing out');
           await supabase.auth.signOut();
           setProcessingOAuth(false);
           setGoogleLoading(false);
@@ -256,7 +259,7 @@ export default function Auth() {
             if (Date.now() - timestamp < 300000) {
               pendingBrokerId = brokerId;
               pendingBrokerName = brokerName;
-              console.log('[Google Auth] Retrieved broker from localStorage:', { brokerId, brokerName });
+              debugLog('[Google Auth] Retrieved broker from localStorage:', { brokerId, brokerName });
             } else {
               console.warn('[Google Auth] Broker data expired in localStorage');
             }
@@ -265,22 +268,22 @@ export default function Auth() {
           }
           localStorage.removeItem('oauth_pending_broker');
         }
-        console.log(`[Google Auth] pendingBrokerId: ${pendingBrokerId}, pendingBrokerName: ${pendingBrokerName}`);
+        debugLog(`[Google Auth] pendingBrokerId: ${pendingBrokerId}, pendingBrokerName: ${pendingBrokerName}`);
 
         if (isNewUser) {
-          console.log('[Google Auth] New user detected, waiting for trigger profile creation');
+          debugLog('[Google Auth] New user detected, waiting for trigger profile creation');
 
           // No broker selected during signup - guide user to Sign Up tab
           // No broker selected during signup - Allow proceeding without broker for direct registration
           if (!pendingBrokerId) {
-            console.log('[Google Auth] No broker selected - proceeding with direct registration');
+            debugLog('[Google Auth] No broker selected - proceeding with direct registration');
           }
 
           // ✅ FIX 2: Increase timeout to 10 seconds (10 retries)
           let profile = null;
           let retries = 0;
           while (!profile && retries < 10) {
-            console.log(`[Google Auth] Retry ${retries + 1}/10 - waiting for profile creation`);
+            debugLog(`[Google Auth] Retry ${retries + 1}/10 - waiting for profile creation`);
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             const { data } = await supabase
@@ -324,7 +327,7 @@ export default function Auth() {
             }
 
             profile = newProfile;
-            console.log('[Google Auth] Profile created manually:', profile);
+            debugLog('[Google Auth] Profile created manually:', profile);
           }
 
           // Update profile with broker if one was selected
@@ -343,11 +346,11 @@ export default function Auth() {
               // Log error but allow proceed for direct registration? 
               // Or if broker was selected but failed, maybe we should just log.
             } else {
-              console.log('[Google Auth] Broker assigned successfully');
+              debugLog('[Google Auth] Broker assigned successfully');
             }
           }
 
-          console.log('[Google Auth] Broker assigned successfully');
+          debugLog('[Google Auth] Broker assigned successfully');
 
           // Fire-and-forget notification to admins about new registration
           supabase.functions.invoke('notify-new-registration', {
@@ -380,7 +383,7 @@ export default function Auth() {
           const pendingPlan = localStorage.getItem('alphalens_pending_plan');
           if (pendingPlan) {
             localStorage.removeItem('alphalens_pending_plan');
-            console.log('[Google Auth] New user has pending plan, redirecting to Stripe checkout:', pendingPlan);
+            debugLog('[Google Auth] New user has pending plan, redirecting to Stripe checkout:', pendingPlan);
             try {
               const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
                 body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
@@ -400,7 +403,7 @@ export default function Auth() {
           return;
         } else {
           // Returning user
-          console.log('[Google Auth] Returning user detected');
+          debugLog('[Google Auth] Returning user detected');
 
           // ✅ FIX 5: Handle returning user without profile
           if (!existingProfile) {
@@ -441,7 +444,7 @@ export default function Auth() {
           const pendingPlanReturning = localStorage.getItem('alphalens_pending_plan');
           if (pendingPlanReturning) {
             localStorage.removeItem('alphalens_pending_plan');
-            console.log('[Google Auth] Returning user has pending plan, redirecting to Stripe checkout:', pendingPlanReturning);
+            debugLog('[Google Auth] Returning user has pending plan, redirecting to Stripe checkout:', pendingPlanReturning);
             try {
               const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
                 body: { plan: pendingPlanReturning, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
@@ -504,10 +507,14 @@ export default function Auth() {
       return;
     }
 
-    if (password.length < 6) {
+    // Password policy: min 10 chars, at least one letter and one digit.
+    // NOTE: this is UX only — the authoritative check is Supabase Auth's
+    // "Minimum password length" + "Password requirements" (dashboard / config).
+    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
       toast({
-        title: t('errors.passwordTooShort'),
-        description: t('errors.passwordTooShortDescription'),
+        title: t('errors.passwordTooShort') || 'Password too weak',
+        description: t('errors.passwordRequirements') ||
+          'Use at least 10 characters, including letters and numbers.',
         variant: "destructive"
       });
       return;
@@ -597,11 +604,11 @@ export default function Auth() {
     // Preserve selected plan for post-OAuth checkout
     if (selectedPlan) {
       localStorage.setItem('alphalens_pending_plan', selectedPlan);
-      console.log('[Google Sign In] Stored pending plan before OAuth:', selectedPlan);
+      debugLog('[Google Sign In] Stored pending plan before OAuth:', selectedPlan);
     }
 
     const redirectUrl = `${window.location.origin}/auth`;
-    console.log('[Google Sign In] Starting OAuth redirect', { redirectTo: redirectUrl });
+    debugLog('[Google Sign In] Starting OAuth redirect', { redirectTo: redirectUrl });
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -638,12 +645,12 @@ export default function Auth() {
     // Preserve selected plan for post-OAuth checkout
     if (selectedPlan) {
       localStorage.setItem('alphalens_pending_plan', selectedPlan);
-      console.log('[Google Sign Up] Stored pending plan before OAuth:', selectedPlan);
+      debugLog('[Google Sign Up] Stored pending plan before OAuth:', selectedPlan);
     }
 
     const redirectUrl = `${window.location.origin}/auth`;
 
-    console.log('[Google Sign Up] Starting OAuth redirect', { redirectTo: redirectUrl });
+    debugLog('[Google Sign Up] Starting OAuth redirect', { redirectTo: redirectUrl });
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -689,7 +696,7 @@ export default function Auth() {
         .maybeSingle();
 
       if (profile?.is_deleted) {
-        console.log('[Email Auth] Profile is deleted, signing out');
+        debugLog('[Email Auth] Profile is deleted, signing out');
         await supabase.auth.signOut();
         toast({
           title: t('errors.loginError'),
@@ -703,10 +710,10 @@ export default function Auth() {
 
       // ✅ SAFETY NET: Ensure profile exists (fixes orphan case where trigger failed)
       if (!profile) {
-        console.log('[Email Auth] No profile found, calling ensure-profile...');
+        debugLog('[Email Auth] No profile found, calling ensure-profile...');
         try {
           await supabase.functions.invoke('ensure-profile');
-          console.log('[Email Auth] ensure-profile completed');
+          debugLog('[Email Auth] ensure-profile completed');
         } catch (e) {
           console.error('[Email Auth] ensure-profile failed:', e);
         }
@@ -863,7 +870,7 @@ export default function Auth() {
       }
 
       // Success
-      console.log('[Broker Picker] Broker assigned successfully');
+      debugLog('[Broker Picker] Broker assigned successfully');
       toast({
         title: t('success.accountCreated'),
         description: t('success.accountCreatedDescription'),
@@ -1224,7 +1231,7 @@ export default function Auth() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={6}
+                      minLength={10}
                     />
                   </div>
                   <div className="space-y-2">
@@ -1235,7 +1242,7 @@ export default function Auth() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      minLength={6}
+                      minLength={10}
                       className={passwordMatchError ? 'border-destructive' : ''}
                     />
                     {passwordMatchError && (

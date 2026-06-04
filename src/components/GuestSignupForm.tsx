@@ -28,8 +28,8 @@ const GuestSignupForm = ({ suggestedEmail, onSuccess }: GuestSignupFormProps) =>
       newErrors.push('Valid email address required');
     }
     
-    if (!password || password.length < 6) {
-      newErrors.push('Password must be at least 6 characters');
+    if (!password || password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      newErrors.push('Password must be at least 10 characters and include letters and numbers');
     }
     
     if (password !== confirmPassword) {

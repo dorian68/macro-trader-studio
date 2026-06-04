@@ -1,10 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Stable, non-PII pseudonym for the collective feed.
+// NEVER expose real user emails here — this endpoint is readable by every
+// authenticated user, so it must not leak other users' personal data.
+const anonTrader = (userId: string | null | undefined): string =>
+  userId ? `Trader-${userId.replace(/-/g, "").slice(0, 6)}` : "Anonymous";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,6 +19,17 @@ serve(async (req) => {
   }
 
   try {
+    // Require an authenticated end-user: this endpoint runs with the service role
+    // and aggregates data across users — it must never be reachable anonymously.
+    const { user, error: authError } = await requireUser(req);
+    if (!user) {
+      console.warn("[collective-insights] Unauthenticated request rejected:", authError);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { type, limit = 10, instrument, days } = await req.json();
     
     console.log(`Fetching collective insights: type=${type}, limit=${limit}, instrument=${instrument || 'ALL'}, days=${days || 'ALL'}`);
@@ -46,17 +64,10 @@ serve(async (req) => {
         setupsQuery = setupsQuery.limit(limit);
         const { data: setups } = await setupsQuery;
         
-        // Récupérer les emails des utilisateurs
-        const userIds = [...new Set(setups?.map(job => job.user_id).filter(Boolean) || [])];
-        const { data: { users } } = await supabase.auth.admin.listUsers();
-        const userEmailMap = new Map(
-          users?.map(u => [u.id, u.email]) || []
-        );
-        
         data = setups?.map(job => {
           const content = job.response_payload?.message?.content || job.response_payload?.content || job.response_payload;
           return {
-            user_email: userEmailMap.get(job.user_id) || null,
+            user_email: anonTrader(job.user_id),
             instrument: job.request_payload?.instrument || 'Unknown',
             direction: content?.direction,
             confidence: content?.confidence,
@@ -98,18 +109,11 @@ serve(async (req) => {
         macrosQuery = macrosQuery.limit(limit);
         const { data: macros } = await macrosQuery;
         
-        // Récupérer les emails des utilisateurs
-        const userIdsMacro = [...new Set(macros?.map(job => job.user_id).filter(Boolean) || [])];
-        const { data: { users: usersMacro } } = await supabase.auth.admin.listUsers();
-        const userEmailMapMacro = new Map(
-          usersMacro?.map(u => [u.id, u.email]) || []
-        );
-        
         data = macros?.map(job => {
           const content = job.response_payload?.message?.content || job.response_payload?.content || job.response_payload;
           const fullText = typeof content === 'string' ? content : (content?.content || content?.summary || '');
           return {
-            user_email: userEmailMapMacro.get(job.user_id) || null,
+            user_email: anonTrader(job.user_id),
             instrument: job.request_payload?.instrument || 'General',
             summary: fullText.substring(0, 500),
             full_content: fullText,
@@ -141,14 +145,7 @@ serve(async (req) => {
         const fetchLimit = instrument ? limit * 3 : limit;
         reportsQuery = reportsQuery.limit(fetchLimit);
         const { data: allReports } = await reportsQuery;
-        
-        // Récupérer les emails des utilisateurs
-        const userIdsReports = [...new Set(allReports?.map(job => job.user_id).filter(Boolean) || [])];
-        const { data: { users: usersReports } } = await supabase.auth.admin.listUsers();
-        const userEmailMapReports = new Map(
-          usersReports?.map(u => [u.id, u.email]) || []
-        );
-        
+
         // Filter by instrument client-side if needed
         let reports = allReports;
         if (instrument && allReports) {
@@ -162,7 +159,7 @@ serve(async (req) => {
           const content = job.response_payload?.message?.content || job.response_payload?.content || job.response_payload;
           const fullText = typeof content === 'string' ? content : JSON.stringify(content);
           return {
-            user_email: userEmailMapReports.get(job.user_id) || null,
+            user_email: anonTrader(job.user_id),
             report_type: job.request_payload?.report_type || 'custom',
             instruments: job.request_payload?.instruments || [],
             summary: fullText.substring(0, 500),

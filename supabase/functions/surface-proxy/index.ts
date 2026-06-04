@@ -1,4 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const SURFACE_API_URL = "http://178.105.21.238:8001/surface";
 
@@ -12,10 +13,20 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response(
       JSON.stringify({ error: "Method not allowed" }),
-      { 
-        status: 405, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       }
+    );
+  }
+
+  // Require an authenticated end-user (prevents anonymous abuse of paid compute)
+  const { user, error: authError } = await requireUser(req);
+  if (!user) {
+    console.warn("[surface-proxy] Unauthenticated request rejected:", authError);
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 

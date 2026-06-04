@@ -22,10 +22,11 @@ const ResetPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 6) {
+    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
       toast({
-        title: t('errors.passwordTooShort'),
-        description: t('errors.passwordTooShortDescription'),
+        title: t('errors.passwordTooShort') || 'Password too weak',
+        description: t('errors.passwordRequirements') ||
+          'Use at least 10 characters, including letters and numbers.',
         variant: "destructive",
       });
       return;
@@ -100,7 +101,7 @@ const ResetPassword = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    minLength={6}
+                    minLength={10}
                   />
                 </div>
                 <div className="space-y-2">
@@ -112,7 +113,7 @@ const ResetPassword = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    minLength={6}
+                    minLength={10}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>

@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 const { createContext, useContext, useEffect, useState } = React;
 
+// Debug logger — no-op in production to avoid leaking auth/session details
+// (session expiry, token changes, user ids) into the browser console.
+const debugLog = import.meta.env.DEV ? console.log : (..._args: unknown[]) => {};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -33,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const timestamp = new Date().toISOString();
         const expiresIn = session?.expires_at ? Math.floor((session.expires_at * 1000 - Date.now()) / 1000) : 0;
         
-        console.log('[Auth] Auth state change:', {
+        debugLog('[Auth] Auth state change:', {
           event,
           hasSession: !!session,
           hasPreviousSession: !!previousSession,
@@ -45,14 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // CRITICAL: Ignore INITIAL_SESSION with null session (not a logout)
         if (event === 'INITIAL_SESSION' && !session) {
-          console.log('[Auth] Ignoring INITIAL_SESSION with null session (not a logout)');
+          debugLog('[Auth] Ignoring INITIAL_SESSION with null session (not a logout)');
           setLoading(false);
           return;
         }
         
         // Handle explicit sign out ONLY if session is null AND event is SIGNED_OUT
         if (event === 'SIGNED_OUT' && !session) {
-          console.log('[Auth] Explicit sign out detected');
+          debugLog('[Auth] Explicit sign out detected');
           setUser(null);
           setSession(null);
           previousSession = null;
@@ -70,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // For all other events, update session if present
           if (session) {
-            console.log('[Auth] Updating session:', {
+            debugLog('[Auth] Updating session:', {
               event,
               isTokenRefresh: event === 'TOKEN_REFRESHED',
               timestamp
@@ -80,15 +84,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             previousSession = session;
           } else {
             // On transient null session, verify before clearing user
-            console.log('[Auth] Null session received, verifying...');
+            debugLog('[Auth] Null session received, verifying...');
             const { data: { session: current } } = await supabase.auth.getSession();
             if (current) {
-              console.log('[Auth] Verified session exists, restoring');
+              debugLog('[Auth] Verified session exists, restoring');
               setSession(current);
               setUser(current.user);
               previousSession = current;
             } else {
-              console.log('[Auth] No session found after verification');
+              debugLog('[Auth] No session found after verification');
             }
             // Avoid flipping to null during token refresh
           }
@@ -98,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log('[Auth] Initial session check:', {
+      debugLog('[Auth] Initial session check:', {
         hasSession: !!currentSession,
         timestamp: new Date().toISOString()
       });

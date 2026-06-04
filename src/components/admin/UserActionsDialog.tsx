@@ -94,8 +94,8 @@ export function UserActionsDialog({
   useEffect(() => {
     if (confirmPassword && newPassword !== confirmPassword) {
       setPasswordError('Passwords do not match');
-    } else if (newPassword && newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    } else if (newPassword && newPassword.length < 10) {
+      setPasswordError('Password must be at least 10 characters');
     } else {
       setPasswordError('');
     }
@@ -374,7 +374,7 @@ export function UserActionsDialog({
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                minLength={6}
+                minLength={10}
                 required
               />
             </div>
@@ -385,7 +385,7 @@ export function UserActionsDialog({
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                minLength={6}
+                minLength={10}
                 required
               />
             </div>

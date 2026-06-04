@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeadersWithMethods = {
   ...corsHeaders,
@@ -36,6 +37,16 @@ serve(async (req) => {
       console.log(`[macro-lab-proxy] method not allowed`, { reqId, method });
       return new Response(JSON.stringify({ error: "Method not allowed" }), {
         status: 405,
+        headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
+      });
+    }
+
+    // Require an authenticated end-user (prevents anonymous abuse of paid compute)
+    const { user, error: authError } = await requireUser(req);
+    if (!user) {
+      console.warn(`[macro-lab-proxy] unauthenticated request rejected`, { reqId, authError });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
         headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
       });
     }

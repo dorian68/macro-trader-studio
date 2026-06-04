@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { SEOHead } from '@/components/SEOHead';
+import { edgeAuthHeaders } from '@/lib/edgeAuth';
 import { v4 as uuidv4 } from "uuid";
 import Layout from "@/components/Layout";
 import { SuperUserGuard } from "@/components/SuperUserGuard";
@@ -1036,7 +1037,7 @@ function ForecastPlaygroundContent() {
     try {
       const forecastResponse = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/forecast-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await edgeAuthHeaders(),
         body: JSON.stringify(requestBody),
       });
 
@@ -1108,7 +1109,7 @@ function ForecastPlaygroundContent() {
 
       const surfaceResponse = await fetch("https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/surface-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await edgeAuthHeaders(),
         body: JSON.stringify(surfacePayload),
       });
 
