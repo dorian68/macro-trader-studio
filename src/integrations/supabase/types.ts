@@ -602,6 +602,24 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_form_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_hash?: string
+        }
+        Relationships: []
+      }
       credit_transactions: {
         Row: {
           amount: number
@@ -1121,17 +1139,23 @@ export type Database = {
         Row: {
           event_id: string
           event_type: string | null
+          last_error: string | null
           processed_at: string | null
+          status: string
         }
         Insert: {
           event_id: string
           event_type?: string | null
+          last_error?: string | null
           processed_at?: string | null
+          status?: string
         }
         Update: {
           event_id?: string
           event_type?: string | null
+          last_error?: string | null
           processed_at?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -1461,7 +1485,20 @@ export type Database = {
           updated_count: number
         }[]
       }
+      check_contact_rate_limit_service: {
+        Args: { p_ip_hash: string; p_limit?: number; p_window?: string }
+        Returns: boolean
+      }
       cleanup_stale_engaged_credits: { Args: never; Returns: undefined }
+      consume_credit_service: {
+        Args: {
+          p_feature: string
+          p_reference_id: string
+          p_source: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       decrement_credit: {
         Args: { credit_type: string; target_user_id: string }
         Returns: boolean
@@ -1495,6 +1532,20 @@ export type Database = {
         }
         Returns: Json
       }
+      refund_credit_service: {
+        Args: {
+          p_feature: string
+          p_reference_id: string
+          p_source: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      renew_due_credits_service: { Args: never; Returns: Json }
+      revoke_product_access_service: {
+        Args: { p_reference_id: string; p_source: string; p_user_id: string }
+        Returns: boolean
+      }
       search_chunks_cosine: {
         Args: { match_count: number; query_embedding: string }
         Returns: {
@@ -1513,6 +1564,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      user_in_current_broker: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "super_user"
