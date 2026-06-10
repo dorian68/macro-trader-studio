@@ -201,12 +201,12 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
       };
 
       console.log('💬 [MacroCommentaryBubble] Status check POST request:', {
-        url: 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        url: 'workflow-proxy',
         payload: statusPayload,
         timestamp: new Date().toISOString()
       });
 
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', statusPayload);
+      const response = await safePostRequest('workflow-proxy', statusPayload);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -562,7 +562,7 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
       };
 
       console.log('💬 [MacroCommentaryBubble] POST request:', {
-        url: 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        url: 'workflow-proxy',
         payload: payload,
         timestamp: new Date().toISOString()
       });
@@ -620,7 +620,7 @@ export function MacroCommentaryBubble({ instrument, timeframe, onClose }: MacroC
         });
       });
 
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const response = await safePostRequest('workflow-proxy', {
         ...payload,
         job_id: currentJobId
       });

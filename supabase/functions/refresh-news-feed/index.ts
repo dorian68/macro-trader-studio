@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireProductAccess } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (req.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+    }
+    const { user, error: authError, status } = await requireProductAccess(req);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { category = 'all' } = req.method === 'POST' 
       ? await req.json().catch(() => ({ category: 'all' }))
       : { category: 'all' };
@@ -177,7 +189,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error refreshing news:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

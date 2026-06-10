@@ -75,26 +75,6 @@ export function useCreditManager() {
     }
   }, [user?.id]);
 
-  const initializeCredits = useCallback(async (planType: 'basic' | 'standard' | 'premium' | 'free_trial' | 'broker_free' = 'free_trial') => {
-    if (!user?.id) return;
-
-    try {
-      const { error } = await supabase.rpc('initialize_user_credits', {
-        target_user_id: user.id,
-        target_plan_type: planType
-      });
-
-      if (error) {
-        console.error('Error initializing credits:', error);
-        return;
-      }
-
-      await fetchCredits();
-    } catch (err) {
-      console.error('Error initializing credits:', err);
-    }
-  }, [user?.id, fetchCredits]);
-
   const decrementCredit = useCallback(async (creditType: CreditType): Promise<boolean> => {
     if (!user?.id) {
       toast({
@@ -203,8 +183,11 @@ export function useCreditManager() {
       
       if (error) {
         // Handle 409 (already used) gracefully
+        const errorStatus = typeof error === 'object' && error !== null && 'status' in error
+          ? Number((error as { status?: unknown }).status)
+          : null;
         const isAlreadyUsed = error.message?.includes('already been activated') || 
-                              (error as any)?.status === 409;
+                              errorStatus === 409;
         
         if (isAlreadyUsed) {
           console.log('[CreditSystem] Free trial already used');
@@ -256,7 +239,6 @@ export function useCreditManager() {
     fetchCredits,
     decrementCredit,
     checkCredits,
-    initializeCredits,
     activateFreeTrial
   };
 }

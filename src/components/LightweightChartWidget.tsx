@@ -129,9 +129,6 @@ export default function LightweightChartWidget({
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | any>(null);
   const lastCandleRef = useRef<CandlestickData | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptsRef = useRef<number>(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isConnectingRef = useRef(false);
   
   const [loading, setLoading] = useState(true);
@@ -267,15 +264,6 @@ export default function LightweightChartWidget({
         }
         candlestickSeriesRef.current = null;
         
-        // Clean up WebSocket and reconnect timers
-        if (wsRef.current) {
-          wsRef.current.close();
-          wsRef.current = null;
-        }
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
       };
     } catch (err) {
       console.error('❌ Error initializing chart:', err);
@@ -478,217 +466,62 @@ export default function LightweightChartWidget({
     fetchHistoricalData();
   }, [selectedSymbol, timeframe, onFallback]);
 
-  // FIX: WebSocket for real-time updates - ONLY starts when history ready
-  // No 'loading' in deps to prevent reconnect storms
+  // Poll current prices through the authenticated edge function so provider
+  // credentials are never shipped in the browser bundle.
   useEffect(() => {
-    // Don't start WebSocket until chart is ready AND history loaded (or timeout allows first live candle)
     if (!candlestickSeriesRef.current || !historyReady) {
-      console.log('⏳ Waiting for chart and history before starting WebSocket...');
       return;
     }
 
-    const apiKey = import.meta.env.VITE_TWELVE_DATA_API_KEY;
-    if (!apiKey) {
-      console.error('TwelveData API key not configured');
-      return;
-    }
-
-    // ✅ Binance fallback function
-    const connectBinanceWebSocket = () => {
-      const mapToBinanceSymbol = (sym: string): string => {
-        const upper = sym.toUpperCase();
-        if (upper.includes('BTC')) return 'BTCUSDT';
-        if (upper.includes('ETH')) return 'ETHUSDT';
-        if (upper.includes('EUR')) return 'EURUSDT';
-        if (upper.includes('GBP')) return 'GBPUSDT';
-        return 'BTCUSDT';
-      };
-
-      const binanceSymbol = mapToBinanceSymbol(selectedSymbol);
-      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${binanceSymbol.toLowerCase()}@ticker`);
-      
-      ws.onopen = () => console.log(`✅ Binance WS connected: ${binanceSymbol}`);
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data?.c) {
-            const price = parseFloat(data.c);
-            if (onPriceUpdate) onPriceUpdate(price.toFixed(2));
-            if (candlestickSeriesRef.current && lastCandleRef.current) {
-              const updatedCandle: CandlestickData = {
-                time: lastCandleRef.current.time as UTCTimestamp,
-                open: lastCandleRef.current.open,
-                close: price,
-                high: Math.max(lastCandleRef.current.high, price),
-                low: Math.min(lastCandleRef.current.low, price),
-              };
-              candlestickSeriesRef.current.update(updatedCandle);
-              lastCandleRef.current = updatedCandle;
-            }
-          }
-        } catch (err) {
-          console.error('Binance WS error:', err);
-        }
-      };
-      wsRef.current = ws;
-    };
-
-    const connectTwelveDataWebSocket = () => {
+    let cancelled = false;
+    const updateCurrentPrice = async () => {
       try {
-        const tdSymbol = mapToTwelveDataSymbol(selectedSymbol);
-        const ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
-        
-        ws.onopen = () => {
-          console.log(`✅ TwelveData WebSocket OPENED for ${selectedSymbol} → ${tdSymbol}`);
-          reconnectAttemptsRef.current = 0;
-          ws.send(JSON.stringify({
-            action: 'subscribe',
-            params: { symbols: tdSymbol }
-          }));
-          console.log(`📤 Subscription sent for ${tdSymbol}`);
-        };
+        const { data, error: priceError } = await supabase.functions.invoke('fetch-current-price', {
+          body: { instrument: selectedSymbol },
+        });
+        if (priceError) throw priceError;
+        const price = Number(data?.price);
+        if (cancelled || !Number.isFinite(price) || !candlestickSeriesRef.current) return;
 
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            
-            // Log ALL messages (for debugging)
-            console.log('📥 TwelveData WS message:', msg);
-            
-            // Handle rate-limit / message-processing errors with backoff
-            if (msg.event === 'message-processing' && msg.status === 'error') {
-              console.error('🚫 TwelveData rate-limit:', msg.message);
-              reconnectAttemptsRef.current++;
-              
-              // ✅ Exponential backoff: 10s → 30s → 90s → 180s (cap 3min)
-              const backoffMs = Math.min(10000 * Math.pow(3, reconnectAttemptsRef.current - 1), 180000);
-              console.warn(`⏱️ Backoff ${backoffMs / 1000}s (attempt ${reconnectAttemptsRef.current})`);
-              
-              ws.close();
-              
-              // ✅ Fallback to Binance after 3 failed attempts
-              if (reconnectAttemptsRef.current >= 3) {
-                console.warn('🔄 Switching to Binance WebSocket fallback');
-                connectBinanceWebSocket();
-                return;
-              }
-              
-              reconnectTimeoutRef.current = setTimeout(connectTwelveDataWebSocket, backoffMs);
-              return;
-            }
-            
-            // Ignore status/heartbeat messages
-            if (msg.event === 'subscribe-status') {
-              console.log('✅ Subscription status:', msg.status, msg.message);
-              return;
-            }
-            if (msg.event === 'heartbeat') {
-              console.log('💓 Heartbeat received');
-              return;
-            }
-            
-            // Extract price flexibly from various message formats
-            let price: number | null = null;
-            
-            if (typeof msg.price !== 'undefined') {
-              price = parseFloat(msg.price);
-            } else if (msg.data && typeof msg.data.price !== 'undefined') {
-              price = parseFloat(msg.data.price);
-            } else if (msg.p !== undefined) { // Compact format
-              price = parseFloat(msg.p);
-            }
-            
-            if (price && !isNaN(price) && candlestickSeriesRef.current) {
-              console.log(`✅ Price update for ${tdSymbol}: ${price}`);
-              
-              const timestamp = Math.floor(Date.now() / 1000) as UTCTimestamp;
-              
-              // If no historical data yet, create first live candle
-              if (!lastCandleRef.current) {
-                console.log('📊 Creating first live candle from WebSocket data');
-                const firstLiveCandle: CandlestickData = {
-                  time: timestamp,
-                  open: price,
-                  high: price,
-                  low: price,
-                  close: price,
-                };
-                candlestickSeriesRef.current.setData([firstLiveCandle]);
-                lastCandleRef.current = firstLiveCandle;
-              } else {
-                // Update existing candle
-                const updatedCandle: CandlestickData = {
-                  time: lastCandleRef.current.time as UTCTimestamp,
-                  open: lastCandleRef.current.open,
-                  close: price,
-                  high: Math.max(lastCandleRef.current.high, price),
-                  low: Math.min(lastCandleRef.current.low, price),
-                };
+        const timestamp = Math.floor(Date.now() / 1000) as UTCTimestamp;
+        if (!lastCandleRef.current) {
+          const firstLiveCandle: CandlestickData = {
+            time: timestamp,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+          };
+          candlestickSeriesRef.current.setData([firstLiveCandle]);
+          lastCandleRef.current = firstLiveCandle;
+        } else {
+          const updatedCandle: CandlestickData = {
+            time: lastCandleRef.current.time as UTCTimestamp,
+            open: lastCandleRef.current.open,
+            close: price,
+            high: Math.max(lastCandleRef.current.high, price),
+            low: Math.min(lastCandleRef.current.low, price),
+          };
+          candlestickSeriesRef.current.update(updatedCandle);
+          lastCandleRef.current = updatedCandle;
+        }
 
-                candlestickSeriesRef.current.update(updatedCandle);
-                lastCandleRef.current = updatedCandle;
-              }
-
-              if (onPriceUpdate) {
-                const decimals = selectedSymbol.includes('JPY') ? 2 : 4;
-                onPriceUpdate(price.toFixed(decimals));
-              }
-            } else {
-              console.warn('⚠️ Could not extract price from message:', msg);
-            }
-          } catch (err) {
-            console.error('❌ Error processing TwelveData WebSocket message:', err);
-          }
-        };
-
-        ws.onclose = () => {
-          console.log(`❌ TwelveData WS closed for ${tdSymbol}`);
-          wsRef.current = null;
-          
-          // Calculate backoff delay if rate-limited
-          const backoffMs = reconnectAttemptsRef.current > 0 
-            ? Math.min(10000 * Math.pow(3, reconnectAttemptsRef.current - 1), 60000)
-            : 3000;
-          
-          console.log(`⏱️ Reconnecting in ${backoffMs / 1000}s...`);
-          
-          // Clear previous timeout if any
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          
-          // Attempt to reconnect after backoff delay
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (candlestickSeriesRef.current && historyReady) {
-              connectTwelveDataWebSocket();
-            }
-          }, backoffMs);
-        };
-
-        ws.onerror = (err) => {
-          console.error('TwelveData WebSocket error:', err);
-          ws.close();
-        };
-
-        wsRef.current = ws;
-      } catch (err) {
-        console.error('Error connecting TwelveData WebSocket:', err);
+        if (onPriceUpdate) {
+          const decimals = selectedSymbol.includes('JPY') ? 2 : 4;
+          onPriceUpdate(price.toFixed(decimals));
+        }
+      } catch (priceError) {
+        console.error('Failed to refresh current chart price:', priceError);
       }
     };
 
-    connectTwelveDataWebSocket();
-
+    void updateCurrentPrice();
+    const intervalId = window.setInterval(updateCurrentPrice, 30_000);
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
+      cancelled = true;
+      window.clearInterval(intervalId);
     };
-  }, [selectedSymbol, timeframe, historyReady]); // ✅ FIX: Removed 'loading' to prevent reconnect storms
+  }, [selectedSymbol, historyReady, onPriceUpdate]);
 
   // Tooltip setup
   useEffect(() => {

@@ -13,6 +13,7 @@ import {
   Signal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TechnicalSignal {
   name: string;
@@ -45,10 +46,6 @@ export function TechnicalDashboard({ selectedAsset, timeframe = "1h" }: Technica
   const [signals, setSignals] = useState<TechnicalSignal[]>([]);
   const [summary, setSummary] = useState<"BUY" | "SELL" | "NEUTRAL">("NEUTRAL");
   const [error, setError] = useState<string | null>(null);
-
-  const API_KEY = "e40fcead02054731aef55d2dfe01cf47";
-  const BASE_URL = "https://api.twelvedata.com";
-
 
   const calculateSimpleRSI = (prices: number[]): number => {
     if (prices.length < 14) return 50;
@@ -111,23 +108,23 @@ export function TechnicalDashboard({ selectedAsset, timeframe = "1h" }: Technica
       
       console.log(`Fetching technical data for ${selectedAsset.symbol} with interval ${apiInterval}...`);
       
-      // Fetch multiple indicators from Twelve Data API
-      const [rsiResponse, atrResponse, adxResponse] = await Promise.all([
-        fetch(`${BASE_URL}/rsi?symbol=${selectedAsset.symbol}&interval=${apiInterval}&apikey=${API_KEY}&format=JSON`),
-        fetch(`${BASE_URL}/atr?symbol=${selectedAsset.symbol}&interval=${apiInterval}&apikey=${API_KEY}&format=JSON`),
-        fetch(`${BASE_URL}/adx?symbol=${selectedAsset.symbol}&interval=${apiInterval}&apikey=${API_KEY}&format=JSON`)
-      ]);
+      const { data, error: indicatorError } = await supabase.functions.invoke(
+        'fetch-technical-indicators',
+        {
+          body: {
+            instrument: selectedAsset.symbol,
+            interval: apiInterval,
+            indicators: ['rsi', 'atr', 'adx'],
+            time_period: 14,
+            outputsize: 1,
+          },
+        },
+      );
+      if (indicatorError) throw indicatorError;
 
-      // Check if all requests were successful
-      if (!rsiResponse.ok || !atrResponse.ok || !adxResponse.ok) {
-        throw new Error('Failed to fetch technical indicators');
-      }
-
-      const [rsiData, atrData, adxData] = await Promise.all([
-        rsiResponse.json(),
-        atrResponse.json(),
-        adxResponse.json()
-      ]);
+      const rsiData = data?.indicators?.rsi;
+      const atrData = data?.indicators?.atr;
+      const adxData = data?.indicators?.adx;
 
       // Extract latest values
       const latestRsi = parseFloat(rsiData.values?.[0]?.rsi || "50");

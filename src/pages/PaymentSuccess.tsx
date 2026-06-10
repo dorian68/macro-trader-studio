@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, CreditCard, Calendar, ArrowRight, AlertTriangle, User, Gift } from 'lucide-react';
+import { CheckCircle, CreditCard, Calendar, ArrowRight, AlertTriangle, Gift } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import PublicNavbar from '@/components/PublicNavbar';
-import GuestSignupForm from '@/components/GuestSignupForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreditManager } from '@/hooks/useCreditManager';
@@ -19,14 +18,32 @@ const PaymentSuccess = () => {
   const { user } = useAuth();
   const { fetchCredits } = useCreditManager();
   const { toast } = useToast();
-  const [subscriptionData, setSubscriptionData] = useState<any>(null);
+  const [subscriptionData, setSubscriptionData] = useState<{
+    subscribed: boolean;
+    plan_type: string;
+    subscription_end: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showSignupForm, setShowSignupForm] = useState(false);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   
   const sessionId = searchParams.get('session_id');
   const type = searchParams.get('type'); // 'free_trial' or undefined
   const isFreeTrial = type === 'free_trial';
+
+  const checkSubscriptionStatus = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+
+      if (error) {
+        console.error('Error checking subscription:', error);
+      } else {
+        setSubscriptionData(data);
+      }
+    } catch (err) {
+      console.error('Failed to check subscription:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -77,40 +94,9 @@ const PaymentSuccess = () => {
       
       refreshUserData();
     } else {
-      if (sessionId) {
-        fetchSessionEmail();
-      } else {
-        setLoading(false);
-      }
-    }
-  }, [user, sessionId, isFreeTrial]);
-
-  const fetchSessionEmail = async () => {
-    try {
-      // Note: In a real scenario, you'd need a backend endpoint to safely retrieve session details
-      // For now, we'll just set loading to false
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching session email:', error);
       setLoading(false);
     }
-  };
-
-  const checkSubscriptionStatus = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('check-subscription');
-      
-      if (error) {
-        console.error('Error checking subscription:', error);
-      } else {
-        setSubscriptionData(data);
-      }
-    } catch (err) {
-      console.error('Failed to check subscription:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [user, isFreeTrial, fetchCredits, toast, checkSubscriptionStatus]);
 
   const getPlanDisplayName = (planType: string) => {
     const planNames = {
@@ -158,25 +144,9 @@ const PaymentSuccess = () => {
               <Alert className="mb-8 border-amber-200 bg-amber-50/50">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800">
-                  <strong>Action required:</strong> Your payment has been processed successfully, but you need to create an account to access your services.
-                  {sessionEmail && (
-                    <span> Use the email <strong>{sessionEmail}</strong> to recover your subscription.</span>
-                  )}
+                  <strong>Sign in required:</strong> Use the account that started checkout to access your subscription.
                 </AlertDescription>
               </Alert>
-            )}
-
-            {/* Signup Form for Unauthenticated Users */}
-            {!loading && !user && showSignupForm && (
-              <div className="mb-8">
-                <GuestSignupForm 
-                  suggestedEmail={sessionEmail || undefined}
-                  onSuccess={() => {
-                    setShowSignupForm(false);
-                    // Optionally redirect to dashboard or refresh page
-                  }}
-                />
-              </div>
             )}
 
             {/* Subscription Details Card */}
@@ -236,9 +206,9 @@ const PaymentSuccess = () => {
                           <span className="text-xs font-semibold text-primary">1</span>
                         </div>
                         <div>
-                          <p className="font-medium">Create your account</p>
+                          <p className="font-medium">Sign in to your account</p>
                           <p className="text-sm text-muted-foreground">
-                            Create an account to access your paid subscription
+                            Use the account that initiated the secure checkout
                           </p>
                         </div>
                       </div>
@@ -274,9 +244,9 @@ const PaymentSuccess = () => {
                           <span className="text-xs font-semibold text-primary">2</span>
                         </div>
                         <div>
-                          <p className="font-medium">Select Your Broker</p>
+                          <p className="font-medium">Explore Your Research Tools</p>
                           <p className="text-sm text-muted-foreground">
-                            Link your trading account for personalized recommendations
+                            Access forecasts, reports, portfolio analytics, and market insights
                           </p>
                         </div>
                       </div>
@@ -303,20 +273,11 @@ const PaymentSuccess = () => {
               {!user ? (
                 <>
                   <Button 
-                    size="lg" 
-                    className="flex-1"
-                    onClick={() => setShowSignupForm(!showSignupForm)}
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    {showSignupForm ? 'Hide form' : 'Create my account'}
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
                     size="lg"
+                    className="flex-1"
                     onClick={() => navigate('/auth')}
                   >
-                    I already have an account
+                    Sign In
                   </Button>
                 </>
               ) : (
@@ -346,7 +307,7 @@ const PaymentSuccess = () => {
               <p className="text-sm text-muted-foreground">
                 {user 
                   ? "You'll receive a confirmation email shortly. If you have any questions, our support team is here to help."
-                  : "Important: Your payment is secure. Create your account to immediately access your services. Our support team is available to help you."
+                  : "Important: subscriptions are linked to the account that initiated checkout. Contact support if you cannot sign in."
                 }
               </p>
             </div>

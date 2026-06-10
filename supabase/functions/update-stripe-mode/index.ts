@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { requireRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,39 +15,18 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
     logStep("Function started");
-
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
-    // Authenticate user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id });
-
-    // Check if user is super_user
-    const { data: roleData, error: roleError } = await supabaseClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'super_user')
-      .maybeSingle();
-
-    if (roleError || !roleData) {
-      logStep("Access denied - not a super_user");
-      throw new Error("Unauthorized: Only super users can update Stripe mode");
+    const { user, error: authError, status } = await requireRole(req, ['super_user']);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Parse request body
@@ -59,31 +38,14 @@ serve(async (req) => {
       throw new Error("Invalid mode. Must be 'test' or 'live'");
     }
 
-    // Update the STRIPE_MODE secret using Supabase Management API
-    const managementApiUrl = `${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/set_secret`;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    // Note: Supabase doesn't expose a direct API to update secrets programmatically
-    // We need to use the CLI or manual update via dashboard
-    // For now, we'll log the request and return success
-    // The actual secret update must be done via Supabase dashboard or CLI
-    
-    logStep("Stripe mode update requested", { newMode: mode, userId: user.id });
-    
-    // In a production environment, you would:
-    // 1. Use Supabase CLI API or Management API to update the secret
-    // 2. Or use a webhook to trigger the update
-    // For this implementation, we're simulating the update
-    
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        mode,
-        message: "Stripe mode update initiated. Please allow a few moments for the change to propagate."
+      JSON.stringify({
+        error: "Stripe mode must be changed through managed Supabase secrets and a controlled deployment.",
+        requested_mode: mode,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 501,
       }
     );
   } catch (error) {

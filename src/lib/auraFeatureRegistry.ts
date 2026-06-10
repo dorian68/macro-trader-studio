@@ -12,7 +12,7 @@ import type { CreditType } from '@/hooks/useCreditManager';
 // ============================================================================
 
 const MACRO_LAB_PROXY_URL = 'https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/macro-lab-proxy';
-const N8N_REPORTS_URL = 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1';
+const N8N_REPORTS_URL = 'workflow-proxy';
 
 const HORIZON_BY_TIMEFRAME: Record<string, number> = {
   '15min': 12,

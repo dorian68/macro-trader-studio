@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
-import { requireUser } from "../_shared/auth.ts";
+import { requireProductAccess } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,20 +17,34 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
     // Require an authenticated end-user: this endpoint runs with the service role
     // and aggregates data across users — it must never be reachable anonymously.
-    const { user, error: authError } = await requireUser(req);
-    if (!user) {
-      console.warn("[collective-insights] Unauthenticated request rejected:", authError);
+    const { user, error: authError, status, serviceRole } = await requireProductAccess(req);
+    if (!user && !serviceRole) {
+      console.warn("[collective-insights] Request rejected:", authError);
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: authError }),
+        { status: status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { type, limit = 10, instrument, days } = await req.json();
+    const { type, limit: requestedLimit = 10, instrument, days } = await req.json();
+    const limit = Math.min(Math.max(Number(requestedLimit) || 10, 1), 50);
+    if (
+      typeof type !== 'string' ||
+      (instrument !== undefined && (typeof instrument !== 'string' || instrument.length > 100)) ||
+      (days !== undefined && (!Number.isFinite(Number(days)) || Number(days) < 1 || Number(days) > 365))
+    ) {
+      return new Response(JSON.stringify({ error: 'Invalid collective insights request' }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     
     console.log(`Fetching collective insights: type=${type}, limit=${limit}, instrument=${instrument || 'ALL'}, days=${days || 'ALL'}`);
     
@@ -41,7 +55,7 @@ serve(async (req) => {
     let data;
 
     switch (type) {
-      case 'trade_setups':
+      case 'trade_setups': {
         let setupsQuery = supabase
           .from('jobs')
           .select('id, feature, created_at, response_payload, request_payload, user_id')
@@ -85,8 +99,9 @@ serve(async (req) => {
           };
         }) || [];
         break;
+      }
 
-      case 'macro_commentary':
+      case 'macro_commentary': {
         let macrosQuery = supabase
           .from('jobs')
           .select('id, feature, created_at, response_payload, request_payload, user_id')
@@ -115,8 +130,7 @@ serve(async (req) => {
           return {
             user_email: anonTrader(job.user_id),
             instrument: job.request_payload?.instrument || 'General',
-            summary: fullText.substring(0, 500),
-            full_content: fullText,
+            summary: fullText.substring(0, 280),
             market_outlook: content?.market_outlook || content?.outlook,
             key_points: content?.key_points || content?.keyPoints,
             sentiment: content?.sentiment || content?.market_sentiment,
@@ -125,8 +139,9 @@ serve(async (req) => {
           };
         }) || [];
         break;
+      }
 
-      case 'reports':
+      case 'reports': {
         let reportsQuery = supabase
           .from('jobs')
           .select('id, feature, created_at, response_payload, request_payload, user_id')
@@ -155,23 +170,16 @@ serve(async (req) => {
           }).slice(0, limit);
         }
         
-        data = (reports || []).map(job => {
-          const content = job.response_payload?.message?.content || job.response_payload?.content || job.response_payload;
-          const fullText = typeof content === 'string' ? content : JSON.stringify(content);
-          return {
-            user_email: anonTrader(job.user_id),
-            report_type: job.request_payload?.report_type || 'custom',
-            instruments: job.request_payload?.instruments || [],
-            summary: fullText.substring(0, 500),
-            recommendations: content?.recommendations || content?.trade_recommendations,
-            risk_analysis: content?.risk_analysis || content?.risks,
-            market_overview: content?.market_overview || content?.overview,
-            created_at: job.created_at,
-          };
-        });
+        data = (reports || []).map(job => ({
+          user_email: anonTrader(job.user_id),
+          report_type: job.request_payload?.report_type || 'custom',
+          instruments: job.request_payload?.instruments || [],
+          created_at: job.created_at,
+        }));
         break;
+      }
 
-      case 'abcg_insights':
+      case 'abcg_insights': {
         const { data: insights } = await supabase
           .from('abcg_chunks')
           .select(`
@@ -186,16 +194,23 @@ serve(async (req) => {
           .order('created_at', { ascending: false })
           .limit(limit);
         
-        data = insights?.map(chunk => ({
-          title: chunk.abcg_documents?.title,
-          content: chunk.content.substring(0, 500),
-          topics: chunk.abcg_documents?.topics,
-          tickers: chunk.abcg_documents?.tickers,
-          created_at: chunk.created_at,
-        })) || [];
+        data = insights?.map(chunk => {
+          // Supabase types this to-one relation as an array, but it resolves to a
+          // single object at runtime.
+          const doc = chunk.abcg_documents as unknown as
+            { title?: unknown; topics?: unknown; tickers?: unknown } | null;
+          return {
+            title: doc?.title,
+            content: chunk.content.substring(0, 500),
+            topics: doc?.topics,
+            tickers: doc?.tickers,
+            created_at: chunk.created_at,
+          };
+        }) || [];
         break;
+      }
 
-      case 'instrument_focus':
+      case 'instrument_focus': {
         // Apply date filter (default 1 day, or custom days if number)
         const daysFilter = typeof days === 'number' && days > 0 ? days : 1;
         const cutoffDate = new Date();
@@ -222,6 +237,7 @@ serve(async (req) => {
           .sort((a, b) => (b.count as number) - (a.count as number))
           .slice(0, limit);
         break;
+      }
 
       default:
         return new Response(

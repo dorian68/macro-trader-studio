@@ -1,5 +1,6 @@
 // Market data service with caching for Twelve Data API
 // Supports major FX pairs, cryptocurrencies, and commodities
+import { supabase } from '@/integrations/supabase/client';
 
 interface PriceCache {
   price: number;
@@ -10,7 +11,6 @@ const priceCache = new Map<string, PriceCache>();
 const CACHE_TTL = 30000; // 30 seconds
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS_PER_MINUTE = 8;
-const TWELVE_API_KEY = '56f36529787b47209052b8d2bf66c907';
 
 let requestTimestamps: number[] = [];
 
@@ -58,25 +58,14 @@ export async function getInstrumentPrice(symbol: string): Promise<number> {
     throw new Error('Rate limit exceeded. Please wait a moment.');
   }
 
-  const apiSymbol = mapToTwelveDataSymbol(symbol);
-  
   const doFetch = async (sym: string): Promise<number> => {
     recordRequest();
-    
-    const url = `https://api.twelvedata.com/price?symbol=${encodeURIComponent(sym)}&apikey=${TWELVE_API_KEY}`;
-    const response = await fetch(url);
+    const { data, error } = await supabase.functions.invoke('fetch-current-price', {
+      body: { instrument: sym },
+    });
+    if (error) throw error;
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch price');
-    }
-
-    const data = await response.json();
-    
-    if (data.status === 'error') {
-      throw new Error(data.message || 'API error');
-    }
-
-    const price = parseFloat(data.price);
+    const price = Number(data?.price);
     
     if (isNaN(price)) {
       throw new Error('Invalid price data');
@@ -85,6 +74,7 @@ export async function getInstrumentPrice(symbol: string): Promise<number> {
     return price;
   };
 
+  const apiSymbol = mapToTwelveDataSymbol(symbol);
   try {
     const price = await doFetch(apiSymbol);
     

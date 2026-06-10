@@ -5,6 +5,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+  }
 
   try {
     const authHeader = req.headers.get('Authorization')
@@ -91,6 +94,17 @@ Deno.serve(async (req) => {
           console.error('[ensure-profile] Error creating default role:', error)
         }
       })
+
+    // Autonomous onboarding: auto-activate the card-free free trial so the
+    // account is usable immediately, with no manual admin approval. Mirrors the
+    // handle_new_user trigger for profile-creation paths that bypass it (e.g.
+    // OAuth orphan recovery). Best-effort: the profile is still created on failure.
+    const { error: trialError } = await supabaseAdmin.rpc('activate_free_trial_safe', {
+      p_user_id: userId,
+    })
+    if (trialError) {
+      console.error('[ensure-profile] Free trial activation failed:', trialError)
+    }
 
     console.log(`[ensure-profile] Created profile for user ${userId}`)
 

@@ -16,6 +16,7 @@ import { getFeatureDisplayName, normalizeFeatureName } from '@/lib/feature-mappe
 import { TradeSetupDisplay } from '@/components/TradeSetupDisplay';
 import { MacroCommentaryDisplay } from '@/components/MacroCommentaryDisplay';
 import { DecisionSummaryCard } from '@/components/DecisionSummaryCard';
+import { escapeHtml, sanitizeRichHtml } from '@/lib/sanitize-report-html';
 
 interface AIInteraction {
   id: string;
@@ -249,7 +250,7 @@ function extractItemTitle(interaction: AIInteraction): string {
   if (feature === 'Report') {
     if (typeof response === 'string') {
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = response;
+      tempDiv.innerHTML = sanitizeRichHtml(response);
       const h1 = tempDiv.querySelector('h1');
       const h2 = tempDiv.querySelector('h2');
       const title = h1?.textContent || h2?.textContent;
@@ -496,7 +497,7 @@ export function AIInteractionHistory() {
 
       if (normalizedFeature === 'report' && typeof response === 'string') {
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = response;
+        tempDiv.innerHTML = sanitizeRichHtml(response);
         const textContent = tempDiv.textContent || tempDiv.innerText || '';
         return textContent.substring(0, 120) + (textContent.length > 120 ? '…' : '');
       }
@@ -623,8 +624,8 @@ export function AIInteractionHistory() {
     if (feature === 'Report') {
       try {
         const responseContent = typeof response === 'string'
-          ? response
-          : JSON.stringify(response, null, 2);
+          ? sanitizeRichHtml(response)
+          : `<pre>${escapeHtml(JSON.stringify(response, null, 2))}</pre>`;
 
         return (
           <Card className="border-l-4 border-l-purple-500/40">

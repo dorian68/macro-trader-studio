@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { consumeProductCredit, refundProductCredit, requireProductAccess } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,13 +7,34 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  let consumedCredit: { userId: string; referenceId: string } | null = null;
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { user, error: authError, status } = await requireProductAccess(req, 'queries');
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { trades, question } = await req.json();
+    if (!Array.isArray(trades) || trades.length === 0 || trades.length > 1000 || typeof question !== 'string' || !question.trim()) {
+      return new Response(JSON.stringify({ error: "Invalid portfolio analysis request" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -25,6 +47,14 @@ serve(async (req) => {
         }
       );
     }
+    const consumed = await consumeProductCredit(user.id, 'queries', 'portfolio-copilot');
+    if (!consumed.success) {
+      return new Response(JSON.stringify({ error: consumed.error }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    consumedCredit = { userId: user.id, referenceId: consumed.referenceId };
 
     // Calculate portfolio stats
     const totalTrades = trades.length;
@@ -98,6 +128,15 @@ Instructions:
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Lovable AI Gateway error:", response.status, errorText);
+      if (consumedCredit) {
+        await refundProductCredit(
+          consumedCredit.userId,
+          'queries',
+          'portfolio-copilot-failed',
+          consumedCredit.referenceId,
+        );
+        consumedCredit = null;
+      }
       
       if (response.status === 429) {
         return new Response(
@@ -134,6 +173,14 @@ Instructions:
     });
   } catch (e) {
     console.error("portfolio-copilot error:", e);
+    if (consumedCredit) {
+      await refundProductCredit(
+        consumedCredit.userId,
+        'queries',
+        'portfolio-copilot-failed',
+        consumedCredit.referenceId,
+      );
+    }
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
       {

@@ -49,6 +49,12 @@ verify_jwt = false
 [functions.fetch-technical-indicators]
 verify_jwt = false
 
+[functions.fetch-current-price]
+verify_jwt = false
+
+[functions.workflow-proxy]
+verify_jwt = false
+
 [functions.update-user-password]
 verify_jwt = false
 

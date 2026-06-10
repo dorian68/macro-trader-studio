@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useCreditEngagement } from "@/hooks/useCreditEngagement";
+import { discardPendingJob } from "@/lib/job-security";
 
 import { CandlestickChart } from "@/components/CandlestickChart";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
@@ -547,10 +548,7 @@ export default function ForecastMacroLab() {
         console.log('❌ [MacroLabs] Credit engagement failed, cleaning up job:', responseJobId);
         
         // Clean up orphan job
-        await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', responseJobId);
+        await discardPendingJob(responseJobId);
         
         toast({
           title: "Insufficient Credits",

@@ -19,6 +19,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+  }
 
   try {
     // Verify the request is authorized
@@ -92,6 +95,12 @@ const handler = async (req: Request): Promise<Response> => {
       .select('broker_id')
       .eq('user_id', user.id)
       .single();
+    if (profileError || !profile) {
+      return new Response(JSON.stringify({ error: 'Caller profile not found' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { email, role, brokerName, brokerId, password }: CreateUserRequest = await req.json();
 
@@ -106,6 +115,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (!['user', 'admin', 'super_user'].includes(role)) {
       return new Response(JSON.stringify({ error: 'Invalid role' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (role !== 'user' && !isSuperUser) {
+      return new Response(JSON.stringify({ error: 'Only super users can assign administrative roles' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

@@ -19,6 +19,7 @@ import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { useGlobalLoading } from "@/components/GlobalLoadingProvider";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { enhancedPostRequest } from "@/lib/enhanced-request";
+import { discardPendingJob } from "@/lib/job-security";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -395,10 +396,7 @@ export default function AISetup() {
         console.log('❌ [AISetup] Credit engagement failed, cleaning up job:', jobId);
         
         // Nettoyer le job orphelin
-        await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', jobId);
+        await discardPendingJob(jobId);
         
         toast({
           title: "Insufficient Credits",
@@ -508,7 +506,7 @@ export default function AISetup() {
       });
 
       console.log('📊 [AISetup] Sending request:', {
-        url: 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        url: 'workflow-proxy',
         jobId: jobId,
         hasJobId: !!jobId,
         payloadContainsJobId: !!(mergedPayload as any).job_id,
@@ -520,7 +518,7 @@ export default function AISetup() {
       // HTTP request: log timeouts internally, don't break workflow
       try {
         const { response } = await enhancedPostRequest(
-          'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+          'workflow-proxy',
           mergedPayload,
           {
             enableJobTracking: true,

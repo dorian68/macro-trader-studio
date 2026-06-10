@@ -18,7 +18,18 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children, requireApproval = true }: AuthGuardProps) {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { profile, loading: profileLoading, isPending, isRejected, isApproved, isDeleted, isTrialExpired } = useProfile();
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+    refetch: refetchProfile,
+    isPending,
+    isRejected,
+    isApproved,
+    isDeleted,
+    isTrialExpired,
+    trialDurationDays,
+  } = useProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -34,7 +45,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   // call ensure-profile to create the missing profile (fixes orphan case)
   // Uses sessionStorage to survive reload and prevent infinite loops (max 2 attempts)
   useEffect(() => {
-    if (!authLoading && !profileLoading && user && !profile) {
+    if (!authLoading && !profileLoading && !profileError && user && !profile) {
       const STORAGE_KEY = 'ensure_profile_attempts';
       const attempts = parseInt(sessionStorage.getItem(STORAGE_KEY) || '0', 10);
 
@@ -59,7 +70,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
         }
       });
     }
-  }, [authLoading, profileLoading, user, profile]);
+  }, [authLoading, profileLoading, profileError, user, profile]);
 
   // Clear sessionStorage flag when profile is successfully loaded
   useEffect(() => {
@@ -73,6 +84,32 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (user && profileError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <CardTitle className="text-xl">Unable to Load Your Profile</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              We could not verify your account access. Your profile was not modified.
+            </p>
+            <Button onClick={() => refetchProfile()} className="w-full">
+              Try Again
+            </Button>
+            <Button variant="outline" onClick={() => signOut()} className="w-full">
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -155,7 +192,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Your 7-day free trial has ended. Subscribe to our Basic plan to continue using AlphaLens with full access.
+              Your {trialDurationDays}-day free trial has ended. Subscribe to our Basic plan to continue using AlphaLens with full access.
             </p>
             <div className="flex flex-col gap-2">
               <Button 
@@ -187,7 +224,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     if (isPending) {
       // Check if user has a paid plan — if so, the webhook is still processing
       const paidPlans = ['basic', 'standard', 'premium'];
-      const hasPaidPlan = paidPlans.includes((profile as any)?.user_plan);
+      const hasPaidPlan = paidPlans.includes(profile.user_plan || '');
 
       if (hasPaidPlan) {
         // Paid user: webhook is processing, show a payment processing message

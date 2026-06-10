@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { requireRole, requireUserOrService } from "../_shared/auth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -653,12 +654,37 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
-    const { to, notificationType, userName, metadata }: AdminNotificationRequest = await req.json();
+    const caller = await requireUserOrService(req);
+    if (caller.error) {
+      return new Response(JSON.stringify({ error: caller.error }), {
+        status: caller.status ?? 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json();
+    const to = body.to ?? body.userEmail;
+    const notificationType = body.notificationType ?? body.type;
+    const userName = body.userName;
+    const metadata = body.metadata;
 
     if (!to || !notificationType) {
       throw new Error('Missing required fields: to, notificationType');
+    }
+
+    if (!caller.serviceRole) {
+      const roleCheck = await requireRole(req, ['admin', 'super_user']);
+      if (!roleCheck.user) {
+        return new Response(JSON.stringify({ error: roleCheck.error }), {
+          status: roleCheck.status ?? 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     console.log(`[Admin Notification] Sending ${notificationType} to:`, to);
@@ -672,11 +698,11 @@ const handler = async (req: Request): Promise<Response> => {
       html,
     });
 
-    console.log("[Admin Notification] Email sent successfully:", emailResponse.id);
+    console.log("[Admin Notification] Email sent successfully:", emailResponse.data?.id);
 
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       success: true,
-      messageId: emailResponse.id,
+      messageId: emailResponse.data?.id,
       notificationType
     }), {
       status: 200,

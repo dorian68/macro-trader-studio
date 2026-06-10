@@ -73,6 +73,7 @@ import { Loader2 } from "lucide-react";
 // ✅ NEW: Import hooks for credit management and job tracking
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useCreditEngagement } from "@/hooks/useCreditEngagement";
+import { discardPendingJob } from "@/lib/job-security";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -1806,10 +1807,7 @@ function ForecastTradeGeneratorContent() {
         console.log('❌ [TradeGenerator] Credit engagement failed, cleaning up job:', jobId);
         
         // Cleanup orphan job
-        await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', jobId);
+        await discardPendingJob(jobId);
         
         toast({
           title: "Insufficient Credits",
@@ -1863,27 +1861,11 @@ function ForecastTradeGeneratorContent() {
         const errorBody = await response.text();
         setRawResponse({ error: errorBody } as unknown as CombinedResponse);
         
-        // ✅ Update job status to error
-        await supabase
-          .from('jobs')
-          .update({ status: 'error' })
-          .eq('id', jobId);
-          
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       setRawResponse(data);
-
-      // ✅ STEP 4: Update job status to completed with response payload
-      await supabase
-        .from('jobs')
-        .update({ 
-          status: 'completed',
-          response_payload: data
-        })
-        .eq('id', jobId);
-      console.log('✅ [TradeGenerator] Job marked as completed:', jobId);
 
       // Parse AI Setup data (legacy format)
       const normalized = normalizeN8n(data);
@@ -1953,14 +1935,6 @@ function ForecastTradeGeneratorContent() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       
-      // ✅ Update job status to error if job was created
-      if (jobId) {
-        await supabase
-          .from('jobs')
-          .update({ status: 'error' })
-          .eq('id', jobId)
-          .then(() => console.log('✅ [TradeGenerator] Job marked as error:', jobId));
-      }
     } finally {
       setLoading(false);
       // ✅ Auto-collapse inputs when results are received (regardless of success/error)

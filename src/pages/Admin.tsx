@@ -527,18 +527,13 @@ export default function Admin() {
                   </span>
                 </div>
                 <Button
-                  onClick={handleToggleStripeMode}
-                  disabled={updatingStripeMode}
+                  disabled
                   variant={stripeMode === 'live' ? 'outline' : 'default'}
                   size="sm"
                   className="gap-2"
                 >
-                  {updatingStripeMode ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ArrowRightLeft className="h-4 w-4" />
-                  )}
-                  Switch to {stripeMode === 'test' ? 'LIVE' : 'TEST'}
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Managed via deployment secrets
                 </Button>
               </div>
               {stripeMode === 'live' && (

@@ -37,7 +37,7 @@ export default function DeleteAccountSection() {
       // Sign out and redirect
       await signOut();
       navigate('/auth');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[DeleteAccount] Error:', error);
       toast({
         title: 'Deletion failed',

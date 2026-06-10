@@ -14,10 +14,10 @@ export function getStripeConfig(): StripeConfig {
   
   // Validate STRIPE_MODE — must be exactly "test" or "live"
   if (rawMode !== "test" && rawMode !== "live") {
-    console.warn(`[STRIPE-CONFIG] ⚠️ STRIPE_MODE is set to an invalid value: "${rawMode.substring(0, 20)}...". Defaulting to "test". Ensure STRIPE_MODE is either "test" or "live".`);
+    throw new Error(`STRIPE_MODE must be exactly "test" or "live"`);
   }
   
-  const mode = (rawMode === "live" ? "live" : "test") as 'test' | 'live';
+  const mode = rawMode as 'test' | 'live';
   
   let secretKey: string;
   let webhookSecret: string | null;

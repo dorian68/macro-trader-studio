@@ -125,7 +125,7 @@ export function Reports() {
       const sectionsText = includedSectionsList.map(s => s.label).join(", ");
       
       // Call n8n webhook with job tracking
-      const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const { response, jobId } = await enhancedPostRequest('workflow-proxy', {
         type: "reports",
         question: `Generate report "${reportTitle || `${getSelectedReportType()?.label} - ${selectedAsset?.symbol || "Multi-Asset"} - ${new Date().toLocaleDateString()}`}" with sections: ${sectionsText}.`,
         instrument: selectedAsset?.symbol || "Multi-Asset",

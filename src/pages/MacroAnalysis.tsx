@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { SEOHead } from '@/components/SEOHead';
 import { useToast } from "@/hooks/use-toast";
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
+import { discardPendingJob } from "@/lib/job-security";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { TechnicalDashboard } from "@/components/TechnicalDashboard";
@@ -733,10 +734,7 @@ export default function MacroAnalysis() {
         console.log('❌ [MacroAnalysis] Credit engagement failed, cleaning up job:', responseJobId);
         
         // Nettoyer le job orphelin
-        await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', responseJobId);
+        await discardPendingJob(responseJobId);
         
         toast({
           title: "Insufficient Credits",
@@ -806,7 +804,7 @@ export default function MacroAnalysis() {
 
       // 4. Send POST request after subscription is active (payload already contains job_id via createJob)
       console.log('📊 [MacroAnalysis] Sending request:', {
-        url: 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        url: 'workflow-proxy',
         jobId: responseJobId,
         hasJobId: !!responseJobId,
         payloadContainsJobId: !!(payload as any).job_id,
@@ -817,7 +815,7 @@ export default function MacroAnalysis() {
 
       const {
         response
-      } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
+      } = await enhancedPostRequest('workflow-proxy', payload, {
         enableJobTracking: true,
         jobType: 'macro_analysis',
         instrument: selectedAsset.symbol,

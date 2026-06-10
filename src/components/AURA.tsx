@@ -19,6 +19,7 @@ import { useGlobalLoading } from '@/components/GlobalLoadingProvider';
 import { useRealtimeJobManager } from '@/hooks/useRealtimeJobManager';
 import { useCreditEngagement } from '@/hooks/useCreditEngagement';
 import { enhancedPostRequest } from '@/lib/enhanced-request';
+import { discardPendingJob } from '@/lib/job-security';
 import { MarketChartWidget } from '@/components/aura/MarketChartWidget';
 import { AURAHistoryPanel } from '@/components/aura/AURAHistoryPanel';
 import { FEATURE_REGISTRY, resolveFeatureId, storeResultForPage } from '@/lib/auraFeatureRegistry';
@@ -1519,7 +1520,7 @@ Now provide a complete, structured technical analysis based on this data.`;
 
       const creditResult = await tryEngageCredit(creditType, jobId);
       if (!creditResult.success) {
-        await supabase.from('jobs').delete().eq('id', jobId);
+        await discardPendingJob(jobId);
         toast({ title: "Insufficient Credits", description: "You've run out of credits.", variant: "destructive" });
         setMessages((prev) => [
           ...prev.slice(0, -1),
@@ -1704,33 +1705,14 @@ Now provide a complete, structured technical analysis based on this data.`;
         }
       );
 
-      // Background handler: when HTTP completes, update job in Supabase
-      // (mirrors ForecastTradeGenerator.tsx line 1877-1883)
+      // The authenticated proxy owns job completion updates. The browser only
+      // observes the resulting Realtime event.
       requestPromise.then(async ({ response }) => {
-        try {
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ [AURA HTTP] Response received for job:', jobId, 'status:', response.status);
-            // Update job — Realtime listener will fire and render the result
-            if (!jobCompletedRef.current.has(jobId)) {
-              await supabase.from('jobs').update({
-                status: 'completed',
-                response_payload: data
-              }).eq('id', jobId);
-              console.log('✅ [AURA] Job marked as completed via HTTP response:', jobId);
-            }
-          } else {
-            const errorText = await response.text();
-            console.error('❌ [AURA HTTP] Non-OK response:', response.status, errorText.slice(0, 200));
-            if (!jobCompletedRef.current.has(jobId)) {
-              await supabase.from('jobs').update({ status: 'error' }).eq('id', jobId);
-            }
-          }
-        } catch (parseErr) {
-          console.error('❌ [AURA HTTP] Failed to process response:', parseErr);
-          if (!jobCompletedRef.current.has(jobId)) {
-            await supabase.from('jobs').update({ status: 'error' }).eq('id', jobId);
-          }
+        if (response.ok) {
+          console.log('✅ [AURA HTTP] Proxy accepted job:', jobId, 'status:', response.status);
+        } else {
+          const errorText = await response.text();
+          console.error('❌ [AURA HTTP] Non-OK response:', response.status, errorText.slice(0, 200));
         }
       }).catch((httpError) => {
         console.error('❌ [AURA HTTP] Request failed:', httpError);

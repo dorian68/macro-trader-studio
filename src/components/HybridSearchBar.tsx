@@ -160,7 +160,7 @@ export function HybridSearchBar({
     setShowDropdown(false);
     
     try {
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const response = await safePostRequest('workflow-proxy', {
         type: "RAG",
         question: searchTerm,
         instrument: instrument,
@@ -238,7 +238,7 @@ export function HybridSearchBar({
 
       const contextualQuestion = `Context:\n${conversationContext}\n\nFollow-up question: ${replyText}`;
 
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const response = await safePostRequest('workflow-proxy', {
         type: "RAG",
         question: contextualQuestion,
         instrument: instrument,

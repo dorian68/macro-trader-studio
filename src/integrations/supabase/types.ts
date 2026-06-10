@@ -1466,6 +1466,7 @@ export type Database = {
         Args: { credit_type: string; target_user_id: string }
         Returns: boolean
       }
+      discard_pending_job: { Args: { p_job_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

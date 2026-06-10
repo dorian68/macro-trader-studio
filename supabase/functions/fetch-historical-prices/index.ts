@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { mapToTwelveData } from '../_shared/instrument-mappings.ts';
+import { requireProductAccess } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,9 +21,29 @@ serve(async (req) => {
   }
 
   try {
-    const { instrument, startDate, endDate, interval = '1day', extendDays = 7 } = await req.json();
+    if (req.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+    }
+    const { user, error: authError, status } = await requireProductAccess(req);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    if (!instrument || !startDate || !endDate) {
+    const payload = await req.json();
+    const instrument = payload.instrument;
+    const startDate = payload.startDate;
+    const endDate = payload.endDate;
+    const interval = payload.interval ?? '1day';
+    const extendDays = Math.min(Math.max(Number(payload.extendDays ?? 7), 0), 30);
+
+    if (
+      typeof instrument !== 'string' || instrument.length > 100 ||
+      typeof startDate !== 'string' || typeof endDate !== 'string' ||
+      typeof interval !== 'string' || interval.length > 20
+    ) {
       throw new Error('Missing required parameters: instrument, startDate, endDate');
     }
 
@@ -33,8 +54,16 @@ serve(async (req) => {
 
     // Extend date range
     const start = new Date(startDate);
-    start.setDate(start.getDate() - extendDays);
     const end = new Date(endDate);
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      end.getTime() < start.getTime() ||
+      end.getTime() - start.getTime() > 5 * 365 * 24 * 60 * 60 * 1000
+    ) {
+      throw new Error('Invalid or excessive date range');
+    }
+    start.setDate(start.getDate() - extendDays);
     end.setDate(end.getDate() + extendDays);
 
     const startStr = start.toISOString().split('T')[0];

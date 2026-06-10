@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getStripeConfig } from "../_shared/stripe-config.ts";
+import { requireVerifiedUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,13 +20,51 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+function safeRedirectUrl(requested: string | undefined, fallbackPath: string, requestOrigin: string | null) {
+  const fallbackOrigin = "https://alphalensai.com";
+  const configuredOrigin = (() => {
+    try {
+      const siteUrl = Deno.env.get("SITE_URL");
+      return siteUrl ? new URL(siteUrl).origin : null;
+    } catch {
+      return null;
+    }
+  })();
+  const allowedOrigins = new Set([
+    fallbackOrigin,
+    configuredOrigin,
+    requestOrigin?.startsWith("http://localhost:") ? requestOrigin : null,
+    requestOrigin?.startsWith("http://127.0.0.1:") ? requestOrigin : null,
+  ].filter(Boolean));
+
+  if (requested) {
+    try {
+      const parsed = new URL(requested);
+      if (allowedOrigins.has(parsed.origin)) return requested;
+    } catch {
+      // Fall back to the canonical site URL below.
+    }
+  }
+  return `${fallbackOrigin}${fallbackPath}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
     logStep("Function started");
+    const { user, error: authError, status } = await requireVerifiedUser(req);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError || "Verified email required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: status ?? 401,
+      });
+    }
 
     const config = getStripeConfig();
     logStep("Stripe config loaded", { mode: config.mode });
@@ -43,8 +82,11 @@ serve(async (req) => {
     const { plan, success_url, cancel_url }: CheckoutRequest = await req.json();
     logStep("Request parsed", { plan });
 
-    if (!plan) {
-      throw new Error(`Plan type is required`);
+    if (!['basic', 'standard', 'premium'].includes(plan)) {
+      return new Response(JSON.stringify({ error: "Invalid plan type" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
     }
 
     // Get plan parameters including stripe_price_id from Supabase
@@ -71,36 +113,17 @@ serve(async (req) => {
     });
 
     // Get origin for success/cancel URLs
-    const origin = req.headers.get("origin") || "https://alphalensai.com";
-    
-    // Try to get authenticated user (optional for guest checkout)
-    let userEmail = null;
+    const origin = req.headers.get("origin");
+    const userEmail = user.email!;
     let customerId = null;
-    
-    try {
-      const authHeader = req.headers.get("Authorization");
-      if (authHeader) {
-        const token = authHeader.replace("Bearer ", "");
-        const { data } = await supabaseClient.auth.getUser(token);
-        
-        if (data.user?.email) {
-          userEmail = data.user.email;
-          logStep("User authenticated", { email: userEmail });
 
-          // Check if Stripe customer exists
-          const customers = await stripe.customers.list({ 
-            email: userEmail, 
-            limit: 1 
-          });
-          
-          if (customers.data.length > 0) {
-            customerId = customers.data[0].id;
-            logStep("Existing customer found", { customerId });
-          }
-        }
-      }
-    } catch (authError: any) {
-      logStep("Authentication failed, proceeding with guest checkout", { error: authError?.message || authError });
+    const customers = await stripe.customers.list({
+      email: userEmail,
+      limit: 1,
+    });
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      logStep("Existing customer found", { customerId });
     }
 
     // Create checkout session using the stored Stripe price ID
@@ -112,23 +135,30 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: success_url || `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancel_url || `${origin}/payment-canceled`,
+      success_url: safeRedirectUrl(success_url, "/payment-success?session_id={CHECKOUT_SESSION_ID}", origin),
+      cancel_url: safeRedirectUrl(cancel_url, "/payment-canceled", origin),
       allow_promotion_codes: true,
       billing_address_collection: "required",
       metadata: {
         plan_type: plan,
-        origin: origin,
-        user_authenticated: userEmail ? 'true' : 'false',
+        user_id: user.id,
+        origin: origin || "https://alphalensai.com",
+        user_authenticated: 'true',
         timestamp: new Date().toISOString(),
-        checkout_type: userEmail ? 'authenticated' : 'guest',
-      }
+        checkout_type: 'authenticated',
+      },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          plan_type: plan,
+        },
+      },
     };
 
     // Set customer info
     if (customerId) {
       sessionData.customer = customerId;
-    } else if (userEmail) {
+    } else {
       sessionData.customer_email = userEmail;
     }
 

@@ -1,17 +1,25 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getStripeConfig } from "../_shared/stripe-config.ts";
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
+
+const terminalSubscriptionStatuses = new Set<Stripe.Subscription.Status>([
+  'canceled',
+  'incomplete_expired',
+]);
 
 serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
+
+  let eventId: string | null = null;
+  let eventStore: SupabaseClient<any> | null = null;
 
   try {
     logStep("Webhook received");
@@ -30,25 +38,32 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+    eventStore = supabase;
 
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
 
     let event: Stripe.Event;
 
-    if (webhookSecret && signature) {
-      try {
-        event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-        logStep("Webhook signature verified", { eventType: event.type });
-      } catch (err: any) {
-        logStep("Webhook signature verification failed", { error: err?.message || err });
-        return new Response("Invalid signature", { status: 400 });
-      }
-    } else {
-      event = JSON.parse(body);
-      logStep("Webhook parsed without signature verification (development mode)");
+    if (!webhookSecret) {
+      logStep("Webhook secret is not configured; refusing unsigned processing");
+      return new Response("Webhook secret not configured", { status: 500 });
+    }
+    if (!signature) {
+      return new Response("Missing Stripe signature", { status: 400 });
     }
 
+    try {
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+      logStep("Webhook signature verified", { eventType: event.type });
+    } catch (err: unknown) {
+      logStep("Webhook signature verification failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return new Response("Invalid signature", { status: 400 });
+    }
+
+    eventId = event.id;
     logStep("Processing event", { type: event.type, id: event.id });
 
     // ============================================================
@@ -56,28 +71,43 @@ serve(async (req) => {
     // ============================================================
     const { data: insertedEvent, error: dedupError } = await supabase
       .from('processed_stripe_events')
-      .insert({ event_id: event.id, event_type: event.type })
+      .insert({ event_id: event.id, event_type: event.type, status: 'processing', last_error: null })
       .select('event_id')
       .maybeSingle();
 
     if (dedupError) {
-      // Unique constraint violation = already processed
       if (dedupError.code === '23505') {
-        logStep("Event already processed (idempotency skip)", { eventId: event.id });
-        return new Response(JSON.stringify({ received: true, skipped: true }), {
-          headers: { "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-      logStep("WARNING: Dedup check error (proceeding anyway)", { error: dedupError.message });
-    }
+        const { data: existingEvent, error: existingError } = await supabase
+          .from('processed_stripe_events')
+          .select('status, processed_at')
+          .eq('event_id', event.id)
+          .single();
 
-    if (!insertedEvent) {
-      logStep("Event already processed (idempotency skip)", { eventId: event.id });
-      return new Response(JSON.stringify({ received: true, skipped: true }), {
-        headers: { "Content-Type": "application/json" },
-        status: 200,
-      });
+        if (existingError) throw existingError;
+        if (existingEvent.status === 'completed') {
+          logStep("Event already completed (idempotency skip)", { eventId: event.id });
+          return new Response(JSON.stringify({ received: true, skipped: true }), {
+            headers: { "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+        if (existingEvent.status === 'processing') {
+          const processingAge = Date.now() - new Date(existingEvent.processed_at).getTime();
+          if (Number.isFinite(processingAge) && processingAge < 10 * 60 * 1000) {
+            return new Response("Event is already processing", { status: 409 });
+          }
+        }
+
+        const { error: retryError } = await supabase
+          .from('processed_stripe_events')
+          .update({ status: 'processing', last_error: null, processed_at: new Date().toISOString() })
+          .eq('event_id', event.id);
+        if (retryError) throw retryError;
+      } else {
+        throw dedupError;
+      }
+    } else if (!insertedEvent) {
+      throw new Error("Failed to reserve Stripe event");
     }
 
     // ============================================================
@@ -109,10 +139,42 @@ serve(async (req) => {
         .single();
 
       if (planError || !planData?.plan_type) {
-        logStep("Could not find plan for price, using fallback", { priceId });
-        return 'premium';
+        throw new Error(`No plan mapping found for Stripe price ${priceId}`);
       }
       return planData.plan_type;
+    };
+
+    const ensureProfile = async (userId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(
+          { user_id: userId, status: 'pending', user_plan: 'free_trial' },
+          { onConflict: 'user_id', ignoreDuplicates: true },
+        );
+      if (error) throw error;
+    };
+
+    const resolveSubscriptionUser = async (
+      subscription: Stripe.Subscription,
+      customerEmail: string | null,
+    ) => {
+      const metadataUserId = subscription.metadata?.user_id;
+      if (metadataUserId) {
+        const { data, error } = await supabase.auth.admin.getUserById(metadataUserId);
+        if (data.user) return data.user;
+
+        const { data: deletedAccount, error: deletedAccountError } = await supabase
+          .from('deleted_accounts_audit')
+          .select('id')
+          .eq('original_user_id', metadataUserId)
+          .maybeSingle();
+        if (deletedAccountError) throw deletedAccountError;
+        if (deletedAccount) return null;
+
+        throw error || new Error(`No user found for subscription metadata ${metadataUserId}`);
+      }
+      if (!customerEmail) return null;
+      return await findUserByEmail(customerEmail);
     };
 
     switch (event.type) {
@@ -125,152 +187,52 @@ serve(async (req) => {
             (await stripe.customers.retrieve(session.customer) as Stripe.Customer).email : null);
 
         if (!customerEmail) {
-          logStep("No customer email found", { session: session.id });
-          break;
+          throw new Error(`No customer email found for checkout session ${session.id}`);
         }
 
-        let existingUser = await findUserByEmail(customerEmail);
-        let userId: string;
-        
-        if (existingUser) {
-          userId = existingUser.id;
-          logStep("Found existing user", { userId, email: customerEmail });
-        } else {
-          const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-            email: customerEmail,
-            email_confirm: true,
-            user_metadata: {
-              created_via_stripe: true,
-              stripe_customer_id: session.customer
-            }
-          });
-
-          if (createError || !newUser.user) {
-            logStep("Failed to create user", { error: createError });
-            break;
-          }
-
-          userId = newUser.user.id;
-          logStep("Created new user", { userId, email: customerEmail });
-        }
-
-        // ============================================================
-        // Ensure profile exists before updating (race condition guard)
-        // The handle_new_user trigger may not have fired yet for new users
-        // ============================================================
-        let profileReady = false;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          const { data: existingProfile } = await supabase
-            .from('profiles')
-            .select('user_id')
-            .eq('user_id', userId)
+        const metadataUserId = session.metadata?.user_id;
+        const metadataUser = metadataUserId
+          ? (await supabase.auth.admin.getUserById(metadataUserId)).data.user
+          : null;
+        if (metadataUserId && !metadataUser) {
+          const { data: deletedAccount, error: deletedAccountError } = await supabase
+            .from('deleted_accounts_audit')
+            .select('id')
+            .eq('original_user_id', metadataUserId)
             .maybeSingle();
-          if (existingProfile) {
-            profileReady = true;
+          if (deletedAccountError) throw deletedAccountError;
+          if (deletedAccount) {
+            if (typeof session.subscription === 'string') {
+              const deletedSubscription = await stripe.subscriptions.retrieve(session.subscription);
+              if (!terminalSubscriptionStatuses.has(deletedSubscription.status)) {
+                await stripe.subscriptions.cancel(deletedSubscription.id);
+              }
+            }
+            logStep("Checkout belongs to a deleted account; subscription canceled", {
+              userId: metadataUserId,
+              sessionId: session.id,
+            });
             break;
           }
-          logStep("Profile not yet available, retrying...", { attempt: attempt + 1, userId });
-          await new Promise(r => setTimeout(r, 1000));
+          throw new Error(`Checkout session ${session.id} references an unknown user`);
         }
+        const existingUser = metadataUserId ? metadataUser : await findUserByEmail(customerEmail);
 
-        if (!profileReady) {
-          logStep("Profile not found after retries, creating manually", { userId });
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({ user_id: userId, status: 'pending', user_plan: 'free_trial' });
-          if (insertError) {
-            logStep("Manual profile insert failed (may already exist)", { error: insertError.message });
-          }
+        if (!existingUser || existingUser.email?.toLowerCase() !== customerEmail.toLowerCase()) {
+          throw new Error(`Checkout session ${session.id} is not linked to an existing matching user`);
         }
+        const userId = existingUser.id;
+        logStep("Found existing user", { userId, email: customerEmail });
 
-        let planType = session.metadata?.plan_type;
-        
-        if (!planType) {
-          const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
-            expand: ['line_items']
-          });
-          const priceId = fullSession.line_items?.data[0]?.price?.id;
-          if (priceId) {
-            planType = await resolvePlanType(priceId);
-          }
-        }
-        
-        if (planType) {
-          // Use idempotent provision_plan_credits instead of initialize_user_credits
-          const { data: provisionResult, error: creditsError } = await supabase.rpc('provision_plan_credits', {
-            p_user_id: userId,
-            p_plan_type: planType,
-            p_source: 'stripe_webhook_checkout',
-            p_reference_id: event.id
-          });
+        await ensureProfile(userId);
 
-          if (creditsError) {
-            logStep("Failed to provision credits", { error: creditsError });
-          } else {
-            logStep("Credits provisioned", { userId, planType, result: provisionResult });
-          }
-
-          // Update profile: set plan + auto-approve
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ user_plan: planType, status: 'approved' })
-            .eq('user_id', userId);
-
-          if (profileError) {
-            logStep("Failed to update profile", { error: profileError });
-          } else {
-            logStep("Profile updated (plan + auto-approved)", { userId, planType });
-
-            // ============================================================
-            // ADMIN NOTIFICATION: notify super admins of paid subscription
-            // ============================================================
-            try {
-              const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-              const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-              // Fetch super user IDs
-              const { data: superUserRoles } = await supabase
-                .from('user_roles')
-                .select('user_id')
-                .eq('role', 'super_user');
-
-              if (superUserRoles && superUserRoles.length > 0) {
-                for (const role of superUserRoles) {
-                  const { data: adminUser } = await supabase.auth.admin.getUserById(role.user_id);
-                  if (adminUser?.user?.email) {
-                    // Fire-and-forget notification
-                    fetch(`${supabaseUrl}/functions/v1/send-admin-notification`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${serviceKey}`,
-                      },
-                      body: JSON.stringify({
-                        to: adminUser.user.email,
-                        notificationType: 'paid_subscription',
-                        userName: customerEmail,
-                        metadata: {
-                          userEmail: customerEmail,
-                          planType,
-                          stripeCustomerId: typeof session.customer === 'string' ? session.customer : null,
-                          subscriptionId: session.subscription || null,
-                          subscribedAt: new Date().toISOString(),
-                        }
-                      }),
-                    }).catch(err => logStep("Admin notification fetch failed (non-blocking)", { error: String(err) }));
-                  }
-                }
-                logStep("Admin notification(s) dispatched", { count: superUserRoles.length });
-              } else {
-                logStep("No super users found to notify");
-              }
-            } catch (notifError) {
-              logStep("Admin notification error (non-blocking)", { error: String(notifError) });
-            }
-          }
-        } else {
-          logStep("ERROR: Could not determine plan_type", { sessionId: session.id });
-        }
+        // Do not grant access here. A completed checkout can precede final
+        // payment confirmation. invoice.payment_succeeded is the only event
+        // allowed to approve the account and provision paid-plan credits.
+        logStep("Checkout linked to existing user; awaiting paid invoice", {
+          userId,
+          subscriptionId: session.subscription || null,
+        });
 
         break;
       }
@@ -278,71 +240,66 @@ serve(async (req) => {
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         logStep("Subscription updated", { subscriptionId: subscription.id, status: subscription.status });
-        
-        if (subscription.status === "active") {
-          const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
-          
-          if (customer.email) {
-            const user = await findUserByEmail(customer.email);
-            
-            if (user) {
-              const priceId = subscription.items.data[0]?.price?.id;
-              const planType = priceId ? await resolvePlanType(priceId) : 'premium';
-              
-              // Update profile plan
-              await supabase
-                .from('profiles')
-                .update({ user_plan: planType })
-                .eq('user_id', user.id);
-              
-              // Use idempotent provision
-              const { error: creditsError } = await supabase.rpc('provision_plan_credits', {
-                p_user_id: user.id,
-                p_plan_type: planType,
-                p_source: 'stripe_webhook_subscription_updated',
-                p_reference_id: event.id
-              });
-
-              if (creditsError) {
-                logStep("Failed to provision credits for subscription change", { error: creditsError });
-              } else {
-                logStep("Credits provisioned for subscription change", { userId: user.id, planType });
-              }
-            }
-          }
-        }
-        
+        // Do not grant access or reset credits here. Subscription updates can be
+        // triggered before a prorated invoice is paid. invoice.payment_succeeded
+        // is the source of truth for paid plan changes and renewals.
         break;
       }
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
         logStep("Invoice payment succeeded", { invoiceId: invoice.id });
-        
-        if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-          const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
-          
-          if (customer.email) {
-            const user = await findUserByEmail(customer.email);
-            
-            if (user) {
-              const priceId = subscription.items.data[0]?.price?.id;
-              const planType = priceId ? await resolvePlanType(priceId) : 'premium';
-              
-              // Use idempotent provision for billing renewal
-              const { error: creditsError } = await supabase.rpc('provision_plan_credits', {
-                p_user_id: user.id,
-                p_plan_type: planType,
-                p_source: 'stripe_webhook_invoice',
-                p_reference_id: event.id
-              });
 
-              if (!creditsError) {
-                logStep("Credits provisioned for billing period", { userId: user.id, planType });
-              }
+        // Resolve the subscription id across Stripe API shapes. The legacy
+        // `invoice.subscription` field was removed in the basil API version
+        // (2025+) in favor of `invoice.parent.subscription_details.subscription`.
+        const directSub = invoice.subscription;
+        const parentSub = invoice.parent?.subscription_details?.subscription;
+        const subscriptionId =
+          (typeof directSub === 'string' ? directSub : directSub?.id) ??
+          (typeof parentSub === 'string' ? parentSub : parentSub?.id) ??
+          null;
+
+        if (subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
+          const user = await resolveSubscriptionUser(subscription, customer.email);
+          if (!user && subscription.metadata?.user_id) {
+            if (!terminalSubscriptionStatuses.has(subscription.status)) {
+              await stripe.subscriptions.cancel(subscription.id);
             }
+            logStep("Skipping invoice and canceling subscription for deleted account", {
+              invoiceId: invoice.id,
+              userId: subscription.metadata.user_id,
+            });
+            break;
           }
+          if (!user) throw new Error(`No user found for invoice ${invoice.id}`);
+          const priceId = subscription.items.data[0]?.price?.id;
+          if (!priceId) throw new Error(`No price found for invoice ${invoice.id}`);
+          const planType = await resolvePlanType(priceId);
+          await ensureProfile(user.id);
+
+          const { data: provisionResult, error: creditsError } = await supabase.rpc('provision_plan_credits', {
+            p_user_id: user.id,
+            p_plan_type: planType,
+            p_source: 'stripe_webhook_invoice',
+            p_reference_id: event.id
+          });
+          if (creditsError || provisionResult?.success === false) {
+            throw creditsError || new Error(`Credit provisioning failed: ${provisionResult?.reason}`);
+          }
+
+          const { data: approvedProfile, error: profileError } = await supabase
+            .from('profiles')
+            .update({ user_plan: planType, status: 'approved' })
+            .eq('user_id', user.id)
+            .select('user_id')
+            .single();
+          if (profileError || !approvedProfile) {
+            throw profileError || new Error(`Failed to approve profile for ${user.id}`);
+          }
+          logStep("Credits provisioned for billing period", { userId: user.id, planType });
         }
         
         break;
@@ -359,35 +316,25 @@ serve(async (req) => {
         logStep("Subscription cancelled", { subscriptionId: subscription.id });
         
         const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
-        
-        if (customer.email) {
-          const user = await findUserByEmail(customer.email);
-          
-          if (user) {
-            // Use idempotent provision to downgrade
-            const { error: creditsError } = await supabase.rpc('provision_plan_credits', {
-              p_user_id: user.id,
-              p_plan_type: 'free_trial',
-              p_source: 'stripe_webhook_cancellation',
-              p_reference_id: event.id
-            });
-
-            if (!creditsError) {
-              logStep("User credits downgraded to free plan", { userId: user.id });
-            }
-
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .update({ user_plan: 'free_trial' })
-              .eq('user_id', user.id);
-
-            if (profileError) {
-              logStep("Failed to downgrade profile plan", { error: profileError });
-            } else {
-              logStep("Profile plan downgraded to free_trial", { userId: user.id });
-            }
-          }
+        const user = await resolveSubscriptionUser(subscription, customer.email);
+        if (!user && subscription.metadata?.user_id) {
+          logStep("Subscription belongs to an already deleted account", {
+            subscriptionId: subscription.id,
+            userId: subscription.metadata.user_id,
+          });
+          break;
         }
+        if (!user) throw new Error(`No user found for cancelled subscription ${subscription.id}`);
+
+        const { data: revokeResult, error: revokeError } = await supabase.rpc('revoke_product_access_service', {
+          p_user_id: user.id,
+          p_source: 'stripe_webhook_cancellation',
+          p_reference_id: event.id
+        });
+        if (revokeError || revokeResult !== true) {
+          throw revokeError || new Error(`Failed to revoke product access for ${user.id}`);
+        }
+        logStep("Product access revoked after cancellation", { userId: user.id });
         
         break;
       }
@@ -395,6 +342,12 @@ serve(async (req) => {
       default:
         logStep("Unhandled event type", { type: event.type });
     }
+
+    const { error: completionError } = await supabase
+      .from('processed_stripe_events')
+      .update({ status: 'completed', last_error: null, processed_at: new Date().toISOString() })
+      .eq('event_id', event.id);
+    if (completionError) throw completionError;
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json" },
@@ -404,6 +357,12 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in webhook", { message: errorMessage });
+    if (eventId && eventStore) {
+      await eventStore
+        .from('processed_stripe_events')
+        .update({ status: 'failed', last_error: errorMessage.slice(0, 2000) })
+        .eq('event_id', eventId);
+    }
     
     return new Response(JSON.stringify({ 
       error: errorMessage 

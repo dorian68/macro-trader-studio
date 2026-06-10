@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { requireUser } from "../_shared/auth.ts";
+import { consumeProductCredit, refundProductCredit, requireProductAccess } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,32 +7,62 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  let consumedCredit: { userId: string; referenceId: string } | null = null;
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // Require an authenticated end-user (prevents anonymous abuse of the LLM)
-    const { user, error: authError } = await requireUser(req);
+    const { user, error: authError, status } = await requireProductAccess(req, 'queries');
     if (!user) {
-      console.warn("[aura] Unauthenticated request rejected:", authError);
+      console.warn("[aura] Request rejected:", authError);
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: authError }),
+        { status: status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
     console.log("=== AURA REQUEST RECEIVED ===");
     console.log("Method:", req.method);
     console.log("Timestamp:", new Date().toISOString());
     
     const { question, context, conversationHistory, sessionMemory } = await req.json();
+    if (
+      typeof question !== 'string' || !question.trim() || question.length > 10_000 ||
+      (conversationHistory !== undefined && (!Array.isArray(conversationHistory) || conversationHistory.length > 100)) ||
+      JSON.stringify({ context, sessionMemory }).length > 100_000
+    ) {
+      return new Response(JSON.stringify({ error: "Invalid AURA request" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "AI service not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const consumed = await consumeProductCredit(user.id, 'queries', 'aura');
+    if (!consumed.success) {
+      return new Response(JSON.stringify({ error: consumed.error }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    consumedCredit = { userId: user.id, referenceId: consumed.referenceId };
     console.log("Question received:", question);
     console.log("Context page:", typeof context === 'string' ? context : context?.page);
     console.log("Conversation history length:", conversationHistory?.length || 0);
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     const contextPage = typeof context === 'string' ? context : context?.page || 'General Analytics';
     const contextData = typeof context === 'object' ? context?.data : null;
@@ -408,17 +438,6 @@ PRIVACY RULES:
       } catch (error) {
         console.error("‚ùå Error fetching collective context:", error);
       }
-    }
-
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
-      return new Response(
-        JSON.stringify({ error: "AI service not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
     }
 
     // üåç DETECT USER LANGUAGE
@@ -1106,6 +1125,10 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n‚è
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Lovable AI Gateway error:", response.status, errorText);
+      if (consumedCredit) {
+        await refundProductCredit(consumedCredit.userId, 'queries', 'aura-failed', consumedCredit.referenceId);
+        consumedCredit = null;
+      }
       
       if (response.status === 429) {
         return new Response(
@@ -1200,6 +1223,9 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n‚è
     });
   } catch (e) {
     console.error("aura error:", e);
+    if (consumedCredit) {
+      await refundProductCredit(consumedCredit.userId, 'queries', 'aura-failed', consumedCredit.referenceId);
+    }
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
       {

@@ -144,7 +144,7 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
       
       // Enhanced request with both HTTP and realtime support
       const { response } = await enhancedPostRequest(
-        'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        'workflow-proxy',
         payload,
         {
           enableJobTracking: false,
@@ -232,7 +232,7 @@ export function TradeSetupBubble({ instrument, timeframe, onClose, onTradeLevels
     setIsAnalyzingTechnical(true);
     
     try {
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const response = await safePostRequest('workflow-proxy', {
         type: "technical_analysis",
         question: `Analyze technical levels for ${parameters.instrument} on ${parameters.timeframe}. Current setup: Entry=${tradeSetup.entry}, SL=${tradeSetup.stopLoss}, TP=${tradeSetup.takeProfit}`,
         instrument: parameters.instrument,

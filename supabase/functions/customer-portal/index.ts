@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getStripeConfig } from "../_shared/stripe-config.ts";
+import { requireVerifiedUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,13 +13,38 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CUSTOMER-PORTAL] ${step}${detailsStr}`);
 };
 
+function safeReturnUrl(requestOrigin: string | null): string {
+  const fallbackOrigin = "https://alphalensai.com";
+  const allowedOrigins = new Set([fallbackOrigin]);
+  try {
+    const siteUrl = Deno.env.get("SITE_URL");
+    if (siteUrl) allowedOrigins.add(new URL(siteUrl).origin);
+  } catch {
+    // Keep the canonical fallback only.
+  }
+  if (requestOrigin?.startsWith("http://localhost:") || requestOrigin?.startsWith("http://127.0.0.1:")) {
+    allowedOrigins.add(requestOrigin);
+  }
+  return `${allowedOrigins.has(requestOrigin ?? "") ? requestOrigin : fallbackOrigin}/dashboard`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
     logStep("Function started");
+    const { user, error: authError, status } = await requireVerifiedUser(req);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: status ?? 401,
+      });
+    }
 
     const config = getStripeConfig();
     logStep("Stripe config loaded", { mode: config.mode });
@@ -28,31 +53,11 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
-
-    // Get authenticated user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header provided");
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    
-    if (userError || !userData.user?.email) {
-      logStep("Authentication failed", { error: userError?.message });
-      throw new Error("User not authenticated or email not available");
-    }
-
-    const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     // Find Stripe customer
     const customers = await stripe.customers.list({ 
-      email: user.email, 
+      email: user.email!,
       limit: 1 
     });
     
@@ -64,12 +69,10 @@ serve(async (req) => {
     logStep("Found Stripe customer", { customerId });
 
     // Get origin for return URL
-    const origin = req.headers.get("origin") || "https://alphalensai.com";
-    
     // Create customer portal session
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/dashboard`,
+      return_url: safeReturnUrl(req.headers.get("origin")),
     });
     
     logStep("Customer portal session created", { 

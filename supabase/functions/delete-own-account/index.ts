@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from "https://esm.sh/stripe@18.5.0"
+import { getStripeConfig } from "../_shared/stripe-config.ts"
+import { cancelUserSubscriptions } from "../_shared/stripe-subscriptions.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +12,9 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
   }
 
   console.log('[DELETE-OWN-ACCOUNT] Self-service account deletion called');
@@ -77,40 +83,32 @@ serve(async (req) => {
     }
 
     // 2. Get profile for audit metadata
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('broker_name, user_plan, created_at, is_deleted')
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (profile?.is_deleted) {
+    if (profileError || !profile) {
+      throw profileError || new Error('User profile not found');
+    }
+
+    // Always reconcile Stripe before deleting, even if the local profile says
+    // free_trial or is already soft-deleted.
+    const config = getStripeConfig();
+    const stripe = new Stripe(config.secretKey, { apiVersion: '2025-08-27.basil' });
+    const canceledCount = await cancelUserSubscriptions(stripe, userId, user.email);
+    console.log(`[DELETE-OWN-ACCOUNT] Canceled ${canceledCount} billable subscription(s)`);
+
+    if (profile.is_deleted) {
+      const { error: retryDeleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+      if (retryDeleteAuthError) {
+        throw new Error('Account is deactivated but authentication deletion still failed');
+      }
       return new Response(
         JSON.stringify({ success: true, message: 'Account already deleted' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-    }
-
-    // 2b. Cancel any active Stripe subscriptions before deletion
-    try {
-      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || Deno.env.get('STRIPE_SECRET_KEY_LIVE');
-      if (stripeKey && user.email) {
-        const { default: Stripe } = await import('https://esm.sh/stripe@18.5.0');
-        const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' });
-        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-        if (customers.data.length > 0) {
-          const customerId = customers.data[0].id;
-          const subscriptions = await stripe.subscriptions.list({ customer: customerId, status: 'active' });
-          for (const sub of subscriptions.data) {
-            console.log(`[DELETE-OWN-ACCOUNT] Canceling subscription ${sub.id} for customer ${customerId}`);
-            await stripe.subscriptions.cancel(sub.id);
-          }
-          console.log(`[DELETE-OWN-ACCOUNT] Canceled ${subscriptions.data.length} active subscription(s)`);
-        }
-      } else {
-        console.warn('[DELETE-OWN-ACCOUNT] No Stripe key or email available, skipping subscription cleanup');
-      }
-    } catch (stripeErr) {
-      console.error('[DELETE-OWN-ACCOUNT] Stripe cleanup failed (non-blocking):', stripeErr);
     }
 
     // 3. Soft delete profile
@@ -150,14 +148,10 @@ serve(async (req) => {
 
     // 5. Hard delete from auth.users — frees email, invalidates all tokens
     console.log('[DELETE-OWN-ACCOUNT] Hard deleting auth user:', userId);
-    try {
-      const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
-      if (deleteAuthError) {
-        console.error('[DELETE-OWN-ACCOUNT] CRITICAL: auth deletion failed:', deleteAuthError);
-        // Profile is soft-deleted; admin will need to clean up auth.users manually
-      }
-    } catch (deleteErr) {
-      console.error('[DELETE-OWN-ACCOUNT] Exception during auth deletion:', deleteErr);
+    const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+    if (deleteAuthError) {
+      console.error('[DELETE-OWN-ACCOUNT] CRITICAL: auth deletion failed:', deleteAuthError);
+      throw new Error('Account was deactivated but authentication deletion failed');
     }
 
     console.log(`[AUDIT] User ${userId} self-deleted at ${new Date().toISOString()}`);

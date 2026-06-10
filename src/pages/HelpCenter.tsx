@@ -22,7 +22,7 @@ export default function HelpCenter() {
       articles: [
         { title: "Creating Your First Account", link: "/docs" },
         { title: "Understanding Credits and Plans", link: "/pricing" },
-        { title: "Selecting Your Broker", link: "/docs" },
+        { title: "Activating Your Access", link: "/docs" },
         { title: "Navigating the Dashboard", link: "/docs" },
       ],
     },

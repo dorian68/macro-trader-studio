@@ -114,12 +114,10 @@ export function UserActionsDialog({
 
   // Check if current user is editing their own account
   const isEditingSelf = profile?.user_id === user.user_id;
-  // Check if admin is trying to edit roles (only superUsers can assign superUser role)
-  const canEditRoles = isSuperUser || (!isEditingSelf);
-  // Available roles based on permissions
-  const availableRoles = isSuperUser 
-    ? ['user', 'admin', 'super_user'] 
-    : ['user', 'admin']; // Admins can only assign user/admin roles
+  // Role management is restricted to super users at the database level
+  // (RLS policy "Super users can manage roles"). Mirror that in the UI so
+  // non-super users never attempt a write that would fail.
+  const availableRoles: Array<'user' | 'admin' | 'super_user'> = ['user', 'admin', 'super_user'];
 
   const handleUpdateStatus = async () => {
     if (!selectedStatus) return;
@@ -255,48 +253,44 @@ export function UserActionsDialog({
             </Button>
           </div>
 
-          {/* Role Update */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Update Role</label>
-            {isEditingSelf ? (
-              <div className="p-3 border border-muted rounded-md bg-muted/20">
-                <p className="text-sm text-muted-foreground">
-                  You cannot modify your own role. Contact a Super User to change your role.
-                </p>
-              </div>
-            ) : canEditRoles ? (
-              <>
-                <Select value={selectedRole} onValueChange={(value: any) => setSelectedRole(value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select new role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableRoles.map((role) => (
-                      <SelectItem key={role} value={role}>
-                        {role === 'super_user' ? 'Super User' : role.charAt(0).toUpperCase() + role.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button 
-                  onClick={handleUpdateRole} 
-                  disabled={!selectedRole || loading}
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Update Role
-                </Button>
-              </>
-            ) : (
-              <div className="p-3 border border-muted rounded-md bg-muted/20">
-                <p className="text-sm text-muted-foreground">
-                  You don't have permission to modify roles.
-                </p>
-              </div>
-            )}
-          </div>
+          {/* Role Update — Super Users only (RLS restricts user_roles writes to super_user) */}
+          {isSuperUser && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Update Role</label>
+              {isEditingSelf ? (
+                <div className="p-3 border border-muted rounded-md bg-muted/20">
+                  <p className="text-sm text-muted-foreground">
+                    You cannot modify your own role. Contact another Super User to change your role.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Select value={selectedRole} onValueChange={(value: any) => setSelectedRole(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select new role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRoles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role === 'super_user' ? 'Super User' : role.charAt(0).toUpperCase() + role.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleUpdateRole}
+                    disabled={!selectedRole || loading}
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Update Role
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Change Password Section - Super User Only */}

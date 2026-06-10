@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from "https://esm.sh/stripe@18.5.0"
+import { getStripeConfig } from "../_shared/stripe-config.ts"
+import { cancelUserSubscriptions } from "../_shared/stripe-subscriptions.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +12,9 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
   }
 
   console.log('Delete user function called');
@@ -78,12 +84,14 @@ serve(async (req) => {
 
     // 1. Get the target user's email for audit before deletion
     let emailHash = 'unknown';
+    let targetEmail: string | null = null;
     try {
       const { data: targetUser } = await supabase.auth.admin.getUserById(userId);
       if (targetUser?.user?.email) {
+        targetEmail = targetUser.user.email;
         // SHA-256 hash of email for audit (not storing email in clear)
         const encoder = new TextEncoder();
-        const data = encoder.encode(targetUser.user.email.toLowerCase());
+        const data = encoder.encode(targetEmail.toLowerCase());
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         emailHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -106,14 +114,28 @@ serve(async (req) => {
       )
     }
 
+    // Always reconcile Stripe before deleting, even when the local plan or
+    // deletion status is stale.
+    const config = getStripeConfig();
+    const stripe = new Stripe(config.secretKey, { apiVersion: '2025-08-27.basil' });
+    const canceledCount = await cancelUserSubscriptions(stripe, userId, targetEmail);
+    console.log(`[DELETE-USER] Canceled ${canceledCount} billable subscription(s)`);
+
     if (existingProfile.is_deleted) {
+      const { error: retryDeleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+      if (retryDeleteAuthError) {
+        return new Response(
+          JSON.stringify({ error: 'User is deactivated but auth deletion still failed' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
       return new Response(
-        JSON.stringify({ success: true, message: 'User was already deactivated', already_deleted: true }),
+        JSON.stringify({ success: true, message: 'User was already deactivated and auth deletion was retried', already_deleted: true }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // 3. Soft delete the profile (audit trail)
+    // 4. Soft delete the profile (audit trail)
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
@@ -131,7 +153,7 @@ serve(async (req) => {
       )
     }
 
-    // 4. Insert audit record
+    // 5. Insert audit record
     try {
       await supabase.from('deleted_accounts_audit').insert({
         original_user_id: userId,
@@ -148,33 +170,18 @@ serve(async (req) => {
       console.error('[DELETE-USER] Audit insert failed (non-blocking):', auditErr);
     }
 
-    // 5. Hard delete from auth.users — frees the email for future signup
+    // 6. Hard delete from auth.users — frees the email for future signup
     console.log('[DELETE-USER] Hard deleting auth user:', userId);
-    try {
-      const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
-      if (deleteAuthError) {
-        console.error('[DELETE-USER] CRITICAL: Failed to hard delete auth user:', deleteAuthError);
-        // Profile is already soft-deleted. Log for manual intervention.
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            warning: 'Profile deactivated but auth user deletion failed. Manual intervention required.',
-            soft_deleted: true,
-            auth_deleted: false
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    } catch (deleteErr) {
-      console.error('[DELETE-USER] Exception during auth deletion:', deleteErr);
+    const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+    if (deleteAuthError) {
+      console.error('[DELETE-USER] CRITICAL: Failed to hard delete auth user:', deleteAuthError);
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          warning: 'Profile deactivated but auth user deletion failed.',
+        JSON.stringify({
+          error: 'Profile deactivated but auth user deletion failed. Manual intervention required.',
           soft_deleted: true,
           auth_deleted: false
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

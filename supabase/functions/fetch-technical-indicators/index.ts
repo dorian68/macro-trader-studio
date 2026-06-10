@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 import { mapToTwelveData } from '../_shared/instrument-mappings.ts';
+import { requireProductAccess } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,7 +9,7 @@ const corsHeaders = {
 };
 
 const TWELVE_API_KEY = Deno.env.get('TWELVE_DATA_API_KEY') || '';
-const VALID_INDICATORS = ['rsi', 'atr', 'sma', 'ema', 'macd', 'bbands'];
+const VALID_INDICATORS = ['rsi', 'atr', 'adx', 'sma', 'ema', 'macd', 'bbands'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,17 +17,33 @@ serve(async (req) => {
   }
 
   try {
+    if (req.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+    }
+    const { user, error: authError, status } = await requireProductAccess(req);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { 
       instrument, 
       indicators = ['rsi'],
       time_period = 14, 
       interval = '1day',
-      outputsize = 30,
+      outputsize: requestedOutputsize = 30,
       start_date,
       end_date
     } = await req.json();
+    const outputsize = Math.min(Math.max(Number(requestedOutputsize), 1), 300);
 
-    if (!instrument) {
+    if (
+      typeof instrument !== 'string' || !instrument || instrument.length > 100 ||
+      typeof interval !== 'string' || interval.length > 20 ||
+      !Number.isFinite(Number(time_period)) || Number(time_period) < 1 || Number(time_period) > 500
+    ) {
       throw new Error('Missing required parameter: instrument');
     }
 

@@ -6,13 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, Activity } from 'lucide-react';
+import { discardPendingJob } from '@/lib/job-security';
 
 interface RealtimeEvent {
   timestamp: string;
   type: string;
   channel: string;
   event: string;
-  payload?: any;
+  payload?: unknown;
   error?: string;
 }
 
@@ -29,7 +30,7 @@ export function RealtimeDiagnostic() {
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [channels, setChannels] = useState<Map<string, ChannelStatus>>(new Map());
   const [isActive, setIsActive] = useState(false);
-  const channelsRef = useRef<any[]>([]);
+  const channelsRef = useRef<ReturnType<typeof supabase.channel>[]>([]);
 
   const addEvent = (event: RealtimeEvent) => {
     setEvents(prev => [event, ...prev].slice(0, 100)); // Keep last 100 events
@@ -108,7 +109,7 @@ export function RealtimeDiagnostic() {
       const timestamp = new Date().toISOString();
       
       updateChannelStatus('diagnostic-jobs', {
-        status: status as any,
+        status: status as ChannelStatus['status'],
         subscribedAt: status === 'SUBSCRIBED' ? timestamp : undefined
       });
 
@@ -161,7 +162,7 @@ export function RealtimeDiagnostic() {
       const timestamp = new Date().toISOString();
       
       updateChannelStatus('diagnostic-profile', {
-        status: status as any,
+        status: status as ChannelStatus['status'],
         subscribedAt: status === 'SUBSCRIBED' ? timestamp : undefined
       });
 
@@ -230,13 +231,13 @@ export function RealtimeDiagnostic() {
         error: profileError?.message
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       addEvent({
         timestamp: new Date().toISOString(),
         type: 'ERROR',
         channel: 'system',
         event: 'permission_check_failed',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown permission check error'
       });
     }
   };
@@ -268,7 +269,7 @@ export function RealtimeDiagnostic() {
     if (!user?.id) return;
 
     try {
-      const testJobId = `test-${Date.now()}`;
+      const testJobId = crypto.randomUUID();
       
       addEvent({
         timestamp: new Date().toISOString(),
@@ -300,42 +301,35 @@ export function RealtimeDiagnostic() {
         return;
       }
 
-      // Wait a moment then update to completed
+      // Wait a moment, then clean up through the restricted server-side RPC.
       setTimeout(async () => {
-        const { error: updateError } = await supabase
-          .from('jobs')
-          .update({
-            status: 'completed',
-            response_payload: { test: 'response', completedAt: new Date().toISOString() }
-          })
-          .eq('id', testJobId);
-
-        if (updateError) {
+        const discarded = await discardPendingJob(testJobId);
+        if (!discarded) {
           addEvent({
             timestamp: new Date().toISOString(),
             type: 'ERROR',
             channel: 'system',
-            event: 'test_job_update_failed',
-            error: updateError.message
+            event: 'test_job_cleanup_failed',
+            error: 'Pending diagnostic job could not be discarded'
           });
         } else {
           addEvent({
             timestamp: new Date().toISOString(),
             type: 'SUCCESS',
             channel: 'system',
-            event: 'test_job_updated',
+            event: 'test_job_discarded',
             payload: { jobId: testJobId }
           });
         }
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       addEvent({
         timestamp: new Date().toISOString(),
         type: 'ERROR',
         channel: 'system',
         event: 'test_job_failed',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown diagnostic error'
       });
     }
   };
@@ -361,7 +355,10 @@ export function RealtimeDiagnostic() {
 
   useEffect(() => {
     return () => {
-      stopDiagnostic();
+      channelsRef.current.forEach((channel) => {
+        supabase.removeChannel(channel);
+      });
+      channelsRef.current = [];
     };
   }, []);
 

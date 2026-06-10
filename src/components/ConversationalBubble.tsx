@@ -80,7 +80,7 @@ export function ConversationalBubble({ mode, instrument, timeframe, onClose }: C
       // Call n8n webhook with the appropriate type
       const webhookType = mode === "macro" ? "macro" : mode === "reports" ? "reports" : "tradesetup";
       
-      const response = await safePostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', {
+      const response = await safePostRequest('workflow-proxy', {
         type: webhookType,
         question: input.trim(),
         instrument: instrument,

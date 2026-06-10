@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { requireUserOrService } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,12 +16,29 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
+    const caller = await requireUserOrService(req);
+    if (caller.error) {
+      return new Response(JSON.stringify({ error: caller.error }), {
+        status: caller.status ?? 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const { userEmail, brokerName }: NotifyNewRegistrationRequest = await req.json();
 
     if (!userEmail) {
       throw new Error('Missing required field: userEmail');
+    }
+    if (!caller.serviceRole) {
+      return new Response(JSON.stringify({ error: 'Service authorization required' }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
     console.log(`📧 [New Registration] Notifying admins about new registration: ${userEmail}`);

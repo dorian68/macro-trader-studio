@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,22 +8,60 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, AlertCircle, ArrowLeft, Mail, RefreshCw, CheckCircle2 } from 'lucide-react';
 // import newLogo from '@/assets/new-logo.png'; // Removed unused import
 import PublicNavbar from '@/components/PublicNavbar';
 import { SEOHead } from '@/components/SEOHead';
-import { useBrokerActions } from '@/hooks/useBrokerActions';
 import { useCreditManager } from '@/hooks/useCreditManager';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { useTranslation } from 'react-i18next';
+import {
+  AUTH_STORAGE_KEYS,
+  beginOAuthAttempt,
+  clearOAuthAttempt,
+  getOAuthFlow,
+  hasFreshOAuthAttempt,
+  hasOAuthCallbackParams,
+  isLikelyNewOAuthUser,
+  processPendingAuthIntent,
+  type OAuthFlow,
+} from '@/lib/auth-flow';
 
 const { useState, useEffect, useRef } = React;
 
 // Debug logger — no-op in production (avoids leaking OAuth/provider/user details).
 const debugLog = import.meta.env.DEV ? console.log : (..._args: unknown[]) => {};
+
+async function ensureOAuthProfile(userId: string) {
+  const fetchProfile = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('user_id, status, is_deleted, created_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  };
+
+  let profile = await fetchProfile();
+  if (profile) return profile;
+
+  const { error: ensureError } = await supabase.functions.invoke('ensure-profile');
+  if (ensureError) throw ensureError;
+
+  profile = await fetchProfile();
+  if (!profile) throw new Error('Profile is still missing after repair');
+  return profile;
+}
+
+function removeOAuthCallbackParams() {
+  const url = new URL(window.location.href);
+  ['code', 'error', 'error_code', 'error_description'].forEach((key) => url.searchParams.delete(key));
+  url.hash = '';
+  window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+}
 
 export default function Auth() {
   const { t } = useTranslation('auth');
@@ -31,18 +70,10 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMatchError, setPasswordMatchError] = useState('');
-  const [brokerName, setBrokerName] = useState('');
-  const [selectedBrokerId, setSelectedBrokerId] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [processingOAuth, setProcessingOAuth] = useState(false);
-  const [showBrokerPicker, setShowBrokerPicker] = useState(false);
-  const [brokerChoice, setBrokerChoice] = useState<string | null>(null);
-  const [pendingGoogleSession, setPendingGoogleSession] = useState<any>(null);
-  // Reactivation states removed — deleted accounts are hard-deleted from auth.users
-  const [session, setSession] = useState(null);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
-  const [activeBrokers, setActiveBrokers] = useState([]);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
@@ -54,8 +85,10 @@ export default function Auth() {
   const { activateFreeTrial } = useCreditManager();
   const intent = searchParams.get('intent');
   const isManualSignInRef = useRef(false);
+  const oauthProcessingRef = useRef(false);
+  const pendingIntentProcessingRef = useRef(false);
+  const processedOAuthTokenRef = useRef<string | null>(null);
   const selectedPlan = searchParams.get('plan');
-  const { fetchActiveBrokers } = useBrokerActions();
 
   // ✅ Controlled tab state synchronized with URL query param
   const [tabValue, setTabValue] = useState<'signin' | 'signup'>(
@@ -79,6 +112,7 @@ export default function Auth() {
 
       if (urlError) {
         console.error('[Google Auth] OAuth error returned:', { urlError, urlErrorDesc });
+        clearOAuthAttempt(localStorage);
         toast({
           title: t('errors.googleOAuthFailed') || 'Échec de la connexion Google',
           description: urlErrorDesc || urlError,
@@ -119,378 +153,167 @@ export default function Auth() {
     }
   }, [password, confirmPassword, t]);
 
-  useEffect(() => {
-    // CRITICAL: onAuthStateChange callback must NOT be async and must NOT call Supabase
-    // To prevent deadlocks, defer all async operations to a separate function
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        debugLog(`[Auth] onAuthStateChange event: ${event}, provider: ${session?.user?.app_metadata?.provider}`);
-        setSession(session);
+  const completePendingAuthIntent = React.useCallback(async () => {
+    if (pendingIntentProcessingRef.current) {
+      return true;
+    }
 
-        // Defer OAuth handling to prevent deadlock
-        if (event === 'SIGNED_IN' && session?.user?.app_metadata?.provider === 'google') {
-          setTimeout(() => {
-            handleOAuthEvent(session);
-          }, 0);
-        } else if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
+    pendingIntentProcessingRef.current = true;
+    try {
+      const result = await processPendingAuthIntent({
+        storage: localStorage,
+        createCheckout: (plan) => supabase.functions.invoke('create-checkout', {
+          body: {
+            plan,
+            success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url: 'https://alphalensai.com/payment-canceled',
+          },
+        }),
+        activateFreeTrial,
+      });
+
+      if (result.kind === 'checkout') {
+        window.location.href = result.url;
+        return true;
+      }
+
+      if (result.kind === 'free_trial') {
+        navigate('/payment-success?type=free_trial');
+        return true;
+      }
+
+      if (result.kind === 'error') {
+        console.error('[Auth] Failed to process pending post-auth intent:', result.error);
+        toast({
+          title: t('errors.authenticationError'),
+          description: result.error instanceof Error ? result.error.message : t('errors.authenticationErrorDescription'),
+          variant: 'destructive',
+        });
+      }
+
+      return false;
+    } finally {
+      pendingIntentProcessingRef.current = false;
+    }
+  }, [activateFreeTrial, navigate, t, toast]);
+
+  const handleOAuthEvent = React.useCallback(async (oauthSession: Session) => {
+    if (
+      oauthProcessingRef.current ||
+      processedOAuthTokenRef.current === oauthSession.access_token
+    ) {
+      return;
+    }
+
+    oauthProcessingRef.current = true;
+    setProcessingOAuth(true);
+    setGoogleLoading(true);
+    const oauthFlow = getOAuthFlow(localStorage);
+    debugLog('[Google Auth] Processing OAuth callback', { oauthFlow });
+
+    try {
+      const profile = await ensureOAuthProfile(oauthSession.user.id);
+
+      if (profile.is_deleted) {
+        clearOAuthAttempt(localStorage);
+        processedOAuthTokenRef.current = oauthSession.access_token;
+        await supabase.auth.signOut();
+        toast({
+          title: t('errors.accountDeactivated'),
+          description: t('errors.accountDeactivatedDescription'),
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const isNewUser = isLikelyNewOAuthUser(oauthSession.user, oauthFlow);
+
+      toast({
+        title: isNewUser ? t('success.accountCreated') : t('success.welcomeBack'),
+        description: isNewUser
+          ? t('success.accountCreatedDescription')
+          : t('success.welcomeBackDescription'),
+      });
+
+      clearOAuthAttempt(localStorage);
+      removeOAuthCallbackParams();
+      processedOAuthTokenRef.current = oauthSession.access_token;
+
+      const intentHandled = await completePendingAuthIntent();
+      if (!intentHandled) navigate('/dashboard');
+    } catch (error) {
+      // Keep the OAuth attempt and pending commercial intent so a reload can retry.
+      console.error('[Google Auth] OAuth completion failed:', error);
+      toast({
+        title: t('errors.authenticationError'),
+        description: error instanceof Error ? error.message : t('errors.authenticationErrorDescription'),
+        variant: 'destructive',
+      });
+    } finally {
+      oauthProcessingRef.current = false;
+      setProcessingOAuth(false);
+      setGoogleLoading(false);
+    }
+  }, [completePendingAuthIntent, navigate, t, toast]);
+
+  useEffect(() => {
+    const shouldProcessGoogleOAuth = (event: string, currentSession: Session | null) => {
+      if (
+        !currentSession ||
+        currentSession.user.app_metadata?.provider !== 'google' ||
+        window.location.pathname !== '/auth' ||
+        processedOAuthTokenRef.current === currentSession.access_token
+      ) {
+        return false;
+      }
+
+      return (
+        (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') &&
+        (hasFreshOAuthAttempt(localStorage) || hasOAuthCallbackParams(window.location))
+      );
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        debugLog(`[Auth] onAuthStateChange event: ${event}, provider: ${currentSession?.user?.app_metadata?.provider}`);
+
+        if (shouldProcessGoogleOAuth(event, currentSession)) {
+          setTimeout(() => handleOAuthEvent(currentSession!), 0);
+        } else if (event === 'SIGNED_IN' && currentSession?.user && window.location.pathname === '/auth') {
           // Skip if handleSignIn is already managing navigation
           if (isManualSignInRef.current) {
             debugLog('[Auth] Skipping onAuthStateChange navigation — handleSignIn is active');
             return;
           }
-          // Email/password flow - check for pending plan from Pricing
-          const pendingPlan = localStorage.getItem('alphalens_pending_plan');
-          const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
-          if (pendingPlan) {
-            localStorage.removeItem('alphalens_pending_plan');
-            // Defer checkout redirect to avoid async in callback
-            setTimeout(async () => {
-              try {
-              const { data, error } = await supabase.functions.invoke('create-checkout', {
-                  body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
-                });
-                if (!error && data?.url) {
-                  window.location.href = data.url;
-                  return;
-                }
-              } catch (e) {
-                console.error('[Auth] Failed to create checkout for pending plan:', e);
-              }
-              navigate('/dashboard');
-            }, 0);
-          } else if (pendingTrial) {
-            // Trial activation only for NEW users after email confirmation
-            // Check if this is genuinely a first-time login (pending trial from signup)
-            localStorage.removeItem('alphalens_pending_free_trial');
-            setTimeout(async () => {
-              try {
-                const { error: trialError } = await activateFreeTrial();
-                if (!trialError) {
-                  navigate('/payment-success?type=free_trial');
-                  return;
-                }
-              } catch (e) {
-                console.error('[Auth] Failed to activate pending free trial:', e);
-              }
-              navigate('/dashboard');
-            }, 0);
-          } else {
-            // No pending plan or trial — redirect to dashboard
-            navigate('/dashboard');
-          }
+          setTimeout(async () => {
+            const intentHandled = await completePendingAuthIntent();
+            if (!intentHandled) navigate('/dashboard');
+          }, 0);
         }
       }
     );
 
-    // Check for existing session - redirect if already logged in
-    // BUT NOT if we're in an active OAuth flow
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      const oauthFlow = localStorage.getItem('oauth_flow');
-      const oauthStartedAt = localStorage.getItem('oauth_started_at');
-      const isOAuthActive = oauthFlow && oauthStartedAt && (Date.now() - parseInt(oauthStartedAt)) < 300000; // 5min
-      const hasOAuthParams = window.location.search.includes('code') || window.location.hash.includes('access_token');
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      if (!currentSession?.user || window.location.pathname !== '/auth') return;
 
-      if (session?.user && window.location.pathname === '/auth' && !isOAuthActive && !hasOAuthParams) {
-        // Check for pending plan checkout before redirecting to dashboard
-        const pendingPlan = localStorage.getItem('alphalens_pending_plan');
-        if (pendingPlan) {
-          localStorage.removeItem('alphalens_pending_plan');
-          debugLog('[Auth] Already signed in, processing pending plan:', pendingPlan);
-          try {
-            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
-              body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
-            });
-            if (!checkoutError && checkoutData?.url) {
-              window.location.href = checkoutData.url;
-              return;
-            }
-          } catch (e) {
-            console.error('[Auth] Failed to create checkout for pending plan:', e);
-          }
-        }
-        navigate('/dashboard');
+      if (
+        currentSession.user.app_metadata?.provider === 'google' &&
+        (hasFreshOAuthAttempt(localStorage) || hasOAuthCallbackParams(window.location))
+      ) {
+        await handleOAuthEvent(currentSession);
+        return;
       }
+
+      if (!hasFreshOAuthAttempt(localStorage) && !hasOAuthCallbackParams(window.location)) {
+        const intentHandled = await completePendingAuthIntent();
+        if (!intentHandled) navigate('/dashboard');
+      }
+    }).catch((error) => {
+      console.error('[Auth] Failed to restore session:', error);
     });
 
-    // Async handler for OAuth events (deferred from onAuthStateChange)
-    const handleOAuthEvent = async (session: any) => {
-      setProcessingOAuth(true);
-      debugLog('[Google Auth] Processing OAuth callback');
-
-      try {
-        // ✅ FIX 1: Check if profile exists instead of using created_at timing
-        debugLog('[Google Auth] Checking for existing profile...');
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('user_id, broker_id, broker_name, status')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        const isNewUser = !existingProfile;
-        debugLog('[Google Auth] Profile check:', { isNewUser, profile: existingProfile });
-
-        // Fetch initial profile
-        let { data: profile } = await supabase
-          .from('profiles')
-          .select('broker_id, status, is_deleted, created_at')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        // Deleted account check: if profile is soft-deleted but auth somehow exists,
-        // force sign out. This is a safety net — normally auth.users is hard-deleted.
-        if (profile?.is_deleted) {
-          debugLog('[Google Auth] User profile is deleted, signing out');
-          await supabase.auth.signOut();
-          setProcessingOAuth(false);
-          setGoogleLoading(false);
-          return;
-        }
-
-        // ✅ FIX 3: Use localStorage instead of sessionStorage for OAuth popup compatibility
-        let pendingBrokerId: string | null = null;
-        let pendingBrokerName: string | null = null;
-
-        const storedBrokerData = localStorage.getItem('oauth_pending_broker');
-        if (storedBrokerData) {
-          try {
-            const { brokerId, brokerName, timestamp } = JSON.parse(storedBrokerData);
-            // Check if not expired (5 minutes = 300000ms)
-            if (Date.now() - timestamp < 300000) {
-              pendingBrokerId = brokerId;
-              pendingBrokerName = brokerName;
-              debugLog('[Google Auth] Retrieved broker from localStorage:', { brokerId, brokerName });
-            } else {
-              console.warn('[Google Auth] Broker data expired in localStorage');
-            }
-          } catch (e) {
-            console.error('[Google Auth] Failed to parse broker data from localStorage:', e);
-          }
-          localStorage.removeItem('oauth_pending_broker');
-        }
-        debugLog(`[Google Auth] pendingBrokerId: ${pendingBrokerId}, pendingBrokerName: ${pendingBrokerName}`);
-
-        if (isNewUser) {
-          debugLog('[Google Auth] New user detected, waiting for trigger profile creation');
-
-          // No broker selected during signup - guide user to Sign Up tab
-          // No broker selected during signup - Allow proceeding without broker for direct registration
-          if (!pendingBrokerId) {
-            debugLog('[Google Auth] No broker selected - proceeding with direct registration');
-          }
-
-          // ✅ FIX 2: Increase timeout to 10 seconds (10 retries)
-          let profile = null;
-          let retries = 0;
-          while (!profile && retries < 10) {
-            debugLog(`[Google Auth] Retry ${retries + 1}/10 - waiting for profile creation`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            const { data } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-
-            profile = data;
-            retries++;
-          }
-
-          // ✅ FIX 3: Fallback - manually create profile if trigger failed
-          if (!profile) {
-            console.warn('[Google Auth] Profile not created by trigger, creating manually...');
-            const { data: newProfile, error: insertError } = await supabase
-              .from('profiles')
-              .insert({
-                user_id: session.user.id,
-                status: 'pending'
-              })
-              .select()
-              .single();
-
-            if (insertError) {
-              console.error('[Google Auth] Failed to create profile manually:', insertError);
-              console.error('[Google Auth] LOGOUT TRIGGERED:', {
-                reason: 'profile_creation_failed',
-                userId: session.user.id,
-                timestamp: new Date().toISOString()
-              });
-              toast({
-                title: t('errors.accountCreationFailed'),
-                description: 'Profile creation failed. Please try again.',
-                variant: 'destructive'
-              });
-              await supabase.auth.signOut();
-              setProcessingOAuth(false);
-              setGoogleLoading(false);
-              return;
-            }
-
-            profile = newProfile;
-            debugLog('[Google Auth] Profile created manually:', profile);
-          }
-
-          // Update profile with broker if one was selected
-          if (pendingBrokerId) {
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .update({
-                broker_id: pendingBrokerId,
-                broker_name: pendingBrokerName,
-                status: 'pending'
-              })
-              .eq('user_id', session.user.id);
-
-            if (updateError) {
-              console.error('[Google Auth] Failed to update profile with broker:', updateError);
-              // Log error but allow proceed for direct registration? 
-              // Or if broker was selected but failed, maybe we should just log.
-            } else {
-              debugLog('[Google Auth] Broker assigned successfully');
-            }
-          }
-
-          debugLog('[Google Auth] Broker assigned successfully');
-
-          // Fire-and-forget notification to admins about new registration
-          supabase.functions.invoke('notify-new-registration', {
-            body: {
-              userEmail: session.user.email,
-              brokerName: pendingBrokerName || null
-            }
-          }).catch(err => console.error('[Google Auth] Failed to notify admins:', err));
-
-          // Fire-and-forget welcome email to user
-          supabase.functions.invoke('send-admin-notification', {
-            body: {
-              to: session.user.email,
-              notificationType: 'welcome_signup',
-              userName: session.user.user_metadata?.full_name || session.user.email
-            }
-          }).catch(err => console.error('[Google Auth] Failed to send welcome email:', err));
-
-          toast({
-            title: t('success.accountCreated'),
-            description: t('success.accountCreatedDescription'),
-          });
-
-          // Clear OAuth flags
-          localStorage.removeItem('oauth_flow');
-          localStorage.removeItem('oauth_started_at');
-          localStorage.removeItem('oauth_pending_broker');
-
-          // Check for pending plan from Pricing page before navigating
-          const pendingPlan = localStorage.getItem('alphalens_pending_plan');
-          if (pendingPlan) {
-            localStorage.removeItem('alphalens_pending_plan');
-            debugLog('[Google Auth] New user has pending plan, redirecting to Stripe checkout:', pendingPlan);
-            try {
-              const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
-                body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
-              });
-              if (!checkoutError && checkoutData?.url) {
-                window.location.href = checkoutData.url;
-                setProcessingOAuth(false);
-                return;
-              }
-            } catch (e) {
-              console.error('[Google Auth] Failed to create checkout for pending plan:', e);
-            }
-          }
-
-          navigate('/dashboard');
-          setProcessingOAuth(false);
-          return;
-        } else {
-          // Returning user
-          debugLog('[Google Auth] Returning user detected');
-
-          // ✅ FIX 5: Handle returning user without profile
-          if (!existingProfile) {
-            console.warn('[Google Auth] Returning user has no profile, will show broker picker');
-            setPendingGoogleSession(session);
-            setShowBrokerPicker(true);
-            setProcessingOAuth(false);
-            setGoogleLoading(false);
-            localStorage.removeItem('oauth_flow');
-            localStorage.removeItem('oauth_started_at');
-            return;
-          } else {
-            // Check broker assignment
-            if (!existingProfile.broker_id) {
-              console.warn('[Google Auth] Returning user has no broker assigned, will show broker picker');
-              setPendingGoogleSession(session);
-              setShowBrokerPicker(true);
-              setProcessingOAuth(false);
-              setGoogleLoading(false);
-              localStorage.removeItem('oauth_flow');
-              localStorage.removeItem('oauth_started_at');
-              return;
-            }
-
-            // Show welcome back message
-            toast({
-              title: t('success.welcomeBack'),
-              description: t('success.welcomeBackDescription'),
-            });
-          }
-
-          // Navigate to dashboard (no trial activation for returning users)
-          // Clear OAuth flags
-          localStorage.removeItem('oauth_flow');
-          localStorage.removeItem('oauth_started_at');
-
-          // Check for pending plan from Pricing page before navigating
-          const pendingPlanReturning = localStorage.getItem('alphalens_pending_plan');
-          if (pendingPlanReturning) {
-            localStorage.removeItem('alphalens_pending_plan');
-            debugLog('[Google Auth] Returning user has pending plan, redirecting to Stripe checkout:', pendingPlanReturning);
-            try {
-              const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
-                body: { plan: pendingPlanReturning, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
-              });
-              if (!checkoutError && checkoutData?.url) {
-                window.location.href = checkoutData.url;
-                setProcessingOAuth(false);
-                return;
-              }
-            } catch (e) {
-              console.error('[Google Auth] Failed to create checkout for pending plan:', e);
-            }
-          }
-
-          navigate('/dashboard');
-
-          setProcessingOAuth(false);
-        }
-      } catch (error) {
-        console.error('[Google Auth] Unexpected error:', error);
-        await supabase.auth.signOut();
-        toast({
-          title: t('errors.authenticationError'),
-          description: t('errors.authenticationErrorDescription'),
-          variant: "destructive"
-        });
-        setProcessingOAuth(false);
-      }
-    };
-
     return () => subscription.unsubscribe();
-  }, [navigate, intent, toast, activateFreeTrial, t]);
-
-  // Separate effect for loading brokers
-  useEffect(() => {
-    const loadBrokers = async () => {
-      try {
-        const brokers = await fetchActiveBrokers();
-        setActiveBrokers(brokers);
-      } catch (error) {
-        console.error('Failed to load brokers:', error);
-      }
-    };
-
-    loadBrokers();
-  }, []);
+  }, [completePendingAuthIntent, handleOAuthEvent, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -552,32 +375,16 @@ export default function Auth() {
       setLoading(false);
       return;
     } else {
-      // Fire-and-forget notification to admins about new registration
-      const selectedBrokerName = activeBrokers.find(b => b.id === selectedBrokerId)?.name || null;
-      supabase.functions.invoke('notify-new-registration', {
-        body: {
-          userEmail: email,
-          brokerName: selectedBrokerName
-        }
-      }).catch(err => console.error('[Auth] Failed to notify admins:', err));
-
-      // Fire-and-forget welcome email to user
-      supabase.functions.invoke('send-admin-notification', {
-        body: {
-          to: email,
-          notificationType: 'welcome_signup',
-          userName: fullName || email
-        }
-      }).catch(err => console.error('[Auth] Failed to send welcome email:', err));
-
       // Store selected plan if coming from Pricing page
       if (selectedPlan) {
-        localStorage.setItem('alphalens_pending_plan', selectedPlan);
+        localStorage.removeItem(AUTH_STORAGE_KEYS.pendingFreeTrial);
+        localStorage.setItem(AUTH_STORAGE_KEYS.pendingPlan, selectedPlan);
       }
 
       // Store free trial intent for activation after email confirmation + first login
       if (intent === 'free_trial') {
-        localStorage.setItem('alphalens_pending_free_trial', 'true');
+        localStorage.removeItem(AUTH_STORAGE_KEYS.pendingPlan);
+        localStorage.setItem(AUTH_STORAGE_KEYS.pendingFreeTrial, 'true');
       }
 
       // Show inline success state instead of navigating away
@@ -593,88 +400,47 @@ export default function Auth() {
     setLoading(false);
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleAuth = async (flow: OAuthFlow) => {
     setGoogleLoading(true);
     setProcessingOAuth(true);
 
-    // Set OAuth flow flags
-    localStorage.setItem('oauth_flow', 'signin');
-    localStorage.setItem('oauth_started_at', Date.now().toString());
-
-    // Preserve selected plan for post-OAuth checkout
-    if (selectedPlan) {
-      localStorage.setItem('alphalens_pending_plan', selectedPlan);
-      debugLog('[Google Sign In] Stored pending plan before OAuth:', selectedPlan);
-    }
-
-    const redirectUrl = `${window.location.origin}/auth`;
-    debugLog('[Google Sign In] Starting OAuth redirect', { redirectTo: redirectUrl });
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'select_account',
-        }
-      }
+    beginOAuthAttempt(localStorage, flow, {
+      selectedPlan,
+      freeTrial: intent === 'free_trial',
     });
 
-    if (error) {
+    const redirectUrl = `${window.location.origin}/auth`;
+    debugLog('[Google Auth] Starting OAuth redirect', { flow, redirectTo: redirectUrl });
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          }
+        }
+      });
+
+      if (!error) return;
+      throw error;
+    } catch (error) {
+      console.error('[Google Auth] Failed to start OAuth:', error);
       toast({
-        title: t('errors.googleSignInError'),
-        description: error.message,
+        title: flow === 'signup' ? t('errors.googleSignUpError') : t('errors.googleSignInError'),
+        description: error instanceof Error ? error.message : t('errors.authenticationErrorDescription'),
         variant: "destructive"
       });
       setGoogleLoading(false);
       setProcessingOAuth(false);
-      localStorage.removeItem('oauth_flow');
-      localStorage.removeItem('oauth_started_at');
+      clearOAuthAttempt(localStorage);
     }
   };
 
-  const handleGoogleSignUp = async () => {
-    setGoogleLoading(true);
-    setProcessingOAuth(true);
-
-    // Set OAuth flow flags
-    localStorage.setItem('oauth_flow', 'signup');
-    localStorage.setItem('oauth_started_at', Date.now().toString());
-
-    // Preserve selected plan for post-OAuth checkout
-    if (selectedPlan) {
-      localStorage.setItem('alphalens_pending_plan', selectedPlan);
-      debugLog('[Google Sign Up] Stored pending plan before OAuth:', selectedPlan);
-    }
-
-    const redirectUrl = `${window.location.origin}/auth`;
-
-    debugLog('[Google Sign Up] Starting OAuth redirect', { redirectTo: redirectUrl });
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'select_account',
-        }
-      }
-    });
-
-    if (error) {
-      toast({
-        title: t('errors.googleSignUpError'),
-        description: error.message,
-        variant: "destructive"
-      });
-      setGoogleLoading(false);
-      setProcessingOAuth(false);
-      localStorage.removeItem('oauth_flow');
-      localStorage.removeItem('oauth_started_at');
-    }
-  };
+  const handleGoogleSignIn = () => handleGoogleAuth('signin');
+  const handleGoogleSignUp = () => handleGoogleAuth('signup');
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -689,11 +455,23 @@ export default function Auth() {
     // Safety net: if profile is soft-deleted but auth user somehow still exists
     // (should not happen after hard delete), force sign out
     if (data.user && !error) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('is_deleted')
         .eq('user_id', data.user.id)
         .maybeSingle();
+
+      if (profileError) {
+        console.error('[Email Auth] Failed to check profile:', profileError);
+        toast({
+          title: t('errors.authenticationError'),
+          description: profileError.message,
+          variant: 'destructive',
+        });
+        setLoading(false);
+        isManualSignInRef.current = false;
+        return;
+      }
 
       if (profile?.is_deleted) {
         debugLog('[Email Auth] Profile is deleted, signing out');
@@ -711,12 +489,19 @@ export default function Auth() {
       // ✅ SAFETY NET: Ensure profile exists (fixes orphan case where trigger failed)
       if (!profile) {
         debugLog('[Email Auth] No profile found, calling ensure-profile...');
-        try {
-          await supabase.functions.invoke('ensure-profile');
-          debugLog('[Email Auth] ensure-profile completed');
-        } catch (e) {
-          console.error('[Email Auth] ensure-profile failed:', e);
+        const { error: ensureError } = await supabase.functions.invoke('ensure-profile');
+        if (ensureError) {
+          console.error('[Email Auth] ensure-profile failed:', ensureError);
+          toast({
+            title: t('errors.authenticationError'),
+            description: ensureError.message,
+            variant: 'destructive',
+          });
+          setLoading(false);
+          isManualSignInRef.current = false;
+          return;
         }
+        debugLog('[Email Auth] ensure-profile completed');
       }
     }
 
@@ -728,7 +513,7 @@ export default function Auth() {
     if (error) {
       const isEmailNotConfirmed =
         error.message?.toLowerCase().includes('not confirmed') ||
-        (error as any).code === 'email_not_confirmed';
+        error.code === 'email_not_confirmed';
 
       if (isEmailNotConfirmed) {
         toast({
@@ -750,41 +535,16 @@ export default function Auth() {
       // User exists but email not confirmed, redirect to confirmation page
       navigate(`/email-confirmation?email=${encodeURIComponent(email)}`);
     } else if (data.user) {
-      // Check for pending plan checkout (use selectedPlan directly, fallback to localStorage)
-      const pendingPlan = selectedPlan || localStorage.getItem('alphalens_pending_plan');
-      if (pendingPlan) {
-        localStorage.removeItem('alphalens_pending_plan');
-        try {
-          const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
-            body: { plan: pendingPlan, success_url: 'https://alphalensai.com/payment-success?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://alphalensai.com/payment-canceled' }
-          });
-          if (!checkoutError && checkoutData?.url) {
-            window.location.href = checkoutData.url;
-            setLoading(false);
-            isManualSignInRef.current = false;
-            return;
-          }
-        } catch (e) {
-          console.error('[Auth] Failed to create checkout for pending plan:', e);
-        }
+      if (selectedPlan) {
+        localStorage.removeItem(AUTH_STORAGE_KEYS.pendingFreeTrial);
+        localStorage.setItem(AUTH_STORAGE_KEYS.pendingPlan, selectedPlan);
       }
 
-      // Note: Free trial is ONLY activated for new signups via localStorage pending_free_trial
-      // Existing users logging in should NEVER get trial credits
-      // The pendingTrial path here is kept only for the genuine first-login-after-signup case
-      const pendingTrial = localStorage.getItem('alphalens_pending_free_trial');
-      if (pendingTrial) {
-        localStorage.removeItem('alphalens_pending_free_trial');
-        const { error: trialError } = await activateFreeTrial();
-        if (!trialError) {
-          toast({
-            title: t('success.freeTrialActivated'),
-            description: t('success.freeTrialActivatedDescription'),
-          });
-          navigate('/payment-success?type=free_trial');
-          setLoading(false);
-          return;
-        }
+      const intentHandled = await completePendingAuthIntent();
+      if (intentHandled) {
+        setLoading(false);
+        isManualSignInRef.current = false;
+        return;
       }
 
       // Redirect to dashboard after successful sign-in
@@ -793,107 +553,6 @@ export default function Auth() {
 
     setLoading(false);
     isManualSignInRef.current = false;
-  };
-
-  // Handle broker selection from picker dialog
-  const handleBrokerPickerConfirm = async () => {
-    if (!brokerChoice || !pendingGoogleSession) {
-      toast({
-        title: t('errors.validationError'),
-        description: t('errors.selectBrokerError'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setProcessingOAuth(true);
-    const selectedBroker = activeBrokers.find((b: any) => b.id === brokerChoice);
-
-    try {
-      // Wait for profile to exist (fallback if trigger is slow)
-      let attempts = 0;
-      let profile = null;
-      while (attempts < 10 && !profile) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('user_id', pendingGoogleSession.user.id)
-          .maybeSingle();
-        profile = data;
-        if (!profile) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          attempts++;
-        }
-      }
-
-      // If still no profile, create one manually
-      if (!profile) {
-        console.warn('[Broker Picker] Profile not found after 10s, creating manually');
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: pendingGoogleSession.user.id,
-            status: 'pending',
-          });
-
-        if (insertError) {
-          console.error('[Broker Picker] Failed to create profile:', insertError);
-          toast({
-            title: t('errors.profileCreationFailed'),
-            description: t('errors.profileCreationFailedDescription'),
-            variant: 'destructive',
-          });
-          setProcessingOAuth(false);
-          return;
-        }
-      }
-
-      // Update profile with broker
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          broker_id: brokerChoice,
-          broker_name: selectedBroker?.name || '',
-          status: 'pending',
-        })
-        .eq('user_id', pendingGoogleSession.user.id);
-
-      if (updateError) {
-        console.error('[Broker Picker] Failed to update broker:', updateError);
-        toast({
-          title: t('errors.brokerAssignmentFailed'),
-          description: t('errors.brokerAssignmentFailedDescription'),
-          variant: 'destructive',
-        });
-        setProcessingOAuth(false);
-        return;
-      }
-
-      // Success
-      debugLog('[Broker Picker] Broker assigned successfully');
-      toast({
-        title: t('success.accountCreated'),
-        description: t('success.accountCreatedDescription'),
-      });
-
-      // Clean up and navigate
-      setShowBrokerPicker(false);
-      setBrokerChoice(null);
-      setPendingGoogleSession(null);
-      localStorage.removeItem('oauth_flow');
-      localStorage.removeItem('oauth_started_at');
-      localStorage.removeItem('oauth_pending_broker');
-      setProcessingOAuth(false);
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('[Broker Picker] Unexpected error:', error);
-      toast({
-        title: t('errors.authenticationError'),
-        description: t('errors.authenticationErrorDescription'),
-        variant: 'destructive',
-      });
-      setProcessingOAuth(false);
-    }
   };
 
   return (
@@ -913,50 +572,6 @@ export default function Auth() {
             </Card>
           </div>
         )}
-
-        {/* Broker Picker Dialog for Google OAuth without broker */}
-        <Dialog open={showBrokerPicker} onOpenChange={setShowBrokerPicker}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t('selectBroker')}</DialogTitle>
-              <DialogDescription>
-                {t('brokerRequired')}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <Select value={brokerChoice || ''} onValueChange={setBrokerChoice}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('brokerPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent className="z-50 bg-background">
-                  {activeBrokers.map((broker: any) => (
-                    <SelectItem key={broker.id} value={broker.id}>
-                      {broker.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {activeBrokers.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {t('brokerNotListed')}
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={handleBrokerPickerConfirm}
-                disabled={!brokerChoice || processingOAuth}
-                className="w-full"
-              >
-                {processingOAuth && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t('createAccount')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Reactivation dialog removed — deleted accounts use hard delete */}
-
 
         {signupSuccess ? (
           <Card className="w-full max-w-md bg-card border-white/10 shadow-glow-primary">

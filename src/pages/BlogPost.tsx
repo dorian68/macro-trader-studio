@@ -13,6 +13,7 @@ import { Calendar, User, ArrowLeft, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { breadcrumbList, articleSchema, faqSchema } from "@/seo/structuredData";
 import { Helmet } from "react-helmet-async";
+import { sanitizeRichHtml } from "@/lib/sanitize-report-html";
 
 /** Extract FAQ items from Markdown content (## FAQ or ## Frequently Asked Questions) */
 function extractFaqItems(content: string): { question: string; answer: string }[] {
@@ -67,7 +68,7 @@ function getCoverImage(post: BlogPostData): string | null {
 
 /** Simple markdown-to-HTML for blog content */
 function renderMarkdown(md: string): string {
-  return md
+  const rendered = md
     .replace(/^### (.*$)/gm, '<h3 class="text-xl font-semibold text-foreground mt-8 mb-3">$1</h3>')
     .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-bold text-foreground mt-10 mb-4">$1</h2>')
     .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold text-foreground mt-10 mb-4">$1</h1>')
@@ -79,6 +80,8 @@ function renderMarkdown(md: string): string {
     .replace(/^(?!<[hulo]|<li)(.*\S.*)$/gm, '<p class="text-muted-foreground leading-relaxed mb-4">$1</p>')
     .replace(/(<li class="ml-4 list-decimal[^"]*">.*<\/li>\n?)+/g, '<ol class="space-y-2 mb-6">$&</ol>')
     .replace(/(<li class="ml-4 list-disc[^"]*">.*<\/li>\n?)+/g, '<ul class="space-y-2 mb-6">$&</ul>');
+
+  return sanitizeRichHtml(rendered);
 }
 
 export default function BlogPost() {

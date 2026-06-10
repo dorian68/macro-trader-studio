@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getStripeConfig } from "../_shared/stripe-config.ts";
+import { requireRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,9 +18,19 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
     logStep("Function started");
+    const { user, error: authError, status } = await requireRole(req, ['super_user']);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get Stripe configuration based on environment
     const config = getStripeConfig();
@@ -41,6 +52,16 @@ serve(async (req) => {
     }
 
     logStep("Checking for orphan payments", { email });
+
+    let existingUser = null;
+    let page = 1;
+    while (!existingUser) {
+      const { data: userList, error: usersError } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+      if (usersError) throw usersError;
+      existingUser = userList.users.find(user => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
+      if (existingUser || userList.users.length < 1000) break;
+      page++;
+    }
 
     // Find Stripe customers with this email
     const customers = await stripe.customers.list({ email, limit: 10 });
@@ -66,29 +87,29 @@ serve(async (req) => {
       });
 
       for (const subscription of subscriptions.data) {
-        // Check if user exists in Supabase
-        const { data: userList } = await supabase.auth.admin.listUsers();
-        const existingUser = userList?.users?.find(user => user.email === email);
-        
         if (!existingUser) {
           // This is an orphan payment - user paid but doesn't have an account
           const priceId = subscription.items.data[0]?.price?.id;
-          let planType = 'premium'; // default
-          
-          const priceToplan = {
-            "price_1SC398Bbyt0kGZ1fmyLGVmWa": "basic",
-            "price_1SC39lBbyt0kGZ1fUhOBloBb": "standard", 
-            "price_1SC39zBbyt0kGZ1fvhRYyA0x": "premium"
-          };
-          
-          planType = priceToplan[priceId as keyof typeof priceToplan] || 'premium';
-          
+          if (!priceId) throw new Error(`No price found for subscription ${subscription.id}`);
+          // `current_period_end` moved to subscription items in the basil API version.
+          const periodEnd = subscription.current_period_end
+            ?? subscription.items?.data?.[0]?.current_period_end
+            ?? null;
+          const { data: plan, error: planError } = await supabase
+            .from('plan_parameters')
+            .select('plan_type')
+            .eq('stripe_price_id', priceId)
+            .single();
+          if (planError || !plan?.plan_type) {
+            throw new Error(`No plan mapping found for Stripe price ${priceId}`);
+          }
+
           orphanPayments.push({
             customer_id: customer.id,
             subscription_id: subscription.id,
-            plan_type: planType,
+            plan_type: plan.plan_type,
             status: subscription.status,
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
             created: new Date(subscription.created * 1000).toISOString()
           });
         }

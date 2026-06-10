@@ -18,6 +18,7 @@ import { CursorGlow } from "@/components/CursorGlow";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import AdminGuard from "./components/AdminGuard";
 import AuthGuard from "./components/AuthGuard";
+import { SuperUserGuard } from "./components/SuperUserGuard";
 
 // PERFORMANCE: Route-based code splitting with React.lazy
 // Critical routes (loaded immediately)
@@ -110,8 +111,8 @@ const App = () => {
                             <Route path="/ai-setup" element={<AuthGuard requireApproval><AISetup /></AuthGuard>} />
                             <Route path="/macro-analysis" element={<AuthGuard requireApproval><MacroAnalysis /></AuthGuard>} />
                             <Route path="/reports" element={<AuthGuard requireApproval><Reports /></AuthGuard>} />
-                            <Route path="/portfolio" element={<Portfolio />} />
-                            <Route path="/history" element={<History />} />
+                            <Route path="/portfolio" element={<AuthGuard requireApproval><Portfolio /></AuthGuard>} />
+                            <Route path="/history" element={<AuthGuard requireApproval><History /></AuthGuard>} />
                             <Route path="/reset-password" element={<ResetPassword />} />
                             <Route path="/email-confirmation" element={<EmailConfirmation />} />
                             <Route path="/confirm-success" element={<EmailConfirmationSuccess />} />
@@ -135,9 +136,9 @@ const App = () => {
                             <Route path="/help" element={<HelpCenter />} />
                             <Route path="/api" element={<API />} />
                             <Route path="/labs" element={<AuthGuard requireApproval><AlphaLensLabs /></AuthGuard>} />
-                            <Route path="/analytics" element={<PortfolioAnalytics />} />
-                            <Route path="/labs/scenario-simulator" element={<ScenarioSimulator />} />
-                            <Route path="/labs/backtester" element={<Backtester />} />
+                            <Route path="/analytics" element={<AuthGuard requireApproval><PortfolioAnalytics /></AuthGuard>} />
+                            <Route path="/labs/scenario-simulator" element={<AuthGuard requireApproval><ScenarioSimulator /></AuthGuard>} />
+                            <Route path="/labs/backtester" element={<AuthGuard requireApproval><Backtester /></AuthGuard>} />
                             <Route path="/playground" element={<AuthGuard requireApproval><ForecastPlayground /></AuthGuard>} />
                             <Route path="/playground/tool" element={<AuthGuard requireApproval><ForecastPlaygroundTool /></AuthGuard>} />
                             <Route path="/trade-generator" element={<AuthGuard requireApproval><ForecastTradeGenerator /></AuthGuard>} />
@@ -153,7 +154,16 @@ const App = () => {
                             <Route path="/forecast-playground/trade-generator" element={<Navigate to="/trade-generator" replace />} />
                             <Route path="/coming-soon" element={<ComingSoon />} />
                             <Route path="/product" element={<ProductPresentation />} />
-                            <Route path="/test-webhook" element={<AuthGuard><TestWebhook /></AuthGuard>} />
+                            <Route
+                              path="/test-webhook"
+                              element={(
+                                <AuthGuard requireApproval>
+                                  <SuperUserGuard fallback={<Navigate to="/dashboard" replace />}>
+                                    <TestWebhook />
+                                  </SuperUserGuard>
+                                </AuthGuard>
+                              )}
+                            />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </Suspense>

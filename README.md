@@ -331,6 +331,7 @@ supabase/
 | `forecast-proxy` | Proxies Monte Carlo forecast requests to AWS EC2 |
 | `surface-proxy` | Proxies risk surface computation requests to AWS EC2 |
 | `macro-lab-proxy` | Proxies macro analysis requests to AWS EC2 |
+| `workflow-proxy` | Authenticated proxy for protected n8n workflows |
 | `aura` | Conversational AI with intent routing and LLM integration |
 | `create-checkout` | Creates Stripe checkout sessions for subscriptions |
 | `stripe-webhook` | Handles Stripe payment events (subscription lifecycle) |
@@ -345,6 +346,7 @@ supabase/
 | `send-contact-email` | Contact form email delivery |
 | `fetch-historical-prices` | Historical OHLCV data retrieval and caching |
 | `fetch-technical-indicators` | Technical indicator computation (RSI, ADX, ATR) |
+| `fetch-current-price` | Current market price retrieval without exposing provider keys |
 | `import-abcg-portfolio` | Imports ABCG Research portfolio data |
 | `reconcile-payments` | Payment reconciliation for billing accuracy |
 
@@ -374,7 +376,21 @@ The app will be available at `http://localhost:5173`.
 
 ### Environment Variables
 
-The project requires Supabase connection credentials (automatically configured via Lovable Cloud). Additional secrets for Stripe, AWS endpoints, and LLM API keys are managed via Supabase Edge Function secrets.
+The project requires Supabase connection credentials (automatically configured via Lovable Cloud). Provider credentials and endpoints must be configured as Supabase Edge Function secrets, never as `VITE_` variables:
+
+```text
+N8N_WORKFLOW_URL
+N8N_WORKFLOW_SECRET
+FORECAST_API_URL
+SURFACE_API_URL
+MACRO_LAB_API_URL
+ALPHALENS_BACKEND_SECRET
+TWELVE_DATA_API_KEY
+```
+
+All provider URLs must use HTTPS. The n8n workflow must validate `X-Workflow-Secret`, and the forecast, surface, and macro-lab backends must validate `X-Backend-Secret`.
+
+Before deploying these changes, rotate any n8n webhook URL or Twelve Data key that was previously exposed in a browser bundle, then deploy the latest database migrations, Edge Functions, and frontend together.
 
 ---
 

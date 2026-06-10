@@ -13,6 +13,7 @@ import PublicNavbar from "@/components/PublicNavbar";
 import { useTranslation } from 'react-i18next';
 import { Footer } from '@/components/Footer';
 import { RelatedPages } from '@/components/RelatedPages';
+import { supabase } from "@/integrations/supabase/client";
 export default function Contact() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -40,17 +41,8 @@ export default function Contact() {
     }
     setLoading(true);
     try {
-      const response = await fetch(`https://jqrlegdulnnrpiixiecf.supabase.co/functions/v1/send-contact-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcmxlZ2R1bG5ucnBpaXhpZWNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDYzNDgsImV4cCI6MjA2OTk4MjM0OH0.on2S0WpM45atAYvLU8laAZJ-abS4RcMmfiqW7mLtT_4'}`
-        },
-        body: JSON.stringify(formData)
-      });
-      if (!response.ok) {
-        throw new Error('Failed to send email');
-      }
+      const { error } = await supabase.functions.invoke('send-contact-email', { body: formData });
+      if (error) throw error;
       toast.success(t('toasts.success'));
 
       // Reset form

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { SEOHead } from '@/components/SEOHead';
 import { useToast } from "@/hooks/use-toast";
 import { safePostRequest } from "@/lib/safe-request";
+import { discardPendingJob } from "@/lib/job-security";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
@@ -23,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreditEngagement } from "@/hooks/useCreditEngagement";
 import { useTranslation } from 'react-i18next';
+import { escapeHtml, sanitizeReportHtml } from "@/lib/sanitize-report-html";
 
 interface AssetProfile {
   id: number;
@@ -59,6 +61,51 @@ interface GeneratedReport {
   status: "draft" | "generated" | "exported";
 }
 
+interface ReportResponsePayload {
+  output?: { base_report?: unknown };
+  base_report?: unknown;
+  html?: unknown;
+  content?: unknown;
+  sections?: Record<string, unknown>;
+}
+
+function asReportPayload(value: unknown): ReportResponsePayload | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as ReportResponsePayload
+    : null;
+}
+
+function extractReportHtml(value: unknown): string | null {
+  let candidate = value;
+
+  if (typeof candidate === 'string') {
+    const trimmed = candidate.trim();
+    if (trimmed.startsWith('<')) return sanitizeReportHtml(trimmed);
+    try {
+      candidate = JSON.parse(trimmed) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof candidate === 'string' && candidate.trim().startsWith('<')) {
+    return sanitizeReportHtml(candidate.trim());
+  }
+
+  const payload = asReportPayload(candidate);
+  const html = payload?.output?.base_report ?? payload?.base_report ?? payload?.html ?? payload?.content;
+  return typeof html === 'string' && html.trim().startsWith('<')
+    ? sanitizeReportHtml(html)
+    : null;
+}
+
+function getReportSectionContent(value: unknown, sectionId: string, fallback: string): string {
+  const payload = asReportPayload(value);
+  const sectionContent = payload?.sections?.[sectionId];
+  if (typeof sectionContent === 'string') return sectionContent;
+  return typeof payload?.content === 'string' ? payload.content : fallback;
+}
+
 export default function Reports() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -72,41 +119,8 @@ export default function Reports() {
     onReportResult: (responseData, jobId) => {
       console.log('📄 [Reports] Realtime response injected:', { responseData, jobId });
       
-      // 🔹 STEP 1: Extract HTML content with multiple fallback paths
-      let htmlContentData = null;
-      
-      if (typeof responseData === 'string') {
-        const trimmed = responseData.trim();
-        if (trimmed.startsWith('<')) {
-          // Direct HTML string
-          htmlContentData = trimmed;
-        } else {
-          // Try to parse stringified JSON payload
-          try {
-            const parsed = JSON.parse(trimmed);
-            if (parsed?.output?.base_report) {
-              htmlContentData = parsed.output.base_report;
-            } else if (parsed?.base_report) {
-              htmlContentData = parsed.base_report;
-            } else if (parsed?.html || parsed?.content) {
-              htmlContentData = parsed.html || parsed.content;
-            } else if (typeof parsed === 'string' && parsed.trim().startsWith('<')) {
-              htmlContentData = parsed;
-            }
-          } catch (e) {
-            console.warn('📄 [Reports] String payload was not HTML nor JSON:', e);
-          }
-        }
-      } else if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-        const payload = responseData as Record<string, any>;
-        if (payload.output?.base_report) {
-          htmlContentData = payload.output.base_report;
-        } else if (payload.base_report) {
-          htmlContentData = payload.base_report;
-        } else if (payload.html || payload.content) {
-          htmlContentData = payload.html || payload.content;
-        }
-      }
+      // 🔹 STEP 1: Extract and sanitize HTML content from all supported payload shapes
+      const htmlContentData = extractReportHtml(responseData);
       
       console.log('📄 [Reports] Extracted HTML content:', { 
         hasHtml: !!htmlContentData,
@@ -132,8 +146,11 @@ export default function Reports() {
       const includedSections = availableSections.filter(s => s.included);
       const generatedSections = includedSections.map(section => ({
         title: section.title,
-        content: responseData.sections?.[section.id] || responseData.content || 
-                 `Generated content for the "${section.title}" section.`,
+        content: getReportSectionContent(
+          responseData,
+          section.id,
+          `Generated content for the "${section.title}" section.`,
+        ),
         userNotes: section.userNotes || ""
       }));
 
@@ -184,10 +201,10 @@ export default function Reports() {
 
   // Synchronize email with user's email if available
   useEffect(() => {
-    if (user?.email && !reportConfig.email) {
+    if (user?.email) {
       setReportConfig(prev => ({
         ...prev,
-        email: user.email || ""
+        email: user.email
       }));
     }
   }, [user?.email]);
@@ -227,40 +244,7 @@ export default function Reports() {
           hasPayload: !!data.response_payload
         });
 
-        const responseData = data.response_payload;
-        let htmlContentData = null;
-
-        // Use same extraction logic as realtime handler (robust to stringified JSON)
-        if (typeof responseData === 'string') {
-          const trimmed = responseData.trim();
-          if (trimmed.startsWith('<')) {
-            htmlContentData = trimmed;
-          } else {
-            try {
-              const parsed = JSON.parse(trimmed);
-              if (parsed?.output?.base_report) {
-                htmlContentData = parsed.output.base_report;
-              } else if (parsed?.base_report) {
-                htmlContentData = parsed.base_report;
-              } else if (parsed?.html || parsed?.content) {
-                htmlContentData = parsed.html || parsed.content;
-              } else if (typeof parsed === 'string' && parsed.trim().startsWith('<')) {
-                htmlContentData = parsed;
-              }
-            } catch (e) {
-              console.warn('📄 [Reports] Persisted payload was string but not valid JSON/HTML');
-            }
-          }
-        } else if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-          const payload = responseData as Record<string, any>;
-          if (payload.output?.base_report) {
-            htmlContentData = payload.output.base_report;
-          } else if (payload.base_report) {
-            htmlContentData = payload.base_report;
-          } else if (payload.html || payload.content) {
-            htmlContentData = payload.html || payload.content;
-          }
-        }
+        const htmlContentData = extractReportHtml(data.response_payload);
 
         console.log('📄 [Reports] Extracted HTML content:', {
           hasHtml: !!htmlContentData,
@@ -392,30 +376,14 @@ export default function Reports() {
     const pendingResult = sessionStorage.getItem('pendingResult');
     if (pendingResult) {
       try {
-        const result = JSON.parse(pendingResult);
-        if (result.type.includes('report')) {
+        const result = JSON.parse(pendingResult) as {
+          type?: string;
+          resultData?: unknown;
+          jobId?: string;
+        };
+        if (result.type?.includes('report')) {
           // Prefer HTML content if available; fall back to structured sections
-          let data: any = result.resultData;
-          let html: string | null = null;
-
-          if (typeof data === 'string') {
-            const trimmed = data.trim();
-            if (trimmed.startsWith('<')) {
-              html = trimmed;
-            } else {
-              try {
-                data = JSON.parse(trimmed);
-              } catch (e) {
-                console.warn('📄 [Reports] pendingResult payload is non-HTML string and not JSON');
-              }
-            }
-          }
-
-          if (!html && data && typeof data === 'object') {
-            if (data?.output?.base_report) html = data.output.base_report;
-            else if (data?.base_report) html = data.base_report;
-            else if (data?.html || data?.content) html = data.html || data.content;
-          }
+          const html = extractReportHtml(result.resultData);
 
           if (html) {
             setHtmlContent(html);
@@ -430,12 +398,16 @@ export default function Reports() {
           const includedSections = availableSections.filter(s => s.included);
           const generatedSections = includedSections.map(section => ({
             title: section.title,
-            content: data?.sections?.[section.id] || data?.content || `Generated content for the "${section.title}" section.`,
+            content: getReportSectionContent(
+              result.resultData,
+              section.id,
+              `Generated content for the "${section.title}" section.`,
+            ),
             userNotes: section.userNotes || ''
           }));
 
           const newReport: GeneratedReport = {
-            id: result.jobId,
+            id: result.jobId || crypto.randomUUID(),
             title: reportConfig.title,
             sections: generatedSections,
             customNotes: reportConfig.customNotes,
@@ -454,7 +426,7 @@ export default function Reports() {
         sessionStorage.removeItem('pendingResult');
       }
     }
-  }, [availableSections, reportConfig]);
+  }, [availableSections, reportConfig, toast]);
 
   const generateReport = async () => {
     // ✅ VALIDATION: Verify email is provided
@@ -537,10 +509,7 @@ export default function Reports() {
         console.log('❌ [Reports] Credit engagement failed, cleaning up job:', reportJobId);
         
         // Nettoyer le job orphelin
-        await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', reportJobId);
+        await discardPendingJob(reportJobId);
         
         toast({
           title: "Insufficient Credits",
@@ -567,22 +536,7 @@ export default function Reports() {
         console.log(`📄 [Reports] Full response data from ${source}:`, data);
         
         // 🔹 Try HTML extraction first (primary path — backend returns HTML)
-        let htmlData: string | null = null;
-        if (typeof data === 'string') {
-          const trimmed = data.trim();
-          if (trimmed.startsWith('<')) {
-            htmlData = trimmed;
-          } else {
-            try {
-              const parsed = JSON.parse(trimmed);
-              htmlData = parsed?.output?.base_report || parsed?.base_report || parsed?.html || parsed?.content || null;
-              if (typeof htmlData !== 'string' || !htmlData.trim().startsWith('<')) htmlData = null;
-            } catch {}
-          }
-        } else if (data && typeof data === 'object') {
-          htmlData = data.output?.base_report || data.base_report || data.html || data.content || null;
-          if (typeof htmlData !== 'string' || !htmlData.trim().startsWith('<')) htmlData = null;
-        }
+        const htmlData = extractReportHtml(data);
 
         if (htmlData) {
           setHtmlContent(htmlData);
@@ -596,7 +550,11 @@ export default function Reports() {
           // Fallback to structured sections
           const generatedSections = includedSections.map(section => ({
             title: section.title,
-            content: data.sections?.[section.id] || data.content || `Generated content for the "${section.title}" section.`,
+            content: getReportSectionContent(
+              data,
+              section.id,
+              `Generated content for the "${section.title}" section.`,
+            ),
             userNotes: section.userNotes || ""
           }));
 
@@ -640,10 +598,10 @@ export default function Reports() {
       });
 
       console.log('📊 [Reports] Sending request:', {
-        url: 'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        url: 'workflow-proxy',
         jobId: reportJobId,
         hasJobId: !!reportJobId,
-        payloadContainsJobId: !!(reportPayload as any).job_id,
+        payloadContainsJobId: !!reportPayload.job_id,
         userId: user?.id,
         sessionValid: !!currentSession,
         timestamp: new Date().toISOString()
@@ -651,7 +609,7 @@ export default function Reports() {
 
       // 3. Send POST request directly (job already created above)
       const response = await safePostRequest(
-        'https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1',
+        'workflow-proxy',
         reportPayload
       );
 
@@ -766,8 +724,8 @@ export default function Reports() {
               </p>
             </div>
             
-            <h1>${reportConfig.title}</h1>
-            ${selectedAsset ? `<p style="color: #6b7280; font-size: 14px; margin-top: -10px;">Target Asset: <strong>${selectedAsset.symbol} - ${selectedAsset.name}</strong></p>` : ''}
+            <h1>${escapeHtml(reportConfig.title)}</h1>
+            ${selectedAsset ? `<p style="color: #6b7280; font-size: 14px; margin-top: -10px;">Target Asset: <strong>${escapeHtml(selectedAsset.symbol)} - ${escapeHtml(selectedAsset.name || '')}</strong></p>` : ''}
             <p style="color: #6b7280; font-size: 14px;">Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
             
@@ -846,11 +804,12 @@ export default function Reports() {
         title: "✅ Email Sent Successfully",
         description: `Report has been sent to ${reportConfig.email}`,
       });
-    } catch (error: any) {
+      window.dispatchEvent(new Event('creditsUpdated'));
+    } catch (error: unknown) {
       console.error('❌ Failed to send report email:', error);
       toast({
         title: "❌ Email Sending Failed",
-        description: error.message || "Could not send the report. Please try again.",
+        description: error instanceof Error ? error.message : "Could not send the report. Please try again.",
         variant: "destructive"
       });
     }
@@ -943,9 +902,12 @@ export default function Reports() {
                     id="email"
                     type="email"
                     value={reportConfig.email}
-                    onChange={(e) => setReportConfig({ ...reportConfig, email: e.target.value })}
-                    placeholder="Enter your email address..."
+                    readOnly
+                    placeholder="Your verified account email"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Reports can only be sent to your verified account email.
+                  </p>
                 </div>
 
                 <div className="space-y-2">

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { requireRole } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,16 +54,28 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+  }
 
   try {
+    const { user, error: authError, status } = await requireRole(req, ['admin', 'super_user']);
+    if (!user) {
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { csvContent, userId } = await req.json();
+    const { csvContent } = await req.json();
+    const userId = user.id;
 
-    if (!csvContent || !userId) {
-      throw new Error('CSV content and userId are required');
+    if (typeof csvContent !== 'string' || !csvContent || csvContent.length > 5_000_000) {
+      throw new Error('A valid CSV file under 5 MB is required');
     }
 
     console.log('[ABCG Import] Starting import for user:', userId);
@@ -197,7 +210,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[ABCG Import] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

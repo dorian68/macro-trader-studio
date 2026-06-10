@@ -1,6 +1,9 @@
 /**
  * Safe request utilities to prevent crashes from invalid JSON or query parameters
  */
+import { supabase } from '@/integrations/supabase/client';
+
+export const WORKFLOW_PROXY_ENDPOINT = 'workflow-proxy';
 
 /**
  * Safely stringify JSON with proper escaping for special characters
@@ -48,41 +51,19 @@ export async function safePostRequest(url: string, payload: any, headers: Record
   }
 
   // Check if this is an n8n endpoint that needs extended timeout
-  const isN8nEndpoint = url.includes('/webhook/') || url.includes('/n8n/') || url.includes('/api/flow/') || url.includes('n8n.cloud');
+  const isN8nEndpoint = url === WORKFLOW_PROXY_ENDPOINT ||
+    url.includes('/webhook/') ||
+    url.includes('/n8n/') ||
+    url.includes('/api/flow/') ||
+    url.includes('n8n.cloud');
   
   if (isN8nEndpoint) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 180000); // 3 min timeout for n8n
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        mode: 'cors',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        },
-        body,
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeout);
-      return response;
-    } catch (error) {
-      clearTimeout(timeout);
-      
-      // Handle abort error specifically
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout - the server took too long to respond');
-      }
-      
-      // Handle network errors
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error - please check your connection and try again');
-      }
-      
-      throw error;
-    }
+    const { data, error } = await supabase.functions.invoke('workflow-proxy', { body: payload });
+    if (error) throw error;
+    return new Response(typeof data === 'string' ? data : JSON.stringify(data), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   return fetch(url, {

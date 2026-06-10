@@ -24,6 +24,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+  }
 
   try {
     // Get the authorization header from the request
@@ -100,8 +103,10 @@ Deno.serve(async (req) => {
     profilesQuery = profilesQuery.order('created_at', { ascending: false });
 
     // Apply broker scoping for admin users (not super_user)
-    if (roles.includes('admin') && !roles.includes('super_user') && profileData.broker_id) {
-      profilesQuery = profilesQuery.eq('broker_id', profileData.broker_id);
+    if (roles.includes('admin') && !roles.includes('super_user')) {
+      profilesQuery = profileData.broker_id
+        ? profilesQuery.eq('broker_id', profileData.broker_id)
+        : profilesQuery.eq('user_id', user.id);
     }
 
     const { data: profiles, error: profilesError } = await profilesQuery
@@ -202,8 +207,10 @@ Deno.serve(async (req) => {
           refetchQuery = refetchQuery.eq('is_deleted', false)
         }
         refetchQuery = refetchQuery.order('created_at', { ascending: false })
-        if (roles.includes('admin') && !roles.includes('super_user') && profileData.broker_id) {
-          refetchQuery = refetchQuery.eq('broker_id', profileData.broker_id)
+        if (roles.includes('admin') && !roles.includes('super_user')) {
+          refetchQuery = profileData.broker_id
+            ? refetchQuery.eq('broker_id', profileData.broker_id)
+            : refetchQuery.eq('user_id', user.id)
         }
         
         const { data: updatedProfiles, error: refetchError } = await refetchQuery

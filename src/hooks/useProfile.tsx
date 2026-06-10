@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { isFreeTrialExpired } from '@/lib/trial';
 
 const { useEffect } = React;
 
@@ -11,6 +12,10 @@ interface Profile {
   broker_name: string | null;
   broker_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
+  user_plan: 'basic' | 'standard' | 'premium' | 'free_trial' | 'broker_free' | null;
+  trial_started_at: string | null;
+  trial_used: boolean;
+  is_deleted: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -24,20 +29,47 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 
   if (error) {
     console.error('Error fetching profile:', error);
-    return null;
+    throw error;
   }
   return data as Profile | null;
+}
+
+async function fetchFreeTrialDurationDays(): Promise<number> {
+  const { data, error } = await supabase
+    .from('plan_parameters')
+    .select('trial_duration_days')
+    .eq('plan_type', 'free_trial')
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching free-trial duration:', error);
+    return 7;
+  }
+  return data?.trial_duration_days ?? 7;
 }
 
 export function useProfile() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: profile = null, isLoading: loading } = useQuery({
+  const {
+    data: profile = null,
+    isLoading: loading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: () => fetchProfile(user!.id),
     enabled: !!user,
     staleTime: Infinity, // Profile only changes via realtime — never refetch on navigation
+  });
+  const {
+    data: trialDurationDays = 7,
+    isLoading: trialDurationLoading,
+  } = useQuery({
+    queryKey: ['free-trial-duration'],
+    queryFn: fetchFreeTrialDurationDays,
+    staleTime: Infinity,
   });
 
   // Realtime subscription to keep cache fresh
@@ -90,21 +122,22 @@ export function useProfile() {
     }
   };
 
-  // Trial expiration check: 7 days after trial_started_at
-  const trialStartedAt = (profile as any)?.trial_started_at;
-  const userPlan = (profile as any)?.user_plan;
-  const isTrialExpired = userPlan === 'free_trial' && trialStartedAt && 
-    new Date(trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000 < Date.now();
+  const trialStartedAt = profile?.trial_started_at;
+  const userPlan = profile?.user_plan;
+  const isTrialExpired = isFreeTrialExpired(userPlan, trialStartedAt, trialDurationDays);
 
   return {
     profile,
-    loading,
+    loading: loading || trialDurationLoading,
+    error,
+    refetch,
     updateProfile,
     isApproved: profile?.status === 'approved',
     isPending: profile?.status === 'pending',
     isRejected: profile?.status === 'rejected',
-    isDeleted: (profile as any)?.is_deleted || false,
+    isDeleted: profile?.is_deleted || false,
     isTrialExpired,
+    trialDurationDays,
     userPlan,
   };
 }

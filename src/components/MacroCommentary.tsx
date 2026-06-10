@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAIInteractionLogger } from "@/hooks/useAIInteractionLogger";
 import { useTranslation } from 'react-i18next';
 import { enhancedPostRequest, handleResponseWithFallback } from "@/lib/enhanced-request";
+import { discardPendingJob } from "@/lib/job-security";
 import { useRealtimeJobManager } from "@/hooks/useRealtimeJobManager";
 import { useRealtimeResponseInjector } from "@/hooks/useRealtimeResponseInjector";
 import { useCreditEngagement } from "@/hooks/useCreditEngagement";
@@ -44,6 +45,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
+import { escapeHtml } from "@/lib/sanitize-report-html";
 
 interface MacroCommentaryProps {
   instrument?: string;
@@ -156,6 +159,7 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
   const [portfolioAnalysisResult, setPortfolioAnalysisResult] = useState<PortfolioAnalysisResult | null>(null);
   
   const { toast } = useToast();
+  const { user } = useAuth();
   const { logInteraction } = useAIInteractionLogger();
   const { createJob } = useRealtimeJobManager();
   const { tryEngageCredit } = useCreditEngagement();
@@ -292,10 +296,7 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
         console.log('[Credit] ❌ Engagement failed, cleaning up job:', jobId);
         
         // Nettoyer le job orphelin
-        await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', jobId);
+        await discardPendingJob(jobId);
 
         setIsLoading(false);
         toast({
@@ -343,7 +344,7 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
         };
       }
 
-      const { response } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
+      const { response } = await enhancedPostRequest('workflow-proxy', payload, {
         enableJobTracking: false,
         jobId
       });
@@ -537,7 +538,7 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
         user_id: "12345"
       };
 
-      const { response, jobId } = await enhancedPostRequest('https://dorian68.app.n8n.cloud/webhook/4572387f-700e-4987-b768-d98b347bd7f1', payload, {
+      const { response, jobId } = await enhancedPostRequest('workflow-proxy', payload, {
         enableJobTracking: true,
         jobType: 'portfolio_analysis',
         instrument: 'portfolio',
@@ -563,26 +564,37 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
     }
   };
 
-  const handleGeneratePDFReport = async () => {
+  const handleEmailReport = async () => {
     if (!commentary) return;
+    if (!user?.email) {
+      toast({
+        title: "Authentication Required",
+        description: "Sign in with a verified email address to send this report.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-macro-report', {
+      const reportTitle = activeMode === "article_analysis" ? "Article Analysis" : "Macro Commentary";
+      const safeContent = escapeHtml(commentary.content).replace(/\n/g, '<br>');
+      const safeSummary = commentary.summary
+        ? `<h2>Summary</h2><p>${escapeHtml(commentary.summary).replace(/\n/g, '<br>')}</p>`
+        : '';
+      const safeSources = commentary.sources?.length
+        ? `<h2>Sources</h2><ul>${commentary.sources.map((source) => (
+          `<li><a href="${escapeHtml(source.url)}">${escapeHtml(source.title)}</a></li>`
+        )).join('')}</ul>`
+        : '';
+
+      const { error } = await supabase.functions.invoke('send-report-email', {
         body: {
-          content: commentary.content,
-          summary: commentary.summary,
-          sources: commentary.sources,
-          timestamp: new Date().toISOString(),
-          analysisType: activeMode === "article_analysis" ? "Article Analysis" : "Macro Commentary",
-          metadata: {
-            region: commentary.region,
-            products: commentary.products,
-            categories: commentary.categories,
-            sentiment: commentary.sentiment,
-            themes: commentary.themes
-          }
-        }
+          to: user.email,
+          reportTitle,
+          assetSymbol: instrument,
+          htmlContent: `${safeSummary}<h2>Analysis</h2><p>${safeContent}</p>${safeSources}`,
+        },
       });
 
       if (error) {
@@ -590,11 +602,11 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
       }
 
       toast({
-        title: "PDF Report Generated",
-        description: "Your macro analysis report has been generated and sent via email.",
+        title: "Report Sent",
+        description: "Your macro analysis report has been sent to your verified email.",
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate PDF report';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send report';
       toast({
         title: "Error",
         description: errorMessage,
@@ -1047,11 +1059,11 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={handleGeneratePDFReport}
+                    onClick={handleEmailReport}
                     disabled={isLoading}
                   >
                     <FileText className="h-4 w-4" />
-                    PDF Report
+                    Email Report
                   </Button>
                   <Button 
                     variant="ghost" 

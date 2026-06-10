@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { requireUser } from "../_shared/auth.ts";
+import { consumeProductCredit, refundProductCredit, requireProductAccess } from "../_shared/auth.ts";
+import { getSecureUpstream } from "../_shared/upstream.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let consumedCredit: { userId: string; referenceId: string } | null = null;
   try {
     // Only allow POST
     if (req.method !== "POST") {
@@ -23,26 +25,47 @@ serve(async (req) => {
     }
 
     // Require an authenticated end-user (prevents anonymous abuse of paid compute)
-    const { user, error: authError } = await requireUser(req);
+    const { user, error: authError, status } = await requireProductAccess(req, 'queries');
     if (!user) {
-      console.warn("[forecast-proxy] Unauthenticated request rejected:", authError);
+      console.warn("[forecast-proxy] Request rejected:", authError);
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: authError }),
+        { status: status ?? 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Backend API URL — new IP endpoint
-    const apiUrl = "http://178.105.21.238:8000/forecast";
-
     // Forward the request body to EC2
     const body = await req.text();
-    console.log("[forecast-proxy] Forwarding request to:", apiUrl);
-    console.log("[forecast-proxy] Request body:", body);
+    if (!body || body.length > 1_000_000) {
+      return new Response(JSON.stringify({ error: "Invalid request body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    try {
+      JSON.parse(body);
+    } catch {
+      return new Response(JSON.stringify({ error: "Request body must be valid JSON" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const consumed = await consumeProductCredit(user.id, 'queries', 'forecast-proxy');
+    if (!consumed.success) {
+      return new Response(JSON.stringify({ error: consumed.error }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    consumedCredit = { userId: user.id, referenceId: consumed.referenceId };
+    const upstreamConfig = getSecureUpstream('FORECAST_API_URL');
+    console.log("[forecast-proxy] Request body bytes:", body.length);
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(upstreamConfig.url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Backend-Secret": upstreamConfig.secret,
+      },
       body,
     });
 
@@ -51,6 +74,10 @@ serve(async (req) => {
     
     console.log("[forecast-proxy] Response status:", response.status);
     console.log("[forecast-proxy] Response preview:", responseText.substring(0, 500));
+    if (!response.ok && consumedCredit) {
+      await refundProductCredit(consumedCredit.userId, 'queries', 'forecast-proxy-failed', consumedCredit.referenceId);
+      consumedCredit = null;
+    }
 
     // Return the response as-is
     return new Response(responseText, {
@@ -63,6 +90,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("[forecast-proxy] Error:", error);
+    if (consumedCredit) {
+      await refundProductCredit(consumedCredit.userId, 'queries', 'forecast-proxy-failed', consumedCredit.referenceId);
+    }
     return new Response(
       JSON.stringify({ 
         error: "Proxy error", 

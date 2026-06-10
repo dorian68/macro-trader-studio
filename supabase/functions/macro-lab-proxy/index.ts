@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
 import { corsHeaders } from "../_shared/cors.ts";
-import { requireUser } from "../_shared/auth.ts";
+import { requireProductAccess } from "../_shared/auth.ts";
+import { getSecureUpstream } from "../_shared/upstream.ts";
 
 const corsHeadersWithMethods = {
   ...corsHeaders,
@@ -9,8 +11,16 @@ const corsHeadersWithMethods = {
   "Access-Control-Max-Age": "86400",
 };
 
-// Proxy target (HTTP) for internal Macro Lab webhook
-const TARGET_URL = "http://178.105.21.238:9000/run";
+type CreditFeature = 'queries' | 'ideas';
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function resolveCreditFeature(payload: Record<string, unknown>): CreditFeature {
+  const mode = String(payload.mode ?? '').toLowerCase();
+  return mode.includes('trade') || payload.isTradeQuery === true ? 'ideas' : 'queries';
+}
 
 serve(async (req) => {
   const reqId = crypto.randomUUID();
@@ -25,6 +35,7 @@ serve(async (req) => {
     origin,
     ua: req.headers.get("user-agent") || null,
   });
+  let claimedJob: { id: string; userId: string } | null = null;
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -42,57 +53,124 @@ serve(async (req) => {
     }
 
     // Require an authenticated end-user (prevents anonymous abuse of paid compute)
-    const { user, error: authError } = await requireUser(req);
+    const { user, error: authError, status } = await requireProductAccess(req);
     if (!user) {
-      console.warn(`[macro-lab-proxy] unauthenticated request rejected`, { reqId, authError });
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
+      console.warn(`[macro-lab-proxy] request rejected`, { reqId, authError });
+      return new Response(JSON.stringify({ error: authError }), {
+        status: status ?? 403,
         headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
       });
     }
 
     const body = await req.text();
+    if (!body || body.length > 1_000_000) {
+      return new Response(JSON.stringify({ error: "Invalid request body" }), {
+        status: 400,
+        headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
+      });
+    }
 
     // Parse body to extract and log critical fields for debugging
-    let parsedBody: any = null;
+    let parsedBody: Record<string, unknown>;
     let jobIdFromPayload: string | null = null;
     let requestType: string | null = null;
     let instrument: string | null = null;
 
     try {
       parsedBody = JSON.parse(body);
-      jobIdFromPayload = parsedBody?.job_id || null;
-      requestType = parsedBody?.type || null;
-      instrument = parsedBody?.instrument || null;
+      if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+        throw new Error("Request body must be a JSON object");
+      }
+      jobIdFromPayload = typeof parsedBody.job_id === 'string' && isUuid(parsedBody.job_id)
+        ? parsedBody.job_id
+        : null;
+      requestType = typeof parsedBody.type === 'string' ? parsedBody.type : null;
+      instrument = typeof parsedBody.instrument === 'string' ? parsedBody.instrument : null;
     } catch (parseError) {
       console.log(`[macro-lab-proxy] body parse failed`, {
         reqId,
         error: parseError instanceof Error ? parseError.message : String(parseError),
         bodyPreview: body.substring(0, 200),
       });
+      return new Response(JSON.stringify({ error: "Request body must be valid JSON" }), {
+        status: 400,
+        headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
+      });
     }
+
+    if (!jobIdFromPayload) {
+      return new Response(JSON.stringify({ error: "A valid engaged job_id is required" }), {
+        status: 400,
+        headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
+      });
+    }
+
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const requiredFeature = resolveCreditFeature(parsedBody);
+    const { data: engagement, error: engagementError } = await admin
+      .from('credits_engaged')
+      .select('id')
+      .eq('job_id', jobIdFromPayload)
+      .eq('user_id', user.id)
+      .eq('feature', requiredFeature)
+      .maybeSingle();
+
+    if (engagementError || !engagement) {
+      return new Response(JSON.stringify({ error: "No valid credit engagement found for this job" }), {
+        status: 402,
+        headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
+      });
+    }
+    const { data: claimedJobRow, error: claimError } = await admin
+      .from('jobs')
+      .update({ status: 'running' })
+      .eq('id', jobIdFromPayload)
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
+    if (claimError) throw claimError;
+    if (!claimedJobRow) {
+      return new Response(JSON.stringify({ error: "Job is already running or completed" }), {
+        status: 409,
+        headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
+      });
+    }
+    claimedJob = { id: jobIdFromPayload, userId: user.id };
 
     console.log(`[macro-lab-proxy] payload inspection`, {
       reqId,
       job_id: jobIdFromPayload,
       job_id_present: !!jobIdFromPayload,
+      credit_feature: requiredFeature,
       type: requestType,
       instrument: instrument,
       bodyBytes: body.length,
     });
 
+    const upstreamConfig = getSecureUpstream('MACRO_LAB_API_URL');
     console.log(`[macro-lab-proxy] forwarding to backend`, {
       reqId,
-      target: TARGET_URL,
       job_id: jobIdFromPayload,
       bodyBytes: body.length,
     });
 
     const startedAt = Date.now();
-    const upstream = await fetch(TARGET_URL, {
+    const upstream = await fetch(upstreamConfig.url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Backend-Secret": upstreamConfig.secret,
+      },
+      body: JSON.stringify({
+        ...parsedBody,
+        user_id: user.id,
+        authenticated_user_id: user.id,
+      }),
     });
 
     const upstreamText = await upstream.text();
@@ -119,6 +197,24 @@ serve(async (req) => {
       job_id_roundtrip: jobIdFromPayload === upstreamJobId ? 'MATCH' : 'MISMATCH',
     });
 
+    let responsePayload: unknown = upstreamText;
+    try {
+      responsePayload = JSON.parse(upstreamText);
+    } catch {
+      // Preserve non-JSON provider responses as a JSON string.
+    }
+    const { error: jobUpdateError } = await admin
+      .from('jobs')
+      .update(
+        upstream.ok
+          ? { status: 'completed', response_payload: responsePayload }
+          : { status: 'error' },
+      )
+      .eq('id', jobIdFromPayload)
+      .eq('user_id', user.id)
+      .eq('status', 'running');
+    if (jobUpdateError) throw jobUpdateError;
+
     return new Response(upstreamText, {
       status: upstream.status,
       headers: { ...corsHeadersWithMethods, "Content-Type": "application/json" },
@@ -128,6 +224,19 @@ serve(async (req) => {
       reqId,
       message: error instanceof Error ? error.message : String(error),
     });
+    if (claimedJob) {
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } },
+      );
+      await admin
+        .from('jobs')
+        .update({ status: 'error' })
+        .eq('id', claimedJob.id)
+        .eq('user_id', claimedJob.userId)
+        .eq('status', 'running');
+    }
     return new Response(
       JSON.stringify({
         error: "Proxy error",
