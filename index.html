@@ -19,7 +19,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://jqrlegdulnnrpiixiecf.supabase.co" />
-    <link rel="preload" as="image" type="image/webp" href="/images/hero-bg.webp" fetchpriority="high" />
+    <!-- Hero bg is preloaded only on the homepage (see src/pages/Homepage.tsx) to avoid wasting 1.6MB on internal routes -->
+    <script>
+      if (location.pathname === '/' || location.pathname === '') {
+        var l = document.createElement('link');
+        l.rel = 'preload'; l.as = 'image'; l.type = 'image/webp';
+        l.href = '/images/hero-bg.webp'; l.setAttribute('fetchpriority', 'high');
+        document.head.appendChild(l);
+      }
+    </script>
     
     <!-- PERFORMANCE: Preload critical font weights -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" as="style" />
