@@ -23,6 +23,7 @@ import {
   getOAuthFlow,
   hasFreshOAuthAttempt,
   hasOAuthCallbackParams,
+  isExistingSignupResponse,
   isLikelyNewOAuthUser,
   processPendingAuthIntent,
   type OAuthFlow,
@@ -364,11 +365,12 @@ export default function Auth() {
         description: error.message,
         variant: "destructive"
       });
-    } else if (data.user && data.user.identities?.length === 0) {
+    } else if (isExistingSignupResponse(data.user)) {
       // Email already exists — Supabase returns a fake user with no identities
       toast({
         title: t('errors.emailAlreadyRegistered') || 'Email already registered',
-        description: t('errors.emailAlreadyRegisteredDescription') || 'This email is already registered. Please sign in instead.',
+        description: t('errors.emailAlreadyRegisteredDescription') ||
+          'An account already uses this email. Sign in or use Forgot Password.',
         variant: "destructive"
       });
       setTabValue('signin');

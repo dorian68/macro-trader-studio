@@ -139,9 +139,11 @@ test('account deletion cannot leave billable Stripe subscriptions behind', () =>
   expect(helper).toContain('status: "all"');
   expect(helper).toContain('await stripe.subscriptions.cancel');
   expect(selfDelete).toContain('await cancelUserSubscriptions');
+  expect(selfDelete).toContain('supabase.auth.admin.deleteUser(userId)');
   expect(selfDelete).not.toContain('Stripe cleanup failed (non-blocking)');
   expect(selfDelete).not.toContain("['basic', 'standard', 'premium'].includes(profile.user_plan)");
   expect(adminDelete).toContain('await cancelUserSubscriptions');
+  expect(adminDelete).toContain('supabase.auth.admin.deleteUser(userId)');
   expect(adminDelete).not.toContain("['basic', 'standard', 'premium'].includes(existingProfile.user_plan)");
   expect(webhook).toContain('Subscription belongs to an already deleted account');
   expect(webhook).toContain('canceling subscription for deleted account');

@@ -1,5 +1,9 @@
 export type OAuthFlow = 'signin' | 'signup';
 
+interface SignupUser {
+  identities?: unknown[] | null;
+}
+
 export const AUTH_STORAGE_KEYS = {
   oauthFlow: 'oauth_flow',
   oauthStartedAt: 'oauth_started_at',
@@ -21,6 +25,10 @@ interface PendingIntentDependencies {
   storage: StorageLike;
   createCheckout: (plan: string) => Promise<{ data?: { url?: string } | null; error?: unknown }>;
   activateFreeTrial: () => Promise<{ error?: unknown }>;
+}
+
+export function isExistingSignupResponse(user: SignupUser | null | undefined) {
+  return Array.isArray(user?.identities) && user.identities.length === 0;
 }
 
 export type PendingIntentResult =

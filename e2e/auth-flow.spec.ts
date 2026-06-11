@@ -5,6 +5,7 @@ import {
   clearOAuthAttempt,
   hasOAuthCallbackParams,
   hasFreshOAuthAttempt,
+  isExistingSignupResponse,
   isLikelyNewOAuthUser,
   processPendingAuthIntent,
 } from '../src/lib/auth-flow';
@@ -63,6 +64,13 @@ test('recognizes successful OAuth callback params without treating provider erro
   expect(hasOAuthCallbackParams({ search: '?code=oauth-code', hash: '' })).toBe(true);
   expect(hasOAuthCallbackParams({ search: '', hash: '#access_token=token' })).toBe(true);
   expect(hasOAuthCallbackParams({ search: '?error=access_denied', hash: '' })).toBe(false);
+});
+
+test('detects Supabase anti-enumeration responses for an existing signup email', () => {
+  expect(isExistingSignupResponse({ identities: [] })).toBe(true);
+  expect(isExistingSignupResponse({ identities: [{ provider: 'email' }] })).toBe(false);
+  expect(isExistingSignupResponse({})).toBe(false);
+  expect(isExistingSignupResponse(null)).toBe(false);
 });
 
 test('keeps a pending plan when checkout creation fails', async () => {
