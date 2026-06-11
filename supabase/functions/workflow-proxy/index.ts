@@ -6,6 +6,8 @@ import {
   requireProductAccess,
 } from "../_shared/auth.ts";
 
+const PYTHON_BACKEND_URL = "http://178.105.21.238:9000/run";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -117,21 +119,10 @@ serve(async (req) => {
       consumedCredit = { userId: user.id, feature, referenceId: consumed.referenceId };
     }
 
-    const workflowUrl = Deno.env.get("N8N_WORKFLOW_URL");
-    const workflowSecret = Deno.env.get("N8N_WORKFLOW_SECRET");
-    if (!workflowUrl || !workflowSecret) {
-      throw new Error("Workflow proxy is not configured");
-    }
-    const parsedWorkflowUrl = new URL(workflowUrl);
-    if (parsedWorkflowUrl.protocol !== 'https:') {
-      throw new Error("Workflow proxy URL must use HTTPS");
-    }
-
-    const upstream = await fetch(parsedWorkflowUrl, {
+    const upstream = await fetch(PYTHON_BACKEND_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Workflow-Secret": workflowSecret,
       },
       body: JSON.stringify({
         ...payload,
