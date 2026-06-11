@@ -1,6 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { consumeProductCredit, refundProductCredit, requireProductAccess } from "../_shared/auth.ts";
-import { getSecureUpstream } from "../_shared/upstream.ts";
+
+const SURFACE_API_URL = "http://178.105.21.238:8001/surface";
 
 Deno.serve(async (req) => {
   let consumedCredit: { userId: string; referenceId: string } | null = null;
@@ -85,12 +86,10 @@ Deno.serve(async (req) => {
     console.log("[surface-proxy] Payload:", JSON.stringify(surfacePayload));
 
     // Forward the request to the Surface API
-    const upstreamConfig = getSecureUpstream('SURFACE_API_URL');
-    const response = await fetch(upstreamConfig.url, {
+    const response = await fetch(SURFACE_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Backend-Secret": upstreamConfig.secret,
       },
       body: JSON.stringify(surfacePayload),
     });

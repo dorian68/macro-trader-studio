@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { consumeProductCredit, refundProductCredit, requireProductAccess } from "../_shared/auth.ts";
-import { getSecureUpstream } from "../_shared/upstream.ts";
+
+const FORECAST_API_URL = "http://178.105.21.238:8000/forecast";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,14 +58,12 @@ serve(async (req) => {
       });
     }
     consumedCredit = { userId: user.id, referenceId: consumed.referenceId };
-    const upstreamConfig = getSecureUpstream('FORECAST_API_URL');
     console.log("[forecast-proxy] Request body bytes:", body.length);
 
-    const response = await fetch(upstreamConfig.url, {
+    const response = await fetch(FORECAST_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Backend-Secret": upstreamConfig.secret,
       },
       body,
     });

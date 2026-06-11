@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireProductAccess } from "../_shared/auth.ts";
-import { getSecureUpstream } from "../_shared/upstream.ts";
+
+const MACRO_LAB_API_URL = "http://178.105.21.238:9000/run";
 
 const corsHeadersWithMethods = {
   ...corsHeaders,
@@ -152,7 +153,6 @@ serve(async (req) => {
       bodyBytes: body.length,
     });
 
-    const upstreamConfig = getSecureUpstream('MACRO_LAB_API_URL');
     console.log(`[macro-lab-proxy] forwarding to backend`, {
       reqId,
       job_id: jobIdFromPayload,
@@ -160,11 +160,10 @@ serve(async (req) => {
     });
 
     const startedAt = Date.now();
-    const upstream = await fetch(upstreamConfig.url, {
+    const upstream = await fetch(MACRO_LAB_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Backend-Secret": upstreamConfig.secret,
       },
       body: JSON.stringify({
         ...parsedBody,
