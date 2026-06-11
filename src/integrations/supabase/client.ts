@@ -17,10 +17,96 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
+// --- Corrupted-JWT self-healing ---------------------------------------------
+// If a stored session JWT becomes invalid (e.g. "missing sub claim", "bad_jwt",
+// signing-key rotation, hand-edited token), every Edge Function call and every
+// PostgREST query starts returning 401/403. The user is silently locked out
+// because the SDK keeps replaying the broken token from localStorage.
+//
+// We intercept fetch globally and, when Supabase responds with a JWT-related
+// auth failure, we purge the session and bounce to /auth so the user can
+// re-authenticate cleanly instead of seeing generic 500s on every feature.
+const JWT_ERROR_SIGNATURES = [
+  'bad_jwt',
+  'missing sub claim',
+  'invalid claim',
+  'jwt expired',
+  'invalid jwt',
+  'jwsError',
+  'token is expired',
+];
+
+let jwtRecoveryInFlight = false;
+
+async function handleCorruptedJwt(reason: string) {
+  if (jwtRecoveryInFlight) return;
+  jwtRecoveryInFlight = true;
+  try {
+    console.warn('[Supabase Client] Corrupted/invalid JWT detected — clearing session.', { reason });
+    // Wipe every supabase auth artifact from storage so the SDK can't replay it.
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') || key.includes('supabase.auth')) {
+          localStorage.removeItem(key);
+        }
+      }
+      sessionStorage.clear();
+    } catch {
+      /* storage may be unavailable in some contexts */
+    }
+
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      /* already signed out / network unreachable — ignore */
+    }
+
+    if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.replace(`/auth?session_expired=1&next=${next}`);
+    }
+  } finally {
+    // Keep the flag set; a full navigation will reload the module anyway.
+  }
+}
+
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const response = await originalFetch(input, init);
+
+    // Only inspect calls aimed at this Supabase project.
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : (input as Request).url;
+
+    if (!url || !url.startsWith(SUPABASE_URL)) return response;
+    if (response.status !== 401 && response.status !== 403) return response;
+
+    // Clone so callers can still read the body.
+    try {
+      const cloned = response.clone();
+      const text = await cloned.text();
+      const lower = text.toLowerCase();
+      if (JWT_ERROR_SIGNATURES.some((sig) => lower.includes(sig.toLowerCase()))) {
+        void handleCorruptedJwt(text.slice(0, 200));
+      }
+    } catch {
+      /* body not readable — ignore */
+    }
+
+    return response;
+  };
+}
+
 // Log client configuration on startup for diagnostics
 console.log('[Supabase Client] Initialized with config:', {
   autoRefreshToken: true,
   persistSession: true,
   detectSessionInUrl: true,
+  jwtSelfHealing: true,
   timestamp: new Date().toISOString()
 });
