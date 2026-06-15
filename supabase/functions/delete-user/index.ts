@@ -82,6 +82,61 @@ serve(async (req) => {
       )
     }
 
+    if (userId === user.id) {
+      return new Response(
+        JSON.stringify({ error: 'A super user cannot delete their own account. Use another super user account.' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { data: targetSuperUser, error: targetRoleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'super_user')
+      .maybeSingle()
+
+    if (targetRoleError) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify target user role' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (targetSuperUser) {
+      const { data: superUserRoles, error: superUserRolesError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'super_user')
+
+      if (superUserRolesError) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify super user continuity' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const superUserIds = (superUserRoles || []).map(({ user_id }) => user_id)
+      const { count: activeSuperUserCount, error: activeSuperUserCountError } = await supabase
+        .from('profiles')
+        .select('user_id', { count: 'exact', head: true })
+        .in('user_id', superUserIds)
+        .eq('is_deleted', false)
+
+      if (activeSuperUserCountError) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify active super user continuity' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      if ((activeSuperUserCount ?? 0) <= 1) {
+        return new Response(
+          JSON.stringify({ error: 'Cannot delete the last active super user' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     // 1. Get the target user's email for audit before deletion
     let emailHash = 'unknown';
     let targetEmail: string | null = null;

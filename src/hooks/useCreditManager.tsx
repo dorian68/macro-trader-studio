@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export type CreditType = 'queries' | 'ideas' | 'reports';
 
@@ -23,6 +24,7 @@ interface EngagedCounts {
 
 export function useCreditManager() {
   const { user } = useAuth();
+  const { isSuperUser } = useUserRole();
   const { toast } = useToast();
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [engaged, setEngaged] = useState<EngagedCounts>({ queries: 0, ideas: 0, reports: 0 });
@@ -123,6 +125,7 @@ export function useCreditManager() {
   }, [user?.id, toast, fetchCredits]);
 
   const checkCredits = useCallback(async (creditType: CreditType): Promise<boolean> => {
+    if (isSuperUser) return true;
     if (!credits || !user?.id) return false;
     
     try {
@@ -159,7 +162,7 @@ export function useCreditManager() {
       console.error('[CreditManager] Error checking credits:', err);
       return false;
     }
-  }, [credits, user?.id]);
+  }, [credits, isSuperUser, user?.id]);
 
   useEffect(() => {
     if (user?.id) {

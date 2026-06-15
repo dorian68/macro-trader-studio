@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     isTrialExpired,
     trialDurationDays,
   } = useProfile();
+  const { isSuperUser, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -80,7 +82,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   }, [profile]);
 
   // Show loading while checking auth status
-  if (authLoading || profileLoading) {
+  if (authLoading || profileLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -160,7 +162,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   }
 
   // ✅ Trial expired → show upgrade modal
-  if (isTrialExpired) {
+  if (!isSuperUser && isTrialExpired) {
     const handleUpgrade = async () => {
       setCheckoutLoading(true);
       try {
@@ -220,7 +222,7 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
   }
 
   // If approval is required, check profile status
-  if (requireApproval && profile) {
+  if (!isSuperUser && requireApproval && profile) {
     if (isPending) {
       // Check if user has a paid plan — if so, the webhook is still processing
       const paidPlans = ['basic', 'standard', 'premium'];

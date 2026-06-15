@@ -68,6 +68,23 @@ serve(async (req) => {
       )
     }
 
+    const { data: superUserRole, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'super_user')
+      .maybeSingle()
+
+    if (roleError) {
+      throw new Error('Failed to verify account role')
+    }
+    if (superUserRole) {
+      return new Response(
+        JSON.stringify({ error: 'Super user accounts must be deleted by another super user after transferring access' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // 1. Get email hash for audit
     let emailHash = 'unknown';
     try {

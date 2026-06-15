@@ -289,6 +289,10 @@ serve(async (req) => {
           if (creditsError || provisionResult?.success === false) {
             throw creditsError || new Error(`Credit provisioning failed: ${provisionResult?.reason}`);
           }
+          if (provisionResult?.skipped === true && provisionResult?.reason === 'super_user') {
+            logStep("Skipped commercial profile mutation for super user", { userId: user.id });
+            break;
+          }
 
           const { data: approvedProfile, error: profileError } = await supabase
             .from('profiles')

@@ -107,14 +107,26 @@ export async function requireProductAccess(
     { auth: { persistSession: false } },
   );
 
-  const { data: profile, error: profileError } = await admin
-    .from('profiles')
-    .select('status, user_plan, is_deleted, trial_started_at')
-    .eq('user_id', caller.user!.id)
-    .maybeSingle();
+  const [
+    { data: profile, error: profileError },
+    { data: superUserRole, error: roleError },
+  ] = await Promise.all([
+    admin
+      .from('profiles')
+      .select('status, user_plan, is_deleted, trial_started_at')
+      .eq('user_id', caller.user!.id)
+      .maybeSingle(),
+    admin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', caller.user!.id)
+      .eq('role', 'super_user')
+      .maybeSingle(),
+  ]);
 
-  if (profileError) return { user: null, error: 'Failed to verify account access', status: 500 };
+  if (profileError || roleError) return { user: null, error: 'Failed to verify account access', status: 500 };
   if (!profile || profile.is_deleted) return { user: null, error: 'Account unavailable', status: 403 };
+  if (superUserRole) return caller;
   if (profile.status !== 'approved') return { user: null, error: 'Account approval required', status: 403 };
 
   if (profile.user_plan === 'free_trial') {
@@ -176,6 +188,18 @@ export async function consumeProductCredit(
   );
 
   const referenceId = crypto.randomUUID();
+  const { data: superUserRole, error: roleError } = await admin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'super_user')
+    .maybeSingle();
+
+  if (roleError) return { success: false, error: 'Failed to verify product access exemption', referenceId };
+  if (superUserRole) {
+    return { success: true, error: null, referenceId: `super-user-bypass:${referenceId}` };
+  }
+
   const { data, error } = await admin.rpc('consume_credit_service', {
     p_user_id: userId,
     p_feature: feature,
@@ -193,6 +217,10 @@ export async function refundProductCredit(
   source: string,
   consumedReferenceId: string,
 ): Promise<{ success: boolean; error: string | null }> {
+  if (consumedReferenceId.startsWith('super-user-bypass:')) {
+    return { success: true, error: null };
+  }
+
   const admin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',

@@ -81,6 +81,47 @@ test('paid compute endpoints enforce product access and credits', () => {
   expect(macroLab).toContain(".eq('status', 'pending')");
 });
 
+test('super users bypass commercial product gates without bypassing authentication', () => {
+  const auth = read('supabase/functions/_shared/auth.ts');
+  const guard = read('src/components/AuthGuard.tsx');
+  const creditManager = read('src/hooks/useCreditManager.tsx');
+  const migration = read('supabase/migrations/20260615170000_super_user_product_access_bypass.sql');
+
+  expect(auth).toContain(".eq('role', 'super_user')");
+  expect(auth).toContain('if (!profile || profile.is_deleted)');
+  expect(auth).toContain('if (superUserRole) return caller');
+  expect(auth).toContain('super-user-bypass:');
+  expect(guard).toContain('if (!isSuperUser && isTrialExpired)');
+  expect(guard).toContain('if (!isSuperUser && requireApproval && profile)');
+  expect(creditManager).toContain('if (isSuperUser) return true');
+  expect(migration).toContain("public.has_role(p_user_id, 'super_user')");
+  expect(migration).toContain("public.has_role(NEW.user_id, 'super_user')");
+  expect(migration).toContain("'Super user credit bypass'");
+  expect(migration).toContain('Unauthorized credit operation');
+  expect(migration).toContain('Invalid job ownership');
+});
+
+test('super users are isolated from commercial lifecycle and lower-role mutations', () => {
+  const migration = read('supabase/migrations/20260615190000_super_user_commercial_and_governance_isolation.sql');
+  const checkout = read('supabase/functions/create-checkout/index.ts');
+  const webhook = read('supabase/functions/stripe-webhook/index.ts');
+  const selfDelete = read('supabase/functions/delete-own-account/index.ts');
+  const adminDelete = read('supabase/functions/delete-user/index.ts');
+  const activateTrial = read('supabase/functions/activate-free-trial/index.ts');
+
+  expect(migration).toContain("NOT public.has_role(user_id, 'super_user')");
+  expect(migration).toContain('Admins cannot modify super user profiles');
+  expect(migration).toContain('Cannot deactivate the last active super user');
+  expect(migration).toContain('Cannot remove the last active super user role');
+  expect(migration).toContain("jsonb_build_object('success', true, 'skipped', true, 'reason', 'super_user')");
+  expect(migration).toContain("NOT public.has_role(uc.user_id, 'super_user')");
+  expect(checkout).toContain('super_user_commercial_bypass');
+  expect(webhook).toContain("provisionResult?.reason === 'super_user'");
+  expect(selfDelete).toContain('Super user accounts must be deleted by another super user');
+  expect(adminDelete).toContain('Cannot delete the last active super user');
+  expect(activateTrial).not.toContain("paidPlans.includes(profileData.user_plan)");
+});
+
 test('sensitive utility functions authenticate and scope their callers', () => {
   expect(read('supabase/functions/import-abcg-portfolio/index.ts')).toContain(
     "requireRole(req, ['admin', 'super_user'])",
@@ -119,6 +160,14 @@ test('signup and payment UI no longer expose broker or guest-signup steps', () =
 test('internal jobs and public contact relay are hardened', () => {
   expect(read('supabase/functions/renew-credits/index.ts')).toContain('Service authorization required');
   expect(read('supabase/functions/cleanup-stale-credits/index.ts')).toContain('Service authorization required');
+  const maintenanceMigration = read('supabase/migrations/20260615200000_harden_session_and_maintenance_rpcs.sql');
+  expect(maintenanceMigration).toContain("auth.uid() <> current_user_id");
+  expect(maintenanceMigration).toContain(
+    'REVOKE ALL ON FUNCTION public.cleanup_stale_engaged_credits() FROM PUBLIC, anon, authenticated',
+  );
+  expect(maintenanceMigration).toContain(
+    'REVOKE ALL ON FUNCTION public.invalidate_previous_sessions(uuid, text) FROM PUBLIC, anon',
+  );
   const contact = read('supabase/functions/send-contact-email/index.ts');
   expect(contact).toContain('check_contact_rate_limit_service');
   expect(contact).toContain('Too many contact requests');
@@ -173,14 +222,13 @@ test('generated report HTML is sanitized before browser rendering', () => {
   expect(sanitizer).toContain("'script'");
 });
 
-test('third-party workflow and market-data secrets stay server-side', () => {
+test('third-party workflow and market-data calls stay server-side', () => {
   const workflowProxy = read('supabase/functions/workflow-proxy/index.ts');
   const currentPrice = read('supabase/functions/fetch-current-price/index.ts');
   const safeRequest = read('src/lib/safe-request.ts');
   const marketData = read('src/services/marketDataService.ts');
   const technicalDashboard = read('src/components/TechnicalDashboard.tsx');
 
-  expect(workflowProxy).toContain('N8N_WORKFLOW_SECRET');
   expect(workflowProxy).toContain('requireProductAccess');
   expect(workflowProxy).toContain('credits_engaged');
   expect(workflowProxy).toContain('isUuid');

@@ -66,17 +66,36 @@ serve(async (req) => {
       });
     }
 
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+
+    const { data: superUserRole, error: roleError } = await supabaseClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'super_user')
+      .maybeSingle();
+
+    if (roleError) throw new Error('Failed to verify internal account access');
+    if (superUserRole) {
+      return new Response(JSON.stringify({
+        error: "Super users already have internal product access and cannot create a paid subscription",
+        reason: "super_user_commercial_bypass",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 409,
+      });
+    }
+
     const config = getStripeConfig();
     logStep("Stripe config loaded", { mode: config.mode });
     
     const stripe = new Stripe(config.secretKey, { 
       apiVersion: "2025-08-27.basil",
     });
-
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
 
     // Parse request body
     const { plan, success_url, cancel_url }: CheckoutRequest = await req.json();
