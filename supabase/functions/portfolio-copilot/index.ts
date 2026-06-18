@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { consumeProductCredit, refundProductCredit, requireProductAccess } from "../_shared/auth.ts";
+import { logAiUsage } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -166,6 +167,16 @@ Instructions:
         }
       );
     }
+
+    // Best-effort usage logging (never throws). This path streams the response
+    // to the client, so token counts aren't readable server-side — we record at
+    // least the model used for this request.
+    await logAiUsage({
+      userId: user.id,
+      feature: 'portfolio-copilot',
+      source: 'portfolio-copilot',
+      model: 'google/gemini-2.5-flash',
+    });
 
     // Stream the response back to the client
     return new Response(response.body, {

@@ -5,6 +5,7 @@ import {
   refundProductCredit,
   requireProductAccess,
 } from "../_shared/auth.ts";
+import { extractUsage, logAiUsage } from "../_shared/ai-usage.ts";
 
 const PYTHON_BACKEND_URL = "http://178.105.21.238:9000/run";
 
@@ -155,6 +156,26 @@ serve(async (req) => {
         .eq('status', 'running');
       if (jobError) throw jobError;
     }
+
+    // Best-effort usage logging (never throws). Captures model/tokens only when
+    // the upstream engine includes them in its response.
+    try {
+      let rp: unknown = responseText;
+      try { rp = JSON.parse(responseText); } catch { /* keep raw */ }
+      const u = extractUsage(rp);
+      if (u.model || u.total != null) {
+        await logAiUsage({
+          userId: user.id,
+          jobId: engagedJob?.id ?? null,
+          feature,
+          source: 'workflow-proxy',
+          model: u.model,
+          promptTokens: u.prompt,
+          completionTokens: u.completion,
+          totalTokens: u.total,
+        });
+      }
+    } catch { /* never block the response */ }
 
     return new Response(responseText, {
       status: upstream.status,

@@ -117,18 +117,23 @@ export async function exportAdminWorkbook(users: AdminExportUser[]): Promise<{ u
   const emailById = new Map<string, string>();
   users.forEach((u) => u.user_id && emailById.set(u.user_id, u.email ?? ''));
 
-  const [jobs, creditsRes, txRes] = await Promise.all([
+  const [jobs, creditsRes, txRes, usageRes] = await Promise.all([
     fetchAllJobs(),
     supabase
       .from('user_credits')
       .select('user_id, plan_type, credits_queries_remaining, credits_ideas_remaining, credits_reports_remaining, last_reset_date'),
     supabase.from('credit_transactions').select('*').order('created_at', { ascending: false }),
+    supabase.from('ai_usage').select('*').order('created_at', { ascending: false }).range(0, 9999),
   ]);
 
   const credits = creditsRes.data ?? [];
   const txs = (txRes.data ?? []) as any[];
+  const aiUsage = (usageRes.data ?? []) as any[];
   const creditById = new Map<string, any>();
   credits.forEach((c: any) => creditById.set(c.user_id, c));
+  // Real usage indexed by job_id (when the request was a job-based feature).
+  const usageByJob = new Map<string, any>();
+  aiUsage.forEach((u: any) => u.job_id && !usageByJob.has(u.job_id) && usageByJob.set(u.job_id, u));
 
   // --- Sheet: Users ---
   const usersSheet = users.map((u) => {
@@ -154,6 +159,7 @@ export async function exportAdminWorkbook(users: AdminExportUser[]): Promise<{ u
       j.created_at && j.updated_at
         ? Math.round((new Date(j.updated_at).getTime() - new Date(j.created_at).getTime()) / 1000)
         : '';
+    const u = usageByJob.get(j.id); // real logged usage, when available
     return {
       created_at: j.created_at ?? '',
       user_email: emailById.get(j.user_id) ?? j.user_id,
@@ -161,8 +167,12 @@ export async function exportAdminWorkbook(users: AdminExportUser[]): Promise<{ u
       status: j.status ?? '',
       duration_sec: durationSec,
       est_cost_usd: featureCost(j.feature),
-      model: extractModel(j.response_payload),
-      tokens: extractTokens(j.response_payload),
+      real_cost_usd: u?.cost_usd ?? '',
+      model: u?.model ?? extractModel(j.response_payload),
+      prompt_tokens: u?.prompt_tokens ?? '',
+      completion_tokens: u?.completion_tokens ?? '',
+      total_tokens: u?.total_tokens ?? '',
+      tokens_raw: extractTokens(j.response_payload),
       request: clip(j.request_payload),
       response: clip(j.response_payload),
       job_id: j.id,
@@ -212,12 +222,27 @@ export async function exportAdminWorkbook(users: AdminExportUser[]): Promise<{ u
   // --- Sheet: Credit transactions ---
   const txSheet = txs.map((t) => ({ user_email: emailById.get(t.user_id) ?? t.user_id, ...t }));
 
+  // --- Sheet: AI usage (real model/tokens/cost, where logged) ---
+  const usageSheet = aiUsage.map((u) => ({
+    created_at: u.created_at,
+    user_email: emailById.get(u.user_id) ?? u.user_id,
+    feature: u.feature ?? '',
+    source: u.source ?? '',
+    model: u.model ?? '',
+    prompt_tokens: u.prompt_tokens ?? '',
+    completion_tokens: u.completion_tokens ?? '',
+    total_tokens: u.total_tokens ?? '',
+    cost_usd: u.cost_usd ?? '',
+    job_id: u.job_id ?? '',
+  }));
+
   const XLSX = await loadXLSX();
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(usersSheet), 'Users');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activity), 'Activity by user');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(daily), 'Daily');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(requests), 'Requests');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(usageSheet), 'AI usage');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(txSheet), 'Credit transactions');
 
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');

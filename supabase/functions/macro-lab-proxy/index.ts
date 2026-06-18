@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { requireProductAccess } from "../_shared/auth.ts";
+import { extractUsage, logAiUsage } from "../_shared/ai-usage.ts";
 
 const MACRO_LAB_API_URL = "http://178.105.21.238:9000/run";
 
@@ -213,6 +214,24 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .eq('status', 'running');
     if (jobUpdateError) throw jobUpdateError;
+
+    // Best-effort usage logging (never throws). Captures model/tokens only when
+    // the upstream engine includes them in its response.
+    if (upstream.ok) {
+      const u = extractUsage(responsePayload);
+      if (u.model || u.total != null) {
+        await logAiUsage({
+          userId: user.id,
+          jobId: jobIdFromPayload,
+          feature: requiredFeature,
+          source: 'macro-lab-proxy',
+          model: u.model,
+          promptTokens: u.prompt,
+          completionTokens: u.completion,
+          totalTokens: u.total,
+        });
+      }
+    }
 
     return new Response(upstreamText, {
       status: upstream.status,

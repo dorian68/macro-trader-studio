@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { consumeProductCredit, refundProductCredit, requireProductAccess } from "../_shared/auth.ts";
+import { extractUsage, logAiUsage } from "../_shared/ai-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1161,6 +1162,20 @@ ${detectedTimeframe.horizon !== 'daily' || detectedTimeframe.startDate ? `\n\n‚è
 
     const data = await response.json();
     console.log("Lovable AI response:", JSON.stringify(data));
+
+    // Best-effort usage logging (never throws). AURA is non-streaming so the
+    // model + token usage are present on the parsed response.
+    const auraUsage = extractUsage(data);
+    await logAiUsage({
+      userId: user.id,
+      feature: 'aura',
+      source: 'aura',
+      model: auraUsage.model ?? 'google/gemini-2.5-flash',
+      promptTokens: auraUsage.prompt,
+      completionTokens: auraUsage.completion,
+      totalTokens: auraUsage.total,
+    });
+
     const message = data.choices?.[0]?.message;
     console.log("Extracted message:", JSON.stringify(message));
     
