@@ -80,7 +80,8 @@ export function UserActionsDialog({
   loading
 }: UserActionsDialogProps) {
   const [selectedStatus, setSelectedStatus] = useState<'pending' | 'approved' | 'rejected'>();
-  const [selectedRole, setSelectedRole] = useState<'user' | 'admin' | 'super_user'>();
+  const [selectedRole, setSelectedRole] = useState<'user' | 'admin' | 'super_user' | 'beta_tester'>();
+  const [betaLoading, setBetaLoading] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -127,8 +128,65 @@ export function UserActionsDialog({
     }
   };
 
+  // "Beta Tester" is not an RBAC role — it puts the user on the credit-limited,
+  // time-unlimited 'beta' plan while leaving their role as 'user' (zero powers).
+  // Writes go directly to profiles/user_credits; allowed because this section is
+  // super_user-only and super_users bypass the beta-protection triggers.
+  const handleGrantBeta = async () => {
+    if (!user) return;
+    setBetaLoading(true);
+    try {
+      const nowIso = new Date().toISOString();
+      const { data: planParams } = await supabase
+        .from('plan_parameters')
+        .select('max_queries, max_ideas, max_reports')
+        .eq('plan_type', 'beta')
+        .maybeSingle();
+      const q = planParams?.max_queries ?? 100;
+      const i = planParams?.max_ideas ?? 50;
+      const r = planParams?.max_reports ?? 20;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ user_plan: 'beta', status: 'approved', updated_at: nowIso })
+        .eq('user_id', user.user_id);
+      if (profileError) throw profileError;
+
+      const { error: creditsError } = await supabase
+        .from('user_credits')
+        .upsert([{
+          user_id: user.user_id,
+          plan_type: 'beta',
+          credits_queries_remaining: q,
+          credits_ideas_remaining: i,
+          credits_reports_remaining: r,
+          last_reset_date: nowIso,
+          updated_at: nowIso,
+        }], { onConflict: 'user_id', ignoreDuplicates: false });
+      if (creditsError) throw creditsError;
+
+      toast({
+        title: 'Beta access granted',
+        description: `${user.email} is now a beta tester (${q} queries · ${i} ideas · ${r} reports). Adjust or revoke via the Plan dialog.`,
+      });
+      onClose();
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message ?? 'Failed to grant beta access',
+        variant: 'destructive',
+      });
+    } finally {
+      setBetaLoading(false);
+    }
+  };
+
   const handleUpdateRole = async () => {
     if (!selectedRole) return;
+    if (selectedRole === 'beta_tester') {
+      await handleGrantBeta();
+      return;
+    }
     const result = await onUpdateRole(user.user_id, selectedRole);
     if (result.success) {
       onClose();
@@ -275,17 +333,24 @@ export function UserActionsDialog({
                           {role === 'super_user' ? 'Super User' : role.charAt(0).toUpperCase() + role.slice(1)}
                         </SelectItem>
                       ))}
+                      <SelectItem value="beta_tester">Beta Tester</SelectItem>
                     </SelectContent>
                   </Select>
+                  {selectedRole === 'beta_tester' && (
+                    <p className="text-xs text-muted-foreground">
+                      Grants the credit-limited, time-unlimited beta plan. The user stays a
+                      regular user (no admin powers). Adjust credits or revoke later via the Plan dialog.
+                    </p>
+                  )}
                   <Button
                     onClick={handleUpdateRole}
-                    disabled={!selectedRole || loading}
+                    disabled={!selectedRole || loading || betaLoading}
                     size="sm"
                     variant="outline"
                     className="w-full"
                   >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Update Role
+                    {(loading || betaLoading) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {selectedRole === 'beta_tester' ? 'Grant Beta Access' : 'Update Role'}
                   </Button>
                 </>
               )}

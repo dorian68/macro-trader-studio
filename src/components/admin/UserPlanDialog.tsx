@@ -153,8 +153,8 @@ export function UserPlanDialog({
       // Update user plan in profiles table
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          user_plan: selectedPlan as 'basic' | 'broker_free' | 'free_trial' | 'premium' | 'standard',
+        .update({
+          user_plan: selectedPlan as 'basic' | 'broker_free' | 'free_trial' | 'premium' | 'standard' | 'beta',
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.user_id);
@@ -172,7 +172,7 @@ export function UserPlanDialog({
       // Update credits based on plan or custom values
       const creditsUpdate = {
         user_id: user.user_id,
-        plan_type: selectedPlan as 'basic' | 'broker_free' | 'free_trial' | 'premium' | 'standard',
+        plan_type: selectedPlan as 'basic' | 'broker_free' | 'free_trial' | 'premium' | 'standard' | 'beta',
         credits_queries_remaining: queriesCredit,
         credits_ideas_remaining: ideasCredit,
         credits_reports_remaining: reportsCredit,
@@ -303,6 +303,7 @@ export function UserPlanDialog({
                 <SelectItem value="standard">Standard</SelectItem>
                 <SelectItem value="premium">Premium</SelectItem>
                 <SelectItem value="broker_free">Broker Free</SelectItem>
+                <SelectItem value="beta">Beta Tester</SelectItem>
               </SelectContent>
             </Select>
           </div>

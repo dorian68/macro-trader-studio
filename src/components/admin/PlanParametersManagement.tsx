@@ -9,7 +9,7 @@ import { Settings, Save } from 'lucide-react';
 
 interface PlanParameter {
   id: string;
-  plan_type: 'basic' | 'standard' | 'premium' | 'free_trial' | 'broker_free';
+  plan_type: 'basic' | 'standard' | 'premium' | 'free_trial' | 'broker_free' | 'beta';
   max_queries: number;
   max_ideas: number;
   max_reports: number;
@@ -114,7 +114,8 @@ export function PlanParametersManagement() {
     broker_free: 'Broker Free',
     basic: 'Basic',
     standard: 'Standard',
-    premium: 'Premium'
+    premium: 'Premium',
+    beta: 'Beta Tester'
   };
 
   return (

@@ -128,6 +128,7 @@ export function SubscriptionPlanOverview() {
       case 'basic': return 'Basic';
       case 'standard': return 'Standard';
       case 'premium': return 'Premium';
+      case 'beta': return 'Beta Tester';
       case 'enterprise': return 'Enterprise';
       default: return planType.charAt(0).toUpperCase() + planType.slice(1);
     }
@@ -139,6 +140,7 @@ export function SubscriptionPlanOverview() {
       case 'basic': return 'outline';
       case 'standard': return 'default';
       case 'premium': return 'success';
+      case 'beta': return 'accent';
       case 'enterprise': return 'accent';
       default: return 'secondary';
     }
