@@ -38,7 +38,8 @@ import {
   AlertCircle,
   Upload,
   FlaskConical,
-  FileText
+  FileText,
+  Download
 } from "lucide-react";
 import { useAdminActions } from "@/hooks/useAdminActions";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -98,6 +99,7 @@ export default function Admin() {
   const [costTablePage, setCostTablePage] = useState(1);
   const [costTableItemsPerPage] = useState(5);
   const [userBroker, setUserBroker] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
   const [stripeMode, setStripeMode] = useState<'test' | 'live'>('test');
   const [updatingStripeMode, setUpdatingStripeMode] = useState(false);
   const [showStripeModeDialog, setShowStripeModeDialog] = useState(false);
@@ -362,6 +364,34 @@ export default function Admin() {
     setRefreshing(false);
   };
 
+  // Export the full admin dataset (users, all requests/jobs, activity, daily,
+  // credit ledger) to a multi-sheet Excel workbook. Super users only.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await supabase.functions.invoke('fetch-users-with-emails', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const list = Array.isArray(resp.data) ? resp.data : (resp.data?.users ?? []);
+      const { exportAdminWorkbook } = await import('@/lib/admin-export');
+      const res = await exportAdminWorkbook(list);
+      toast({
+        title: 'Export ready',
+        description: `${res.requests} requests · ${res.users} users exported to Excel.`,
+      });
+    } catch (err: any) {
+      console.error('[Admin] Export failed:', err);
+      toast({
+        title: 'Export failed',
+        description: err?.message ?? 'Unknown error while building the export',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
     loadUserBroker();
@@ -422,7 +452,21 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {isSuperUser && (
-              <Button 
+              <Button
+                onClick={handleExport}
+                disabled={exporting}
+                className="h-10 sm:h-11"
+              >
+                {exporting ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {exporting ? 'Exporting…' : 'Export Excel'}
+              </Button>
+            )}
+            {isSuperUser && (
+              <Button
                 variant="outline"
                 onClick={() => navigate('/playground')}
                 className="h-10 sm:h-11"
