@@ -108,7 +108,7 @@ export default function EmailConfirmationSuccess() {
 
               <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
                 <p className="text-sm text-blue-300">
-                  Your account has been successfully activated and is ready to use. Our team will review your registration for full access.
+                  Your email is confirmed. Sign in to access your account.
                 </p>
               </div>
 

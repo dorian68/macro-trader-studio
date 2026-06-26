@@ -132,7 +132,7 @@ export default function EmailConfirmation() {
           </div>
 
           <div className="text-xs text-gray-500 mt-4">
-            Once your email is confirmed, your account will be submitted for approval by our team.
+            Once your email is confirmed, your free trial starts automatically — no approval required.
           </div>
         </CardContent>
       </Card>

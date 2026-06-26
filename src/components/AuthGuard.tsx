@@ -161,7 +161,124 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
     return null;
   }
 
-  // ✅ Trial expired → show upgrade modal
+  // ✅ Pending/rejected checks BEFORE trial expiry — a pending user must never hit the upgrade wall
+  if (!isSuperUser && requireApproval && profile) {
+    if (isPending) {
+      const paidPlans = ['basic', 'standard', 'premium'];
+      const hasPaidPlan = paidPlans.includes(profile.user_plan || '');
+
+      if (hasPaidPlan) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader className="text-center">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+                <CardTitle className="text-xl">Processing Your Payment</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <p className="text-muted-foreground">
+                  Your payment has been received and your account is being activated.
+                  This usually takes just a few seconds.
+                </p>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <p className="text-sm text-primary">
+                    This page will update automatically — no need to refresh.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => signOut()} className="w-full">
+                  Sign Out
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="h-8 w-8 text-amber-600" />
+              </div>
+              <CardTitle className="text-xl">Account Setup In Progress</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Your account was created but the setup isn't complete yet.
+                Try signing out and back in — this usually resolves it instantly.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-sm text-amber-800">
+                  If the issue persists after signing back in, contact support@alphalensai.com.
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => signOut()} className="w-full">
+                Sign Out & Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    if (isRejected) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <XCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <CardTitle className="text-xl">Account Not Approved</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Unfortunately, your account application was not approved at this time.
+                Please contact our support team if you have any questions.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-800">
+                  For assistance, please reach out to support@alphalens.ai
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => signOut()} className="w-full">
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    if (!isApproved) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-8 w-8 text-blue-600" />
+              </div>
+              <CardTitle className="text-xl">Account Setup Required</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Your account setup is incomplete. Please complete the verification process
+                or contact support for assistance.
+              </p>
+              <Button variant="outline" onClick={() => signOut()} className="w-full">
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+  }
+
+  // ✅ Trial expired → show upgrade modal (only for approved users)
   if (!isSuperUser && isTrialExpired) {
     const handleUpgrade = async () => {
       setCheckoutLoading(true);
@@ -219,127 +336,6 @@ export default function AuthGuard({ children, requireApproval = true }: AuthGuar
         </Card>
       </div>
     );
-  }
-
-  // If approval is required, check profile status
-  if (!isSuperUser && requireApproval && profile) {
-    if (isPending) {
-      // Check if user has a paid plan — if so, the webhook is still processing
-      const paidPlans = ['basic', 'standard', 'premium'];
-      const hasPaidPlan = paidPlans.includes(profile.user_plan || '');
-
-      if (hasPaidPlan) {
-        // Paid user: webhook is processing, show a payment processing message
-        // The realtime listener in useProfile will auto-update when webhook completes
-        return (
-          <div className="min-h-screen flex items-center justify-center bg-background p-4">
-            <Card className="w-full max-w-md">
-              <CardHeader className="text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-                <CardTitle className="text-xl">Processing Your Payment</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <p className="text-muted-foreground">
-                  Your payment has been received and your account is being activated. 
-                  This usually takes just a few seconds.
-                </p>
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                  <p className="text-sm text-primary">
-                    This page will update automatically — no need to refresh.
-                  </p>
-                </div>
-                <Button variant="outline" onClick={() => signOut()} className="w-full">
-                  Sign Out
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      }
-
-      // Non-paid user: standard pending approval flow
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Clock className="h-8 w-8 text-amber-600" />
-              </div>
-              <CardTitle className="text-xl">Account Pending Approval</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Your account has been created successfully but is pending approval from our team. 
-                You'll receive an email notification once your account is approved.
-              </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-sm text-amber-800">
-                  This usually takes 1-2 business days. Thank you for your patience!
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => signOut()} className="w-full">
-                Sign Out
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-
-    if (isRejected) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <XCircle className="h-8 w-8 text-red-600" />
-              </div>
-              <CardTitle className="text-xl">Account Not Approved</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Unfortunately, your account application was not approved at this time. 
-                Please contact our support team if you have any questions.
-              </p>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-800">
-                  For assistance, please reach out to support@alphalens.ai
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => signOut()} className="w-full">
-                Sign Out
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-
-    if (!isApproved) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="h-8 w-8 text-blue-600" />
-              </div>
-              <CardTitle className="text-xl">Account Setup Required</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Your account setup is incomplete. Please complete the verification process 
-                or contact support for assistance.
-              </p>
-              <Button variant="outline" onClick={() => signOut()} className="w-full">
-                Sign Out
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
   }
 
   // User is authenticated and approved (if required), render children

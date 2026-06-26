@@ -24,9 +24,8 @@ const ResetPassword = () => {
 
     if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
       toast({
-        title: t('errors.passwordTooShort') || 'Password too weak',
-        description: t('errors.passwordRequirements') ||
-          'Use at least 10 characters, including letters and numbers.',
+        title: t('errors.passwordTooShort'),
+        description: t('errors.passwordRequirements'),
         variant: "destructive",
       });
       return;

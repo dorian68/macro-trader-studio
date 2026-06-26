@@ -64,6 +64,25 @@ function removeOAuthCallbackParams() {
   window.history.replaceState({}, '', `${url.pathname}${url.search}`);
 }
 
+// Activates the free trial on first login if it hasn't started yet.
+// Skipped when a pendingFreeTrial intent is in storage (completePendingAuthIntent handles it).
+// Non-blocking: a failure here must never prevent login.
+async function activateTrialIfNeeded(userId: string): Promise<void> {
+  if (localStorage.getItem(AUTH_STORAGE_KEYS.pendingFreeTrial) === 'true') return;
+  try {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('trial_used, user_plan, status')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const isPaid = ['basic', 'standard', 'premium'].includes(prof?.user_plan ?? '');
+    if (!prof || prof.trial_used || isPaid || prof.status !== 'approved') return;
+    await supabase.functions.invoke('activate-free-trial');
+  } catch {
+    // Intentionally swallowed — trial activation failure must not block login
+  }
+}
+
 export default function Auth() {
   const { t } = useTranslation('auth');
   const [fullName, setFullName] = useState('');
@@ -78,6 +97,7 @@ export default function Auth() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const forgotPasswordRef = useRef<HTMLDivElement>(null);
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
   const navigate = useNavigate();
@@ -115,7 +135,7 @@ export default function Auth() {
         console.error('[Google Auth] OAuth error returned:', { urlError, urlErrorDesc });
         clearOAuthAttempt(localStorage);
         toast({
-          title: t('errors.googleOAuthFailed') || 'Échec de la connexion Google',
+          title: t('errors.googleOAuthFailed'),
           description: urlErrorDesc || urlError,
           variant: 'destructive',
         });
@@ -130,14 +150,14 @@ export default function Auth() {
           if (!session) {
             console.error('[Google Auth] CONFIG WARNING: No session after OAuth redirect. Check Supabase Auth URL Configuration and Google Provider.');
             toast({
-              title: t('errors.oauthIncomplete') || 'Connexion Google incomplète',
-              description: t('errors.checkAuthConfig') || 'Vérifiez la configuration Supabase (URL/Redirects & Google) puis réessayez.',
+              title: t('errors.oauthIncomplete'),
+              description: t('errors.checkAuthConfig'),
               variant: 'destructive',
             });
             setProcessingOAuth(false);
             setGoogleLoading(false);
           }
-        }, 3000);
+        }, 6000);
         return () => clearTimeout(timer);
       }
     } catch (e) {
@@ -153,6 +173,12 @@ export default function Auth() {
       setPasswordMatchError('');
     }
   }, [password, confirmPassword, t]);
+
+  useEffect(() => {
+    if (showForgotPassword) {
+      forgotPasswordRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showForgotPassword]);
 
   const completePendingAuthIntent = React.useCallback(async () => {
     if (pendingIntentProcessingRef.current) {
@@ -240,6 +266,7 @@ export default function Auth() {
       removeOAuthCallbackParams();
       processedOAuthTokenRef.current = oauthSession.access_token;
 
+      await activateTrialIfNeeded(oauthSession.user.id);
       const intentHandled = await completePendingAuthIntent();
       if (!intentHandled) navigate('/dashboard');
     } catch (error) {
@@ -287,6 +314,7 @@ export default function Auth() {
             return;
           }
           setTimeout(async () => {
+            await activateTrialIfNeeded(currentSession!.user.id);
             const intentHandled = await completePendingAuthIntent();
             if (!intentHandled) navigate('/dashboard');
           }, 0);
@@ -306,6 +334,7 @@ export default function Auth() {
       }
 
       if (!hasFreshOAuthAttempt(localStorage) && !hasOAuthCallbackParams(window.location)) {
+        await activateTrialIfNeeded(currentSession.user.id);
         const intentHandled = await completePendingAuthIntent();
         if (!intentHandled) navigate('/dashboard');
       }
@@ -336,9 +365,8 @@ export default function Auth() {
     // "Minimum password length" + "Password requirements" (dashboard / config).
     if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
       toast({
-        title: t('errors.passwordTooShort') || 'Password too weak',
-        description: t('errors.passwordRequirements') ||
-          'Use at least 10 characters, including letters and numbers.',
+        title: t('errors.passwordTooShort'),
+        description: t('errors.passwordRequirements'),
         variant: "destructive"
       });
       return;
@@ -480,7 +508,7 @@ export default function Auth() {
         await supabase.auth.signOut();
         toast({
           title: t('errors.loginError'),
-          description: t('errors.invalidCredentials') || 'Invalid login credentials',
+          description: t('errors.invalidCredentials'),
           variant: 'destructive',
         });
         setLoading(false);
@@ -542,6 +570,7 @@ export default function Auth() {
         localStorage.setItem(AUTH_STORAGE_KEYS.pendingPlan, selectedPlan);
       }
 
+      await activateTrialIfNeeded(data.user.id);
       const intentHandled = await completePendingAuthIntent();
       if (intentHandled) {
         setLoading(false);
@@ -641,7 +670,7 @@ export default function Auth() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-4">
-                {t('emailConfirmation.pendingApproval') || 'Once your email is confirmed, your account will be submitted for approval by our team.'}
+                {t('emailConfirmation.pendingApproval')}
               </p>
             </CardContent>
           </Card>
@@ -737,7 +766,7 @@ export default function Auth() {
 
                 {/* Forgot Password Inline Form */}
                 {showForgotPassword && (
-                  <div className="mt-4 p-4 border border-border rounded-lg space-y-4">
+                  <div ref={forgotPasswordRef} className="mt-4 p-4 border border-border rounded-lg space-y-4">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
