@@ -22,7 +22,16 @@ export function sanitizeRichHtml(html: string): string {
   });
 }
 
-export const sanitizeReportHtml = sanitizeRichHtml;
+// LLM-generated report HTML often embeds literal Markdown bold (**text**) inside
+// <p> tags, which would otherwise render as raw asterisks. Convert balanced **…**
+// runs (within a single line, non-empty) to <strong> before sanitizing.
+function convertMarkdownBold(html: string): string {
+  return html.replace(/\*\*(?!\s)([^*\n]+?)\*\*/g, "<strong>$1</strong>");
+}
+
+export function sanitizeReportHtml(html: string): string {
+  return sanitizeRichHtml(convertMarkdownBold(html));
+}
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({

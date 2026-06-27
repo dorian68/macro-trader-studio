@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, Children, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import ApplyToPortfolioButton from "./ApplyToPortfolioButton";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -722,6 +724,68 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
     );
   };
 
+  // Wrap plain-string text nodes with the glossary-tooltip renderer, so Markdown
+  // formatting (bold, lists, headings, tables…) is parsed by react-markdown while
+  // defined terms keep their hover definitions. Non-string children (already-rendered
+  // elements like <strong>) are passed through untouched to avoid double-processing.
+  const renderWithDefs = (children: ReactNode): ReactNode =>
+    Children.map(children, (child) =>
+      typeof child === "string"
+        ? <TextWithDefinitions text={child} definitions={commentary?.definitions} />
+        : child
+    );
+
+  // Returns the paragraph's plain text only when it has no nested formatting,
+  // so domain-pattern detection runs on clean label lines and never on rich prose.
+  const plainText = (children: ReactNode): string | null => {
+    const arr = Children.toArray(children);
+    return arr.length > 0 && arr.every((c) => typeof c === "string") ? arr.join("") : null;
+  };
+
+  // Faithful reintegration of two domain accents on top of Markdown: a short
+  // directional line (Bullish/Bearish/Neutral) becomes a colored Badge, and a
+  // "Confidence: <value>" line gets a labeled highlight. Anything else is normal prose.
+  const renderParagraph = (children: ReactNode): ReactNode => {
+    const text = plainText(children)?.trim();
+    if (text) {
+      const conf = text.match(/^Confidence:\s*(.+)$/i);
+      if (conf) {
+        return (
+          <div className="flex items-center gap-2 text-sm my-2">
+            <span className="text-muted-foreground">Confidence:</span>
+            <span className="font-semibold text-primary">{conf[1]}</span>
+          </div>
+        );
+      }
+      if (/\b(Bullish|Bearish|Neutral)\b/i.test(text) && text.length <= 48) {
+        const variant: "default" | "destructive" | "secondary" =
+          /bullish/i.test(text) ? "default" : /bearish/i.test(text) ? "destructive" : "secondary";
+        return (
+          <div className="my-2">
+            <Badge variant={variant} className="text-xs">{text}</Badge>
+          </div>
+        );
+      }
+    }
+    return <p>{renderWithDefs(children)}</p>;
+  };
+
+  const markdownComponents = {
+    p: ({ children }: { children?: ReactNode }) => renderParagraph(children),
+    li: ({ children }: { children?: ReactNode }) => <li>{renderWithDefs(children)}</li>,
+    strong: ({ children }: { children?: ReactNode }) => <strong>{renderWithDefs(children)}</strong>,
+    em: ({ children }: { children?: ReactNode }) => <em>{renderWithDefs(children)}</em>,
+    h1: ({ children }: { children?: ReactNode }) => <h1>{renderWithDefs(children)}</h1>,
+    h2: ({ children }: { children?: ReactNode }) => <h2>{renderWithDefs(children)}</h2>,
+    h3: ({ children }: { children?: ReactNode }) => <h3>{renderWithDefs(children)}</h3>,
+    h4: ({ children }: { children?: ReactNode }) => <h4>{renderWithDefs(children)}</h4>,
+    td: ({ children }: { children?: ReactNode }) => <td>{renderWithDefs(children)}</td>,
+    th: ({ children }: { children?: ReactNode }) => <th>{renderWithDefs(children)}</th>,
+    a: ({ href, children }: { href?: string; children?: ReactNode }) => (
+      <a href={href} target="_blank" rel="noopener noreferrer">{renderWithDefs(children)}</a>
+    ),
+  };
+
   return (
     <div className={cn(
       "bg-card/95 backdrop-blur-xl rounded-xl border border-border/50 shadow-2xl transition-all duration-300 flex flex-col",
@@ -1080,124 +1144,11 @@ export function MacroCommentary({ instrument, timeframe, onClose }: MacroComment
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Main Content */}
-                <div className="space-y-6 max-h-96 overflow-y-auto">
-                  {(commentary.summary || commentary.content).split('\n\n').map((section, index) => {
-                    // Check if this is a title/heading
-                    if (section.includes('Weekly Outlook') || section.includes('Executive Summary') || 
-                        section.includes('Fundamental Analysis') || section.includes('Directional Bias') ||
-                      section.includes('Key Levels') || section.includes('AI Insights Breakdown') ||
-                      section.includes('Toggle GPT') || section.includes('Toggle Curated')) {
-                    return (
-                      <div key={index} className="space-y-3">
-                        {section.split('\n').map((line, lineIndex) => {
-                          if (lineIndex === 0 && (line.includes('Weekly Outlook') || 
-                              line.includes('Executive Summary') || 
-                              line.includes('Fundamental Analysis') ||
-                              line.includes('Directional Bias') ||
-                              line.includes('Key Levels') ||
-                              line.includes('AI Insights Breakdown') ||
-                              line.includes('Toggle GPT') ||
-                              line.includes('Toggle Curated'))) {
-                            return (
-                              <h3 key={lineIndex} className="text-lg font-bold text-primary border-b border-border pb-2">
-                                {line}
-                              </h3>
-                            );
-                          }
-                          
-                          if (line.startsWith('**') && line.endsWith('**')) {
-                            return (
-                              <p key={lineIndex} className="font-semibold text-foreground text-base leading-relaxed">
-                                <TextWithDefinitions 
-                                  text={line.replace(/\*\*/g, '')} 
-                                  definitions={commentary.definitions}
-                                />
-                              </p>
-                            );
-                          }
-                          
-                          if (line.startsWith('- **')) {
-                            const boldText = line.match(/\*\*(.*?)\*\*/)?.[1] || '';
-                            const remainingText = line.replace(/- \*\*(.*?)\*\*:?/, '').trim();
-                            return (
-                              <div key={lineIndex} className="flex gap-3 text-sm leading-relaxed">
-                                <span className="text-primary mt-1">•</span>
-                                <div>
-                                  <span className="font-semibold text-foreground">
-                                    <TextWithDefinitions text={boldText} definitions={commentary.definitions} />
-                                  </span>
-                                  {remainingText && (
-                                    <span className="text-muted-foreground">
-                                      : <TextWithDefinitions text={remainingText} definitions={commentary.definitions} />
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          }
-                          
-                          if (line.startsWith('Support') || line.startsWith('Resistance')) {
-                            return (
-                              <h4 key={lineIndex} className="font-semibold text-foreground text-sm mt-3 mb-1">
-                                {line}
-                              </h4>
-                            );
-                          }
-                          
-                          if (line.startsWith('- **$') || line.startsWith('- **€') || line.startsWith('- **£')) {
-                            const levelText = line.replace(/- \*\*(.*?)\*\*/, '$1');
-                            const description = line.includes('(') ? line.match(/\((.*?)\)/)?.[1] : '';
-                            return (
-                              <div key={lineIndex} className="flex items-center gap-2 text-sm ml-4">
-                                <span className="w-2 h-2 bg-primary rounded-full"></span>
-                                <span className="font-mono font-semibold text-primary">{levelText.split('**')[0]}</span>
-                                {description && <span className="text-muted-foreground">({description})</span>}
-                              </div>
-                            );
-                          }
-                          
-                          if (line.includes('Bullish') || line.includes('Bearish') || line.includes('Neutral')) {
-                            return (
-                              <div key={lineIndex} className="flex items-center gap-2 text-sm">
-                                <Badge variant={line.includes('Bullish') ? 'default' : line.includes('Bearish') ? 'destructive' : 'secondary'} className="text-xs">
-                                  {line.trim()}
-                                </Badge>
-                              </div>
-                            );
-                          }
-                          
-                          if (line.includes('Confidence:')) {
-                            return (
-                              <div key={lineIndex} className="flex items-center gap-2 text-sm">
-                                <span className="text-muted-foreground">Confidence:</span>
-                                <span className="font-semibold text-primary">{line.replace('Confidence:', '').trim()}</span>
-                              </div>
-                            );
-                          }
-                          
-                          return (
-                            <p key={lineIndex} className="text-sm text-muted-foreground leading-relaxed">
-                              <TextWithDefinitions 
-                                text={line.replace(/\[(\d+)\]/g, (match, num) => `[${num}]`)} 
-                                definitions={commentary.definitions}
-                              />
-                            </p>
-                          );
-                        })}
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <p key={index} className="text-sm text-muted-foreground leading-relaxed">
-                      <TextWithDefinitions 
-                        text={section.replace(/\[(\d+)\]/g, (match, num) => `[${num}]`)} 
-                        definitions={commentary.definitions}
-                      />
-                    </p>
-                  );
-                 })}
-               </div>
+                <div className="prose prose-sm prose-invert max-w-none max-h-[40rem] overflow-y-auto pr-2 prose-headings:text-primary prose-headings:font-bold prose-headings:border-b prose-headings:border-border prose-headings:pb-2 prose-strong:text-foreground prose-a:text-primary prose-li:marker:text-primary prose-p:leading-relaxed">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {commentary.summary || commentary.content}
+                  </ReactMarkdown>
+                </div>
 
               {/* Sources */}
               {commentary.sources && commentary.sources.length > 0 && (
